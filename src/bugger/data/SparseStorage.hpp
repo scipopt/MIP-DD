@@ -412,7 +412,7 @@ class SparseStorage
    int minInterRowSpace = 0;
 };
 
-#ifdef PAPILO_USE_EXTERN_TEMPLATES
+#ifdef BUGGER_USE_EXTERN_TEMPLATES
 extern template class SparseStorage<double>;
 extern template class SparseStorage<Quad>;
 extern template class SparseStorage<Rational>;

@@ -30,13 +30,13 @@
 #include <memory>
 #include <boost/serialization/split_free.hpp>
 
-#ifdef PAPILO_HAVE_FLOAT128
+#ifdef BUGGER_HAVE_FLOAT128
 #include <boost/multiprecision/float128.hpp>
 namespace bugger
 {
 using Quad = boost::multiprecision::float128;
 } // namespace bugger
-#elif defined( PAPILO_HAVE_GMP )
+#elif defined( BUGGER_HAVE_GMP )
 #include <boost/multiprecision/gmp.hpp>
 
 namespace bugger
@@ -55,7 +55,7 @@ using Quad = boost::multiprecision::cpp_bin_float_quad;
 } // namespace bugger
 #endif
 
-#ifdef PAPILO_HAVE_GMP
+#ifdef BUGGER_HAVE_GMP
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <boost/multiprecision/gmp.hpp>
 #include <boost/serialization/nvp.hpp>

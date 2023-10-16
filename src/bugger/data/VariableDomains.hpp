@@ -90,7 +90,7 @@ struct VariableDomains
    }
 };
 
-#ifdef PAPILO_USE_EXTERN_TEMPLATES
+#ifdef BUGGER_USE_EXTERN_TEMPLATES
 extern template struct VariableDomains<double>;
 extern template struct VariableDomains<Quad>;
 extern template struct VariableDomains<Rational>;

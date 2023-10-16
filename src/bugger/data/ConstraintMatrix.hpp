@@ -619,7 +619,7 @@ class ConstraintMatrix
    Vec<int> colsize;
 };
 
-#ifdef PAPILO_USE_EXTERN_TEMPLATES
+#ifdef BUGGER_USE_EXTERN_TEMPLATES
 extern template class ConstraintMatrix<double>;
 extern template class ConstraintMatrix<Quad>;
 extern template class ConstraintMatrix<Rational>;

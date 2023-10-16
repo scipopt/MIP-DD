@@ -26,7 +26,7 @@
 
 #include "bugger/Config.hpp"
 
-#ifndef PAPILO_USE_STANDARD_HASHMAP
+#ifndef BUGGER_USE_STANDARD_HASHMAP
 #include "bugger/external/ska/bytell_hash_map.hpp"
 #else
 #include <unordered_map>
@@ -101,7 +101,7 @@ struct Hasher<T, T>
    }
 };
 
-#ifndef PAPILO_USE_STANDARD_HASHMAP
+#ifndef BUGGER_USE_STANDARD_HASHMAP
 
 template <typename K, typename V, typename H = std::hash<K>,
           typename E = std::equal_to<K>>
