@@ -72,11 +72,9 @@ target_include_directories(bugger INTERFACE
    $<INSTALL_INTERFACE:include>
    ${Boost_INCLUDE_DIRS}
    ${GMP_INCLUDE_DIRS}
-   ${PAPILO_IMPORTED_TARGETS}
    )
 
 option(TBB "should TBB be linked if found" ON)
-option(PAPILO "should papilo library be linked" ON)
 
 set(BUGGER_TBB on)
 # on windows we don't want to build tbb
@@ -101,8 +99,7 @@ target_link_libraries(bugger
 find_package(Threads REQUIRED)
 
 
-target_link_libraries(bugger
-        INTERFACE  ${GMP_LIBRARIES} ${GLOP_LIBRARIES} ${PAPILO_IMPORTED_TARGETS})
+target_link_libraries(bugger INTERFACE  ${GMP_LIBRARIES} ${GLOP_LIBRARIES})
 
 # on raspberry pi, we need to link libatomic, as libtbbmalloc_proxy depends on it
 if((CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "armv7l") AND (CMAKE_SYSTEM_NAME STREQUAL "Linux"))

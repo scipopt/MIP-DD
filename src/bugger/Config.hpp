@@ -1,9 +1,9 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    PaPILO --- Parallel Presolve for Integer and Linear Optimization       */
+/*    BUGGER --- Parallel Presolve for Integer and Linear Optimization       */
 /*                                                                           */
-/* Copyright (C) 2020-2023 Konrad-Zuse-Zentrum                               */
+/* Copyright (C) 2023             Konrad-Zuse-Zentrum                        */
 /*                     fuer Informationstechnik Berlin                       */
 /*                                                                           */
 /* This program is free software: you can redistribute it and/or modify      */
@@ -24,19 +24,19 @@
 #ifndef _BUGGER_CONFIG_HPP_
 #define _BUGGER_CONFIG_HPP_
 
-#ifndef PAPILO_NO_CMAKE_CONFIG
+#ifndef BUGGER_NO_CMAKE_CONFIG
 
 #include "bugger/CMakeConfig.hpp"
 
 #else
 
-#define PAPILO_VERSION_MAJOR 2
-#define PAPILO_VERSION_MINOR 1
-#define PAPILO_VERSION_PATCH 3
-#define PAPILO_VERSION_TWEAK 0
+#define BUGGER_VERSION_MAJOR 2
+#define BUGGER_VERSION_MINOR 1
+#define BUGGER_VERSION_PATCH 3
+#define BUGGER_VERSION_TWEAK 0
 
-#undef PAPILO_GITHASH_AVAILABLE
-#undef PAPILO_GITHASH
+#undef BUGGER_GITHASH_AVAILABLE
+#undef BUGGER_GITHASH
 
 #endif
 

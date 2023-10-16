@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    PaPILO --- Parallel Presolve for Integer and Linear Optimization       */
+/*    BUGGER                                                                 */
 /*                                                                           */
 /* Copyright (C) 2020-2022  Konrad-Zuse-Zentrum                              */
 /*                     fuer Informationstechnik Berlin                       */

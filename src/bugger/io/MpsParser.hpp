@@ -1,9 +1,9 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    PaPILO --- Parallel Presolve for Integer and Linear Optimization       */
+/*    BUGGER                                                                 */
 /*                                                                           */
-/* Copyright (C) 2020-2023 Konrad-Zuse-Zentrum                               */
+/* Copyright (C) 2023             Konrad-Zuse-Zentrum                        */
 /*                     fuer Informationstechnik Berlin                       */
 /*                                                                           */
 /* This program is free software: you can redistribute it and/or modify      */
@@ -741,7 +741,7 @@ MpsParser<REAL>::parseBounds( boost::iostreams::filtering_istream& file )
       else
       {
          if( word_ref == "INDICATORS" )
-            std::cerr << "exact does not support INDICATORS in the MPS file!!"<< std::endl;
+            std::cerr << "bugger does not support INDICATORS in the MPS file!!"<< std::endl;
          else
             std::cerr << "unknown bound type " << word_ref << std::endl;
          return parsekey::kFail;

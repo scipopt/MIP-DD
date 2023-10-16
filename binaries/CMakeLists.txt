@@ -6,7 +6,7 @@ set(BUGGER_HAVE_SCIP 1)
 
 set(CMAKE_CXX_STANDARD 14)
 
-include_directories(${SCIP_INCLUDE_DIRS} ${PAPILO_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
+include_directories(${SCIP_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
 find_package(Boost REQUIRED iostreams serialization program_options)
 
 set(CMAKE_REQUIRED_INCLUDES ${Boost_INCLUDE_DIRS})
@@ -28,6 +28,6 @@ if(BUGGER_HAVE_SCIP)
    target_compile_definitions(bugger-executable PRIVATE BUGGER_HAVE_SCIP)
 endif()
 set_target_properties(bugger-executable PROPERTIES OUTPUT_NAME bugger RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin" )
-target_link_libraries(bugger-executable bugger-core  ${SCIP_LIBRARIES} ${PAPILO_IMPORTED_TARGETS} ${Boost_LIBRARIES})
+target_link_libraries(bugger-executable bugger-core  ${SCIP_LIBRARIES}  ${Boost_LIBRARIES})
 target_compile_definitions(bugger-executable PRIVATE BUGGER_USE_EXTERN_TEMPLATES BUGGER_USE_EXTERN_TEMPLATES)
 

@@ -1,9 +1,9 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    PaPILO --- Parallel Presolve for Integer and Linear Optimization       */
+/*    BUGGER                                                                 */
 /*                                                                           */
-/* Copyright (C) 2020-2023 Konrad-Zuse-Zentrum                               */
+/* Copyright (C) 2023             Konrad-Zuse-Zentrum                        */
 /*                     fuer Informationstechnik Berlin                       */
 /*                                                                           */
 /* This program is free software: you can redistribute it and/or modify      */
@@ -30,7 +30,7 @@
 namespace bugger
 {
 
-struct ExactOptions
+struct BuggerOptions
 {
 
    int threads = 0;

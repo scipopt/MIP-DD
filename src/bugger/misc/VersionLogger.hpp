@@ -1,9 +1,9 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    PaPILO --- Parallel Presolve for Integer and Linear Optimization       */
+/*    BUGGER                                                                 */
 /*                                                                           */
-/* Copyright (C) 2020-2023 Konrad-Zuse-Zentrum                               */
+/* Copyright (C) 2023             Konrad-Zuse-Zentrum                        */
 /*                     fuer Informationstechnik Berlin                       */
 /*                                                                           */
 /* This program is free software: you can redistribute it and/or modify      */
@@ -69,7 +69,7 @@ print_header()
                BUGGER_VERSION_MAJOR, BUGGER_VERSION_MINOR, BUGGER_VERSION_PATCH,
                mode, BUGGER_GITHASH );
 #else
-   fmt::print( "exact version {}.{}.{} [mode: {}][GitHash: ]\n",
+   fmt::print( "bugger version {}.{}.{} [mode: {}][GitHash: ]\n",
                BUGGER_VERSION_MAJOR, BUGGER_VERSION_MINOR, BUGGER_VERSION_PATCH,
                mode );
 #endif
