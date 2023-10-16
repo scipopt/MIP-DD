@@ -21,50 +21,69 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifndef _BUGGER_MISC_STABLE_SUM_HPP_
+#define _BUGGER_MISC_STABLE_SUM_HPP_
 
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/VersionLogger.hpp"
-#include "bugger/misc/Timer.hpp"
-#include "bugger/interfaces/ScipInterface.hpp"
+#include "bugger/misc/Num.hpp"
 
-
-#include <boost/program_options.hpp>
-#include <fstream>
-
-int
-main( int argc, char* argv[] )
+namespace bugger
 {
-   using namespace bugger;
 
-   print_header();
+template <typename REAL, bool isfp = num_traits<REAL>::is_floating_point>
+class StableSum;
 
-   // get the options passed by the user
-   OptionsInfo optionsInfo;
-   try
+template <typename REAL>
+class StableSum<REAL, true>
+{
+   REAL sum = 0;
+   REAL c = 0;
+
+ public:
+   StableSum() = default;
+
+   explicit StableSum( const REAL& init ) : sum( init ), c( 0 ) {}
+
+   void
+   add( const REAL& input )
    {
-      optionsInfo = parseOptions( argc, argv );
+      REAL t = sum + input;
+      REAL z = t - sum;
+      REAL y = ( sum - ( t - z ) ) + ( input - z );
+      c += y;
+
+      sum = t;
    }
-   catch( const boost::program_options::error& ex )
+
+   REAL
+   get() const
    {
-      std::cerr << "Error while parsing the options.\n" << '\n';
-      std::cerr << ex.what() << '\n';
-      return 1;
+      return sum + c;
+   }
+};
+
+template <typename REAL>
+class StableSum<REAL, false>
+{
+   REAL sum = 0;
+
+ public:
+   StableSum() = default;
+
+   explicit StableSum( const REAL& init ) : sum( init ) {}
+
+   void
+   add( const REAL& input )
+   {
+      sum += input;
    }
 
-   if( !optionsInfo.is_complete )
-      return 0;
+   REAL
+   get() const
+   {
+      return sum;
+   }
+};
 
-   double readtime = 0;
+} // namespace bugger
 
-   ScipInterface scip{};
-   scip.parse(optionsInfo.instance_file);
-   scip.read_parameters(optionsInfo.scip_settings_file);
-   scip.read_solution(optionsInfo.solution_file);
-
-   //TODO: parse parameters
-
-   //TODO: call reduce class to apply the reductions.
-
-   return 0;
-}
+#endif

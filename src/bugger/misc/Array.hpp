@@ -21,50 +21,61 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifndef _BUGGER_MISC_ARRAY_HPP_
+#define _BUGGER_MISC_ARRAY_HPP_
 
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/VersionLogger.hpp"
-#include "bugger/misc/Timer.hpp"
-#include "bugger/interfaces/ScipInterface.hpp"
+#include "bugger/misc/Alloc.hpp"
+#include <cstdint>
+#include <memory>
 
-
-#include <boost/program_options.hpp>
-#include <fstream>
-
-int
-main( int argc, char* argv[] )
+namespace bugger
 {
-   using namespace bugger;
 
-   print_header();
+template <typename T>
+struct ArrayDeleter
+{
+   std::size_t size;
 
-   // get the options passed by the user
-   OptionsInfo optionsInfo;
-   try
+   ArrayDeleter( std::size_t _size ) : size( _size ) {}
+
+   void
+   operator()( T* p )
    {
-      optionsInfo = parseOptions( argc, argv );
+      Allocator<T>().deallocate( p, size );
    }
-   catch( const boost::program_options::error& ex )
+};
+
+template <typename T>
+class Array
+{
+ public:
+   Array( std::size_t n )
+       : ptr( Allocator<T>().allocate( n ), ArrayDeleter<T>( n ) )
    {
-      std::cerr << "Error while parsing the options.\n" << '\n';
-      std::cerr << ex.what() << '\n';
-      return 1;
    }
 
-   if( !optionsInfo.is_complete )
-      return 0;
+   std::size_t
+   getSize() const
+   {
+      return ptr.get_deleter().size;
+   }
 
-   double readtime = 0;
+   T&
+   operator[]( int i )
+   {
+      return ptr[i];
+   }
 
-   ScipInterface scip{};
-   scip.parse(optionsInfo.instance_file);
-   scip.read_parameters(optionsInfo.scip_settings_file);
-   scip.read_solution(optionsInfo.solution_file);
+   const T&
+   operator[]( int i ) const
+   {
+      return ptr[i];
+   }
 
-   //TODO: parse parameters
+ private:
+   std::unique_ptr<T[], ArrayDeleter<T>> ptr;
+};
 
-   //TODO: call reduce class to apply the reductions.
+} // namespace bugger
 
-   return 0;
-}
+#endif

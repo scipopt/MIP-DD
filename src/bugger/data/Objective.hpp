@@ -21,50 +21,33 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifndef _BUGGER_CORE_OBJECTIVE_HPP_
+#define _BUGGER_CORE_OBJECTIVE_HPP_
 
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/VersionLogger.hpp"
-#include "bugger/misc/Timer.hpp"
-#include "bugger/interfaces/ScipInterface.hpp"
+#include "bugger/misc/Vec.hpp"
 
-
-#include <boost/program_options.hpp>
-#include <fstream>
-
-int
-main( int argc, char* argv[] )
+namespace bugger
 {
-   using namespace bugger;
 
-   print_header();
+/// type to store an objective function
+template <typename REAL>
+struct Objective
+{
+   /// dense vector of objective coefficients
+   Vec<REAL> coefficients;
 
-   // get the options passed by the user
-   OptionsInfo optionsInfo;
-   try
+   /// offset of objective function
+   REAL offset;
+
+   template <typename Archive>
+   void
+   serialize( Archive& ar, const unsigned int version )
    {
-      optionsInfo = parseOptions( argc, argv );
+      ar& coefficients;
+      ar& offset;
    }
-   catch( const boost::program_options::error& ex )
-   {
-      std::cerr << "Error while parsing the options.\n" << '\n';
-      std::cerr << ex.what() << '\n';
-      return 1;
-   }
+};
 
-   if( !optionsInfo.is_complete )
-      return 0;
+} // namespace bugger
 
-   double readtime = 0;
-
-   ScipInterface scip{};
-   scip.parse(optionsInfo.instance_file);
-   scip.read_parameters(optionsInfo.scip_settings_file);
-   scip.read_solution(optionsInfo.solution_file);
-
-   //TODO: parse parameters
-
-   //TODO: call reduce class to apply the reductions.
-
-   return 0;
-}
+#endif

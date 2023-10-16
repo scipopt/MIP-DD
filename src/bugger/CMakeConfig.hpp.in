@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    PaPILO --- Parallel Presolve for Integer and Linear Optimization       */
+/*    EXACT --- Parallel Presolve for Integer and Linear Optimization       */
 /*                                                                           */
 /* Copyright (C) 2020-2023 Konrad-Zuse-Zentrum                               */
 /*                     fuer Informationstechnik Berlin                       */
@@ -21,50 +21,27 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifndef _BUGGER_CMAKE_CONFIG_HPP_
+#define _BUGGER_CMAKE_CONFIG_HPP_
 
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/VersionLogger.hpp"
-#include "bugger/misc/Timer.hpp"
-#include "bugger/interfaces/ScipInterface.hpp"
+#cmakedefine BUGGER_USE_STANDARD_HASHMAP
+#cmakedefine BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
+#cmakedefine BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2
+#cmakedefine BUGGER_GITHASH_AVAILABLE
+#cmakedefine BOOST_FOUND
+#cmakedefine BUGGER_TBB
 
+#define BUGGER_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define BUGGER_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define BUGGER_VERSION_PATCH @PROJECT_VERSION_PATCH@
+#define BUGGER_VERSION_TWEAK @PROJECT_VERSION_TWEAK@
 
-#include <boost/program_options.hpp>
-#include <fstream>
+#ifdef EXACT_HAVE_GMP
+   #define GMP_VERSION "@GMP_VERSION@"
+#endif
 
-int
-main( int argc, char* argv[] )
-{
-   using namespace bugger;
+#ifdef BUGGER_GITHASH_AVAILABLE
+   #define BUGGER_GITHASH "@BUGGER_GITHASH@"
+#endif
 
-   print_header();
-
-   // get the options passed by the user
-   OptionsInfo optionsInfo;
-   try
-   {
-      optionsInfo = parseOptions( argc, argv );
-   }
-   catch( const boost::program_options::error& ex )
-   {
-      std::cerr << "Error while parsing the options.\n" << '\n';
-      std::cerr << ex.what() << '\n';
-      return 1;
-   }
-
-   if( !optionsInfo.is_complete )
-      return 0;
-
-   double readtime = 0;
-
-   ScipInterface scip{};
-   scip.parse(optionsInfo.instance_file);
-   scip.read_parameters(optionsInfo.scip_settings_file);
-   scip.read_solution(optionsInfo.solution_file);
-
-   //TODO: parse parameters
-
-   //TODO: call reduce class to apply the reductions.
-
-   return 0;
-}
+#endif

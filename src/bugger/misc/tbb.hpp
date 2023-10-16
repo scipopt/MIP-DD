@@ -21,50 +21,64 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifndef _BUGGER_MISC_TBB_HPP_
+#define _BUGGER_MISC_TBB_HPP_
 
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/VersionLogger.hpp"
-#include "bugger/misc/Timer.hpp"
-#include "bugger/interfaces/ScipInterface.hpp"
+/* if those macros are not defined and tbb includes windows.h
+ * then many macros are defined that can interfere with standard C++ code
+ */
+#ifndef NOMINMAX
+#define NOMINMAX
+#define PAPILO_DEFINED_NOMINMAX
+#endif
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#define PAPILO_DEFINED_WIN32_LEAN_AND_MEAN
+#endif
 
-#include <boost/program_options.hpp>
-#include <fstream>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#define PAPILO_DEFINED_WIN32_LEAN_AND_MEAN
+#endif
 
-int
-main( int argc, char* argv[] )
-{
-   using namespace bugger;
+#ifndef NOGDI
+#define NOGDI
+#define PAPILO_DEFINED_NOGDI
+#endif
 
-   print_header();
+#ifdef _MSC_VER
+#pragma push_macro( "__TBB_NO_IMPLICIT_LINKAGE" )
+#define __TBB_NO_IMPLICIT_LINKAGE 1
+#endif
 
-   // get the options passed by the user
-   OptionsInfo optionsInfo;
-   try
-   {
-      optionsInfo = parseOptions( argc, argv );
-   }
-   catch( const boost::program_options::error& ex )
-   {
-      std::cerr << "Error while parsing the options.\n" << '\n';
-      std::cerr << ex.what() << '\n';
-      return 1;
-   }
+#include "tbb/blocked_range.h"
+#include "tbb/combinable.h"
+#include "tbb/concurrent_hash_map.h"
+#include "tbb/concurrent_vector.h"
+#include "tbb/parallel_for.h"
+#include "tbb/parallel_invoke.h"
+#include "tbb/partitioner.h"
+#include "tbb/task_arena.h"
+#include "tbb/tick_count.h"
 
-   if( !optionsInfo.is_complete )
-      return 0;
+#ifdef _MSC_VER
+#pragma pop_macro( "__TBB_NO_IMPLICIT_LINKAGE" )
+#endif
 
-   double readtime = 0;
+#ifdef PAPILO_DEFINED_NOGDI
+#undef NOGDI
+#undef PAPILO_DEFINED_NOGDI
+#endif
 
-   ScipInterface scip{};
-   scip.parse(optionsInfo.instance_file);
-   scip.read_parameters(optionsInfo.scip_settings_file);
-   scip.read_solution(optionsInfo.solution_file);
+#ifdef PAPILO_DEFINED_NOMINMAX
+#undef NOMINMAX
+#undef PAPILO_DEFINED_NOMINMAX
+#endif
 
-   //TODO: parse parameters
+#ifdef PAPILO_DEFINED_WIN32_LEAN_AND_MEAN
+#undef WIN32_LEAN_AND_MEAN
+#undef PAPILO_DEFINED_WIN32_LEAN_AND_MEAN
+#endif
 
-   //TODO: call reduce class to apply the reductions.
-
-   return 0;
-}
+#endif

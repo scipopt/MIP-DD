@@ -21,50 +21,80 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifndef _BUGGER_INTERFACES_SCIP_INTERFACE_HPP_
+#define _BUGGER_INTERFACES_SCIP_INTERFACE_HPP_
 
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/VersionLogger.hpp"
-#include "bugger/misc/Timer.hpp"
-#include "bugger/interfaces/ScipInterface.hpp"
+#define UNUSED(expr) do { (void)(expr); } while (0)
+
+#include "bugger/misc/Vec.hpp"
+#include <cassert>
+#include <stdexcept>
+
+#include "bugger/data/Problem.hpp"
+#include "scip/cons_linear.h"
+#include "scip/scip.h"
+#include "scip/scipdefplugins.h"
+#include "scip/struct_paramset.h"
+
+namespace bugger {
 
 
-#include <boost/program_options.hpp>
-#include <fstream>
+   class ScipInterface {
+   private:
+      SCIP *scip;
 
-int
-main( int argc, char* argv[] )
-{
-   using namespace bugger;
+   public:
+      ScipInterface( ) : scip(nullptr) {
+         if( SCIPcreate(&scip) != SCIP_OKAY )
+            throw std::runtime_error("could not create SCIP");
+      }
 
-   print_header();
+      SCIP*
+      getSCIP()
+      {
+         return scip;
+      }
 
-   // get the options passed by the user
-   OptionsInfo optionsInfo;
-   try
-   {
-      optionsInfo = parseOptions( argc, argv );
-   }
-   catch( const boost::program_options::error& ex )
-   {
-      std::cerr << "Error while parsing the options.\n" << '\n';
-      std::cerr << ex.what() << '\n';
-      return 1;
-   }
 
-   if( !optionsInfo.is_complete )
-      return 0;
+      void
+      parse(const std::string& filename)
+      {
+         assert(!filename.empty());
+         SCIP_CALL_ABORT(SCIPincludeDefaultPlugins(scip));
+         SCIP_CALL_ABORT(SCIPreadProb(scip, filename.c_str(), NULL));
+      }
 
-   double readtime = 0;
+      void
+      read_parameters(const std::string& scip_settings_file)
+      {
+         if(!scip_settings_file.empty())
+            SCIP_CALL_ABORT( SCIPreadParams( scip, scip_settings_file.c_str() ) );
+      }
 
-   ScipInterface scip{};
-   scip.parse(optionsInfo.instance_file);
-   scip.read_parameters(optionsInfo.scip_settings_file);
-   scip.read_solution(optionsInfo.solution_file);
+      void
+      read_solution(const std::string& solution_file)
+      {
+         if(!solution_file.empty())
+            SCIP_CALL_ABORT( SCIPreadSol( scip, solution_file.c_str() ) );
+      }
 
-   //TODO: parse parameters
+      void
+      solve( ) {
+         SCIP_RETCODE returncode = SCIPsolve(scip);
+         assert(returncode == SCIP_OKAY);
+      };
 
-   //TODO: call reduce class to apply the reductions.
 
-   return 0;
-}
+      ~ScipInterface( ) {
+         if( scip != nullptr )
+         {
+            SCIP_RETCODE retcode = SCIPfree(&scip);
+            UNUSED(retcode);
+            assert(retcode == SCIP_OKAY);
+         }
+      }
+   };
+
+} // namespace bugger
+
+#endif

@@ -27,7 +27,7 @@ if(BUGGER_HAVE_SCIP)
    set(BUGGER_HAVE_SCIP 1 PARENT_SCOPE)
    target_compile_definitions(bugger-executable PRIVATE BUGGER_HAVE_SCIP)
 endif()
-set_target_properties(bugger-executable PROPERTIES OUTPUT_NAME exact RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin" )
+set_target_properties(bugger-executable PROPERTIES OUTPUT_NAME bugger RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin" )
 target_link_libraries(bugger-executable bugger-core  ${SCIP_LIBRARIES} ${PAPILO_IMPORTED_TARGETS} ${Boost_LIBRARIES})
 target_compile_definitions(bugger-executable PRIVATE BUGGER_USE_EXTERN_TEMPLATES BUGGER_USE_EXTERN_TEMPLATES)
 

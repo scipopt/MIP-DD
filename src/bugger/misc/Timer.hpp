@@ -21,50 +21,62 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifndef _BUGGER_MISC_TIMER_HPP_
+#define _BUGGER_MISC_TIMER_HPP_
 
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/VersionLogger.hpp"
-#include "bugger/misc/Timer.hpp"
-#include "bugger/interfaces/ScipInterface.hpp"
+#ifdef BUGGER_TBB
+#include "bugger/misc/tbb.hpp"
+#else
+#include <chrono>
+#endif
 
-
-#include <boost/program_options.hpp>
-#include <fstream>
-
-int
-main( int argc, char* argv[] )
+namespace bugger
 {
-   using namespace bugger;
 
-   print_header();
+#ifdef BUGGER_TBB
+class Timer
+{
+ public:
+   Timer( double& time_ ) : time( time_ ) { start = tbb::tick_count::now(); }
 
-   // get the options passed by the user
-   OptionsInfo optionsInfo;
-   try
+   double
+   getTime() const
    {
-      optionsInfo = parseOptions( argc, argv );
-   }
-   catch( const boost::program_options::error& ex )
-   {
-      std::cerr << "Error while parsing the options.\n" << '\n';
-      std::cerr << ex.what() << '\n';
-      return 1;
+      return ( tbb::tick_count::now() - start ).seconds();
    }
 
-   if( !optionsInfo.is_complete )
-      return 0;
+   ~Timer() { time += ( tbb::tick_count::now() - start ).seconds(); }
 
-   double readtime = 0;
+ private:
+   tbb::tick_count start;
+   double& time;
+};
+#else
+class Timer
+{
+ public:
+   Timer( double& time_ ) : time( time_ ) { start = std::chrono::steady_clock::now(); }
 
-   ScipInterface scip{};
-   scip.parse(optionsInfo.instance_file);
-   scip.read_parameters(optionsInfo.scip_settings_file);
-   scip.read_solution(optionsInfo.solution_file);
+   double
+   getTime() const
+   {
+      return std::chrono::duration_cast<std::chrono::milliseconds>(
+                 std::chrono::steady_clock::now() - start )
+                 .count() /1000.0;
+   }
 
-   //TODO: parse parameters
+   ~Timer() {
+      time += std::chrono::duration_cast<std::chrono::milliseconds>(
+                  std::chrono::steady_clock::now() - start )
+                  .count() /1000.0;
+   }
 
-   //TODO: call reduce class to apply the reductions.
+ private:
+   std::chrono::steady_clock::time_point start;
+   double& time;
+};
+#endif
 
-   return 0;
-}
+} // namespace bugger
+
+#endif

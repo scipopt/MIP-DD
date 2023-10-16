@@ -21,50 +21,25 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifndef _BUGGER_CORE_ROW_FLAGS_HPP_
+#define _BUGGER_CORE_ROW_FLAGS_HPP_
 
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/VersionLogger.hpp"
-#include "bugger/misc/Timer.hpp"
-#include "bugger/interfaces/ScipInterface.hpp"
+#include "bugger/misc/Flags.hpp"
 
-
-#include <boost/program_options.hpp>
-#include <fstream>
-
-int
-main( int argc, char* argv[] )
+namespace bugger
 {
-   using namespace bugger;
 
-   print_header();
+enum class RowFlag : uint8_t
+{
+   kLhsInf = 1 << 0,
+   kRhsInf = 1 << 1,
+   kEquation = 1 << 2,
+   kIntegral = 1 << 3,
+   kRedundant = 1 << 4,
+};
 
-   // get the options passed by the user
-   OptionsInfo optionsInfo;
-   try
-   {
-      optionsInfo = parseOptions( argc, argv );
-   }
-   catch( const boost::program_options::error& ex )
-   {
-      std::cerr << "Error while parsing the options.\n" << '\n';
-      std::cerr << ex.what() << '\n';
-      return 1;
-   }
+using RowFlags = Flags<RowFlag>;
 
-   if( !optionsInfo.is_complete )
-      return 0;
+} // namespace bugger
 
-   double readtime = 0;
-
-   ScipInterface scip{};
-   scip.parse(optionsInfo.instance_file);
-   scip.read_parameters(optionsInfo.scip_settings_file);
-   scip.read_solution(optionsInfo.solution_file);
-
-   //TODO: parse parameters
-
-   //TODO: call reduce class to apply the reductions.
-
-   return 0;
-}
+#endif

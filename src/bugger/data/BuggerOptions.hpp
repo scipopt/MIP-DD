@@ -21,50 +21,45 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifndef _BUGGER_CORE_PRESOLVE_OPTIONS_HPP_
+#define _BUGGER_CORE_PRESOLVE_OPTIONS_HPP_
 
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/VersionLogger.hpp"
-#include "bugger/misc/Timer.hpp"
-#include "bugger/interfaces/ScipInterface.hpp"
+#include "bugger/misc/ParameterSet.hpp"
+#include <type_traits>
 
-
-#include <boost/program_options.hpp>
-#include <fstream>
-
-int
-main( int argc, char* argv[] )
+namespace bugger
 {
-   using namespace bugger;
 
-   print_header();
+struct ExactOptions
+{
 
-   // get the options passed by the user
-   OptionsInfo optionsInfo;
-   try
+   int threads = 0;
+
+   unsigned int randomseed = 0;
+
+   double tlim = std::numeric_limits<double>::max();
+
+   void
+   addParameters( ParameterSet& paramSet )
    {
-      optionsInfo = parseOptions( argc, argv );
+
+      paramSet.addParameter( "presolve.randomseed", "random seed value",
+                             randomseed );
+      paramSet.addParameter( "presolve.tlim", "time limit for presolve", tlim,
+                             0.0 );
+      paramSet.addParameter( "presolve.threads",
+                             "maximal number of threads to use (0: automatic)",
+                             threads, 0 );
    }
-   catch( const boost::program_options::error& ex )
+
+   bool
+   runs_sequential() const
    {
-      std::cerr << "Error while parsing the options.\n" << '\n';
-      std::cerr << ex.what() << '\n';
-      return 1;
+      return threads == 1;
    }
 
-   if( !optionsInfo.is_complete )
-      return 0;
+};
 
-   double readtime = 0;
+} // namespace bugger
 
-   ScipInterface scip{};
-   scip.parse(optionsInfo.instance_file);
-   scip.read_parameters(optionsInfo.scip_settings_file);
-   scip.read_solution(optionsInfo.solution_file);
-
-   //TODO: parse parameters
-
-   //TODO: call reduce class to apply the reductions.
-
-   return 0;
-}
+#endif

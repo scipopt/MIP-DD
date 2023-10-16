@@ -21,50 +21,23 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifndef _BUGGER_CONFIG_HPP_
+#define _BUGGER_CONFIG_HPP_
 
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/VersionLogger.hpp"
-#include "bugger/misc/Timer.hpp"
-#include "bugger/interfaces/ScipInterface.hpp"
+#ifndef PAPILO_NO_CMAKE_CONFIG
 
+#include "bugger/CMakeConfig.hpp"
 
-#include <boost/program_options.hpp>
-#include <fstream>
+#else
 
-int
-main( int argc, char* argv[] )
-{
-   using namespace bugger;
+#define PAPILO_VERSION_MAJOR 2
+#define PAPILO_VERSION_MINOR 1
+#define PAPILO_VERSION_PATCH 3
+#define PAPILO_VERSION_TWEAK 0
 
-   print_header();
+#undef PAPILO_GITHASH_AVAILABLE
+#undef PAPILO_GITHASH
 
-   // get the options passed by the user
-   OptionsInfo optionsInfo;
-   try
-   {
-      optionsInfo = parseOptions( argc, argv );
-   }
-   catch( const boost::program_options::error& ex )
-   {
-      std::cerr << "Error while parsing the options.\n" << '\n';
-      std::cerr << ex.what() << '\n';
-      return 1;
-   }
+#endif
 
-   if( !optionsInfo.is_complete )
-      return 0;
-
-   double readtime = 0;
-
-   ScipInterface scip{};
-   scip.parse(optionsInfo.instance_file);
-   scip.read_parameters(optionsInfo.scip_settings_file);
-   scip.read_solution(optionsInfo.solution_file);
-
-   //TODO: parse parameters
-
-   //TODO: call reduce class to apply the reductions.
-
-   return 0;
-}
+#endif

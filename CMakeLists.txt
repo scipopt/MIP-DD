@@ -4,7 +4,7 @@ set(BUGGER_VERSION_MAJOR 0)
 set(BUGGER_VERSION_MINOR 1)
 set(BUGGER_VERSION_PATCH 0)
 
-project(exact VERSION ${BUGGER_VERSION_MAJOR}.${BUGGER_VERSION_MINOR}.${BUGGER_VERSION_PATCH}.0)
+project(bugger VERSION ${BUGGER_VERSION_MAJOR}.${BUGGER_VERSION_MINOR}.${BUGGER_VERSION_PATCH}.0)
 
 set(BOOST_MIN_VERSION 1.65)
 if(APPLE)
@@ -49,7 +49,7 @@ if((GIT) AND (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git))
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       OUTPUT_VARIABLE BUGGER_GITHASH OUTPUT_STRIP_TRAILING_WHITESPACE)
 else()
-   file(STRINGS ${CMAKE_CURRENT_SOURCE_DIR}/src/exact/Config.hpp githash_define REGEX "define BUGGER_GITHASH .*")
+   file(STRINGS ${CMAKE_CURRENT_SOURCE_DIR}/src/bugger/Config.hpp githash_define REGEX "define BUGGER_GITHASH .*")
    if(githash_define)
       string(REGEX MATCH "\\\"(.*)\\\"" _matched ${githash_define})
       if(_matched)
@@ -65,9 +65,8 @@ else()
    set(BUGGER_GITHASH_AVAILABLE 0)
 endif()
 
-add_library(exact INTERFACE
-        src/exact/interfaces/ViprInterface.hpp)
-target_include_directories(exact INTERFACE
+add_library(bugger INTERFACE )
+target_include_directories(bugger INTERFACE
    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>
    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
    $<INSTALL_INTERFACE:include>
@@ -79,7 +78,7 @@ target_include_directories(exact INTERFACE
 option(TBB "should TBB be linked if found" ON)
 option(PAPILO "should papilo library be linked" ON)
 
-set(EXACT_TBB on)
+set(BUGGER_TBB on)
 # on windows we don't want to build tbb
 if(WIN32)
    find_package(TBB 2018 COMPONENTS tbb tbbmalloc REQUIRED)
@@ -96,35 +95,35 @@ else()
       CONFIGURE_ARGS -DTBB_TEST=OFF -DTBB_EXAMPLES=OFF -DTBB4PY_BUILD=OFF)
 endif()
 
-target_link_libraries(exact
+target_link_libraries(bugger
         INTERFACE TBB::tbb Threads::Threads $<$<PLATFORM_ID:Linux>:rt>)
 
 find_package(Threads REQUIRED)
 
 
-target_link_libraries(exact
+target_link_libraries(bugger
         INTERFACE  ${GMP_LIBRARIES} ${GLOP_LIBRARIES} ${PAPILO_IMPORTED_TARGETS})
 
 # on raspberry pi, we need to link libatomic, as libtbbmalloc_proxy depends on it
 if((CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "armv7l") AND (CMAKE_SYSTEM_NAME STREQUAL "Linux"))
-    target_link_libraries(exact INTERFACE atomic)
+    target_link_libraries(bugger INTERFACE atomic)
 endif()
 
 include(CMakePackageConfigHelpers)
 
 write_basic_package_version_file(
-    ${CMAKE_BINARY_DIR}/exact-config-version.cmake
+    ${CMAKE_BINARY_DIR}/bugger-config-version.cmake
    VERSION ${BUGGER_VERSION_MAJOR}.${BUGGER_VERSION_MINOR}.${BUGGER_VERSION_PATCH}
    COMPATIBILITY SameMajorVersion
 )
 
 if(MSVC)
-   target_compile_definitions(exact INTERFACE BOOST_ALL_NO_LIB)
-   target_compile_options(exact INTERFACE /bigobj)
-   target_compile_options(exact
+   target_compile_definitions(bugger INTERFACE BOOST_ALL_NO_LIB)
+   target_compile_options(bugger INTERFACE /bigobj)
+   target_compile_options(bugger
       INTERFACE ${TBB_CXX_STD_FLAG})
 else()
-   target_compile_options(exact
+   target_compile_options(bugger
       INTERFACE ${TBB_CXX_STD_FLAG} -Wno-shadow)
 endif()
 
@@ -142,22 +141,22 @@ if(NOT MSVC)
       endif()
    endif()
 endif()
-set(CMAKE_REQUIRED_INCLUDES ${PROJECT_SOURCE_DIR}/src/exact/external)
+set(CMAKE_REQUIRED_INCLUDES ${PROJECT_SOURCE_DIR}/src/bugger/external)
 check_cxx_source_compiles(
    "#include \"ska/bytell_hash_map.hpp\"
    int main() { ska::bytell_hash_map<int,int> hashmap; (void)hashmap; return 0; }"
-   EXACT_BYTELL_HASHMAP_WORKS )
+   BUGGER_BYTELL_HASHMAP_WORKS )
 
-if( EXACT_BYTELL_HASHMAP_WORKS )
-   set(EXACT_USE_STANDARD_HASHMAP 0)
+if( BUGGER_BYTELL_HASHMAP_WORKS )
+   set(BUGGER_USE_STANDARD_HASHMAP 0)
 else()
-   set(EXACT_USE_STANDARD_HASHMAP 1)
+   set(BUGGER_USE_STANDARD_HASHMAP 1)
 endif()
 
 add_library(bugger-core STATIC
-        src/exact/data/VariableDomains.cpp
-        src/exact/data/SparseStorage.cpp
-        src/exact/data/ConstraintMatrix.cpp
+        src/bugger/data/VariableDomains.cpp
+        src/bugger/data/SparseStorage.cpp
+        src/bugger/data/ConstraintMatrix.cpp
   )
 
 #
@@ -175,134 +174,127 @@ else()
 endif()
 
 
-target_link_libraries(bugger-core exact)
+target_link_libraries(bugger-core bugger)
 target_compile_definitions(bugger-core PRIVATE BUGGER_USE_EXTERN_TEMPLATES)
 
-if(NOT EXACT_NO_BINARIES)
+if(NOT BUGGER_NO_BINARIES)
    add_subdirectory(binaries)
 endif()
 
-configure_file("${PROJECT_SOURCE_DIR}/src/exact/CMakeConfig.hpp.in"
-               "${PROJECT_BINARY_DIR}/exact/CMakeConfig.hpp")
+configure_file("${PROJECT_SOURCE_DIR}/src/bugger/CMakeConfig.hpp.in"
+               "${PROJECT_BINARY_DIR}/bugger/CMakeConfig.hpp")
 
 # add tests
 enable_testing()
 #add_subdirectory(${PROJECT_SOURCE_DIR}/test)
 
-# install the header files of exact
+# install the header files of bugger
 install(FILES
-     ${PROJECT_BINARY_DIR}/exact/CMakeConfig.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/Config.hpp
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/exact)
-
-install(FILES
-     ${CMAKE_BINARY_DIR}/exact-config-version.cmake
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/exact)
+     ${PROJECT_BINARY_DIR}/bugger/CMakeConfig.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/Config.hpp
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger)
 
 install(FILES
-        ${PROJECT_SOURCE_DIR}/src/exact/data/ConstraintMatrix.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/data/MatrixBuffer.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/data/Objective.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/data/ExactOptions.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/data/Problem.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/data/ProblemBuilder.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/data/RowFlags.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/data/SingleRow.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/data/Solution.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/data/SparseStorage.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/data/VariableDomains.hpp
-   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/exact/data)
+     ${CMAKE_BINARY_DIR}/bugger-config-version.cmake
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bugger)
 
 install(FILES
-        ${PROJECT_SOURCE_DIR}/src/exact/interfaces/ScipInterface.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/interfaces/ViprInterface.hpp
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/exact/interfaces)
+        ${PROJECT_SOURCE_DIR}/src/bugger/data/BuggerOptions.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/data/ConstraintMatrix.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/data/MatrixBuffer.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/data/Objective.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/data/Problem.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/data/ProblemBuilder.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/data/RowFlags.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/data/SingleRow.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/data/Solution.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/data/SparseStorage.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/data/VariableDomains.hpp
+   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/data)
 
 install(FILES
-        ${PROJECT_SOURCE_DIR}/src/exact/io/Message.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/io/MpsParser.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/io/MpsWriter.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/io/SolParser.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/io/SolWriter.hpp
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/exact/io)
+        ${PROJECT_SOURCE_DIR}/src/bugger/interfaces/ScipInterface.hpp
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/interfaces)
 
 install(FILES
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/Alloc.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/Array.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/compress_vector.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/Flags.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/fmt.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/Hash.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/MultiPrecision.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/Num.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/NumericalStatistics.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/OptionsParser.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/VersionLogger.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/ParameterSet.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/StableSum.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/String.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/tbb.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/Timer.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/Validation.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/Vec.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/VectorUtils.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/misc/Wrappers.hpp
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/exact/misc)
-
-
-if((DEFINED Boost_VERSION) AND (Boost_VERSION VERSION_LESS 107000))
-   install(FILES
-           ${PROJECT_SOURCE_DIR}/src/exact/misc/extended_euclidean.hpp
-           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/exact/misc)
-endif()
-
+        ${PROJECT_SOURCE_DIR}/src/bugger/io/Message.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/io/MpsParser.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/io/MpsWriter.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/io/SolParser.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/io/SolWriter.hpp
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/io)
 
 install(FILES
-        ${PROJECT_SOURCE_DIR}/src/exact/external/fmt/chrono.h
-        ${PROJECT_SOURCE_DIR}/src/exact/external/fmt/color.h
-        ${PROJECT_SOURCE_DIR}/src/exact/external/fmt/compile.h
-        ${PROJECT_SOURCE_DIR}/src/exact/external/fmt/core.h
-        ${PROJECT_SOURCE_DIR}/src/exact/external/fmt/format.h
-        ${PROJECT_SOURCE_DIR}/src/exact/external/fmt/format-inl.h
-        ${PROJECT_SOURCE_DIR}/src/exact/external/fmt/locale.h
-        ${PROJECT_SOURCE_DIR}/src/exact/external/fmt/ostream.h
-        ${PROJECT_SOURCE_DIR}/src/exact/external/fmt/posix.h
-        ${PROJECT_SOURCE_DIR}/src/exact/external/fmt/printf.h
-        ${PROJECT_SOURCE_DIR}/src/exact/external/fmt/ranges.h
-        ${PROJECT_SOURCE_DIR}/src/exact/external/fmt/format.cc
-        ${PROJECT_SOURCE_DIR}/src/exact/external/fmt/posix.cc
- DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/exact/external/fmt)
+        ${PROJECT_SOURCE_DIR}/src/bugger/misc/Alloc.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/misc/Array.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/misc/compress_vector.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/misc/Flags.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/misc/fmt.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/misc/Hash.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/misc/MultiPrecision.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/misc/Num.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/misc/NumericalStatistics.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/misc/OptionsParser.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/misc/VersionLogger.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/misc/ParameterSet.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/misc/StableSum.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/misc/String.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/misc/tbb.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/misc/Timer.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/misc/Vec.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/misc/VectorUtils.hpp
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/misc)
 
 install(FILES
-        ${PROJECT_SOURCE_DIR}/src/exact/external/pdqsort/pdqsort.h
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/exact/external/pdqsort)
+        ${PROJECT_SOURCE_DIR}/src/bugger/modules/BuggerModul.hpp
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/modules)
 
 install(FILES
-        ${PROJECT_SOURCE_DIR}/src/exact/external/ska/bytell_hash_map.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/external/ska/flat_hash_map.hpp
-        ${PROJECT_SOURCE_DIR}/src/exact/external/ska/unordered_map.hpp
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/exact/external/ska)
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/chrono.h
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/color.h
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/compile.h
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/core.h
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/format.h
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/format-inl.h
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/locale.h
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/ostream.h
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/posix.h
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/printf.h
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/ranges.h
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/format.cc
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/posix.cc
+ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/external/fmt)
+
+install(FILES
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/pdqsort/pdqsort.h
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/external/pdqsort)
+
+install(FILES
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/ska/bytell_hash_map.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/ska/flat_hash_map.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/ska/unordered_map.hpp
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/external/ska)
 
 # configure the config file for the build tree
 set(TBB_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
-configure_file(${PROJECT_SOURCE_DIR}/exact-config.cmake.in
-  "${CMAKE_BINARY_DIR}/exact-config.cmake" @ONLY)
+configure_file(${PROJECT_SOURCE_DIR}/bugger-config.cmake.in
+  "${CMAKE_BINARY_DIR}/bugger-config.cmake" @ONLY)
 
 # configure and install config file for installation
 set(TBB_MODULE_PATH "\${CMAKE_CURRENT_LIST_DIR}")
-configure_file(${PROJECT_SOURCE_DIR}/exact-config.cmake.in
-    "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/exact-config.cmake" @ONLY)
+configure_file(${PROJECT_SOURCE_DIR}/bugger-config.cmake.in
+    "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/bugger-config.cmake" @ONLY)
 
 # install dependencies
-install(FILES ${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/exact-config.cmake
-   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/exact)
+install(FILES ${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/bugger-config.cmake
+   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bugger)
 
 install(FILES ${PROJECT_SOURCE_DIR}/cmake/Modules/FindTBB.cmake
-   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/exact)
+   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bugger)
 if(INSTALL_TBB AND CMAKE_SYSTEM_NAME STREQUAL "Windows")
    if(EXISTS "${TBB_tbb_DLL}")
       install(FILES "${TBB_tbb_DLL}" DESTINATION ${CMAKE_INSTALL_BINDIR})
-      install(FILES "${TBB_tbb_DLL}" DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/exact)
+      install(FILES "${TBB_tbb_DLL}" DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bugger)
    endif()
    if(EXISTS "${TBB_tbbmalloc_DLL}")
       install(FILES "${TBB_tbbmalloc_DLL}" DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -310,15 +302,15 @@ if(INSTALL_TBB AND CMAKE_SYSTEM_NAME STREQUAL "Windows")
 endif()
 
 # export targets for build-tree linking
-export(TARGETS exact bugger-core FILE "${CMAKE_BINARY_DIR}/bugger-targets.cmake")
+export(TARGETS bugger bugger-core FILE "${CMAKE_BINARY_DIR}/bugger-targets.cmake")
 
 if(EXISTS ${CMAKE_BINARY_DIR}/_deps)
-   install(DIRECTORY ${CMAKE_BINARY_DIR}/_deps DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/exact/)
+   install(DIRECTORY ${CMAKE_BINARY_DIR}/_deps DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bugger/)
 endif()
 
 # install targets
-install(TARGETS exact bugger-core EXPORT bugger-targets ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(EXPORT bugger-targets DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/exact)
+install(TARGETS bugger bugger-core EXPORT bugger-targets ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(EXPORT bugger-targets DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bugger)
 
 if(TARGET bugger-executable)
    install(TARGETS bugger-executable ARCHIVE DESTINATION ${CMAKE_INSTALL_BINDIR} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})

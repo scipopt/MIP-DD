@@ -21,50 +21,83 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifndef _BUGGER_MISC_FLAGS_HPP_
+#define _BUGGER_MISC_FLAGS_HPP_
 
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/VersionLogger.hpp"
-#include "bugger/misc/Timer.hpp"
-#include "bugger/interfaces/ScipInterface.hpp"
+#include <cstdint>
+#include <type_traits>
 
-
-#include <boost/program_options.hpp>
-#include <fstream>
-
-int
-main( int argc, char* argv[] )
+namespace bugger
 {
-   using namespace bugger;
 
-   print_header();
+template <typename BaseType>
+class Flags
+{
+ public:
+   Flags( BaseType t ) : state( static_cast<UnderlyingType>( t ) ) {}
 
-   // get the options passed by the user
-   OptionsInfo optionsInfo;
-   try
+   Flags() : state( 0 ) {}
+
+   template <typename... Args>
+   void
+   set( Args... flags )
    {
-      optionsInfo = parseOptions( argc, argv );
+      state |= joinFlags( flags... );
    }
-   catch( const boost::program_options::error& ex )
+
+   void
+   clear()
    {
-      std::cerr << "Error while parsing the options.\n" << '\n';
-      std::cerr << ex.what() << '\n';
-      return 1;
+      state = 0;
    }
 
-   if( !optionsInfo.is_complete )
-      return 0;
+   template <typename... Args>
+   void
+   unset( Args... flags )
+   {
+      state &= ~joinFlags( flags... );
+   }
 
-   double readtime = 0;
+   template <typename... Args>
+   bool
+   test( Args... flags ) const
+   {
+      return state & joinFlags( flags... );
+   }
 
-   ScipInterface scip{};
-   scip.parse(optionsInfo.instance_file);
-   scip.read_parameters(optionsInfo.scip_settings_file);
-   scip.read_solution(optionsInfo.solution_file);
+   template <typename... Args>
+   bool
+   equal( Args... flags ) const
+   {
+      return state == joinFlags( flags... );
+   }
 
-   //TODO: parse parameters
+   template <typename Archive>
+   void
+   serialize( Archive& ar, const unsigned int version )
+   {
+      ar& state;
+   }
 
-   //TODO: call reduce class to apply the reductions.
+ private:
+   using UnderlyingType = typename std::underlying_type<BaseType>::type;
 
-   return 0;
-}
+   static UnderlyingType
+   joinFlags( BaseType f1 )
+   {
+      return static_cast<UnderlyingType>( f1 );
+   }
+
+   template <typename... Args>
+   static UnderlyingType
+   joinFlags( BaseType f1, Args... other )
+   {
+      return static_cast<UnderlyingType>( f1 ) | joinFlags( other... );
+   }
+
+   UnderlyingType state;
+};
+
+} // namespace bugger
+
+#endif

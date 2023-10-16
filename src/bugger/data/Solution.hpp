@@ -21,50 +21,78 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifndef _BUGGER_CORE_SOLUTION_HPP_
+#define _BUGGER_CORE_SOLUTION_HPP_
 
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/VersionLogger.hpp"
-#include "bugger/misc/Timer.hpp"
-#include "bugger/interfaces/ScipInterface.hpp"
+#include "bugger/misc/Vec.hpp"
 
-
-#include <boost/program_options.hpp>
-#include <fstream>
-
-int
-main( int argc, char* argv[] )
+namespace bugger
 {
-   using namespace bugger;
 
-   print_header();
+enum class SolutionType
+{
+   kPrimal,
+   kPrimalDual
+};
 
-   // get the options passed by the user
-   OptionsInfo optionsInfo;
-   try
+enum class VarBasisStatus : int
+{
+   ON_UPPER = 0,
+   ON_LOWER = 1,
+   FIXED = 2,
+   ZERO = 3,
+   BASIC = 4,
+   UNDEFINED = 5
+};
+
+template <typename REAL>
+class Solution
+{
+ public:
+   SolutionType type;
+   Vec<REAL> primal;
+   Vec<REAL> dual;
+   Vec<REAL> reducedCosts;
+   Vec<REAL> slack;
+   bool basisAvailabe;
+   Vec<VarBasisStatus> varBasisStatus;
+   Vec<VarBasisStatus> rowBasisStatus;
+
+   // Default type primal only.
+   Solution() : type( SolutionType::kPrimal ), basisAvailabe( false ) {}
+
+   explicit Solution( SolutionType type_ ) : type( type_ ), basisAvailabe( false ) {}
+
+   Solution( SolutionType type_, Vec<REAL> values )
+       : type( type_ ), primal( std::move( values ) ), basisAvailabe( false )
    {
-      optionsInfo = parseOptions( argc, argv );
    }
-   catch( const boost::program_options::error& ex )
+
+   explicit Solution( Vec<REAL> values )
+       : type( SolutionType::kPrimal ), primal( std::move( values ) ),
+         basisAvailabe( false )
    {
-      std::cerr << "Error while parsing the options.\n" << '\n';
-      std::cerr << ex.what() << '\n';
-      return 1;
    }
 
-   if( !optionsInfo.is_complete )
-      return 0;
+   Solution( Vec<REAL> primal_values, Vec<REAL> dual_values,
+             Vec<REAL> reduced_values, Vec<REAL> slack_values,
+             bool basisAvailabe_value,
+             Vec<VarBasisStatus> var_basis_status,
+             Vec<VarBasisStatus> row_basis_status
+)
+       : type( SolutionType::kPrimalDual ),
+         primal( std::move( primal_values ) ),
+         dual( std::move( dual_values ),
+         reducedCosts( std::move( reduced_values ) ),
+         slack( std::move( slack_values ) ) ),
+         basisAvailabe( basisAvailabe_value ),
+         varBasisStatus( std::move( var_basis_status )),
+         rowBasisStatus( std::move( row_basis_status ))
 
-   double readtime = 0;
+   {
+   }
+};
 
-   ScipInterface scip{};
-   scip.parse(optionsInfo.instance_file);
-   scip.read_parameters(optionsInfo.scip_settings_file);
-   scip.read_solution(optionsInfo.solution_file);
+} // namespace bugger
 
-   //TODO: parse parameters
-
-   //TODO: call reduce class to apply the reductions.
-
-   return 0;
-}
+#endif
