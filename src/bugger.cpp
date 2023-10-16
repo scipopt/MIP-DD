@@ -24,14 +24,46 @@
 
 #include "bugger/misc/MultiPrecision.hpp"
 #include "bugger/data/BuggerOptions.hpp"
-#include "bugger/data/BuggerRun.hpp"
 #include "bugger/misc/OptionsParser.hpp"
 #include "bugger/misc/VersionLogger.hpp"
 #include "bugger/interfaces/ScipInterface.hpp"
+#include "bugger/modules/BuggerModul.hpp"
 
 
 #include <boost/program_options.hpp>
 #include <fstream>
+
+namespace bugger {
+   class BuggerRun {
+
+      BuggerOptions options;
+      ScipInterface& scip;
+   public:
+
+      BuggerRun(ScipInterface& _scip)
+      : options({}), scip(_scip)
+      {
+
+      }
+
+      void apply() {
+         //TODO: implement
+      }
+
+      void addDefaultModules( ) {
+         using uptr = std::unique_ptr<BuggerModul>;
+
+      }
+
+      ParameterSet getParameters( ) {
+         ParameterSet paramSet;
+         options.addParameters(paramSet);
+         return paramSet;
+      }
+   };
+}
+
+void parse_parameters(bugger::OptionsInfo &optionsInfo, bugger::BuggerRun bugger);
 
 int
 main( int argc, char* argv[] )
@@ -56,28 +88,40 @@ main( int argc, char* argv[] )
    if( !optionsInfo.is_complete )
       return 0;
 
-   BuggerRun bugger{};
-   bugger.addDefaultModules();
+   ScipInterface scip{};
+   scip.parse(optionsInfo.instance_file);
+   scip.read_parameters(optionsInfo.scip_settings_file);
+   scip.read_solution(optionsInfo.solution_file);
 
+   BuggerRun bugger{scip};
+   bugger.addDefaultModules();
+   parse_parameters(optionsInfo, bugger);
+
+   bugger.apply();
+
+   return 0;
+}
+
+void parse_parameters(bugger::OptionsInfo &optionsInfo, bugger::BuggerRun bugger) {
    if( !optionsInfo.param_settings_file.empty() || !optionsInfo.unparsed_options.empty() )
    {
-      ParameterSet paramSet = bugger.getParameters();
+      bugger::ParameterSet paramSet = bugger.getParameters();
       if( !optionsInfo.param_settings_file.empty() )
       {
          std::ifstream input( optionsInfo.param_settings_file );
          if( input )
          {
-            String theoptionstr;
-            String thevaluestr;
-            for( String line; getline( input, line ); )
+            bugger::String theoptionstr;
+            bugger::String thevaluestr;
+            for( bugger::String line; getline(input, line ); )
             {
                std::size_t pos = line.find_first_of( '#' );
-               if( pos != String::npos )
+               if( pos != bugger::String::npos )
                   line = line.substr( 0, pos );
 
                pos = line.find_first_of( '=' );
 
-               if( pos == String::npos )
+               if( pos == bugger::String::npos )
                   continue;
 
                theoptionstr = line.substr( 0, pos - 1 );
@@ -106,13 +150,13 @@ main( int argc, char* argv[] )
 
       if( !optionsInfo.unparsed_options.empty() )
       {
-         String theoptionstr;
-         String thevaluestr;
+         bugger::String theoptionstr;
+         bugger::String thevaluestr;
 
          for( const auto& option : optionsInfo.unparsed_options )
          {
             std::size_t pos = option.find_first_of( '=' );
-            if( pos != String::npos && pos > 2 )
+            if( pos != bugger::String::npos && pos > 2 )
             {
                theoptionstr = option.substr( 2, pos - 2 );
                thevaluestr = option.substr( pos + 1 );
@@ -137,15 +181,4 @@ main( int argc, char* argv[] )
          }
       }
    }
-
-   ScipInterface scip{};
-   scip.parse(optionsInfo.instance_file);
-   scip.read_parameters(optionsInfo.scip_settings_file);
-   scip.read_solution(optionsInfo.solution_file);
-
-   //TODO: parse parameters
-
-   //TODO: call reduce class to apply the reductions.
-
-   return 0;
 }
