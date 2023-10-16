@@ -25,48 +25,35 @@
 #define _BUGGER_CORE_PRESOLVE_OPTIONS_HPP_
 
 #include "bugger/misc/ParameterSet.hpp"
+#include "bugger/data/BuggerOptions.hpp"
+#include "bugger/modules/BuggerModul.hpp"
+#include "BuggerOptions.hpp"
 #include <type_traits>
 
 namespace bugger
 {
 
-struct BuggerOptions
-{
+class Bugger{
 
-   int threads = 0;
+   BuggerOptions options;
 
-   int initround = 0;
-
-   int initstage = 0;
-
-   int nrounds = 0;
-
-   int nstages = 0;
-
-   int nbatches = 0;
-
-   unsigned int randomseed = 0;
-
-   double tlim = std::numeric_limits<double>::max();
-
-   void
-   addParameters( ParameterSet& paramSet )
+public:
+   Bugger()
    {
-      paramSet.addParameter( "scip.randomseed", "random seed value", randomseed );
-      paramSet.addParameter( "tlim", "time limit for presolve", tlim, 0.0 );
-      paramSet.addParameter( "initround", "initial bugger round", initround, 0.0 );
-      paramSet.addParameter( "initstage", "initial bugger stage", initstage, 0.0 );
-      paramSet.addParameter( "nrounds", "the maximum number of bugger rounds or -1 for no limit", nrounds, -1 );
-      paramSet.addParameter( "nstages", " maximum number of bugger stages or -1 for number of included bugger modules", nrounds, -1 );
-      paramSet.addParameter( "threads", "maximal number of threads to use (0: automatic)", threads, 0 );
+
    }
 
-   bool
-   runs_sequential() const
+   void addDefaultModules()
    {
-      return threads == 1;
+      using uptr = std::unique_ptr<BuggerModul>>;
+
    }
 
+   ParameterSet getParameters( ) {
+      ParameterSet paramSet;
+      options.addParameters(paramSet);
+      return paramSet;
+   }
 };
 
 } // namespace bugger

@@ -37,6 +37,13 @@
 #endif
 #include <bitset>
 
+//TODO: ideally the class does not know about SCIP or the solver at all -> use interface?
+#ifdef  BUGGER_HAVE_SCIP
+#include "scip/cons_linear.h"
+#include "scip/scip.h"
+#include "scip/scipdefplugins.h"
+#include "scip/struct_paramset.h"
+#endif
 
 namespace bugger
 {
@@ -90,7 +97,7 @@ class BuggerModul
 //   }
 
    ModulStatus
-   run( const Timer& timer )
+   run( SCIP& scip, const BuggerOptions& options, const Timer& timer )
    {
       if( !enabled || delayed )
          return ModulStatus::kDidNotRun;
@@ -108,7 +115,7 @@ class BuggerModul
 #else
       auto start = std::chrono::steady_clock::now();
 #endif
-      ModulStatus result = execute( timer );
+      ModulStatus result = execute( scip, options, timer );
 #ifdef BUGGER_TBB
       auto end = tbb::tick_count::now();
       auto duration = end - start;
@@ -177,7 +184,7 @@ class BuggerModul
  protected:
 
    virtual ModulStatus
-   execute( const Timer& timer ) = 0;
+   execute( SCIP& scip, const BuggerOptions& options, const Timer& timer ) = 0;
 
    void
    setName( const std::string& value )

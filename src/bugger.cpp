@@ -25,8 +25,8 @@
 #include "bugger/misc/MultiPrecision.hpp"
 #include "bugger/misc/OptionsParser.hpp"
 #include "bugger/misc/VersionLogger.hpp"
-#include "bugger/misc/Timer.hpp"
 #include "bugger/interfaces/ScipInterface.hpp"
+#include "bugger/data/Bugger.hpp"
 
 
 #include <boost/program_options.hpp>
@@ -55,7 +55,87 @@ main( int argc, char* argv[] )
    if( !optionsInfo.is_complete )
       return 0;
 
-   double readtime = 0;
+   Bugger bugger{};
+   bugger.addDefaultModules();
+
+   if( !optionsInfo.param_settings_file.empty() || !optionsInfo.unparsed_options.empty() )
+   {
+      ParameterSet paramSet = bugger.getParameters();
+      if( !optionsInfo.param_settings_file.empty() )
+      {
+         std::ifstream input( optionsInfo.param_settings_file );
+         if( input )
+         {
+            String theoptionstr;
+            String thevaluestr;
+            for( String line; getline( input, line ); )
+            {
+               std::size_t pos = line.find_first_of( '#' );
+               if( pos != String::npos )
+                  line = line.substr( 0, pos );
+
+               pos = line.find_first_of( '=' );
+
+               if( pos == String::npos )
+                  continue;
+
+               theoptionstr = line.substr( 0, pos - 1 );
+               thevaluestr = line.substr( pos + 1 );
+
+               boost::algorithm::trim( theoptionstr );
+               boost::algorithm::trim( thevaluestr );
+
+               try
+               {
+                  paramSet.parseParameter( theoptionstr.c_str(),
+                                           thevaluestr.c_str() );
+                  fmt::print( "set {} = {}\n", theoptionstr, thevaluestr );
+               }
+               catch( const std::exception& e )
+               {
+                  fmt::print( "parameter '{}' could not be set: {}\n", line,
+                              e.what() );
+               }
+            }
+         }
+         else
+            fmt::print( "could not read parameter file '{}'\n",
+                        optionsInfo.param_settings_file );
+      }
+
+      if( !optionsInfo.unparsed_options.empty() )
+      {
+         String theoptionstr;
+         String thevaluestr;
+
+         for( const auto& option : optionsInfo.unparsed_options )
+         {
+            std::size_t pos = option.find_first_of( '=' );
+            if( pos != String::npos && pos > 2 )
+            {
+               theoptionstr = option.substr( 2, pos - 2 );
+               thevaluestr = option.substr( pos + 1 );
+               try
+               {
+                  paramSet.parseParameter( theoptionstr.c_str(),
+                                           thevaluestr.c_str() );
+                  fmt::print( "set {} = {}\n", theoptionstr, thevaluestr );
+               }
+               catch( const std::exception& e )
+               {
+                  fmt::print( "parameter '{}' could not be set: {}\n",
+                              option, e.what() );
+               }
+            }
+            else
+            {
+               fmt::print(
+                     "parameter '{}' could not be set: value expected\n",
+                     option );
+            }
+         }
+      }
+   }
 
    ScipInterface scip{};
    scip.parse(optionsInfo.instance_file);
