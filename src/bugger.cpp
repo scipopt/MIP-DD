@@ -21,6 +21,15 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifndef _BUGGER_RUN__HPP_
+#define _BUGGER_RUN__HPP_
+
+#include <algorithm>
+#include <cctype>
+#include <fstream>
+#include <initializer_list>
+#include <memory>
+#include <utility>
 
 #include "bugger/misc/MultiPrecision.hpp"
 #include "bugger/data/BuggerOptions.hpp"
@@ -32,21 +41,20 @@
 #include "bugger/misc/Vec.hpp"
 
 #include <boost/program_options.hpp>
-#include <fstream>
 
 namespace bugger {
 
    class BuggerRun {
 
+   private:
       BuggerOptions options;
-      ScipInterface &scip;
-//      Vec<std::unique_ptr<BuggerModul>> modules;
+      ScipInterface scip;
+      Vec<std::unique_ptr<BuggerModul>>& modules;
    public:
 
-      BuggerRun(ScipInterface &_scip)
-            : options({ }), scip(_scip)//, modules({})
+      BuggerRun(ScipInterface &_scip, Vec<std::unique_ptr<BuggerModul>>& _modules)
+            : options({ }), scip(_scip), modules( _modules )
       {
-//         modules = {};
       }
 
       void apply( ) {
@@ -56,17 +64,18 @@ namespace bugger {
       void addDefaultModules( ) {
          using uptr = std::unique_ptr<BuggerModul>;
          addPresolveMethod(uptr(new VariableModul( )));
-
       }
 
       void
-      addPresolveMethod(std::unique_ptr<BuggerModul> presolveMethod) {
-//         modules.emplace_back( std::move( presolveMethod ) );
+      addPresolveMethod(std::unique_ptr<BuggerModul> module) {
+         modules.emplace_back( std::move( module ) );
       }
 
       ParameterSet getParameters( ) {
          ParameterSet paramSet;
          options.addParameters(paramSet);
+         for( const auto &module: modules )
+            module->addParameters(paramSet);
          return paramSet;
       }
    };
@@ -101,7 +110,9 @@ main(int argc, char *argv[]) {
    scip.read_parameters(optionsInfo.scip_settings_file);
    scip.read_solution(optionsInfo.solution_file);
 
-   BuggerRun bugger { scip };
+   //TODO: why can this not be auto generated in the class?
+   Vec<std::unique_ptr<BuggerModul>> list{};
+   BuggerRun bugger{scip, list};
    bugger.addDefaultModules( );
    parse_parameters(optionsInfo, bugger);
 
@@ -189,4 +200,6 @@ void parse_parameters(bugger::OptionsInfo &optionsInfo, bugger::BuggerRun bugger
          }
       }
    }
-}
+} // namespace bugger
+
+#endif
