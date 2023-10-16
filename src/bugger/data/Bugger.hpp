@@ -45,7 +45,7 @@ public:
 
    void addDefaultModules()
    {
-      using uptr = std::unique_ptr<BuggerModul>>;
+      using uptr = std::unique_ptr<BuggerModul>;
 
    }
 
