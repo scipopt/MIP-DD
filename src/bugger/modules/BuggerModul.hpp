@@ -43,6 +43,7 @@
 #include "scip/scip.h"
 #include "scip/scipdefplugins.h"
 #include "scip/struct_paramset.h"
+#include "scip/def.h"
 #endif
 
 namespace bugger
@@ -80,24 +81,24 @@ class BuggerModul
       return false;
    }
 
-//   virtual void
-//   addPresolverParams( ParameterSet& paramSet )
-//   {
-//   }
+   virtual void
+   addModuleParameters( ParameterSet& paramSet )
+   {
+   }
 
-//   void
-//   addParameters( ParameterSet& paramSet )
-//   {
-//      paramSet.addParameter(
-//          fmt::format( "{}.enabled", this->name ).c_str(),
-//          fmt::format( "is presolver {} enabled", this->name ).c_str(),
-//          this->enabled );
-//
-//      addPresolverParams( paramSet );
-//   }
+   void
+   addParameters( ParameterSet& paramSet )
+   {
+      paramSet.addParameter(
+          fmt::format( "{}.enabled", this->name ).c_str(),
+          fmt::format( "is presolver {} enabled", this->name ).c_str(),
+          this->enabled );
+
+      addModuleParameters( paramSet );
+   }
 
    ModulStatus
-   run( SCIP& scip, const BuggerOptions& options, const Timer& timer )
+   run( ScipInterface& scip, const BuggerOptions& options, const Timer& timer )
    {
       if( !enabled || delayed )
          return ModulStatus::kDidNotRun;
@@ -184,7 +185,7 @@ class BuggerModul
  protected:
 
    virtual ModulStatus
-   execute( SCIP& scip, const BuggerOptions& options, const Timer& timer ) = 0;
+   execute( ScipInterface& iscip, const BuggerOptions& options, const Timer& timer ) = 0;
 
    void
    setName( const std::string& value )
@@ -225,6 +226,124 @@ class BuggerModul
       }
 #endif
    }
+
+      /** tests the given SCIP instance in a copy and reports detected bug; if a primal bug solution is provided, the
+    *  resulting dual bound is also checked; on UNIX platforms aborts are caught, hence assertions can be enabled here
+    */
+      char runSCIP( ScipInterface& iscip )
+      {
+         SCIP* test = NULL;
+         SCIP_HASHMAP* varmap = NULL;
+         SCIP_HASHMAP* consmap = NULL;
+         char retcode = 1;
+         int i;
+
+         //TODO: overload with command line paramter
+#ifdef CATCH_ASSERT_BUG
+         if( fork() == 0 )
+      exit(trySCIP(iscip.getSCIP(), iscip.get_solution(), &test, &varmap, &consmap));
+   else
+   {
+      int status;
+
+      wait(&status);
+
+      if( WIFEXITED(status) )
+         retcode = WEXITSTATUS(status);
+      else if( WIFSIGNALED(status) )
+      {
+         retcode = WTERMSIG(status);
+
+         if( retcode == SIGINT )
+            retcode = 0;
+      }
+   }
+#else
+         retcode = trySCIP(iscip.getSCIP(), iscip.get_solution(), &test, &varmap, &consmap);
+#endif
+
+         if( test != NULL )
+            SCIPfree(&test);
+         if( consmap != NULL )
+            SCIPhashmapFree(&consmap);
+         if( varmap != NULL )
+            SCIPhashmapFree(&varmap);
+         SCIPinfoMessage(iscip.getSCIP(), NULL, "\n");
+
+         // TODO: what are passcodes doing?
+//         for( i = 0; i < presoldata->npasscodes; ++i )
+//            if( retcode == presoldata->passcodes[i] )
+//               return 0;
+
+         return retcode;
+      }
+
+      /** creates a SCIP instance test, variable map varmap, and constraint map consmap, copies setting, problem, and
+ *  solutions apart from the primal bug solution, tries to solve, and reports detected bug
+ */
+      static
+      char trySCIP(
+            SCIP*                      scip,          /**< SCIP data structure */
+            SCIP_SOL*                  solution,      /**< primal bug solution */
+            SCIP**                     test,          /**< pointer to store test instance */
+            SCIP_HASHMAP**             varmap,        /**< pointer to store variable map */
+            SCIP_HASHMAP**             consmap        /**< pointer to store constraint map */
+      )
+      {
+         SCIP_Real reference = SCIPgetObjsense(scip) * SCIPinfinity(scip);
+         SCIP_Bool valid = FALSE;
+         SCIP_SOL** sols;
+         int nsols;
+         int i;
+
+         sols = SCIPgetSols(scip);
+         nsols = SCIPgetNSols(scip);
+         //TODO: change from SCIP_CALL_RETURN to *_ABORT
+         SCIP_CALL_ABORT( SCIPhashmapCreate(varmap, SCIPblkmem(scip), SCIPgetNVars(scip)) );
+         SCIP_CALL_ABORT( SCIPhashmapCreate(consmap, SCIPblkmem(scip), SCIPgetNConss(scip)) );
+         SCIP_CALL_ABORT( SCIPcreate(test) );
+#ifndef SCIP_DEBUG
+         SCIPsetMessagehdlrQuiet(*test, TRUE);
+#endif
+         SCIP_CALL_ABORT( SCIPincludeDefaultPlugins(*test) );
+         SCIP_CALL_ABORT( SCIPcopyParamSettings(scip, *test) );
+         SCIP_CALL_ABORT( SCIPcopyOrigProb(scip, *test, *varmap, *consmap, SCIPgetProbName(scip)) );
+         SCIP_CALL_ABORT( SCIPcopyOrigVars(scip, *test, *varmap, *consmap, NULL, NULL, 0) );
+         SCIP_CALL_ABORT( SCIPcopyOrigConss(scip, *test, *varmap, *consmap, FALSE, &valid) );
+         //TODO: fix this
+//         (*test)->stat->subscipdepth = 0;
+
+         if( !valid )
+            SCIP_CALL_ABORT( SCIP_INVALIDDATA );
+
+         for( i = 0; i < nsols; ++i )
+         {
+            SCIP_SOL* sol;
+
+            sol = sols[i];
+
+            if( sol == solution )
+               reference = SCIPgetSolOrigObj(scip, sol);
+            else
+            {
+               SCIP_SOL* initsol = NULL;
+
+               SCIP_CALL_ABORT( SCIPtranslateSubSol(*test, scip, sol, NULL, SCIPgetOrigVars(scip), &initsol) );
+
+               if( initsol == NULL )
+                  SCIP_CALL_ABORT( SCIP_INVALIDCALL );
+
+               SCIP_CALL_ABORT( SCIPaddSolFree(*test, &initsol, &valid) );
+            }
+         }
+
+         SCIP_CALL_ABORT( SCIPsolve(*test) );
+
+         if( SCIPisSumNegative(scip, SCIPgetObjsense(*test) * (reference - SCIPgetDualbound(*test))) )
+            SCIP_CALL_ABORT( SCIP_INVALIDRESULT );
+
+         return 0;
+      }
 
  private:
    std::string name;

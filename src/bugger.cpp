@@ -28,31 +28,40 @@
 #include "bugger/misc/VersionLogger.hpp"
 #include "bugger/interfaces/ScipInterface.hpp"
 #include "bugger/modules/BuggerModul.hpp"
-
+#include "bugger/modules/VariableModul.hpp"
+#include "bugger/misc/Vec.hpp"
 
 #include <boost/program_options.hpp>
 #include <fstream>
 
 namespace bugger {
+
    class BuggerRun {
 
       BuggerOptions options;
-      ScipInterface& scip;
+      ScipInterface &scip;
+//      Vec<std::unique_ptr<BuggerModul>> modules;
    public:
 
-      BuggerRun(ScipInterface& _scip)
-      : options({}), scip(_scip)
+      BuggerRun(ScipInterface &_scip)
+            : options({ }), scip(_scip)//, modules({})
       {
-
+//         modules = {};
       }
 
-      void apply() {
+      void apply( ) {
          //TODO: implement
       }
 
       void addDefaultModules( ) {
          using uptr = std::unique_ptr<BuggerModul>;
+         addPresolveMethod(uptr(new VariableModul( )));
 
+      }
+
+      void
+      addPresolveMethod(std::unique_ptr<BuggerModul> presolveMethod) {
+//         modules.emplace_back( std::move( presolveMethod ) );
       }
 
       ParameterSet getParameters( ) {
@@ -66,117 +75,116 @@ namespace bugger {
 void parse_parameters(bugger::OptionsInfo &optionsInfo, bugger::BuggerRun bugger);
 
 int
-main( int argc, char* argv[] )
-{
+main(int argc, char *argv[]) {
    using namespace bugger;
 
-   print_header();
+   print_header( );
 
    // get the options passed by the user
    OptionsInfo optionsInfo;
    try
    {
-      optionsInfo = parseOptions( argc, argv );
+      optionsInfo = parseOptions(argc, argv);
    }
-   catch( const boost::program_options::error& ex )
+   catch( const boost::program_options::error &ex )
    {
       std::cerr << "Error while parsing the options.\n" << '\n';
-      std::cerr << ex.what() << '\n';
+      std::cerr << ex.what( ) << '\n';
       return 1;
    }
 
    if( !optionsInfo.is_complete )
       return 0;
 
-   ScipInterface scip{};
+   ScipInterface scip { };
    scip.parse(optionsInfo.instance_file);
    scip.read_parameters(optionsInfo.scip_settings_file);
    scip.read_solution(optionsInfo.solution_file);
 
-   BuggerRun bugger{scip};
-   bugger.addDefaultModules();
+   BuggerRun bugger { scip };
+   bugger.addDefaultModules( );
    parse_parameters(optionsInfo, bugger);
 
-   bugger.apply();
+   bugger.apply( );
 
    return 0;
 }
 
 void parse_parameters(bugger::OptionsInfo &optionsInfo, bugger::BuggerRun bugger) {
-   if( !optionsInfo.param_settings_file.empty() || !optionsInfo.unparsed_options.empty() )
+   if( !optionsInfo.param_settings_file.empty( ) || !optionsInfo.unparsed_options.empty( ))
    {
-      bugger::ParameterSet paramSet = bugger.getParameters();
-      if( !optionsInfo.param_settings_file.empty() )
+      bugger::ParameterSet paramSet = bugger.getParameters( );
+      if( !optionsInfo.param_settings_file.empty( ))
       {
-         std::ifstream input( optionsInfo.param_settings_file );
+         std::ifstream input(optionsInfo.param_settings_file);
          if( input )
          {
             bugger::String theoptionstr;
             bugger::String thevaluestr;
-            for( bugger::String line; getline(input, line ); )
+            for( bugger::String line; getline(input, line); )
             {
-               std::size_t pos = line.find_first_of( '#' );
+               std::size_t pos = line.find_first_of('#');
                if( pos != bugger::String::npos )
-                  line = line.substr( 0, pos );
+                  line = line.substr(0, pos);
 
-               pos = line.find_first_of( '=' );
+               pos = line.find_first_of('=');
 
                if( pos == bugger::String::npos )
                   continue;
 
-               theoptionstr = line.substr( 0, pos - 1 );
-               thevaluestr = line.substr( pos + 1 );
+               theoptionstr = line.substr(0, pos - 1);
+               thevaluestr = line.substr(pos + 1);
 
-               boost::algorithm::trim( theoptionstr );
-               boost::algorithm::trim( thevaluestr );
+               boost::algorithm::trim(theoptionstr);
+               boost::algorithm::trim(thevaluestr);
 
                try
                {
-                  paramSet.parseParameter( theoptionstr.c_str(),
-                                           thevaluestr.c_str() );
-                  fmt::print( "set {} = {}\n", theoptionstr, thevaluestr );
+                  paramSet.parseParameter(theoptionstr.c_str( ),
+                                          thevaluestr.c_str( ));
+                  fmt::print("set {} = {}\n", theoptionstr, thevaluestr);
                }
-               catch( const std::exception& e )
+               catch( const std::exception &e )
                {
-                  fmt::print( "parameter '{}' could not be set: {}\n", line,
-                              e.what() );
+                  fmt::print("parameter '{}' could not be set: {}\n", line,
+                             e.what( ));
                }
             }
          }
          else
-            fmt::print( "could not read parameter file '{}'\n",
-                        optionsInfo.param_settings_file );
+            fmt::print("could not read parameter file '{}'\n",
+                       optionsInfo.param_settings_file);
       }
 
-      if( !optionsInfo.unparsed_options.empty() )
+      if( !optionsInfo.unparsed_options.empty( ))
       {
          bugger::String theoptionstr;
          bugger::String thevaluestr;
 
-         for( const auto& option : optionsInfo.unparsed_options )
+         for( const auto &option: optionsInfo.unparsed_options )
          {
-            std::size_t pos = option.find_first_of( '=' );
+            std::size_t pos = option.find_first_of('=');
             if( pos != bugger::String::npos && pos > 2 )
             {
-               theoptionstr = option.substr( 2, pos - 2 );
-               thevaluestr = option.substr( pos + 1 );
+               theoptionstr = option.substr(2, pos - 2);
+               thevaluestr = option.substr(pos + 1);
                try
                {
-                  paramSet.parseParameter( theoptionstr.c_str(),
-                                           thevaluestr.c_str() );
-                  fmt::print( "set {} = {}\n", theoptionstr, thevaluestr );
+                  paramSet.parseParameter(theoptionstr.c_str( ),
+                                          thevaluestr.c_str( ));
+                  fmt::print("set {} = {}\n", theoptionstr, thevaluestr);
                }
-               catch( const std::exception& e )
+               catch( const std::exception &e )
                {
-                  fmt::print( "parameter '{}' could not be set: {}\n",
-                              option, e.what() );
+                  fmt::print("parameter '{}' could not be set: {}\n",
+                             option, e.what( ));
                }
             }
             else
             {
                fmt::print(
                      "parameter '{}' could not be set: value expected\n",
-                     option );
+                     option);
             }
          }
       }

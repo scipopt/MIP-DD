@@ -28,14 +28,13 @@
 #if BUGGER_HAVE_SCIP
 #include "scip/var.h"
 #include "scip/scip_sol.h"
-#include "scip/scip_prob.h"
 #include "scip/scip.h"
 #include "scip/scip_numerics.h"
+#include "scip/def.h"
 #endif
 namespace bugger
 {
 
-template <typename REAL>
 class VariableModul : public BuggerModul
 {
  public:
@@ -57,17 +56,19 @@ class VariableModul : public BuggerModul
    }
 
    virtual ModulStatus
-   execute( SCIP& scip, const BuggerOptions& options, const Timer& timer ) override
+   execute( ScipInterface& iscip, const BuggerOptions& options, const Timer& timer ) override
    {
 
+      SCIP* scip = iscip.getSCIP();
       SCIP_VAR* batch;
       int* inds;
       int batchsize;
       int nbatch;
       int i;
 
-      SCIP_VAR**  vars = SCIPgetOrigVars(scip);
-      int nvars = SCIPgetNOrigVars(scip);
+      SCIP_VAR **vars;
+      int nvars;
+      SCIPgetOrigVarsData(scip, &vars, &nvars, nullptr, nullptr, nullptr, nullptr);
 
       if( options.nbatches <= 0 )
          batchsize = 1;
@@ -82,8 +83,8 @@ class VariableModul : public BuggerModul
          batchsize /= options.nbatches;
       }
 
-      SCIP_CALL( SCIPallocBufferArray(scip, &inds, batchsize) );
-      SCIP_CALL( SCIPallocBufferArray(scip, &batch, batchsize) );
+      ( SCIPallocBufferArray(scip, &inds, batchsize) );
+      ( SCIPallocBufferArray(scip, &batch, batchsize) );
       nbatch = 0;
 
       for( i = nvars - 1; i >= 0; --i )
@@ -100,7 +101,7 @@ class VariableModul : public BuggerModul
             batch[nbatch].data.original.origdom.lb = var->data.original.origdom.lb;
             batch[nbatch].data.original.origdom.ub = var->data.original.origdom.ub;
 
-            if( presoldata->solution == NULL )
+            if( !iscip.exists_solution()  )
             {
                if( SCIPvarIsIntegral(var) )
                   fixedval = MAX(MIN(0.0, SCIPfloor(scip, var->data.original.origdom.ub)), SCIPceil(scip, var->data.original.origdom.lb));
@@ -110,9 +111,9 @@ class VariableModul : public BuggerModul
             else
             {
                if( SCIPvarIsIntegral(var) )
-                  fixedval = SCIPround(scip, SCIPgetSolVal(scip, presoldata->solution, var));
+                  fixedval = SCIPround(scip, SCIPgetSolVal(scip, iscip.get_solution(), var));
                else
-                  fixedval = SCIPgetSolVal(scip, presoldata->solution, var);
+                  fixedval = SCIPgetSolVal(scip, iscip.get_solution(), var);
             }
 
             var->data.original.origdom.lb = fixedval;
@@ -124,7 +125,7 @@ class VariableModul : public BuggerModul
          {
             int j;
 
-            if( runSCIP(scip, presoldata) == 0 )
+            if( runSCIP(iscip) == 0 )
             {
                for( j = nbatch - 1; j >= 0; --j )
                {
@@ -135,7 +136,8 @@ class VariableModul : public BuggerModul
             }
             else
             {
-               *nfixedvars += nbatch;
+               //TODO: handle the return values
+//               *nfixedvars += nbatch;
 //               *result = SCIP_SUCCESS;
             }
 

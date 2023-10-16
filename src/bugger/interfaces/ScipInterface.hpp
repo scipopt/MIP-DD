@@ -42,6 +42,8 @@ namespace bugger {
    class ScipInterface {
    private:
       SCIP *scip;
+      bool exists_sol;
+      SCIP_Sol* solution;
 
    public:
       ScipInterface( ) : scip(nullptr) {
@@ -49,11 +51,9 @@ namespace bugger {
             throw std::runtime_error("could not create SCIP");
       }
 
-      SCIP*
-      getSCIP()
-      {
-         return scip;
-      }
+      SCIP* getSCIP(){ return scip; }
+      SCIP_Sol* get_solution(){return solution;}
+      bool exists_solution(){return exists_sol;}
 
 
       void
@@ -75,7 +75,11 @@ namespace bugger {
       read_solution(const std::string& solution_file)
       {
          if(!solution_file.empty())
-            SCIP_CALL_ABORT( SCIPreadSol( scip, solution_file.c_str() ) );
+         {
+            SCIP_CALL_ABORT(SCIPreadSol(scip, solution_file.c_str( )));
+            exists_sol = true;
+            solution = SCIPgetBestSol(scip);
+         }
       }
 
       void
