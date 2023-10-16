@@ -196,7 +196,7 @@ install(FILES
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bugger)
 
 install(FILES
-        ${PROJECT_SOURCE_DIR}/src/bugger/data/Bugger.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/data/BuggerRun.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/data/BuggerOptions.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/data/ConstraintMatrix.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/data/MatrixBuffer.hpp

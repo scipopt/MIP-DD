@@ -23,10 +23,11 @@
 
 
 #include "bugger/misc/MultiPrecision.hpp"
+#include "bugger/data/BuggerOptions.hpp"
+#include "bugger/data/BuggerRun.hpp"
 #include "bugger/misc/OptionsParser.hpp"
 #include "bugger/misc/VersionLogger.hpp"
 #include "bugger/interfaces/ScipInterface.hpp"
-#include "bugger/data/Bugger.hpp"
 
 
 #include <boost/program_options.hpp>
@@ -55,7 +56,7 @@ main( int argc, char* argv[] )
    if( !optionsInfo.is_complete )
       return 0;
 
-   Bugger bugger{};
+   BuggerRun bugger{};
    bugger.addDefaultModules();
 
    if( !optionsInfo.param_settings_file.empty() || !optionsInfo.unparsed_options.empty() )

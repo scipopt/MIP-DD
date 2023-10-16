@@ -33,12 +33,12 @@
 namespace bugger
 {
 
-class Bugger{
+class BuggerRun{
 
    BuggerOptions options;
 
 public:
-   Bugger()
+   BuggerRun()
    {
 
    }
