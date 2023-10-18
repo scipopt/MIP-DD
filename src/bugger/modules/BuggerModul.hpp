@@ -71,10 +71,12 @@ namespace bugger {
          name = "unnamed";
          execTime = 0.0;
          enabled = true;
+         delayed = false;
          skip = 0;
          nchgcoefs = 0;
          nfixedvars = 0;
          nchgsides = 0;
+         naggrvars = 0;
       }
 
       virtual ~BuggerModul( ) = default;
@@ -222,7 +224,7 @@ namespace bugger {
       std::string name;
       double execTime;
       bool enabled;
-      bool delayed;
+      bool delayed{};
       unsigned int ncalls;
       unsigned int nsuccessCall;
       unsigned int skip;
@@ -230,7 +232,7 @@ namespace bugger {
       int nchgcoefs;
       int nfixedvars;
       int nchgsides;
-      int naggrvars;
+      int naggrvars{};
    };
 
 } // namespace bugger

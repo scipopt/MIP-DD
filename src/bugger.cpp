@@ -67,7 +67,18 @@ namespace bugger {
       {
       }
 
-      void apply( Timer& timer ) {
+      ModulStatus
+      evaluateResults()
+      {
+         int largestValue = static_cast<int>( ModulStatus::kDidNotRun );
+
+         for( auto& i : results )
+            largestValue = std::max( largestValue, static_cast<int>( i ) );
+
+         return static_cast<ModulStatus>( largestValue );
+      }
+
+      void apply(Timer& timer ) {
          char filename[SCIP_MAXSTRLEN];
          int length;
          int success;
@@ -86,7 +97,6 @@ namespace bugger {
          for( int round = 0; round < options.nrounds; ++round )
          {
             //TODO:
-//            scip.save_current_file();
 
 //            SCIPsnprintf(file, length, "_%d.set", round);
 //            ( SCIPwriteParams(scip.getSCIP(), filename, FALSE, TRUE) );
@@ -94,12 +104,12 @@ namespace bugger {
 //            ( SCIPwriteOrigProblem(scip.getSCIP(), filename, NULL, FALSE) );
 
             for( int module = 0; module < modules.size(); module++ )
-            {
                //TODO: add more information about the fixings
                results[module] = modules[module]->run(scip, options, timer);
                //TODO:
-               return;
-            }
+            ModulStatus status = evaluateResults();
+            if( status != ModulStatus::kSuccessful)
+               break;
          }
       }
 
