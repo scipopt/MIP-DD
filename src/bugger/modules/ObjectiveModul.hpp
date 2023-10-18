@@ -29,6 +29,7 @@
 #include "scip/var.h"
 #include "scip/scip_sol.h"
 #include "scip/scip.h"
+#include "scip/sol.h"
 #include "scip/scip_numerics.h"
 #include "scip/def.h"
 #endif
@@ -60,7 +61,7 @@ class ObjectiveModul : public BuggerModul
 
 
 
-   virtual ModulStatus
+   ModulStatus
    execute( ScipInterface& iscip, const BuggerOptions& options, const Timer& timer ) override
    {
 
@@ -89,8 +90,6 @@ class ObjectiveModul : public BuggerModul
       ( SCIPallocBufferArray(scip, &batch, batchsize) );
       int nbatch = 0;
 
-      if( iscip.get_solution() != nullptr )
-         obj = presoldata->solution->obj;
 
       for( int i = nvars - 1; i >= 0; --i )
       {
@@ -104,7 +103,7 @@ class ObjectiveModul : public BuggerModul
             batch[nbatch].obj = var->obj;
 
             if( iscip.get_solution() != nullptr )
-               presoldata->solution->obj -= var->obj * SCIPgetSolVal(scip, iscip.get_solution(), var);
+               SCIPsolUpdateVarObj(iscip.get_solution(), var, var->obj, 0);
 
             var->obj = 0.0;
             var->unchangedobj = 0.0;
@@ -117,21 +116,20 @@ class ObjectiveModul : public BuggerModul
 
             if( iscip.runSCIP() == 0 )
             {
+               // revert the change since they were not useful
                for( j = nbatch - 1; j >= 0; --j )
                {
                   var = vars[inds[j]];
                   var->obj = batch[j].obj;
                   var->unchangedobj = batch[j].obj;
+                  //TODO check if this should revert the changes
+                  if( iscip.get_solution() != nullptr)
+                     SCIPsolUpdateVarObj(iscip.get_solution(), var, 0, var->obj);
                }
-
-               if( iscip.get_solution() != NULL )
-                  presoldata->solution->obj = obj;
             }
             else
             {
-               if( iscip.get_solution() != NULL )
-                  obj = presoldata->solution->obj;
-
+               //TODO should we distinguish at this point?
                nchgcoefs += nbatch;
                result = ModulStatus::kSuccessful;
             }

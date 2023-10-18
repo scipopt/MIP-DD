@@ -42,7 +42,7 @@
 #include "bugger/modules/CoefficientModul.hpp"
 #include "bugger/modules/ConsRoundModul.hpp"
 #include "bugger/modules/ConstraintModul.hpp"
-#include "bugger/modules/FixingModul.hpp"
+//#include "bugger/modules/FixingModul.hpp"
 #include "bugger/modules/ObjectiveModul.hpp"
 #include "bugger/modules/SettingModul.hpp"
 #include "bugger/modules/SideModul.hpp"
@@ -105,8 +105,16 @@ namespace bugger {
 
       void addDefaultModules( ) {
          using uptr = std::unique_ptr<BuggerModul>;
-         addPresolveMethod(uptr(new VariableModul( )));
+         //TODO define order
+         addPresolveMethod(uptr(new CoefficientModul( )));
+         addPresolveMethod(uptr(new ConsRoundModul( )));
+         addPresolveMethod(uptr(new ConstraintModul( )));
+//         addPresolveMethod(uptr(new FixingModul( )));
+         addPresolveMethod(uptr(new ObjectiveModul( )));
          addPresolveMethod(uptr(new SideModul( )));
+         addPresolveMethod(uptr(new SettingModul( )));
+         addPresolveMethod(uptr(new VariableModul( )));
+         addPresolveMethod(uptr(new VarroundModul( )));
       }
 
       void

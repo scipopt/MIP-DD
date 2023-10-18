@@ -71,7 +71,7 @@ class ConstraintModul : public BuggerModul
    }
 
 
-   virtual ModulStatus
+   ModulStatus
    execute( ScipInterface& iscip, const BuggerOptions& options, const Timer& timer ) override
    {
 

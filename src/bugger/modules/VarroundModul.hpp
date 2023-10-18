@@ -21,8 +21,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef _BUGGER_MODUL_VARIABLE_HPP_
-#define _BUGGER_MODUL_VARIABLE_HPP_
+#ifndef BUGGER_MODUL_VARROUND_HPP_
+#define BUGGER_MODUL_VARROUND_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
 
@@ -34,14 +34,14 @@
 #include "scip/scip_numerics.h"
 #include "scip/def.h"
 
-//TODO:
 #endif
+
 namespace bugger {
 
-   class VariableModul : public BuggerModul {
+   class VarroundModul : public BuggerModul {
    public:
-      VariableModul( ) : BuggerModul( ) {
-         this->setName("variable");
+      VarroundModul( ) : BuggerModul( ) {
+         this->setName("varround");
       }
 
       bool
@@ -49,12 +49,13 @@ namespace bugger {
          return false;
       }
 
-      SCIP_Bool SCIPisVariableAdmissible(SCIP *scip, SCIP_VAR *var) {
-         /* keep restricted variables because they might be already fixed */
-         return SCIPisLT(scip, var->data.original.origdom.lb, var->data.original.origdom.ub);
+      SCIP_Bool SCIPisVarroundAdmissible( SCIP_VAR* var )
+      {
+         /* leave sparkling or fixed variables */
+         return rint(var->obj) != var->obj || ( var->data.original.origdom.lb != var->data.original.origdom.ub && ( rint(var->data.original.origdom.lb) != var->data.original.origdom.lb || rint(var->data.original.origdom.ub) != var->data.original.origdom.ub ) );
       }
 
-      virtual ModulStatus
+      ModulStatus
       execute(ScipInterface &iscip, const BuggerOptions &options, const Timer &timer) override {
 
          SCIP *scip = iscip.getSCIP( );
@@ -62,81 +63,89 @@ namespace bugger {
          int *inds;
          int batchsize;
          int nbatch;
-         int i;
          ModulStatus result = ModulStatus::kUnsuccesful;
 
          SCIP_VAR **vars;
          int nvars;
          SCIPgetOrigVarsData(scip, &vars, &nvars, nullptr, nullptr, nullptr, nullptr);
 
-         if( options.nbatches <= 0 )
-            batchsize = 1;
-         else
+         if( options.nbatches > 0 )
          {
             batchsize = options.nbatches - 1;
 
-            for( i = nvars - 1; i >= 0; --i )
-               if( SCIPisVariableAdmissible(scip, vars[ i ]))
+            for( int i = 0; i < nvars; ++i )
+               if( SCIPisVarroundAdmissible(vars[i]) )
                   ++batchsize;
 
             batchsize /= options.nbatches;
          }
 
-         (SCIPallocBufferArray(scip, &inds, batchsize));
-         (SCIPallocBufferArray(scip, &batch, batchsize));
+         ( SCIPallocBufferArray(scip, &inds, batchsize) );
+         ( SCIPallocBufferArray(scip, &batch, batchsize) );
          nbatch = 0;
 
-         for( i = nvars - 1; i >= 0; --i )
+         for( int i = 0; i < nvars; ++i )
          {
-            SCIP_VAR *var;
+            SCIP_VAR* var;
 
-            var = vars[ i ];
+            var = vars[i];
 
-            if( SCIPisVariableAdmissible(scip, var))
+            if( SCIPisVarroundAdmissible(var) )
             {
-               SCIP_Real fixedval;
+               inds[nbatch] = i;
+               batch[nbatch].obj = var->obj;
+               batch[nbatch].data.original.origdom.lb = var->data.original.origdom.lb;
+               batch[nbatch].data.original.origdom.ub = var->data.original.origdom.ub;
+               var->obj = rint(var->obj);
+               var->unchangedobj = var->obj;
+               var->data.original.origdom.lb = rint(var->data.original.origdom.lb);
+               var->data.original.origdom.ub = rint(var->data.original.origdom.ub);
 
-               inds[ nbatch ] = i;
-               batch[ nbatch ].data.original.origdom.lb = var->data.original.origdom.lb;
-               batch[ nbatch ].data.original.origdom.ub = var->data.original.origdom.ub;
-
-               if( !iscip.exists_solution( ))
+               if( iscip.get_solution() != nullptr )
                {
-                  if( SCIPvarIsIntegral(var))
-                     fixedval = MAX(MIN(0.0, SCIPfloor(scip, var->data.original.origdom.ub)),
-                                    SCIPceil(scip, var->data.original.origdom.lb));
-                  else
-                     fixedval = MAX(MIN(0.0, var->data.original.origdom.ub), var->data.original.origdom.lb);
-               }
-               else
-               {
-                  if( SCIPvarIsIntegral(var))
-                     fixedval = SCIPround(scip, SCIPgetSolVal(scip, iscip.get_solution( ), var));
-                  else
-                     fixedval = SCIPgetSolVal(scip, iscip.get_solution( ), var);
+                  SCIP_Real solval;
+
+                  solval = SCIPgetSolVal(scip, iscip.get_solution(), var);
+                  //TODO: please check if this is correct
+//                  presoldata->solution->obj -= batch[nbatch].obj * solval;
+//                  presoldata->solution->obj += var->obj * solval;
+                  SCIPsolUpdateVarObj(iscip.get_solution(), var, batch[nbatch].obj, var->obj);
+                  var->data.original.origdom.lb = MIN(var->data.original.origdom.lb, SCIPfloor(scip, solval));
+                  var->data.original.origdom.ub = MAX(var->data.original.origdom.ub, SCIPceil(scip, solval));
                }
 
-               var->data.original.origdom.lb = fixedval;
-               var->data.original.origdom.ub = fixedval;
                ++nbatch;
             }
 
-            if( nbatch >= 1 && ( nbatch >= batchsize || i <= 0 ))
+            if( nbatch >= 1 && ( nbatch >= batchsize || i >= nvars - 1 ) )
             {
-               int j;
-
-               if( iscip.runSCIP( ) == 0 )
+               if( iscip.runSCIP() == 0 )
                {
-                  for( j = nbatch - 1; j >= 0; --j )
+                  for( int j = nbatch - 1; j >= 0; --j )
                   {
-                     var = vars[ inds[ j ]];
-                     var->data.original.origdom.lb = batch[ j ].data.original.origdom.lb;
-                     var->data.original.origdom.ub = batch[ j ].data.original.origdom.ub;
+                     var = vars[inds[j]];
+                     //TODO check also here
+                     if( iscip.get_solution() != nullptr )
+                        SCIPsolUpdateVarObj(iscip.get_solution(), var, var->obj, batch[nbatch].obj);
+                     var->obj = batch[j].obj;
+                     var->unchangedobj = batch[j].obj;
+                     var->data.original.origdom.lb = batch[j].data.original.origdom.lb;
+                     var->data.original.origdom.ub = batch[j].data.original.origdom.ub;
                   }
                }
                else
                {
-                  nfixedvars += nbatch;
+                  for( int j = nbatch - 1; j >= 0; --j )
+                  {
+                     if( rint(batch[j].obj) != batch[j].obj )
+                        nchgcoefs++;
+
+                     if( rint(batch[j].data.original.origdom.lb) != batch[j].data.original.origdom.lb )
+                        nchgcoefs++;
+
+                     if( rint(batch[j].data.original.origdom.ub) != batch[j].data.original.origdom.ub )
+                        nchgcoefs++;
+                  }
                   result = ModulStatus::kSuccessful;
                }
 
@@ -146,7 +155,6 @@ namespace bugger {
 
          SCIPfreeBufferArray(scip, &batch);
          SCIPfreeBufferArray(scip, &inds);
-
          return result;
       }
    };

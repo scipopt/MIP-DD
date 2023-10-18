@@ -59,7 +59,7 @@ class FixingModul : public BuggerModul
    }
 
 
-   virtual ModulStatus
+   ModulStatus
    execute( ScipInterface& iscip, const BuggerOptions& options, const Timer& timer ) override
    {
 
@@ -69,10 +69,16 @@ class FixingModul : public BuggerModul
       int nconss = SCIPgetNOrigConss(scip);
       int* inds;
 
-      SCIP_CONSDATALINEAR* batch;
+      SCIP_VAR** batch;
+
+      SCIP_VAR **vars;
+      int nvars;
+      SCIPgetOrigVarsData(scip, &vars, &nvars, nullptr, nullptr, nullptr, nullptr);
 
       SCIP_Bool* constrained;
-      ( SCIPallocCleanBufferArray(scip, &constrained, scip->origprob->nvars) );
+      ( SCIPallocCleanBufferArray(scip, &constrained, nvars) );
+
+
 
       for( int  i = 0; i < nconss; ++i )
       {
@@ -106,8 +112,8 @@ class FixingModul : public BuggerModul
       {
          batchsize = options.nbatches - 1;
 
-         for( int i = scip->origprob->nvars - 1; i >= 0; --i )
-            if( !constrained[i] && SCIPisFixingAdmissible(scip, scip->origprob->vars[i]) )
+         for( int i = nvars - 1; i >= 0; --i )
+            if( !constrained[i] && SCIPisFixingAdmissible(scip, vars[i]) )
                ++batchsize;
 
          batchsize /= options.nbatches;
@@ -117,14 +123,14 @@ class FixingModul : public BuggerModul
       ( SCIPallocBufferArray(scip, &batch, batchsize) );
       int nbatch = 0;
 
-      if( iscip.get_solution() != NULL )
-         obj = presoldata->solution->obj;
+//      if( iscip.get_solution() != NULL )
+//         obj = presoldata->solution->obj;
 
-      for( int i = scip->origprob->nvars - 1; i >= 0; --i )
+      for( int i = nvars - 1; i >= 0; --i )
       {
          SCIP_VAR* var;
 
-         var = scip->origprob->vars[i];
+         var = vars[i];
 
          if( constrained[i] )
             constrained[i] = FALSE;
@@ -133,11 +139,11 @@ class FixingModul : public BuggerModul
             inds[nbatch] = i;
             batch[nbatch] = var;
 
-            if( iscip.get_solution() != NULL )
-               iscip.get_solution()->obj -= var->obj * SCIPgetSolVal(scip, iscip.get_solution(), var);
+//            if( iscip.get_solution() != NULL )
+//               iscip.get_solution()->obj -= var->obj * SCIPgetSolVal(scip, iscip.get_solution(), var);
 
-            scip->origprob->vars[i] = scip->origprob->vars[--scip->origprob->nvars];
-            scip->origprob->vars[i]->probindex = i;
+            vars[i] = vars[--nvars];
+            vars[i]->probindex = i;
             var->probindex = -1;
 
             switch( SCIPvarGetType(var) )
@@ -164,11 +170,9 @@ class FixingModul : public BuggerModul
 
          if( nbatch >= 1 && ( nbatch >= batchsize || i <= 0 ) )
          {
-            int j;
-
             if( iscip.runSCIP() == 0 )
             {
-               for( j = nbatch - 1; j >= 0; --j )
+               for( int j = nbatch - 1; j >= 0; --j )
                {
                   var = batch[j];
                   scip->origprob->vars[inds[j]] = var;
@@ -191,26 +195,22 @@ class FixingModul : public BuggerModul
                         ++scip->origprob->ncontvars;
                         break;
                      default:
+                        assert(false);
                         SCIPerrorMessage("unknown variable type\n");
-                        return SCIP_INVALIDDATA;
+                        return ModulStatus::kUnsuccesful;
                   }
                }
 
-               if( iscip.get_solution() != NULL )
-                  presoldata->solution->obj = obj;
             }
             else
             {
-               for( j = 0; j < nbatch; ++j )
+               for( int j = 0; j < nbatch; ++j )
                {
                   ( SCIPreleaseVar(scip, &batch[j]) );
-                  ++(*naggrvars);
+                  naggrvars++;
                }
 
-               if( iscip.get_solution() != NULL )
-                  obj = presoldata->solution->obj;
-
-               *result = SCIP_SUCCESS;
+               result = ModulStatus::kSuccessful;
             }
 
             nbatch = 0;

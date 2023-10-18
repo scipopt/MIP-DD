@@ -28,6 +28,7 @@
 #if BUGGER_HAVE_SCIP
 #include "scip/var.h"
 #include "scip/scip_sol.h"
+#include "scip/cons_linear.h"
 #include "scip/scip.h"
 #include "scip/scip_numerics.h"
 #include "scip/def.h"
@@ -72,7 +73,7 @@ class CoefficientModul : public BuggerModul
    }
 
 
-   virtual ModulStatus
+   ModulStatus
    execute( ScipInterface& iscip, const BuggerOptions& options, const Timer& timer ) override
    {
 

@@ -31,6 +31,7 @@
 #include "scip/scip.h"
 #include "scip/scip_numerics.h"
 #include "scip/def.h"
+#include "scip/cons_linear.h"
 #endif
 namespace bugger
 {
@@ -73,7 +74,7 @@ class ConsRoundModul : public BuggerModul
    }
 
 
-   virtual ModulStatus
+   ModulStatus
    execute( ScipInterface& iscip, const BuggerOptions& options, const Timer& timer ) override
    {
 

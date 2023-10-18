@@ -230,6 +230,7 @@ namespace bugger {
       int nchgcoefs;
       int nfixedvars;
       int nchgsides;
+      int naggrvars;
    };
 
 } // namespace bugger

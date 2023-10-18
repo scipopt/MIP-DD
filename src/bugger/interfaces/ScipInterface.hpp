@@ -212,6 +212,7 @@ namespace bugger {
             assert(retcode == SCIP_OKAY);
          }
       }
+
    };
 
 } // namespace bugger

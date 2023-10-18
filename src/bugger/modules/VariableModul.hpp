@@ -53,7 +53,7 @@ namespace bugger {
          return SCIPisLT(scip, var->data.original.origdom.lb, var->data.original.origdom.ub);
       }
 
-      virtual ModulStatus
+      ModulStatus
       execute(ScipInterface &iscip, const BuggerOptions &options, const Timer &timer) override {
 
          SCIP *scip = iscip.getSCIP( );
