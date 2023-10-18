@@ -25,6 +25,8 @@
 #define BUGGER_COEFFICIENT_VARIABLE_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
+#include "bugger/interfaces/Status.hpp"
+
 #if BUGGER_HAVE_SCIP
 #include "scip/var.h"
 #include "scip/scip_sol.h"
@@ -114,7 +116,7 @@ class ObjectiveModul : public BuggerModul
          {
             int j;
 
-            if( iscip.runSCIP() == 0 )
+            if( iscip.runSCIP() != Status::kSuccess )
             {
                // revert the change since they were not useful
                for( j = nbatch - 1; j >= 0; --j )

@@ -25,6 +25,7 @@
 #define BUGGER_SIDE_VARIABLE_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
+#include "bugger/interfaces/Status.hpp"
 #if BUGGER_HAVE_SCIP
 #include "scip/var.h"
 #include "scip/scip_sol.h"
@@ -66,7 +67,7 @@ class SideModul : public BuggerModul
    }
 
 
-   virtual ModulStatus
+   ModulStatus
    execute( ScipInterface& iscip, const BuggerOptions& options, const Timer& timer ) override
    {
       SCIP* scip = iscip.getSCIP();
@@ -152,7 +153,7 @@ class SideModul : public BuggerModul
          {
             int j;
 
-            if( iscip.runSCIP() == 0 )
+            if( iscip.runSCIP() != Status::kSuccess )
             {
                for( j = nbatch - 1; j >= 0; --j )
                {

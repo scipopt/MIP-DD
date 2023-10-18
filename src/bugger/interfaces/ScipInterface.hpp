@@ -35,17 +35,18 @@
 #include "scip/scip.h"
 #include "scip/scipdefplugins.h"
 #include "scip/struct_paramset.h"
+#include "Status.hpp"
 
 namespace bugger {
 
-   #define SCIP_CALL_RETURN(x)                                           \
+   #define SCIP_CALL_RETURN(x)                                        \
    do                                                                 \
    {                                                                  \
       SCIP_RETCODE _restat_;                                          \
       if( (_restat_ = (x)) != SCIP_OKAY )                             \
       {                                                               \
          SCIPerrorMessage("Error <%d> in function call\n", _restat_); \
-         return _restat_ == SCIP_ERROR ? 1 : _restat_;                \
+         return Status::kErrorDuringSCIP;                             \
       }                                                               \
    }                                                                  \
    while( FALSE )
@@ -73,7 +74,7 @@ namespace bugger {
       {
          assert(!filename.empty());
          SCIP_CALL_ABORT(SCIPincludeDefaultPlugins(scip));
-         SCIP_CALL_ABORT(SCIPreadProb(scip, filename.c_str(), NULL));
+         SCIP_CALL_ABORT(SCIPreadProb(scip, filename.c_str(), nullptr));
       }
 
       void
@@ -94,14 +95,13 @@ namespace bugger {
          }
       }
 
-      /** tests the given SCIP instance in a copy and reports detected bug; if a primal bug solution is provided, the
+   /** tests the given SCIP instance in a copy and reports detected bug; if a primal bug solution is provided, the
     *  resulting dual bound is also checked; on UNIX platforms aborts are caught, hence assertions can be enabled here
     */
-      char runSCIP() {
-         SCIP *test = NULL;
-         SCIP_HASHMAP *varmap = NULL;
-         SCIP_HASHMAP *consmap = NULL;
-         char retcode = 1;
+      Status runSCIP() {
+         SCIP *test = nullptr;
+         SCIP_HASHMAP *varmap = nullptr;
+         SCIP_HASHMAP *consmap = nullptr;
          int i;
 
          //TODO: overload with command line paramter
@@ -125,16 +125,16 @@ namespace bugger {
       }
    }
 #else
-         retcode = trySCIP( &test, &varmap, &consmap);
+         Status retcode = trySCIP( &test, &varmap, &consmap);
 #endif
 
-         if( test != NULL )
+         if( test != nullptr )
             SCIPfree(&test);
-         if( consmap != NULL )
+         if( consmap != nullptr )
             SCIPhashmapFree(&consmap);
-         if( varmap != NULL )
+         if( varmap != nullptr )
             SCIPhashmapFree(&varmap);
-         SCIPinfoMessage(scip, NULL, "\n");
+         SCIPinfoMessage(scip, nullptr, "\n");
 
          // TODO: what are passcodes doing?
 //         for( i = 0; i < presoldata->npasscodes; ++i )
@@ -147,7 +147,7 @@ namespace bugger {
       /** creates a SCIP instance test, variable map varmap, and constraint map consmap, copies setting, problem, and
        *  solutions apart from the primal bug solution, tries to solve, and reports detected bug
        */
-      char trySCIP(SCIP **test, SCIP_HASHMAP **varmap, SCIP_HASHMAP **consmap) {
+      Status trySCIP(SCIP **test, SCIP_HASHMAP **varmap, SCIP_HASHMAP **consmap) {
          SCIP_Real reference = SCIPgetObjsense(scip) * SCIPinfinity(scip);
          SCIP_Bool valid = FALSE;
          SCIP_SOL **sols;
@@ -197,9 +197,9 @@ namespace bugger {
          SCIP_CALL_RETURN(SCIPsolve(*test));
 
          if( SCIPisSumNegative(scip, SCIPgetObjsense(*test) * ( reference - SCIPgetDualbound(*test))))
-            SCIP_CALL_RETURN(SCIP_INVALIDRESULT);
+            return Status::kFail;
 
-         return 0;
+         return Status::kSuccess;
       }
 
 

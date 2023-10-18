@@ -25,6 +25,8 @@
 #define BUGGER_MODUL_CONSROUND_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
+#include "bugger/interfaces/Status.hpp"
+
 #if BUGGER_HAVE_SCIP
 #include "scip/var.h"
 #include "scip/scip_sol.h"
@@ -149,11 +151,9 @@ class ConsRoundModul : public BuggerModul
 
          if( nbatch >= 1 && ( nbatch >= batchsize || i >= nconss - 1 ) )
          {
-            int j;
-
-            if( iscip.runSCIP() == 0 )
+            if( iscip.runSCIP() != Status::kSuccess )
             {
-               for( j = nbatch - 1; j >= 0; --j )
+               for( int j = nbatch - 1; j >= 0; --j )
                {
                   SCIP_CONSDATALINEAR consdata;
 
@@ -173,17 +173,15 @@ class ConsRoundModul : public BuggerModul
             }
             else
             {
-               for( j = nbatch - 1; j >= 0; --j )
+               for( int j = nbatch - 1; j >= 0; --j )
                {
-                  int k;
-
                   if( rint(batch[j].lhs) != batch[j].lhs )
                      nchgcoefs++;
 
                   if( rint(batch[j].rhs) != batch[j].rhs )
                      nchgcoefs++;
 
-                  for( k = batch[j].nvars - 1; k >= 0; --k )
+                  for( int k = batch[j].nvars - 1; k >= 0; --k )
                   {
                      SCIP_Real val;
 
@@ -202,7 +200,7 @@ class ConsRoundModul : public BuggerModul
                result = ModulStatus::kSuccessful;
             }
 
-            for( j = nbatch - 1; j >= 0; --j )
+            for( int j = nbatch - 1; j >= 0; --j )
             {
                SCIPfreeBufferArray(scip, &batch[j].vals);
                SCIPfreeBufferArray(scip, &batch[j].vars);

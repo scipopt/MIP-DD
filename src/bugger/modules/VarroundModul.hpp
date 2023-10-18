@@ -119,7 +119,7 @@ namespace bugger {
 
             if( nbatch >= 1 && ( nbatch >= batchsize || i >= nvars - 1 ) )
             {
-               if( iscip.runSCIP() == 0 )
+               if( iscip.runSCIP() != Status::kSuccess )
                {
                   for( int j = nbatch - 1; j >= 0; --j )
                   {

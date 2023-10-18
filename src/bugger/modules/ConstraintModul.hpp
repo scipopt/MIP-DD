@@ -166,12 +166,9 @@ class ConstraintModul : public BuggerModul
 
          if( nbatch >= 1 && ( nbatch >= batchsize || i <= 0 ) )
          {
-            int j;
-            int k;
-
-            if( iscip.runSCIP() == 0 )
+            if( iscip.runSCIP() != Status::kSuccess )
             {
-               for( j = nbatch - 1; j >= 0; --j )
+               for( int j = nbatch - 1; j >= 0; --j )
                {
                   SCIP_CONSDATALINEAR consdata;
 
@@ -180,7 +177,7 @@ class ConstraintModul : public BuggerModul
                   consdata.lhs = batch[j].lhs;
                   consdata.rhs = batch[j].rhs;
 
-                  for( k = batch[j].nvars - 1; k >= 0; --k )
+                  for( int k = batch[j].nvars - 1; k >= 0; --k )
                   {
                      consdata.vars[inds[j][k + 1]] = batch[j].vars[k];
                      consdata.vals[inds[j][k + 1]] = batch[j].vals[k];
@@ -192,9 +189,9 @@ class ConstraintModul : public BuggerModul
             }
             else
             {
-               for( j = 0; j < nbatch; ++j )
+               for( int j = 0; j < nbatch; ++j )
                {
-                  for( k = 0; k < batch[j].nvars; ++k )
+                  for( int k = 0; k < batch[j].nvars; ++k )
                   {
                      ( SCIPreleaseVar(scip, &batch[j].vars[k]) );
                      nchgcoefs++;
@@ -203,7 +200,7 @@ class ConstraintModul : public BuggerModul
                result = ModulStatus::kSuccessful;
             }
 
-            for( j = nbatch - 1; j >= 0; --j )
+            for( int j = nbatch - 1; j >= 0; --j )
             {
                SCIPfreeBufferArray(scip, &batch[j].vals);
                SCIPfreeBufferArray(scip, &batch[j].vars);

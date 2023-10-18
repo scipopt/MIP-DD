@@ -25,6 +25,7 @@
 #define _BUGGER_MODUL_VARIABLE_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
+#include "bugger/interfaces/Status.hpp"
 
 #if BUGGER_HAVE_SCIP
 
@@ -124,7 +125,7 @@ namespace bugger {
             {
                int j;
 
-               if( iscip.runSCIP( ) == 0 )
+               if( iscip.runSCIP( ) != Status::kSuccess )
                {
                   for( j = nbatch - 1; j >= 0; --j )
                   {

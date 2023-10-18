@@ -25,6 +25,7 @@
 #define BUGGER_MODUL_COEFFICIENT_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
+#include "bugger/interfaces/Status.hpp"
 #if BUGGER_HAVE_SCIP
 #include "scip/var.h"
 #include "scip/scip_sol.h"
@@ -171,7 +172,7 @@ class CoefficientModul : public BuggerModul
             int j;
             int k;
 
-            if( iscip.runSCIP() == 0 )
+            if( iscip.runSCIP() != Status::kSuccess )
             {
                for( j = nbatch - 1; j >= 0; --j )
                {
