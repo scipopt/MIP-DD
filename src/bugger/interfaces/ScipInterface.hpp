@@ -97,7 +97,7 @@ namespace bugger {
       /** tests the given SCIP instance in a copy and reports detected bug; if a primal bug solution is provided, the
     *  resulting dual bound is also checked; on UNIX platforms aborts are caught, hence assertions can be enabled here
     */
-      char runSCIP(ScipInterface &iscip) {
+      char runSCIP() {
          SCIP *test = NULL;
          SCIP_HASHMAP *varmap = NULL;
          SCIP_HASHMAP *consmap = NULL;
@@ -125,7 +125,7 @@ namespace bugger {
       }
    }
 #else
-         retcode = trySCIP(iscip.getSCIP( ), iscip.get_solution( ), &test, &varmap, &consmap);
+         retcode = trySCIP( &test, &varmap, &consmap);
 #endif
 
          if( test != NULL )
@@ -134,7 +134,7 @@ namespace bugger {
             SCIPhashmapFree(&consmap);
          if( varmap != NULL )
             SCIPhashmapFree(&varmap);
-         SCIPinfoMessage(iscip.getSCIP( ), NULL, "\n");
+         SCIPinfoMessage(scip, NULL, "\n");
 
          // TODO: what are passcodes doing?
 //         for( i = 0; i < presoldata->npasscodes; ++i )
@@ -147,8 +147,7 @@ namespace bugger {
       /** creates a SCIP instance test, variable map varmap, and constraint map consmap, copies setting, problem, and
        *  solutions apart from the primal bug solution, tries to solve, and reports detected bug
        */
-      static
-      char trySCIP(SCIP *scip, SCIP_SOL *solution, SCIP **test, SCIP_HASHMAP **varmap, SCIP_HASHMAP **consmap) {
+      char trySCIP(SCIP **test, SCIP_HASHMAP **varmap, SCIP_HASHMAP **consmap) {
          SCIP_Real reference = SCIPgetObjsense(scip) * SCIPinfinity(scip);
          SCIP_Bool valid = FALSE;
          SCIP_SOL **sols;

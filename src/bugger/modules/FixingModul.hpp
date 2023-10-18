@@ -1,0 +1,230 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*                                                                           */
+/*               This file is part of the program and library                */
+/*    BUGGER                                                                 */
+/*                                                                           */
+/* Copyright (C) 2023             Konrad-Zuse-Zentrum                        */
+/*                     fuer Informationstechnik Berlin                       */
+/*                                                                           */
+/* This program is free software: you can redistribute it and/or modify      */
+/* it under the terms of the GNU Lesser General Public License as published  */
+/* by the Free Software Foundation, either version 3 of the License, or      */
+/* (at your option) any later version.                                       */
+/*                                                                           */
+/* This program is distributed in the hope that it will be useful,           */
+/* but WITHOUT ANY WARRANTY; without even the implied warranty of            */
+/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
+/* GNU Lesser General Public License for more details.                       */
+/*                                                                           */
+/* You should have received a copy of the GNU Lesser General Public License  */
+/* along with this program.  If not, see <https://www.gnu.org/licenses/>.    */
+/*                                                                           */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+#ifndef BUGGER_MODUL_FIXING_HPP_
+#define BUGGER_MODUL_FIXING_HPP_
+
+#include "bugger/modules/BuggerModul.hpp"
+#if BUGGER_HAVE_SCIP
+#include "scip/var.h"
+#include "scip/scip_sol.h"
+#include "scip/scip.h"
+#include "scip/scip_numerics.h"
+#include "scip/def.h"
+#endif
+namespace bugger
+{
+
+class FixingModul : public BuggerModul
+{
+ public:
+   FixingModul() : BuggerModul()
+   {
+      this->setName( "fixing" );
+   }
+
+   bool
+   initialize( ) override
+   {
+      return false;
+   }
+
+   SCIP_Bool SCIPisFixingAdmissible(
+         SCIP*                      scip,          /**< SCIP data structure */
+         SCIP_VAR*                  var            /**< SCIP variable pointer */
+   )
+   {
+      /* leave clean variables */
+      return SCIPisGE(scip, var->data.original.origdom.lb, var->data.original.origdom.ub);
+   }
+
+
+   virtual ModulStatus
+   execute( ScipInterface& iscip, const BuggerOptions& options, const Timer& timer ) override
+   {
+
+      SCIP* scip = iscip.getSCIP();
+      ModulStatus result = ModulStatus::kUnsuccesful;
+      SCIP_CONS** conss = SCIPgetOrigConss(scip);
+      int nconss = SCIPgetNOrigConss(scip);
+      int* inds;
+
+      SCIP_CONSDATALINEAR* batch;
+
+      SCIP_Bool* constrained;
+      ( SCIPallocCleanBufferArray(scip, &constrained, scip->origprob->nvars) );
+
+      for( int  i = 0; i < nconss; ++i )
+      {
+         SCIP_VAR** consvars;
+         SCIP_CONS* cons;
+         SCIP_Bool success;
+         int nconsvars;
+
+         cons = conss[i];
+         ( SCIPgetConsNVars(scip, cons, &nconsvars, &success) );
+
+         if( !success )
+            continue;
+
+         ( SCIPallocBufferArray(scip, &consvars, nconsvars) );
+         ( SCIPgetConsVars(scip, cons, consvars, nconsvars, &success) );
+
+         if( success )
+         {
+            int j;
+
+            for( j = 0; j < nconsvars; ++j )
+               constrained[consvars[j]->probindex] = TRUE;
+         }
+
+         SCIPfreeBufferArray(scip, &consvars);
+      }
+
+      int batchsize = 1;
+      if( options.nbatches > 0 )
+      {
+         batchsize = options.nbatches - 1;
+
+         for( int i = scip->origprob->nvars - 1; i >= 0; --i )
+            if( !constrained[i] && SCIPisFixingAdmissible(scip, scip->origprob->vars[i]) )
+               ++batchsize;
+
+         batchsize /= options.nbatches;
+      }
+
+      ( SCIPallocBufferArray(scip, &inds, batchsize) );
+      ( SCIPallocBufferArray(scip, &batch, batchsize) );
+      int nbatch = 0;
+
+      if( iscip.get_solution() != NULL )
+         obj = presoldata->solution->obj;
+
+      for( int i = scip->origprob->nvars - 1; i >= 0; --i )
+      {
+         SCIP_VAR* var;
+
+         var = scip->origprob->vars[i];
+
+         if( constrained[i] )
+            constrained[i] = FALSE;
+         else if( SCIPisFixingAdmissible(scip, var) )
+         {
+            inds[nbatch] = i;
+            batch[nbatch] = var;
+
+            if( iscip.get_solution() != NULL )
+               iscip.get_solution()->obj -= var->obj * SCIPgetSolVal(scip, iscip.get_solution(), var);
+
+            scip->origprob->vars[i] = scip->origprob->vars[--scip->origprob->nvars];
+            scip->origprob->vars[i]->probindex = i;
+            var->probindex = -1;
+
+            switch( SCIPvarGetType(var) )
+            {
+               case SCIP_VARTYPE_BINARY:
+                  --scip->origprob->nbinvars;
+                  break;
+               case SCIP_VARTYPE_INTEGER:
+                  --scip->origprob->nintvars;
+                  break;
+               case SCIP_VARTYPE_IMPLINT:
+                  --scip->origprob->nimplvars;
+                  break;
+               case SCIP_VARTYPE_CONTINUOUS:
+                  --scip->origprob->ncontvars;
+                  break;
+               default:
+                  SCIPerrorMessage("unknown variable type\n");
+                  return ModulStatus::kUnsuccesful;
+            }
+
+            ++nbatch;
+         }
+
+         if( nbatch >= 1 && ( nbatch >= batchsize || i <= 0 ) )
+         {
+            int j;
+
+            if( iscip.runSCIP() == 0 )
+            {
+               for( j = nbatch - 1; j >= 0; --j )
+               {
+                  var = batch[j];
+                  scip->origprob->vars[inds[j]] = var;
+                  var->probindex = inds[j];
+                  scip->origprob->vars[scip->origprob->nvars]->probindex = scip->origprob->nvars;
+                  ++scip->origprob->nvars;
+
+                  switch( SCIPvarGetType(var) )
+                  {
+                     case SCIP_VARTYPE_BINARY:
+                        ++scip->origprob->nbinvars;
+                        break;
+                     case SCIP_VARTYPE_INTEGER:
+                        ++scip->origprob->nintvars;
+                        break;
+                     case SCIP_VARTYPE_IMPLINT:
+                        ++scip->origprob->nimplvars;
+                        break;
+                     case SCIP_VARTYPE_CONTINUOUS:
+                        ++scip->origprob->ncontvars;
+                        break;
+                     default:
+                        SCIPerrorMessage("unknown variable type\n");
+                        return SCIP_INVALIDDATA;
+                  }
+               }
+
+               if( iscip.get_solution() != NULL )
+                  presoldata->solution->obj = obj;
+            }
+            else
+            {
+               for( j = 0; j < nbatch; ++j )
+               {
+                  ( SCIPreleaseVar(scip, &batch[j]) );
+                  ++(*naggrvars);
+               }
+
+               if( iscip.get_solution() != NULL )
+                  obj = presoldata->solution->obj;
+
+               *result = SCIP_SUCCESS;
+            }
+
+            nbatch = 0;
+         }
+      }
+
+      SCIPfreeBufferArray(scip, &batch);
+      SCIPfreeBufferArray(scip, &inds);
+      SCIPfreeCleanBufferArray(scip, &constrained);
+      return result;
+   }
+};
+
+
+} // namespace bugger
+
+#endif

@@ -72,6 +72,9 @@ namespace bugger {
          execTime = 0.0;
          enabled = true;
          skip = 0;
+         nchgcoefs = 0;
+         nfixedvars = 0;
+         nchgsides = 0;
       }
 
       virtual ~BuggerModul( ) = default;
@@ -223,6 +226,10 @@ namespace bugger {
       unsigned int ncalls;
       unsigned int nsuccessCall;
       unsigned int skip;
+   protected:
+      int nchgcoefs;
+      int nfixedvars;
+      int nchgsides;
    };
 
 } // namespace bugger

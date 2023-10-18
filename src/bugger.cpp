@@ -25,20 +25,29 @@
 #define _BUGGER_RUN__HPP_
 
 #include <algorithm>
-#include <cctype>
 #include <fstream>
-#include <initializer_list>
 #include <memory>
 #include <utility>
 
-#include "bugger/misc/MultiPrecision.hpp"
 #include "bugger/data/BuggerOptions.hpp"
+
+#include "bugger/misc/MultiPrecision.hpp"
+#include "bugger/misc/Vec.hpp"
 #include "bugger/misc/OptionsParser.hpp"
+
 #include "bugger/misc/VersionLogger.hpp"
+
 #include "bugger/interfaces/ScipInterface.hpp"
 #include "bugger/modules/BuggerModul.hpp"
+#include "bugger/modules/CoefficientModul.hpp"
+#include "bugger/modules/ConsRoundModul.hpp"
+#include "bugger/modules/ConstraintModul.hpp"
+#include "bugger/modules/FixingModul.hpp"
+#include "bugger/modules/ObjectiveModul.hpp"
+#include "bugger/modules/SettingModul.hpp"
+#include "bugger/modules/SideModul.hpp"
 #include "bugger/modules/VariableModul.hpp"
-#include "bugger/misc/Vec.hpp"
+#include "bugger/modules/VarroundModul.hpp"
 
 #include <boost/program_options.hpp>
 
@@ -97,6 +106,7 @@ namespace bugger {
       void addDefaultModules( ) {
          using uptr = std::unique_ptr<BuggerModul>;
          addPresolveMethod(uptr(new VariableModul( )));
+         addPresolveMethod(uptr(new SideModul( )));
       }
 
       void
