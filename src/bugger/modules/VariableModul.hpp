@@ -125,7 +125,7 @@ class VariableModul : public BuggerModul
          {
             int j;
 
-            if( runSCIP(iscip) == 0 )
+            if( iscip.runSCIP(iscip) == 0 )
             {
                for( j = nbatch - 1; j >= 0; --j )
                {

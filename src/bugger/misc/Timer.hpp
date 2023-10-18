@@ -39,6 +39,7 @@ class Timer
  public:
    Timer( double& time_ ) : time( time_ ) { start = tbb::tick_count::now(); }
 
+
    double
    getTime() const
    {

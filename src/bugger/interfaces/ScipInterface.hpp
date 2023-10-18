@@ -38,6 +38,18 @@
 
 namespace bugger {
 
+   #define SCIP_CALL_RETURN(x)                                           \
+   do                                                                 \
+   {                                                                  \
+      SCIP_RETCODE _restat_;                                          \
+      if( (_restat_ = (x)) != SCIP_OKAY )                             \
+      {                                                               \
+         SCIPerrorMessage("Error <%d> in function call\n", _restat_); \
+         return _restat_ == SCIP_ERROR ? 1 : _restat_;                \
+      }                                                               \
+   }                                                                  \
+   while( FALSE )
+
 
    class ScipInterface {
    private:
@@ -82,11 +94,115 @@ namespace bugger {
          }
       }
 
-      void
-      solve( ) {
-         SCIP_RETCODE returncode = SCIPsolve(scip);
-         assert(returncode == SCIP_OKAY);
-      };
+      /** tests the given SCIP instance in a copy and reports detected bug; if a primal bug solution is provided, the
+    *  resulting dual bound is also checked; on UNIX platforms aborts are caught, hence assertions can be enabled here
+    */
+      char runSCIP(ScipInterface &iscip) {
+         SCIP *test = NULL;
+         SCIP_HASHMAP *varmap = NULL;
+         SCIP_HASHMAP *consmap = NULL;
+         char retcode = 1;
+         int i;
+
+         //TODO: overload with command line paramter
+#ifdef CATCH_ASSERT_BUG
+         if( fork() == 0 )
+      exit(trySCIP(iscip.getSCIP(), iscip.get_solution(), &test, &varmap, &consmap));
+   else
+   {
+      int status;
+
+      wait(&status);
+
+      if( WIFEXITED(status) )
+         retcode = WEXITSTATUS(status);
+      else if( WIFSIGNALED(status) )
+      {
+         retcode = WTERMSIG(status);
+
+         if( retcode == SIGINT )
+            retcode = 0;
+      }
+   }
+#else
+         retcode = trySCIP(iscip.getSCIP( ), iscip.get_solution( ), &test, &varmap, &consmap);
+#endif
+
+         if( test != NULL )
+            SCIPfree(&test);
+         if( consmap != NULL )
+            SCIPhashmapFree(&consmap);
+         if( varmap != NULL )
+            SCIPhashmapFree(&varmap);
+         SCIPinfoMessage(iscip.getSCIP( ), NULL, "\n");
+
+         // TODO: what are passcodes doing?
+//         for( i = 0; i < presoldata->npasscodes; ++i )
+//            if( retcode == presoldata->passcodes[i] )
+//               return 0;
+
+         return retcode;
+      }
+
+      /** creates a SCIP instance test, variable map varmap, and constraint map consmap, copies setting, problem, and
+       *  solutions apart from the primal bug solution, tries to solve, and reports detected bug
+       */
+      static
+      char trySCIP(SCIP *scip, SCIP_SOL *solution, SCIP **test, SCIP_HASHMAP **varmap, SCIP_HASHMAP **consmap) {
+         SCIP_Real reference = SCIPgetObjsense(scip) * SCIPinfinity(scip);
+         SCIP_Bool valid = FALSE;
+         SCIP_SOL **sols;
+         int nsols;
+         int i;
+
+         sols = SCIPgetSols(scip);
+         nsols = SCIPgetNSols(scip);
+         SCIP_CALL_RETURN(SCIPhashmapCreate(varmap, SCIPblkmem(scip), SCIPgetNVars(scip)));
+         SCIP_CALL_RETURN(SCIPhashmapCreate(consmap, SCIPblkmem(scip), SCIPgetNConss(scip)));
+         SCIP_CALL_RETURN(SCIPcreate(test));
+#ifndef SCIP_DEBUG
+         SCIPsetMessagehdlrQuiet(*test, TRUE);
+#endif
+         SCIP_CALL_RETURN(SCIPincludeDefaultPlugins(*test));
+         SCIP_CALL_RETURN(SCIPcopyParamSettings(scip, *test));
+         SCIP_CALL_RETURN(SCIPcopyOrigProb(scip, *test, *varmap, *consmap, SCIPgetProbName(scip)));
+         SCIP_CALL_RETURN(SCIPcopyOrigVars(scip, *test, *varmap, *consmap, NULL, NULL, 0));
+         SCIP_CALL_RETURN(SCIPcopyOrigConss(scip, *test, *varmap, *consmap, FALSE, &valid));
+         //TODO: fix this
+//         (*test)->stat->subscipdepth = 0;
+
+         if( !valid )
+            SCIP_CALL_ABORT(SCIP_INVALIDDATA);
+
+         for( i = 0; i < nsols; ++i )
+         {
+            SCIP_SOL *sol;
+
+            sol = sols[ i ];
+
+            if( sol == solution )
+               reference = SCIPgetSolOrigObj(scip, sol);
+            else
+            {
+               SCIP_SOL *initsol = NULL;
+
+               SCIP_CALL_RETURN(SCIPtranslateSubSol(*test, scip, sol, NULL, SCIPgetOrigVars(scip), &initsol));
+
+               if( initsol == NULL )
+                  SCIP_CALL_ABORT(SCIP_INVALIDCALL);
+
+               SCIP_CALL_RETURN(SCIPaddSolFree(*test, &initsol, &valid));
+            }
+         }
+
+         SCIP_CALL_RETURN(SCIPsolve(*test));
+
+         if( SCIPisSumNegative(scip, SCIPgetObjsense(*test) * ( reference - SCIPgetDualbound(*test))))
+            SCIP_CALL_RETURN(SCIP_INVALIDRESULT);
+
+         return 0;
+      }
+
 
 
       ~ScipInterface( ) {

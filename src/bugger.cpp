@@ -50,6 +50,7 @@ namespace bugger {
       BuggerOptions options;
       ScipInterface scip;
       Vec<std::unique_ptr<BuggerModul>>& modules;
+      Vec<ModulStatus> results;
    public:
 
       BuggerRun(ScipInterface &_scip, Vec<std::unique_ptr<BuggerModul>>& _modules)
@@ -57,8 +58,40 @@ namespace bugger {
       {
       }
 
-      void apply( ) {
-         //TODO: implement
+      void apply( Timer& timer ) {
+         char filename[SCIP_MAXSTRLEN];
+         int length;
+         int success;
+
+         results.resize(modules.size());
+//         length = SCIPstrncpy(filename, file, SCIP_MAXSTRLEN);
+//         file = filename + length;
+//         length = SCIP_MAXSTRLEN - length;
+
+         if( options.nrounds < 0 )
+            options.nrounds = INT_MAX;
+
+         if( options.nstages < 0 || options.nstages > modules.size() )
+            options.nstages = modules.size();
+
+         for( int round = 0; round < options.nrounds; ++round )
+         {
+            //TODO:
+//            scip.save_current_file();
+
+//            SCIPsnprintf(file, length, "_%d.set", round);
+//            ( SCIPwriteParams(scip.getSCIP(), filename, FALSE, TRUE) );
+//            SCIPsnprintf(file, length, "_%d.cip", round);
+//            ( SCIPwriteOrigProblem(scip.getSCIP(), filename, NULL, FALSE) );
+
+            for( int module = 0; module < modules.size(); module++ )
+            {
+               //TODO: add more information about the fixings
+               results[module] = modules[module]->run(scip, options, timer);
+               //TODO:
+               return;
+            }
+         }
       }
 
       void addDefaultModules( ) {
@@ -115,8 +148,10 @@ main(int argc, char *argv[]) {
    BuggerRun bugger{scip, list};
    bugger.addDefaultModules( );
    parse_parameters(optionsInfo, bugger);
+   double time = 0;
+   Timer timer (time);
 
-   bugger.apply( );
+   bugger.apply( timer );
 
    return 0;
 }
