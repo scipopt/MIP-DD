@@ -1,6 +1,8 @@
 Name: Delta-Bugging for SCIP
 ==========================================
 
+> Please export the function SCIPsolUpdateVarObj in sol.c
+
 
 # Dependencies
 

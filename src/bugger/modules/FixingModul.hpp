@@ -25,6 +25,7 @@
 #define BUGGER_MODUL_FIXING_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
+#include "bugger/interfaces/Status.hpp"
 #if BUGGER_HAVE_SCIP
 #include "scip/var.h"
 #include "scip/scip_sol.h"
@@ -148,6 +149,7 @@ class FixingModul : public BuggerModul
 
             switch( SCIPvarGetType(var) )
             {
+               //TODO: how to implement that from outside
                case SCIP_VARTYPE_BINARY:
                   --scip->origprob->nbinvars;
                   break;
