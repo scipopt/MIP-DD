@@ -140,6 +140,7 @@ class SideModul : public BuggerModul
                if( integral )
                   fixedval = SCIPround(scip, SCIPgetActivityLinear(scip, cons, iscip.get_solution()));
                else
+                  //TODO: [debug.c:2263] ERROR: cannot call method <SCIPhasCurrentNodeLP> in problem creation stage
                   fixedval = SCIPgetActivityLinear(scip, cons, iscip.get_solution());
             }
 
