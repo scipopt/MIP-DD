@@ -132,7 +132,7 @@ class ConstraintModul : public BuggerModul
                   batch[nbatch].vars[k] = consdata.vars[j];
                   batch[nbatch].vals[k] = consdata.vals[j];
 
-                  if( iscip.get_solution() == nullptr )
+                  if( iscip.exists_solution() )
                   {
                      if( SCIPvarIsIntegral(consdata.vars[j]) )
                         fixedval = MAX(MIN(0.0, SCIPfloor(scip, consdata.vars[j]->data.original.origdom.ub)), SCIPceil(scip, consdata.vars[j]->data.original.origdom.lb));

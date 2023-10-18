@@ -102,7 +102,7 @@ class ObjectiveModul : public BuggerModul
             inds[nbatch] = i;
             batch[nbatch].obj = var->obj;
 
-            if( iscip.get_solution() != nullptr )
+            if( iscip.exists_solution() )
                SCIPsolUpdateVarObj(iscip.get_solution(), var, var->obj, 0);
 
             var->obj = 0.0;
@@ -123,7 +123,7 @@ class ObjectiveModul : public BuggerModul
                   var->obj = batch[j].obj;
                   var->unchangedobj = batch[j].obj;
                   //TODO check if this should revert the changes
-                  if( iscip.get_solution() != nullptr)
+                  if( iscip.exists_solution())
                      SCIPsolUpdateVarObj(iscip.get_solution(), var, 0, var->obj);
                }
             }

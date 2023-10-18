@@ -101,7 +101,7 @@ namespace bugger {
                var->data.original.origdom.lb = rint(var->data.original.origdom.lb);
                var->data.original.origdom.ub = rint(var->data.original.origdom.ub);
 
-               if( iscip.get_solution() != nullptr )
+               if( iscip.exists_solution() )
                {
                   SCIP_Real solval;
 
@@ -125,7 +125,7 @@ namespace bugger {
                   {
                      var = vars[inds[j]];
                      //TODO check also here
-                     if( iscip.get_solution() != nullptr )
+                     if( iscip.exists_solution() )
                         SCIPsolUpdateVarObj(iscip.get_solution(), var, var->obj, batch[nbatch].obj);
                      var->obj = batch[j].obj;
                      var->unchangedobj = batch[j].obj;

@@ -133,7 +133,7 @@ class ConsRoundModul : public BuggerModul
             consdata.lhs = rint(consdata.lhs);
             consdata.rhs = rint(consdata.rhs);
 
-            if( iscip.get_solution() != NULL )
+            if( iscip.exists_solution() )
             {
                SCIP_Real activity;
 

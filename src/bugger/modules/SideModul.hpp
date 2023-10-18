@@ -127,7 +127,7 @@ class SideModul : public BuggerModul
                }
             }
 
-            if( iscip.get_solution() == nullptr )
+            if( iscip.exists_solution() )
             {
                if( integral )
                   fixedval = MAX(MIN(0.0, SCIPfloor(scip, consdata.rhs)), SCIPceil(scip, consdata.lhs));
