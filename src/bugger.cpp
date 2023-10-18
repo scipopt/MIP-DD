@@ -111,7 +111,18 @@ namespace bugger {
             if( status != ModulStatus::kSuccessful)
                break;
          }
+         printStats();
       }
+
+      void printStats(){
+         //TODO: move msg
+            Message msg {};
+            msg.info( "\n {:>18} {:>12} {:>18} {:>18} {:>18} {:>18} \n", "modules",
+                      "nb calls", "success calls(%)", "execution time(s)" );
+            for(const auto & module : modules)
+               module->printStats( msg );
+
+         }
 
       void addDefaultModules( ) {
          using uptr = std::unique_ptr<BuggerModul>;
@@ -167,7 +178,12 @@ main(int argc, char *argv[]) {
       return 0;
 
    ScipInterface scip { };
-   scip.parse(optionsInfo.instance_file);
+   auto code = scip.parse(optionsInfo.instance_file);
+   if(code != SCIP_OKAY)
+   {
+      std::cerr << "Error thrown by SCIP.\n";
+      return 1;
+   }
    scip.read_parameters(optionsInfo.scip_settings_file);
    scip.read_solution(optionsInfo.solution_file);
 
@@ -175,7 +191,8 @@ main(int argc, char *argv[]) {
    Vec<std::unique_ptr<BuggerModul>> list{};
    BuggerRun bugger{scip, list};
    bugger.addDefaultModules( );
-   parse_parameters(optionsInfo, bugger);
+   //TODO: somehow calling this function deletes SCIP data
+//   parse_parameters(optionsInfo, bugger);
    double time = 0;
    Timer timer (time);
 
@@ -184,7 +201,7 @@ main(int argc, char *argv[]) {
    return 0;
 }
 
-void parse_parameters(bugger::OptionsInfo &optionsInfo, bugger::BuggerRun bugger) {
+void parse_parameters(bugger::OptionsInfo &optionsInfo, bugger::BuggerRun& bugger) {
    if( !optionsInfo.param_settings_file.empty( ) || !optionsInfo.unparsed_options.empty( ))
    {
       bugger::ParameterSet paramSet = bugger.getParameters( );

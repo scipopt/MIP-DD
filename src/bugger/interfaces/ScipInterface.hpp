@@ -66,15 +66,16 @@ namespace bugger {
 
       SCIP* getSCIP(){ return scip; }
       SCIP_Sol* get_solution(){return solution;}
-      bool exists_solution(){return exists_sol;}
+      bool exists_solution() const {return exists_sol;}
 
 
-      void
+      SCIP_RETCODE
       parse(const std::string& filename)
       {
          assert(!filename.empty());
          SCIP_CALL_ABORT(SCIPincludeDefaultPlugins(scip));
          SCIP_CALL_ABORT(SCIPreadProb(scip, filename.c_str(), nullptr));
+         return SCIP_OKAY;
       }
 
       void

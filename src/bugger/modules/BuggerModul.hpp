@@ -135,16 +135,9 @@ namespace bugger {
       }
 
       void
-      printStats(const Message &message, std::pair<int, int> stats) {
-         double success =
-               ncalls == 0 ? 0.0
-                           : ( double(nsuccessCall) / double(ncalls)) * 100.0;
-         double applied =
-               stats.first == 0
-               ? 0.0
-               : ( double(stats.second) / double(stats.first)) * 100.0;
-         message.info(" {:>18} {:>12} {:>18.1f} {:>18} {:>18.1f} {:>18.3f}\n",
-                      name, ncalls, success, stats.first, applied, execTime);
+      printStats(const Message &message ) {
+         double success =ncalls == 0 ? 0.0 : ( double(nsuccessCall) / double(ncalls)) * 100.0;
+         message.info(" {:>18} {:>12} {:>18.1f} {:>18.3f}\n", name, ncalls, success, execTime);
       }
 
 
