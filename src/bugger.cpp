@@ -153,7 +153,7 @@ namespace bugger {
    };
 }
 
-void parse_parameters(bugger::OptionsInfo &optionsInfo, bugger::BuggerRun bugger);
+void parse_parameters(bugger::OptionsInfo &optionsInfo, bugger::ParameterSet bugger);
 
 int
 main(int argc, char *argv[]) {
@@ -191,8 +191,7 @@ main(int argc, char *argv[]) {
    Vec<std::unique_ptr<BuggerModul>> list{};
    BuggerRun bugger{scip, list};
    bugger.addDefaultModules( );
-   //TODO: somehow calling this function deletes SCIP data
-//   parse_parameters(optionsInfo, bugger);
+//   parse_parameters(optionsInfo, bugger.getParameters());
    double time = 0;
    Timer timer (time);
 
@@ -201,10 +200,9 @@ main(int argc, char *argv[]) {
    return 0;
 }
 
-void parse_parameters(bugger::OptionsInfo &optionsInfo, bugger::BuggerRun& bugger) {
+void parse_parameters(bugger::OptionsInfo &optionsInfo, bugger::ParameterSet &paramSet) {
    if( !optionsInfo.param_settings_file.empty( ) || !optionsInfo.unparsed_options.empty( ))
    {
-      bugger::ParameterSet paramSet = bugger.getParameters( );
       if( !optionsInfo.param_settings_file.empty( ))
       {
          std::ifstream input(optionsInfo.param_settings_file);
