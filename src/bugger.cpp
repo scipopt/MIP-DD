@@ -62,6 +62,10 @@ namespace bugger {
       bool solution_exists;
       Vec<std::unique_ptr<BuggerModul>>& modules;
       Vec<ModulStatus> results;
+
+      Vec<int> origcol_mapping;
+      Vec<int> origrow_mapping;
+
    public:
 
       BuggerRun(Problem<double> &_problem, Solution<double>& _solution, bool _solution_exists, Vec<std::unique_ptr<BuggerModul>>& _modules)
@@ -80,15 +84,14 @@ namespace bugger {
          return static_cast<ModulStatus>( largestValue );
       }
 
-      void apply(Timer& timer ) {
-         char filename[SCIP_MAXSTRLEN];
-         int length;
-         int success;
-
+      void apply(Timer& timer, std::string filename ) {
          results.resize(modules.size());
-//         length = SCIPstrncpy(filename, file, SCIP_MAXSTRLEN);
-//         file = filename + length;
-//         length = SCIP_MAXSTRLEN - length;
+
+         for( unsigned int i = 0; i < problem.getNRows(); ++i )
+            origrow_mapping.push_back( (int) i );
+
+         for( unsigned int i = 0; i < problem.getNCols(); ++i )
+            origcol_mapping.push_back( (int) i );
 
          if( options.nrounds < 0 )
             options.nrounds = INT_MAX;
@@ -96,19 +99,21 @@ namespace bugger {
          if( options.nstages < 0 || options.nstages > modules.size() )
             options.nstages = modules.size();
 
+         int ending = 4;
+         if( filename.substr( filename.length() - 3 ) == ".gz" )
+            ending = 7;
+         if( filename.substr( filename.length() - 3 ) == ".bz2" )
+            ending = 7;
+
          for( int round = 0; round < options.nrounds; ++round )
          {
-            //TODO:
-
-//            SCIPsnprintf(file, length, "_%d.set", round);
-//            ( SCIPwriteParams(scip.getSCIP(), filename, FALSE, TRUE) );
-//            SCIPsnprintf(file, length, "_%d.cip", round);
-//            ( SCIPwriteOrigProblem(scip.getSCIP(), filename, NULL, FALSE) );
-
             for( int module = 0; module < modules.size(); module++ )
-               //TODO: add more information about the fixings
                results[module] = modules[module]->run(problem, solution, solution_exists, options, timer);
-               //TODO:
+
+            //TODO:write also parameters
+            std::string newfilename = filename.substr( 0, filename.length() - ending ) + "_" +  std::to_string(round) + ".mps";
+
+            MpsWriter<double>::writeProb(newfilename, problem, origrow_mapping, origcol_mapping);
             ModulStatus status = evaluateResults();
             if( status != ModulStatus::kSuccessful)
                break;
@@ -213,7 +218,7 @@ main(int argc, char *argv[]) {
    double time = 0;
    Timer timer (time);
 
-   bugger.apply( timer );
+   bugger.apply( timer, optionsInfo.instance_file );
 
    return 0;
 }
