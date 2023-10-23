@@ -49,112 +49,119 @@ namespace bugger {
          return false;
       }
 
-      SCIP_Bool SCIPisVarroundAdmissible( SCIP_VAR* var )
-      {
+      bool SCIPisVarroundAdmissible(const Problem<double> &problem, int var) {
          /* leave sparkling or fixed variables */
-         return rint(var->obj) != var->obj || ( var->data.original.origdom.lb != var->data.original.origdom.ub && ( rint(var->data.original.origdom.lb) != var->data.original.origdom.lb || rint(var->data.original.origdom.ub) != var->data.original.origdom.ub ) );
+         double obj = problem.getObjective( ).coefficients[ var ];
+         return num.isIntegral(obj) || problem.getColFlags( )[ var ].test(ColFlag::kUbInf) ||
+                problem.getColFlags( )[ var ].test(ColFlag::kLbInf) ||
+                ( !num.isEq(problem.getLowerBounds( )[ var ], problem.getLowerBounds( )[ var ]) &&
+                  ( num.isIntegral(problem.getLowerBounds( )[ var ]) ||
+                    num.isIntegral(problem.getUpperBounds( )[ var ])));
       }
 
       ModulStatus
-      execute(Problem<double> &problem, Solution<double>& solution, bool solution_exists, const BuggerOptions &options, const Timer &timer) override {
+      execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
+              const Timer &timer) override {
 
          ModulStatus result = ModulStatus::kUnsuccesful;
-//         SCIP *scip = iscip.getSCIP( );
-//         SCIP_VAR *batch;
-//         int *inds;
-//         int batchsize;
-//         int nbatch;
-//
-//         SCIP_VAR **vars;
-//         int nvars;
-//         SCIPgetOrigVarsData(scip, &vars, &nvars, nullptr, nullptr, nullptr, nullptr);
-//
-//         if( options.nbatches > 0 )
-//         {
-//            batchsize = options.nbatches - 1;
-//
-//            for( int i = 0; i < nvars; ++i )
-//               if( SCIPisVarroundAdmissible(vars[i]) )
-//                  ++batchsize;
-//
-//            batchsize /= options.nbatches;
-//         }
-//
-//         ( SCIPallocBufferArray(scip, &inds, batchsize) );
-//         ( SCIPallocBufferArray(scip, &batch, batchsize) );
-//         nbatch = 0;
-//
-//         for( int i = 0; i < nvars; ++i )
-//         {
-//            SCIP_VAR* var;
-//
-//            var = vars[i];
-//
-//            if( SCIPisVarroundAdmissible(var) )
-//            {
-//               inds[nbatch] = i;
-//               batch[nbatch].obj = var->obj;
-//               batch[nbatch].data.original.origdom.lb = var->data.original.origdom.lb;
-//               batch[nbatch].data.original.origdom.ub = var->data.original.origdom.ub;
-//               var->obj = rint(var->obj);
-//               var->unchangedobj = var->obj;
-//               var->data.original.origdom.lb = rint(var->data.original.origdom.lb);
-//               var->data.original.origdom.ub = rint(var->data.original.origdom.ub);
-//
-//               if( iscip.exists_solution() )
-//               {
-//                  SCIP_Real solval;
-//
-//                  solval = SCIPgetSolVal(scip, iscip.get_solution(), var);
-//                  //TODO: please check if this is correct
-////                  presoldata->solution->obj -= batch[nbatch].obj * solval;
-////                  presoldata->solution->obj += var->obj * solval;
-//                  SCIPsolUpdateVarObj(iscip.get_solution(), var, batch[nbatch].obj, var->obj);
-//                  var->data.original.origdom.lb = MIN(var->data.original.origdom.lb, SCIPfloor(scip, solval));
-//                  var->data.original.origdom.ub = MAX(var->data.original.origdom.ub, SCIPceil(scip, solval));
-//               }
-//
-//               ++nbatch;
-//            }
-//
-//            if( nbatch >= 1 && ( nbatch >= batchsize || i >= nvars - 1 ) )
-//            {
-//               if( iscip.runSCIP() != Status::kSuccess )
-//               {
-//                  for( int j = nbatch - 1; j >= 0; --j )
-//                  {
-//                     var = vars[inds[j]];
-//                     //TODO check also here
-//                     if( iscip.exists_solution() )
-//                        SCIPsolUpdateVarObj(iscip.get_solution(), var, var->obj, batch[nbatch].obj);
-//                     var->obj = batch[j].obj;
-//                     var->unchangedobj = batch[j].obj;
-//                     var->data.original.origdom.lb = batch[j].data.original.origdom.lb;
-//                     var->data.original.origdom.ub = batch[j].data.original.origdom.ub;
-//                  }
-//               }
-//               else
-//               {
-//                  for( int j = nbatch - 1; j >= 0; --j )
-//                  {
-//                     if( rint(batch[j].obj) != batch[j].obj )
-//                        nchgcoefs++;
-//
-//                     if( rint(batch[j].data.original.origdom.lb) != batch[j].data.original.origdom.lb )
-//                        nchgcoefs++;
-//
-//                     if( rint(batch[j].data.original.origdom.ub) != batch[j].data.original.origdom.ub )
-//                        nchgcoefs++;
-//                  }
-//                  result = ModulStatus::kSuccessful;
-//               }
-//
-//               nbatch = 0;
-//            }
-//         }
-//
-//         SCIPfreeBufferArray(scip, &batch);
-//         SCIPfreeBufferArray(scip, &inds);
+
+         auto copy = Problem<double>(problem);
+         Vec<std::pair<int, double>> applied_lb { };
+         Vec<std::pair<int, double>> applied_ub { };
+         Vec<std::pair<int, double>> applied_obj { };
+         Vec<std::pair<int, double>> batches_lb { };
+         Vec<std::pair<int, double>> batches_ub { };
+         Vec<std::pair<int, double>> batches_obj { };
+
+         int batchsize = 1;
+         if( options.nbatches > 0 )
+         {
+            batchsize = options.nbatches - 1;
+            for( int i = 0; i < problem.getNCols( ); ++i )
+               if( SCIPisVarroundAdmissible(problem, i))
+                  ++batchsize;
+
+            batchsize /= options.nbatches;
+         }
+
+         int nbatch = 0;
+         for( int var = 0; var < copy.getNCols( ); ++var )
+         {
+            if( SCIPisVarroundAdmissible(copy, var))
+            {
+               if( num.isIntegral(copy.getObjective( ).coefficients[ var ]))
+               {
+                  copy.getObjective( ).coefficients[ var ] = num.round(copy.getObjective( ).coefficients[ var ]);
+                  batches_obj.emplace_back(var, copy.getObjective( ).coefficients[ var ]);
+               }
+               if( solution_exists )
+               {
+                  if( num.isIntegral(copy.getLowerBounds( )[ var ]))
+                  {
+                     copy.getLowerBounds( )[ var ] = num.round(copy.getLowerBounds( )[ var ]);
+                     batches_lb.emplace_back(var, copy.getLowerBounds( )[ var ]);
+
+                  }
+                  if( num.isIntegral(copy.getUpperBounds( )[ var ]))
+                  {
+                     copy.getUpperBounds( )[ var ] = num.round(copy.getUpperBounds( )[ var ]);
+                     batches_ub.emplace_back(var, copy.getUpperBounds( )[ var ]);
+                  }
+               }
+               else
+               {
+                  if( num.isIntegral(copy.getLowerBounds( )[ var ]))
+                  {
+                     copy.getLowerBounds( )[ var ] = MIN(num.round(copy.getLowerBounds( )[ var ]),
+                                                         num.epsFloor(solution.primal[ var ]));
+                     batches_lb.emplace_back(var, copy.getLowerBounds( )[ var ]);
+
+                  }
+                  if( num.isIntegral(copy.getUpperBounds( )[ var ]))
+                  {
+                     copy.getUpperBounds( )[ var ] = MIN(num.round(copy.getUpperBounds( )[ var ]),
+                                                         num.epsCeil(solution.primal[ var ]));
+                     batches_ub.emplace_back(var, copy.getUpperBounds( )[ var ]);
+                  }
+               }
+               ++nbatch;
+            }
+
+            if( nbatch >= 1 && ( nbatch >= batchsize || var >= copy.getNCols( ) - 1 ))
+            {
+               ScipInterface scipInterface { };
+               //TODO pass settings to SCIP
+               scipInterface.doSetUp(copy);
+               if( scipInterface.runSCIP( ) != Status::kSuccess )
+               {
+                  copy = Problem<double>(problem);
+                  for( const auto &item: applied_lb )
+                     problem.getLowerBounds( )[ item.first ] = item.second;
+                  for( const auto &item: applied_ub )
+                     problem.getUpperBounds( )[ item.first ] = item.second;
+                  for( const auto &item: applied_obj )
+                     problem.getObjective( ).coefficients[ item.first ] = item.second;
+
+               }
+               else
+               {
+                  //TODO: push back together
+                  for( const auto &item: batches_lb )
+                     applied_lb.push_back(item);
+                  for( const auto &item: batches_obj )
+                     applied_obj.push_back(item);
+                  for( const auto &item: batches_ub )
+                     applied_ub.push_back(item);
+                  nchgcoefs += batches_lb.size() + batches_ub.size() + batches_lb.size();
+                  batches_lb.clear();
+                  batches_ub.clear();
+                  batches_obj.clear();
+                  result = ModulStatus::kSuccessful;
+               }
+               nbatch = 0;
+            }
+         }
+         problem = Problem<double>(copy);
          return result;
       }
    };

@@ -160,6 +160,18 @@ namespace bugger {
 
       SCIP* getSCIP(){ return scip; }
 
+      void
+      add_solution(Solution<double> solution)
+      {
+         SCIP_SOL * sol;
+         SCIP_RETCODE retcode;
+         for(int i=0; i< solution.primal.size(); i++)
+         {
+            retcode = SCIPsetSolVal(scip, sol, vars[ i ], solution.primal[ i ]);
+            assert(retcode == SCIP_OKAY);
+         }
+         this->solution = sol;
+      }
 
    /** tests the given SCIP instance in a copy and reports detected bug; if a primal bug solution is provided, the
     *  resulting dual bound is also checked; on UNIX platforms aborts are caught, hence assertions can be enabled here
@@ -242,14 +254,11 @@ namespace bugger {
          for( i = 0; i < nsols; ++i )
          {
             SCIP_SOL *sol;
-
             sol = sols[ i ];
-
-
             if( sol == solution )
             {
                //TODO: parse Solution<REAL> solution to SCIP
-//               reference = SCIPgetSolOrigObj(scip, sol);
+               reference = SCIPgetSolOrigObj(scip, sol);
             }
             else
             {

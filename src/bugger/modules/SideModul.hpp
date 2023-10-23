@@ -63,7 +63,7 @@ namespace bugger {
             batchsize = options.nbatches - 1;
 
             for( int i = problem.getNRows( ) - 1; i >= 0; --i )
-               if( problem.getRowFlags( )[ i ].test(RowFlag::kEquation))
+               if( !problem.getRowFlags( )[ i ].test(RowFlag::kEquation))
                   ++batchsize;
 
             batchsize /= options.nbatches;
@@ -94,8 +94,8 @@ namespace bugger {
                if( !solution_exists )
                {
                   if( integral )
-                     fixedval = MAX(MIN(0.0, num.feasFloor(matrix.getRightHandSides( )[ row ])),
-                                    num.feasCeil(matrix.getLeftHandSides( )[ row ]));
+                     fixedval = MAX(MIN(0.0, num.epsFloor(matrix.getRightHandSides( )[ row ])),
+                                    num.epsCeil(matrix.getLeftHandSides( )[ row ]));
                   else
                      fixedval = MAX(MIN(0.0, matrix.getRightHandSides( )[ row ]), matrix.getLeftHandSides( )[ row ]);
                }
@@ -109,9 +109,8 @@ namespace bugger {
 
                matrix.modifyLeftHandSide(row, num, fixedval );
                matrix.modifyRightHandSide(row, num, fixedval );
-               batches.push_back({row, fixedval});
+               batches.emplace_back(row, fixedval);
                nbatch++;
-               //TODO: check if this is automatically converted to an equation.
             }
 
             if( nbatch >= 1 && ( nbatch >= batchsize || row <= 0 ))
@@ -119,6 +118,7 @@ namespace bugger {
                ScipInterface scipInterface { };
                //TODO pass settings to SCIP
                scipInterface.doSetUp(copy);
+
 
                if( scipInterface.runSCIP( ) != Status::kSuccess )
                {
@@ -135,6 +135,7 @@ namespace bugger {
                   for( const auto &item: batches )
                      applied_reductions.push_back(item);
                   nchgsides += nbatch;
+                  batches.clear();
                   result = ModulStatus::kSuccessful;
                }
                nbatch = 0;
