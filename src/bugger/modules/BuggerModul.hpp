@@ -41,16 +41,6 @@
 
 #include <bitset>
 
-//TODO: ideally the class does not know about SCIP or the solver at all -> use interface?
-#ifdef  BUGGER_HAVE_SCIP
-
-#include "scip/cons_linear.h"
-#include "scip/scip.h"
-#include "scip/scipdefplugins.h"
-#include "scip/struct_paramset.h"
-#include "scip/def.h"
-
-#endif
 
 namespace bugger {
 
@@ -123,6 +113,8 @@ namespace bugger {
 #endif
          ModulStatus result = execute(problem, solution, solution_exists, options, timer);
 #ifdef BUGGER_TBB
+         if( result == ModulStatus::kSuccessful)
+            nsuccessCall++;
          auto end = tbb::tick_count::now( );
          auto duration = end - start;
          execTime = execTime + duration.seconds( );
@@ -131,7 +123,6 @@ namespace bugger {
          execTime = execTime + std::chrono::duration_cast<std::chrono::milliseconds>(
                                    end- start ).count()/1000;
 #endif
-
 
          return result;
       }

@@ -131,6 +131,9 @@ namespace bugger {
                }
                else
                {
+                  //TODO: push back together
+                  for( const auto &item: batches )
+                     applied_reductions.push_back(item);
                   nchgsides += nbatch;
                   result = ModulStatus::kSuccessful;
                }
@@ -138,6 +141,7 @@ namespace bugger {
             }
          }
 
+         problem = Problem<double>(copy);
          return result;
       }
    };
