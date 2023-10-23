@@ -53,8 +53,9 @@ namespace bugger {
 
          ModulStatus result = ModulStatus::kUnsuccesful;
 
-         auto res = Problem<double>(problem);
          auto copy = Problem<double>(problem);
+         Vec<std::pair<int, double>> applied_reductions{};
+         Vec<std::pair<int, double>> batches{};
 
          int batchsize = 1;
          if( options.nbatches > 0 )
@@ -69,22 +70,23 @@ namespace bugger {
          }
 
          int nbatch = 0;
-
+         batches.clear();
+         batches.reserve(batchsize);
          for( int row = copy.getNRows( ) - 1; row >= 0; --row )
          {
 
-            if( copy.getRowFlags( )[ row ].test(RowFlag::kEquation))
+            if( !copy.getRowFlags( )[ row ].test(RowFlag::kEquation))
             {
                ConstraintMatrix<double> &matrix = copy.getConstraintMatrix( );
                auto data = matrix.getRowCoefficients(row);
-               bool integral = TRUE;
+               bool integral = true;
 
                for( int j = 0; j < data.getLength( ); ++j )
                {
                   if( !copy.getColFlags( )[ data.getIndices( )[ j ]].test(ColFlag::kIntegral) ||
                       !num.isIntegral(data.getValues( )[ j ]))
                   {
-                     integral = FALSE;
+                     integral = false;
                      break;
                   }
                }
@@ -107,6 +109,7 @@ namespace bugger {
 
                matrix.modifyLeftHandSide(row, num, fixedval );
                matrix.modifyRightHandSide(row, num, fixedval );
+               batches.push_back({row, fixedval});
                nbatch++;
                //TODO: check if this is automatically converted to an equation.
             }
@@ -117,12 +120,17 @@ namespace bugger {
                //TODO pass settings to SCIP
                scipInterface.doSetUp(copy);
 
-               //TODO: maybe it would be better to store the reductions and apply them to the original problem so that a thrid problem does not need to be copied
                if( scipInterface.runSCIP( ) != Status::kSuccess )
-                  copy = Problem<double> (res);
+               {
+                  copy = Problem<double>(problem);
+                  for( const auto &item: applied_reductions )
+                  {
+                     copy.getConstraintMatrix().modifyLeftHandSide(item.first, num, item.second );
+                     copy.getConstraintMatrix().modifyRightHandSide(item.first, num, item.second );
+                  }
+               }
                else
                {
-                  res = Problem<double> (copy);
                   nchgsides += nbatch;
                   result = ModulStatus::kSuccessful;
                }
