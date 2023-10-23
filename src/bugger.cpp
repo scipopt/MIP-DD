@@ -87,6 +87,7 @@ namespace bugger {
       void apply(Timer& timer, std::string filename ) {
          results.resize(modules.size());
 
+         //TODO: delete the variable names and constraint names also during updates
          for( unsigned int i = 0; i < problem.getNRows(); ++i )
             origrow_mapping.push_back( (int) i );
 
