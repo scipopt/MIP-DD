@@ -77,6 +77,8 @@ namespace bugger {
          nfixedvars = 0;
          nchgsides = 0;
          naggrvars = 0;
+         //TODO: double init from outside to be configurable
+         num = {};
       }
 
       virtual ~BuggerModul( ) = default;
@@ -102,7 +104,7 @@ namespace bugger {
       }
 
       ModulStatus
-      run(ScipInterface &scip, const BuggerOptions &options, const Timer &timer) {
+      run(Problem<double> &problem, Solution<double>& solution, bool solution_exists, const BuggerOptions &options, const Timer &timer) {
          if( !enabled || delayed )
             return ModulStatus::kDidNotRun;
 
@@ -119,7 +121,7 @@ namespace bugger {
 #else
          auto start = std::chrono::steady_clock::now();
 #endif
-         ModulStatus result = execute(scip, options, timer);
+         ModulStatus result = execute(problem, solution, solution_exists, options, timer);
 #ifdef BUGGER_TBB
          auto end = tbb::tick_count::now( );
          auto duration = end - start;
@@ -174,7 +176,7 @@ namespace bugger {
    protected:
 
       virtual ModulStatus
-      execute(ScipInterface &iscip, const BuggerOptions &options, const Timer &timer) = 0;
+      execute(Problem<double> &problem, Solution<double>& solution, bool solution_exists, const BuggerOptions &options, const Timer &timer) = 0;
 
       void
       setName(const std::string &value) {
@@ -225,7 +227,8 @@ namespace bugger {
       int nchgcoefs;
       int nfixedvars;
       int nchgsides;
-      int naggrvars{};
+      int naggrvars;
+      Num<double> num;
    };
 
 } // namespace bugger

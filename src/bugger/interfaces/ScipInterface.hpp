@@ -31,6 +31,7 @@
 #include <stdexcept>
 
 #include "bugger/data/Problem.hpp"
+#include "bugger/data/ProblemBuilder.hpp"
 #include "scip/cons_linear.h"
 #include "scip/scip.h"
 #include "scip/scipdefplugins.h"
@@ -54,9 +55,10 @@ namespace bugger {
 
    class ScipInterface {
    private:
-      SCIP *scip;
-      bool exists_sol;
+      SCIP* scip;
       SCIP_Sol* solution;
+      Vec<SCIP_VAR*> vars;
+
 
    public:
       ScipInterface( ) : scip(nullptr) {
@@ -64,37 +66,100 @@ namespace bugger {
             throw std::runtime_error("could not create SCIP");
       }
 
-      SCIP* getSCIP(){ return scip; }
-      SCIP_Sol* get_solution(){return solution;}
-      bool exists_solution() const {return exists_sol;}
-
 
       SCIP_RETCODE
-      parse(const std::string& filename)
+      doSetUp( const Problem<double>& problem )
       {
-         assert(!filename.empty());
-         SCIP_CALL_ABORT(SCIPincludeDefaultPlugins(scip));
-         SCIP_CALL_ABORT(SCIPreadProb(scip, filename.c_str(), nullptr));
+         SCIP_CALL(SCIPincludeDefaultPlugins(scip));
+         int ncols = problem.getNCols();
+         int nrows = problem.getNRows();
+         const Vec<String>& varNames = problem.getVariableNames();
+         const Vec<String>& consNames = problem.getConstraintNames();
+         const VariableDomains<double>& domains = problem.getVariableDomains();
+         const Objective<double>& obj = problem.getObjective();
+         const auto& consMatrix = problem.getConstraintMatrix();
+         const auto& lhs_values = consMatrix.getLeftHandSides();
+         const auto& rhs_values = consMatrix.getRightHandSides();
+         const auto& rflags = problem.getRowFlags();
+
+         SCIP_CALL( SCIPcreateProbBasic( scip, problem.getName().c_str() ) );
+
+         vars.resize( problem.getNCols() );
+
+         for( int i = 0; i < ncols; ++i )
+         {
+            SCIP_VAR* var;
+            assert( !domains.flags[i].test( ColFlag::kInactive ) );
+
+            SCIP_Real lb = domains.flags[i].test( ColFlag::kLbInf )
+                           ? -SCIPinfinity( scip )
+                           : SCIP_Real( domains.lower_bounds[i] );
+            SCIP_Real ub = domains.flags[i].test( ColFlag::kUbInf )
+                           ? SCIPinfinity( scip )
+                           : SCIP_Real( domains.upper_bounds[i] );
+            SCIP_VARTYPE type;
+            if( domains.flags[i].test( ColFlag::kIntegral ) )
+            {
+               if( lb == 0  && ub ==  1 )
+                  type = SCIP_VARTYPE_BINARY;
+               else
+                  type = SCIP_VARTYPE_INTEGER;
+            }
+            else if( domains.flags[i].test( ColFlag::kImplInt ) )
+               type = SCIP_VARTYPE_IMPLINT;
+            else
+               type = SCIP_VARTYPE_CONTINUOUS;
+
+            SCIP_CALL( SCIPcreateVarBasic(
+                  scip, &var, varNames[i].c_str(), lb, ub,
+                  SCIP_Real( obj.coefficients[i] ), type ) );
+            SCIP_CALL( SCIPaddVar( scip, var ) );
+            vars[i] = var;
+
+            SCIP_CALL( SCIPreleaseVar( scip, &var ) );
+         }
+
+         Vec<SCIP_VAR*> consvars;
+         Vec<SCIP_Real> consvals;
+         consvars.resize( problem.getNCols() );
+         consvals.resize( problem.getNCols() );
+
+         for( int i = 0; i < nrows; ++i )
+         {
+            SCIP_CONS* cons;
+
+            auto rowvec = consMatrix.getRowCoefficients( i );
+            const double* vals = rowvec.getValues();
+            const int* inds = rowvec.getIndices();
+            SCIP_Real lhs = rflags[i].test( RowFlag::kLhsInf )
+                            ? -SCIPinfinity( scip )
+                            : SCIP_Real( lhs_values[i] );
+            SCIP_Real rhs = rflags[i].test( RowFlag::kRhsInf )
+                            ? SCIPinfinity( scip )
+                            : SCIP_Real( rhs_values[i] );
+
+            for( int k = 0; k != rowvec.getLength(); ++k )
+            {
+               consvars[k] = vars[inds[k]];
+               consvals[k] = SCIP_Real( vals[k] );
+            }
+
+            SCIP_CALL( SCIPcreateConsBasicLinear(
+                  scip, &cons, consNames[i].c_str(), rowvec.getLength(),
+                  consvars.data(), consvals.data(), lhs, rhs ) );
+            SCIP_CALL( SCIPaddCons( scip, cons ) );
+            SCIP_CALL( SCIPreleaseCons( scip, &cons ) );
+         }
+
+
+         if( obj.offset !=  0 )
+            SCIP_CALL( SCIPaddOrigObjoffset( scip, SCIP_Real( obj.offset ) ) );
+
          return SCIP_OKAY;
       }
 
-      void
-      read_parameters(const std::string& scip_settings_file)
-      {
-         if(!scip_settings_file.empty())
-            SCIP_CALL_ABORT( SCIPreadParams( scip, scip_settings_file.c_str() ) );
-      }
+      SCIP* getSCIP(){ return scip; }
 
-      void
-      read_solution(const std::string& solution_file)
-      {
-         if(!solution_file.empty())
-         {
-            SCIP_CALL_ABORT(SCIPreadSol(scip, solution_file.c_str( )));
-            exists_sol = true;
-            solution = SCIPgetBestSol(scip);
-         }
-      }
 
    /** tests the given SCIP instance in a copy and reports detected bug; if a primal bug solution is provided, the
     *  resulting dual bound is also checked; on UNIX platforms aborts are caught, hence assertions can be enabled here
@@ -180,8 +245,12 @@ namespace bugger {
 
             sol = sols[ i ];
 
+
             if( sol == solution )
-               reference = SCIPgetSolOrigObj(scip, sol);
+            {
+               //TODO: parse Solution<REAL> solution to SCIP
+//               reference = SCIPgetSolOrigObj(scip, sol);
+            }
             else
             {
                SCIP_SOL *initsol = NULL;

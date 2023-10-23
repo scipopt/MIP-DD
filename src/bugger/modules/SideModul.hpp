@@ -26,162 +26,113 @@
 
 #include "bugger/modules/BuggerModul.hpp"
 #include "bugger/interfaces/Status.hpp"
-#if BUGGER_HAVE_SCIP
-#include "scip/var.h"
-#include "scip/scip_sol.h"
-#include "scip/scip.h"
-#include "scip/scip_numerics.h"
-#include "scip/def.h"
-#include "scip/cons_linear.h"
-#endif
-namespace bugger
-{
 
-class SideModul : public BuggerModul
-{
- public:
-   SideModul() : BuggerModul()
-   {
-      this->setName( "side" );
-   }
+namespace bugger {
 
-   bool
-   initialize( ) override
-   {
-      return false;
-   }
-
-
-   SCIP_Bool SCIPisSideAdmissible(
-         SCIP*                      scip,          /**< SCIP data structure */
-         SCIP_CONS*                 cons           /**< SCIP constraint pointer */
-   )
-   {
-      SCIP_CONSDATALINEAR consdata;
-
-      (void)SCIPconsGetDataLinear(cons, &consdata);
-
-      /* preserve restricted constraints because they might be already fixed */
-      return SCIPconsIsChecked(cons) && strcmp(SCIPconshdlrGetName(SCIPconsGetHdlr(cons)), "linear") == 0
-             && SCIPisLT(scip, consdata.lhs, consdata.rhs);
-   }
-
-
-   ModulStatus
-   execute( ScipInterface& iscip, const BuggerOptions& options, const Timer& timer ) override
-   {
-      SCIP* scip = iscip.getSCIP();
-      SCIP_CONS** conss = SCIPgetOrigConss(scip);
-      int nconss = SCIPgetNOrigConss(scip);
-      SCIP_CONSDATALINEAR* batch;
-      int* inds;
-      ModulStatus result = ModulStatus::kUnsuccesful;
-
-      int batchsize = 1;
-      if( options.nbatches > 0 )
-      {
-         batchsize = options.nbatches - 1;
-
-         for( int i = nconss - 1; i >= 0; --i )
-            if( SCIPisSideAdmissible(scip, conss[i]) )
-               ++batchsize;
-
-         batchsize /= options.nbatches;
+   class SideModul : public BuggerModul {
+   public:
+      SideModul( ) : BuggerModul( ) {
+         this->setName("side");
       }
 
-      ( SCIPallocBufferArray(scip, &inds, batchsize) );
-      ( SCIPallocBufferArray(scip, &batch, batchsize) );
-      int nbatch = 0;
-
-      for( int i = nconss - 1; i >= 0; --i )
-      {
-         SCIP_CONS* cons;
-
-         cons = conss[i];
-
-         if( SCIPisSideAdmissible(scip, cons) )
-         {
-            SCIP_CONSDATALINEAR consdata;
-            SCIP_VAR** vars;
-            SCIP_Real* vals;
-            SCIP_Real fixedval;
-            SCIP_Bool integral;
-            int nvals;
-            int j;
-
-            ( SCIPconsGetDataLinear(cons, &consdata) );
-            inds[nbatch] = i;
-            batch[nbatch].lhs = consdata.lhs;
-            batch[nbatch].rhs = consdata.rhs;
-            vars = SCIPgetVarsLinear(scip, cons);
-            vals = SCIPgetValsLinear(scip, cons);
-            nvals = SCIPgetNVarsLinear(scip, cons);
-            integral = TRUE;
-
-            for( j = 0; j < nvals; ++j )
-            {
-               if( !SCIPvarIsIntegral(vars[j]) || !SCIPisIntegral(scip, vals[j]) )
-               {
-                  integral = FALSE;
-
-                  break;
-               }
-            }
-
-            if( iscip.exists_solution() )
-            {
-               if( integral )
-                  fixedval = MAX(MIN(0.0, SCIPfloor(scip, consdata.rhs)), SCIPceil(scip, consdata.lhs));
-               else
-                  fixedval = MAX(MIN(0.0, consdata.rhs), consdata.lhs);
-            }
-            else
-            {
-               if( integral )
-                  fixedval = SCIPround(scip, SCIPgetActivityLinear(scip, cons, iscip.get_solution()));
-               else
-                  //TODO: [debug.c:2263] ERROR: cannot call method <SCIPhasCurrentNodeLP> in problem creation stage
-                  fixedval = SCIPgetActivityLinear(scip, cons, iscip.get_solution());
-            }
-
-            consdata.lhs = fixedval;
-            consdata.rhs = fixedval;
-            ( SCIPconsSetDataLinear(cons, &consdata) );
-            ++nbatch;
-         }
-
-         if( nbatch >= 1 && ( nbatch >= batchsize || i <= 0 ) )
-         {
-            int j;
-
-            if( iscip.runSCIP() != Status::kSuccess )
-            {
-               for( j = nbatch - 1; j >= 0; --j )
-               {
-                  SCIP_CONSDATALINEAR consdata;
-
-                  cons = conss[inds[j]];
-                  ( SCIPconsGetDataLinear(cons, &consdata) );
-                  consdata.lhs = batch[j].lhs;
-                  consdata.rhs = batch[j].rhs;
-                  ( SCIPconsSetDataLinear(cons, &consdata) );
-               }
-            }
-            else
-            {
-               nchgsides += nbatch;
-               result = ModulStatus::kSuccessful;
-            }
-
-            nbatch = 0;
-         }
+      bool
+      initialize( ) override {
+         return false;
       }
 
-      SCIPfreeBufferArray(scip, &batch);
-      SCIPfreeBufferArray(scip, &inds);
-      return result;
-   }
-};
+      double get_linear_activity(SparseVectorView<double> &data, Solution<double> &solution) {
+         StableSum<double> sum;
+         for( int i = 0; i < data.getLength( ); i++ )
+            sum.add(solution.primal[data.getIndices()[i]] * data.getValues()[i]);
+         return sum.get();
+      }
+
+      ModulStatus
+      execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
+              const Timer &timer) override {
+
+         ModulStatus result = ModulStatus::kUnsuccesful;
+
+         auto res = Problem<double>(problem);
+         auto copy = Problem<double>(problem);
+
+         int batchsize = 1;
+         if( options.nbatches > 0 )
+         {
+            batchsize = options.nbatches - 1;
+
+            for( int i = problem.getNRows( ) - 1; i >= 0; --i )
+               if( problem.getRowFlags( )[ i ].test(RowFlag::kEquation))
+                  ++batchsize;
+
+            batchsize /= options.nbatches;
+         }
+
+         int nbatch = 0;
+
+         for( int row = copy.getNRows( ) - 1; row >= 0; --row )
+         {
+
+            if( copy.getRowFlags( )[ row ].test(RowFlag::kEquation))
+            {
+               ConstraintMatrix<double> &matrix = copy.getConstraintMatrix( );
+               auto data = matrix.getRowCoefficients(row);
+               bool integral = TRUE;
+
+               for( int j = 0; j < data.getLength( ); ++j )
+               {
+                  if( !copy.getColFlags( )[ data.getIndices( )[ j ]].test(ColFlag::kIntegral) ||
+                      !num.isIntegral(data.getValues( )[ j ]))
+                  {
+                     integral = FALSE;
+                     break;
+                  }
+               }
+               double fixedval;
+               if( !solution_exists )
+               {
+                  if( integral )
+                     fixedval = MAX(MIN(0.0, num.feasFloor(matrix.getRightHandSides( )[ row ])),
+                                    num.feasCeil(matrix.getLeftHandSides( )[ row ]));
+                  else
+                     fixedval = MAX(MIN(0.0, matrix.getRightHandSides( )[ row ]), matrix.getLeftHandSides( )[ row ]);
+               }
+               else
+               {
+                  if( integral )
+                     fixedval = num.round(get_linear_activity(data, solution));
+                  else
+                     fixedval = get_linear_activity(data, solution);
+               }
+
+               matrix.modifyLeftHandSide(row, num, fixedval );
+               matrix.modifyRightHandSide(row, num, fixedval );
+               nbatch++;
+               //TODO: check if this is automatically converted to an equation.
+            }
+
+            if( nbatch >= 1 && ( nbatch >= batchsize || row <= 0 ))
+            {
+               ScipInterface scipInterface { };
+               //TODO pass settings to SCIP
+               scipInterface.doSetUp(copy);
+
+               //TODO: maybe it would be better to store the reductions and apply them to the original problem so that a thrid problem does not need to be copied
+               if( scipInterface.runSCIP( ) != Status::kSuccess )
+                  copy = Problem<double> (res);
+               else
+               {
+                  res = Problem<double> (copy);
+                  nchgsides += nbatch;
+                  result = ModulStatus::kSuccessful;
+               }
+               nbatch = 0;
+            }
+         }
+
+         return result;
+      }
+   };
 
 
 } // namespace bugger

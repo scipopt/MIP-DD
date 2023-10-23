@@ -55,97 +55,97 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(ScipInterface &iscip, const BuggerOptions &options, const Timer &timer) override {
+      execute(Problem<double> &problem, Solution<double>& solution, bool solution_exists, const BuggerOptions &options, const Timer &timer) override {
 
-         SCIP *scip = iscip.getSCIP( );
-         SCIP_VAR *batch;
-         int *inds;
-         int batchsize;
-         int nbatch;
-         int i;
          ModulStatus result = ModulStatus::kUnsuccesful;
-
-         SCIP_VAR **vars;
-         int nvars;
-         SCIPgetOrigVarsData(scip, &vars, &nvars, nullptr, nullptr, nullptr, nullptr);
-
-         if( options.nbatches <= 0 )
-            batchsize = 1;
-         else
-         {
-            batchsize = options.nbatches - 1;
-
-            for( i = nvars - 1; i >= 0; --i )
-               if( SCIPisVariableAdmissible(scip, vars[ i ]))
-                  ++batchsize;
-
-            batchsize /= options.nbatches;
-         }
-
-         (SCIPallocBufferArray(scip, &inds, batchsize));
-         (SCIPallocBufferArray(scip, &batch, batchsize));
-         nbatch = 0;
-
-         for( i = nvars - 1; i >= 0; --i )
-         {
-            SCIP_VAR *var;
-
-            var = vars[ i ];
-
-            if( SCIPisVariableAdmissible(scip, var))
-            {
-               SCIP_Real fixedval;
-
-               inds[ nbatch ] = i;
-               batch[ nbatch ].data.original.origdom.lb = var->data.original.origdom.lb;
-               batch[ nbatch ].data.original.origdom.ub = var->data.original.origdom.ub;
-
-               if( !iscip.exists_solution( ))
-               {
-                  if( SCIPvarIsIntegral(var))
-                     fixedval = MAX(MIN(0.0, SCIPfloor(scip, var->data.original.origdom.ub)),
-                                    SCIPceil(scip, var->data.original.origdom.lb));
-                  else
-                     fixedval = MAX(MIN(0.0, var->data.original.origdom.ub), var->data.original.origdom.lb);
-               }
-               else
-               {
-                  if( SCIPvarIsIntegral(var))
-                     fixedval = SCIPround(scip, SCIPgetSolVal(scip, iscip.get_solution( ), var));
-                  else
-                     fixedval = SCIPgetSolVal(scip, iscip.get_solution( ), var);
-               }
-
-               var->data.original.origdom.lb = fixedval;
-               var->data.original.origdom.ub = fixedval;
-               ++nbatch;
-            }
-
-            if( nbatch >= 1 && ( nbatch >= batchsize || i <= 0 ))
-            {
-               int j;
-
-               if( iscip.runSCIP( ) != Status::kSuccess )
-               {
-                  for( j = nbatch - 1; j >= 0; --j )
-                  {
-                     var = vars[ inds[ j ]];
-                     var->data.original.origdom.lb = batch[ j ].data.original.origdom.lb;
-                     var->data.original.origdom.ub = batch[ j ].data.original.origdom.ub;
-                  }
-               }
-               else
-               {
-                  nfixedvars += nbatch;
-                  result = ModulStatus::kSuccessful;
-               }
-
-               nbatch = 0;
-            }
-         }
-
-         SCIPfreeBufferArray(scip, &batch);
-         SCIPfreeBufferArray(scip, &inds);
+//         SCIP *scip = iscip.getSCIP( );
+//         SCIP_VAR *batch;
+//         int *inds;
+//         int batchsize;
+//         int nbatch;
+//         int i;
+//
+//         SCIP_VAR **vars;
+//         int nvars;
+//         SCIPgetOrigVarsData(scip, &vars, &nvars, nullptr, nullptr, nullptr, nullptr);
+//
+//         if( options.nbatches <= 0 )
+//            batchsize = 1;
+//         else
+//         {
+//            batchsize = options.nbatches - 1;
+//
+//            for( i = nvars - 1; i >= 0; --i )
+//               if( SCIPisVariableAdmissible(scip, vars[ i ]))
+//                  ++batchsize;
+//
+//            batchsize /= options.nbatches;
+//         }
+//
+//         (SCIPallocBufferArray(scip, &inds, batchsize));
+//         (SCIPallocBufferArray(scip, &batch, batchsize));
+//         nbatch = 0;
+//
+//         for( i = nvars - 1; i >= 0; --i )
+//         {
+//            SCIP_VAR *var;
+//
+//            var = vars[ i ];
+//
+//            if( SCIPisVariableAdmissible(scip, var))
+//            {
+//               SCIP_Real fixedval;
+//
+//               inds[ nbatch ] = i;
+//               batch[ nbatch ].data.original.origdom.lb = var->data.original.origdom.lb;
+//               batch[ nbatch ].data.original.origdom.ub = var->data.original.origdom.ub;
+//
+//               if( !iscip.exists_solution( ))
+//               {
+//                  if( SCIPvarIsIntegral(var))
+//                     fixedval = MAX(MIN(0.0, SCIPfloor(scip, var->data.original.origdom.ub)),
+//                                    SCIPceil(scip, var->data.original.origdom.lb));
+//                  else
+//                     fixedval = MAX(MIN(0.0, var->data.original.origdom.ub), var->data.original.origdom.lb);
+//               }
+//               else
+//               {
+//                  if( SCIPvarIsIntegral(var))
+//                     fixedval = SCIPround(scip, SCIPgetSolVal(scip, iscip.get_solution( ), var));
+//                  else
+//                     fixedval = SCIPgetSolVal(scip, iscip.get_solution( ), var);
+//               }
+//
+//               var->data.original.origdom.lb = fixedval;
+//               var->data.original.origdom.ub = fixedval;
+//               ++nbatch;
+//            }
+//
+//            if( nbatch >= 1 && ( nbatch >= batchsize || i <= 0 ))
+//            {
+//               int j;
+//
+//               if( iscip.runSCIP( ) != Status::kSuccess )
+//               {
+//                  for( j = nbatch - 1; j >= 0; --j )
+//                  {
+//                     var = vars[ inds[ j ]];
+//                     var->data.original.origdom.lb = batch[ j ].data.original.origdom.lb;
+//                     var->data.original.origdom.ub = batch[ j ].data.original.origdom.ub;
+//                  }
+//               }
+//               else
+//               {
+//                  nfixedvars += nbatch;
+//                  result = ModulStatus::kSuccessful;
+//               }
+//
+//               nbatch = 0;
+//            }
+//         }
+//
+//         SCIPfreeBufferArray(scip, &batch);
+//         SCIPfreeBufferArray(scip, &inds);
 
          return result;
       }

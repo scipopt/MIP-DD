@@ -57,13 +57,15 @@ namespace bugger {
 
    private:
       BuggerOptions options;
-      ScipInterface scip;
+      Problem<double>& problem;
+      Solution<double>& solution;
+      bool solution_exists;
       Vec<std::unique_ptr<BuggerModul>>& modules;
       Vec<ModulStatus> results;
    public:
 
-      BuggerRun(ScipInterface &_scip, Vec<std::unique_ptr<BuggerModul>>& _modules)
-            : options({ }), scip(_scip), modules( _modules )
+      BuggerRun(Problem<double> &_problem, Solution<double>& _solution, bool _solution_exists, Vec<std::unique_ptr<BuggerModul>>& _modules)
+            : options({ }), problem(_problem), solution(_solution), solution_exists(_solution_exists), modules( _modules )
       {
       }
 
@@ -105,7 +107,7 @@ namespace bugger {
 
             for( int module = 0; module < modules.size(); module++ )
                //TODO: add more information about the fixings
-               results[module] = modules[module]->run(scip, options, timer);
+               results[module] = modules[module]->run(problem, solution, solution_exists, options, timer);
                //TODO:
             ModulStatus status = evaluateResults();
             if( status != ModulStatus::kSuccessful)
@@ -127,19 +129,19 @@ namespace bugger {
       void addDefaultModules( ) {
          using uptr = std::unique_ptr<BuggerModul>;
          //TODO define order
-         addPresolveMethod(uptr(new CoefficientModul( )));
-         addPresolveMethod(uptr(new ConsRoundModul( )));
-         addPresolveMethod(uptr(new ConstraintModul( )));
-//         addPresolveMethod(uptr(new FixingModul( )));
-         addPresolveMethod(uptr(new ObjectiveModul( )));
-         addPresolveMethod(uptr(new SideModul( )));
-         addPresolveMethod(uptr(new SettingModul( )));
-         addPresolveMethod(uptr(new VariableModul( )));
-         addPresolveMethod(uptr(new VarroundModul( )));
+         addModul(uptr(new CoefficientModul( )));
+         addModul(uptr(new ConsRoundModul( )));
+         addModul(uptr(new ConstraintModul( )));
+////         addModul(uptr(new FixingModul( )));
+         addModul(uptr(new ObjectiveModul( )));
+         addModul(uptr(new SideModul( )));
+         addModul(uptr(new SettingModul( )));
+         addModul(uptr(new VariableModul( )));
+         addModul(uptr(new VarroundModul( )));
       }
 
       void
-      addPresolveMethod(std::unique_ptr<BuggerModul> module) {
+      addModul(std::unique_ptr<BuggerModul> module) {
          modules.emplace_back( std::move( module ) );
       }
 
@@ -177,20 +179,36 @@ main(int argc, char *argv[]) {
    if( !optionsInfo.is_complete )
       return 0;
 
-   ScipInterface scip { };
-   auto code = scip.parse(optionsInfo.instance_file);
-   if(code != SCIP_OKAY)
+   //TODO: maybe use a static parser from scip to support more cases
+   auto prob = MpsParser<double>::loadProblem( optionsInfo.instance_file );
+
+   if( !prob )
    {
-      std::cerr << "Error thrown by SCIP.\n";
-      return 1;
+      fmt::print( "error loading problem {}\n", optionsInfo.instance_file );
+      return -1;
    }
-   scip.read_parameters(optionsInfo.scip_settings_file);
-   scip.read_solution(optionsInfo.solution_file);
+   auto problem = prob.get();
+   Solution<double> sol;
+   bool sol_exists = false;
+   if(!optionsInfo.solution_file.empty())
+   {
+      bool success = SolParser<double>::read( optionsInfo.solution_file, problem.getVariableNames(), sol );
+      if( !success )
+      {
+         fmt::print( "error loading problem {}\n", optionsInfo.instance_file );
+         return -1;
+      }
+      sol_exists = true;
+   }
+
+   //TODO: parse settings file and hand it down
+//   scip.read_parameters(optionsInfo.scip_settings_file);
 
    //TODO: why can this not be auto generated in the class?
    Vec<std::unique_ptr<BuggerModul>> list{};
-   BuggerRun bugger{scip, list};
+   BuggerRun bugger{problem, sol, sol_exists, list};
    bugger.addDefaultModules( );
+   //TODO scip gets deleted
 //   parse_parameters(optionsInfo, bugger.getParameters());
    double time = 0;
    Timer timer (time);

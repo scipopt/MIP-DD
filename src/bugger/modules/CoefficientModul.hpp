@@ -75,150 +75,150 @@ class CoefficientModul : public BuggerModul
 
 
    ModulStatus
-   execute( ScipInterface& iscip, const BuggerOptions& options, const Timer& timer ) override
+   execute(Problem<double> &problem, Solution<double>& solution, bool solution_exists, const BuggerOptions &options, const Timer &timer) override
    {
 
-      SCIP* scip = iscip.getSCIP();
-      SCIP_CONS** conss = SCIPgetOrigConss(scip);
-      SCIP_CONSDATALINEAR* batch;
       ModulStatus result = ModulStatus::kUnsuccesful;
-
-      int** inds;
-      int nconss = SCIPgetNOrigConss(scip);
-      int batchsize = 1;
-      if( options.nbatches > 0 )
-      {
-         batchsize = options.nbatches - 1;
-
-         for( int i = nconss - 1; i >= 0; --i )
-            if( SCIPisCoefficientAdmissible(scip, conss[i]) )
-               ++batchsize;
-         batchsize /= options.nbatches;
-      }
-
-      ( SCIPallocBufferArray(scip, &inds, batchsize) );
-      ( SCIPallocBufferArray(scip, &batch, batchsize) );
-      int nbatch = 0;
-
-      for( int  i = nconss - 1; i >= 0; --i )
-      {
-         SCIP_CONS* cons;
-
-         cons = conss[i];
-
-         if( SCIPisCoefficientAdmissible(scip, cons) )
-         {
-            SCIP_CONSDATALINEAR consdata;
-            int j;
-            int k;
-
-            ( SCIPconsGetDataLinear(cons, &consdata) );
-
-            for( j = 0, batch[nbatch].nvars = 0; j < consdata.nvars; ++j )
-               if( SCIPisGE(scip, consdata.vars[j]->data.original.origdom.lb, consdata.vars[j]->data.original.origdom.ub) )
-                  ++batch[nbatch].nvars;
-
-            ( SCIPallocBufferArray(scip, &inds[nbatch], batch[nbatch].nvars + 1) );
-            ( SCIPallocBufferArray(scip, &batch[nbatch].vars, batch[nbatch].nvars) );
-            ( SCIPallocBufferArray(scip, &batch[nbatch].vals, batch[nbatch].nvars) );
-            inds[nbatch][0] = i;
-            batch[nbatch].lhs = consdata.lhs;
-            batch[nbatch].rhs = consdata.rhs;
-
-            for( j = consdata.nvars - 1, k = 0; k < batch[nbatch].nvars; --j )
-            {
-               if( SCIPisGE(scip, consdata.vars[j]->data.original.origdom.lb, consdata.vars[j]->data.original.origdom.ub) )
-               {
-                  SCIP_Real fixedval;
-
-                  inds[nbatch][k + 1] = j;
-                  batch[nbatch].vars[k] = consdata.vars[j];
-                  batch[nbatch].vals[k] = consdata.vals[j];
-
-                  if( iscip.exists_solution() )
-                  {
-                     if( SCIPvarIsIntegral(consdata.vars[j]) )
-                        fixedval = MAX(MIN(0.0, SCIPfloor(scip, consdata.vars[j]->data.original.origdom.ub)), SCIPceil(scip, consdata.vars[j]->data.original.origdom.lb));
-                     else
-                        fixedval = MAX(MIN(0.0, consdata.vars[j]->data.original.origdom.ub), consdata.vars[j]->data.original.origdom.lb);
-                  }
-                  else
-                  {
-                     if( SCIPvarIsIntegral(consdata.vars[j]) )
-                        fixedval = SCIPround(scip, SCIPgetSolVal(scip, iscip.get_solution(), consdata.vars[j]));
-                     else
-                        fixedval = SCIPgetSolVal(scip, iscip.get_solution(), consdata.vars[j]);
-                  }
-
-                  if( !SCIPisInfinity(scip, -consdata.lhs) )
-                     consdata.lhs -= consdata.vals[j] * fixedval;
-
-                  if( !SCIPisInfinity(scip, consdata.rhs) )
-                     consdata.rhs -= consdata.vals[j] * fixedval;
-
-                  --consdata.nvars;
-                  consdata.vars[j] = consdata.vars[consdata.nvars];
-                  consdata.vals[j] = consdata.vals[consdata.nvars];
-                  ++k;
-               }
-            }
-
-            ( SCIPconsSetDataLinear(cons, &consdata) );
-            ++nbatch;
-         }
-
-         if( nbatch >= 1 && ( nbatch >= batchsize || i <= 0 ) )
-         {
-            int j;
-            int k;
-
-            if( iscip.runSCIP() != Status::kSuccess )
-            {
-               for( j = nbatch - 1; j >= 0; --j )
-               {
-                  SCIP_CONSDATALINEAR consdata;
-
-                  cons = conss[inds[j][0]];
-                  ( SCIPconsGetDataLinear(cons, &consdata) );
-                  consdata.lhs = batch[j].lhs;
-                  consdata.rhs = batch[j].rhs;
-
-                  for( k = batch[j].nvars - 1; k >= 0; --k )
-                  {
-                     consdata.vars[inds[j][k + 1]] = batch[j].vars[k];
-                     consdata.vals[inds[j][k + 1]] = batch[j].vals[k];
-                     ++consdata.nvars;
-                  }
-
-                  ( SCIPconsSetDataLinear(cons, &consdata) );
-               }
-            }
-            else
-            {
-               for( j = 0; j < nbatch; ++j )
-               {
-                  for( k = 0; k < batch[j].nvars; ++k )
-                  {
-                     ( SCIPreleaseVar(scip, &batch[j].vars[k]) );
-                     nchgcoefs++;
-                  }
-               }
-               result = ModulStatus::kSuccessful;
-            }
-
-            for( j = nbatch - 1; j >= 0; --j )
-            {
-               SCIPfreeBufferArray(scip, &batch[j].vals);
-               SCIPfreeBufferArray(scip, &batch[j].vars);
-               SCIPfreeBufferArray(scip, &inds[j]);
-            }
-
-            nbatch = 0;
-         }
-      }
-
-      SCIPfreeBufferArray(scip, &batch);
-      SCIPfreeBufferArray(scip, &inds);
+//      SCIP* scip = iscip.getSCIP();
+//      SCIP_CONS** conss = SCIPgetOrigConss(scip);
+//      SCIP_CONSDATALINEAR* batch;
+//
+//      int** inds;
+//      int nconss = SCIPgetNOrigConss(scip);
+//      int batchsize = 1;
+//      if( options.nbatches > 0 )
+//      {
+//         batchsize = options.nbatches - 1;
+//
+//         for( int i = nconss - 1; i >= 0; --i )
+//            if( SCIPisCoefficientAdmissible(scip, conss[i]) )
+//               ++batchsize;
+//         batchsize /= options.nbatches;
+//      }
+//
+//      ( SCIPallocBufferArray(scip, &inds, batchsize) );
+//      ( SCIPallocBufferArray(scip, &batch, batchsize) );
+//      int nbatch = 0;
+//
+//      for( int  i = nconss - 1; i >= 0; --i )
+//      {
+//         SCIP_CONS* cons;
+//
+//         cons = conss[i];
+//
+//         if( SCIPisCoefficientAdmissible(scip, cons) )
+//         {
+//            SCIP_CONSDATALINEAR consdata;
+//            int j;
+//            int k;
+//
+//            ( SCIPconsGetDataLinear(cons, &consdata) );
+//
+//            for( j = 0, batch[nbatch].nvars = 0; j < consdata.nvars; ++j )
+//               if( SCIPisGE(scip, consdata.vars[j]->data.original.origdom.lb, consdata.vars[j]->data.original.origdom.ub) )
+//                  ++batch[nbatch].nvars;
+//
+//            ( SCIPallocBufferArray(scip, &inds[nbatch], batch[nbatch].nvars + 1) );
+//            ( SCIPallocBufferArray(scip, &batch[nbatch].vars, batch[nbatch].nvars) );
+//            ( SCIPallocBufferArray(scip, &batch[nbatch].vals, batch[nbatch].nvars) );
+//            inds[nbatch][0] = i;
+//            batch[nbatch].lhs = consdata.lhs;
+//            batch[nbatch].rhs = consdata.rhs;
+//
+//            for( j = consdata.nvars - 1, k = 0; k < batch[nbatch].nvars; --j )
+//            {
+//               if( SCIPisGE(scip, consdata.vars[j]->data.original.origdom.lb, consdata.vars[j]->data.original.origdom.ub) )
+//               {
+//                  SCIP_Real fixedval;
+//
+//                  inds[nbatch][k + 1] = j;
+//                  batch[nbatch].vars[k] = consdata.vars[j];
+//                  batch[nbatch].vals[k] = consdata.vals[j];
+//
+//                  if( iscip.exists_solution() )
+//                  {
+//                     if( SCIPvarIsIntegral(consdata.vars[j]) )
+//                        fixedval = MAX(MIN(0.0, SCIPfloor(scip, consdata.vars[j]->data.original.origdom.ub)), SCIPceil(scip, consdata.vars[j]->data.original.origdom.lb));
+//                     else
+//                        fixedval = MAX(MIN(0.0, consdata.vars[j]->data.original.origdom.ub), consdata.vars[j]->data.original.origdom.lb);
+//                  }
+//                  else
+//                  {
+//                     if( SCIPvarIsIntegral(consdata.vars[j]) )
+//                        fixedval = SCIPround(scip, SCIPgetSolVal(scip, iscip.get_solution(), consdata.vars[j]));
+//                     else
+//                        fixedval = SCIPgetSolVal(scip, iscip.get_solution(), consdata.vars[j]);
+//                  }
+//
+//                  if( !SCIPisInfinity(scip, -consdata.lhs) )
+//                     consdata.lhs -= consdata.vals[j] * fixedval;
+//
+//                  if( !SCIPisInfinity(scip, consdata.rhs) )
+//                     consdata.rhs -= consdata.vals[j] * fixedval;
+//
+//                  --consdata.nvars;
+//                  consdata.vars[j] = consdata.vars[consdata.nvars];
+//                  consdata.vals[j] = consdata.vals[consdata.nvars];
+//                  ++k;
+//               }
+//            }
+//
+//            ( SCIPconsSetDataLinear(cons, &consdata) );
+//            ++nbatch;
+//         }
+//
+//         if( nbatch >= 1 && ( nbatch >= batchsize || i <= 0 ) )
+//         {
+//            int j;
+//            int k;
+//
+//            if( iscip.runSCIP() != Status::kSuccess )
+//            {
+//               for( j = nbatch - 1; j >= 0; --j )
+//               {
+//                  SCIP_CONSDATALINEAR consdata;
+//
+//                  cons = conss[inds[j][0]];
+//                  ( SCIPconsGetDataLinear(cons, &consdata) );
+//                  consdata.lhs = batch[j].lhs;
+//                  consdata.rhs = batch[j].rhs;
+//
+//                  for( k = batch[j].nvars - 1; k >= 0; --k )
+//                  {
+//                     consdata.vars[inds[j][k + 1]] = batch[j].vars[k];
+//                     consdata.vals[inds[j][k + 1]] = batch[j].vals[k];
+//                     ++consdata.nvars;
+//                  }
+//
+//                  ( SCIPconsSetDataLinear(cons, &consdata) );
+//               }
+//            }
+//            else
+//            {
+//               for( j = 0; j < nbatch; ++j )
+//               {
+//                  for( k = 0; k < batch[j].nvars; ++k )
+//                  {
+//                     ( SCIPreleaseVar(scip, &batch[j].vars[k]) );
+//                     nchgcoefs++;
+//                  }
+//               }
+//               result = ModulStatus::kSuccessful;
+//            }
+//
+//            for( j = nbatch - 1; j >= 0; --j )
+//            {
+//               SCIPfreeBufferArray(scip, &batch[j].vals);
+//               SCIPfreeBufferArray(scip, &batch[j].vars);
+//               SCIPfreeBufferArray(scip, &inds[j]);
+//            }
+//
+//            nbatch = 0;
+//         }
+//      }
+//
+//      SCIPfreeBufferArray(scip, &batch);
+//      SCIPfreeBufferArray(scip, &inds);
       return result;
    }
 };
