@@ -119,8 +119,8 @@ namespace bugger {
       void printStats(){
          //TODO: move msg
             Message msg {};
-            msg.info( "\n {:>18} {:>12} {:>18} {:>18} \n", "modules",
-                      "nb calls", "success calls(%)", "execution time(s)" );
+            msg.info( "\n {:>18} {:>12} {:>12} {:>18} {:>18} \n", "modules",
+                      "nb calls", "changes", "success calls(%)", "execution time(s)" );
             for(const auto & module : modules)
                module->printStats( msg );
 

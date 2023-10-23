@@ -130,7 +130,8 @@ namespace bugger {
       void
       printStats(const Message &message ) {
          double success =ncalls == 0 ? 0.0 : ( double(nsuccessCall) / double(ncalls)) * 100.0;
-         message.info(" {:>18} {:>12} {:>18.1f} {:>18.3f}\n", name, ncalls, success, execTime);
+         int changes = nchgcoefs+ nfixedvars+ nchgsides+ naggrvars;
+         message.info(" {:>18} {:>12} {:>12} {:>18.1f} {:>18.3f}\n", name, ncalls, changes, success, execTime);
       }
 
 
