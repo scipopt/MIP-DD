@@ -31,7 +31,7 @@ namespace bugger {
 
    class SideModul : public BuggerModul {
    public:
-      SideModul( const Message& _msg ) : BuggerModul( ) {
+      SideModul(const Message &_msg) : BuggerModul( ) {
          this->setName("side");
          this->msg = _msg;
       }
@@ -50,28 +50,28 @@ namespace bugger {
          ModulStatus result = ModulStatus::kUnsuccesful;
 
          auto copy = Problem<double>(problem);
-         Vec<std::pair<int, double>> applied_reductions{};
-         Vec<std::pair<int, double>> batches{};
+         Vec<std::pair<int, double>> applied_reductions { };
+         Vec<std::pair<int, double>> batches { };
 
          int batchsize = 1;
          if( options.nbatches > 0 )
          {
             batchsize = options.nbatches - 1;
 
-            for( int i = problem.getNRows( ) - 1; i >= 0; --i )
-               if( !problem.getRowFlags( )[ i ].test(RowFlag::kEquation))
+            for( int row = problem.getNRows( ) - 1; row >= 0; --row )
+               if( isSideAdmissable(problem, row))
                   ++batchsize;
 
             batchsize /= options.nbatches;
          }
 
          int nbatch = 0;
-         batches.clear();
+         batches.clear( );
          batches.reserve(batchsize);
          for( int row = copy.getNRows( ) - 1; row >= 0; --row )
          {
 
-            if( !copy.getRowFlags( )[ row ].test(RowFlag::kEquation))
+            if( isSideAdmissable(copy, row))
             {
                ConstraintMatrix<double> &matrix = copy.getConstraintMatrix( );
                auto data = matrix.getRowCoefficients(row);
@@ -103,8 +103,8 @@ namespace bugger {
                      fixedval = get_linear_activity(data, solution);
                }
 
-               matrix.modifyLeftHandSide(row, num, fixedval );
-               matrix.modifyRightHandSide(row, num, fixedval );
+               matrix.modifyLeftHandSide(row, num, fixedval);
+               matrix.modifyRightHandSide(row, num, fixedval);
                batches.emplace_back(row, fixedval);
                nbatch++;
             }
@@ -116,13 +116,13 @@ namespace bugger {
                scipInterface.doSetUp(copy);
 
 
-               if( scipInterface.runSCIP( ) != Status::kSuccess )
+               if( scipInterface.run(msg) != Status::kSuccess )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions )
                   {
-                     copy.getConstraintMatrix().modifyLeftHandSide(item.first, num, item.second );
-                     copy.getConstraintMatrix().modifyRightHandSide(item.first, num, item.second );
+                     copy.getConstraintMatrix( ).modifyLeftHandSide(item.first, num, item.second);
+                     copy.getConstraintMatrix( ).modifyRightHandSide(item.first, num, item.second);
                   }
                }
                else
@@ -131,7 +131,7 @@ namespace bugger {
                   for( const auto &item: batches )
                      applied_reductions.push_back(item);
                   nchgsides += nbatch;
-                  batches.clear();
+                  batches.clear( );
                   result = ModulStatus::kSuccessful;
                }
                nbatch = 0;
@@ -140,6 +140,11 @@ namespace bugger {
 
          problem = Problem<double>(copy);
          return result;
+      }
+
+      bool isSideAdmissable(Problem<double> &copy, int row) const
+      {
+         return !copy.getRowFlags( )[ row ].test(RowFlag::kRedundant) && !copy.getRowFlags( )[ row ].test(RowFlag::kEquation);
       }
    };
 

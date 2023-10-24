@@ -45,7 +45,7 @@ class ObjectiveModul : public BuggerModul
       return false;
    }
 
-   SCIP_Bool SCIPisObjectiveAdmissible( Problem<double>& problem, int var )
+   SCIP_Bool isObjectiveAdmissible(Problem<double>& problem, int var )
    {
       /* preserve restricted variables because they might be deleted anyway */
       return !num.isZero(problem.getObjective().coefficients[var]) && num.isLT(problem.getLowerBounds()[var], problem.getUpperBounds()[var]);
@@ -66,7 +66,7 @@ class ObjectiveModul : public BuggerModul
       {
          batchsize = options.nbatches - 1;
          for( int i = problem.getNCols() - 1; i >= 0; --i )
-            if( SCIPisObjectiveAdmissible(problem, i) )
+            if( isObjectiveAdmissible(problem, i) )
                ++batchsize;
          batchsize /= options.nbatches;
       }
@@ -76,7 +76,7 @@ class ObjectiveModul : public BuggerModul
 
       for( int var = copy.getNCols() - 1; var >= 0; --var )
       {
-         if( SCIPisObjectiveAdmissible(copy, var))
+         if( isObjectiveAdmissible(copy, var))
          {
             //TODO updating does not work in debug mode
 //            if( iscip.exists_solution() )
@@ -90,7 +90,7 @@ class ObjectiveModul : public BuggerModul
                ScipInterface scipInterface { };
                //TODO pass settings to SCIP
                scipInterface.doSetUp(copy);
-               if( scipInterface.runSCIP( ) != Status::kSuccess )
+               if( scipInterface.run(msg) != Status::kSuccess )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions )

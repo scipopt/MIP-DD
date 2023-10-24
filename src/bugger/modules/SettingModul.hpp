@@ -51,7 +51,7 @@ class SettingModul : public BuggerModul
       return false;
    }
 
-   SCIP_Bool SCIPisSettingAdmissible( SCIP_PARAM* param )
+   SCIP_Bool isSettingAdmissible(SCIP_PARAM* param )
    {
       /* keep reading and writing settings because input and output is not monitored */
       return ( param->isfixed || !SCIPparamIsDefault(param) )

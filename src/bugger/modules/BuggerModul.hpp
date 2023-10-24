@@ -67,8 +67,9 @@ namespace bugger {
          nfixedvars = 0;
          nchgsides = 0;
          naggrvars = 0;
+         ndeletedrows = 0;
          //TODO: double init from outside to be configurable
-         num = {};
+         num = { };
       }
 
       virtual ~BuggerModul( ) = default;
@@ -94,7 +95,8 @@ namespace bugger {
       }
 
       ModulStatus
-      run(Problem<double> &problem, Solution<double>& solution, bool solution_exists, const BuggerOptions &options, const Timer &timer) {
+      run(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
+          const Timer &timer) {
          if( !enabled || delayed )
             return ModulStatus::kDidNotRun;
 
@@ -105,7 +107,7 @@ namespace bugger {
          }
 
          ++ncalls;
-         msg.info( "module {} running\n", name);
+         msg.info("module {} running\n", name);
 #ifdef BUGGER_TBB
          auto start = tbb::tick_count::now( );
 #else
@@ -113,7 +115,7 @@ namespace bugger {
 #endif
          ModulStatus result = execute(problem, solution, solution_exists, options, timer);
 #ifdef BUGGER_TBB
-         if( result == ModulStatus::kSuccessful)
+         if( result == ModulStatus::kSuccessful )
             nsuccessCall++;
          auto end = tbb::tick_count::now( );
          auto duration = end - start;
@@ -123,14 +125,14 @@ namespace bugger {
          execTime = execTime + std::chrono::duration_cast<std::chrono::milliseconds>(
                                    end- start ).count()/1000;
 #endif
-         msg.info( " {} finished\n", name);
+         msg.info("module {} finished\n", name);
          return result;
       }
 
       void
-      printStats(const Message &message ) {
-         double success =ncalls == 0 ? 0.0 : ( double(nsuccessCall) / double(ncalls)) * 100.0;
-         int changes = nchgcoefs+ nfixedvars+ nchgsides+ naggrvars;
+      printStats(const Message &message) {
+         double success = ncalls == 0 ? 0.0 : ( double(nsuccessCall) / double(ncalls)) * 100.0;
+         int changes = nchgcoefs + nfixedvars + nchgsides + naggrvars + ndeletedrows;
          message.info(" {:>18} {:>12} {:>12} {:>18.1f} {:>18.3f}\n", name, ncalls, changes, success, execTime);
       }
 
@@ -170,12 +172,13 @@ namespace bugger {
       double get_linear_activity(SparseVectorView<double> &data, Solution<double> &solution) {
          StableSum<double> sum;
          for( int i = 0; i < data.getLength( ); i++ )
-            sum.add(solution.primal[data.getIndices()[i]] * data.getValues()[i]);
-         return sum.get();
+            sum.add(solution.primal[ data.getIndices( )[ i ]] * data.getValues( )[ i ]);
+         return sum.get( );
       }
 
       virtual ModulStatus
-      execute(Problem<double> &problem, Solution<double>& solution, bool solution_exists, const BuggerOptions &options, const Timer &timer) = 0;
+      execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
+              const Timer &timer) = 0;
 
       void
       setName(const std::string &value) {
@@ -218,7 +221,7 @@ namespace bugger {
       std::string name;
       double execTime;
       bool enabled;
-      bool delayed{};
+      bool delayed { };
       unsigned int ncalls;
       unsigned int nsuccessCall;
       unsigned int skip;
@@ -227,6 +230,7 @@ namespace bugger {
       int nfixedvars;
       int nchgsides;
       int naggrvars;
+      int ndeletedrows;
       Num<double> num;
       Message msg;
    };

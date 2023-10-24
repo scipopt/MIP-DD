@@ -41,7 +41,7 @@ namespace bugger {
          return false;
       }
 
-      SCIP_Bool SCIPisVariableAdmissible(const Problem<double>& problem, int var) {
+      SCIP_Bool isVariableAdmissible(const Problem<double>& problem, int var) {
          /* keep restricted variables because they might be already fixed */
          return problem.getColFlags()[var].test(ColFlag::kLbInf) || problem.getColFlags()[var].test(ColFlag::kUbInf) ||
             num.isLT(problem.getLowerBounds()[var], problem.getUpperBounds()[var]);
@@ -62,7 +62,7 @@ namespace bugger {
             batchsize = options.nbatches - 1;
 
             for( int i = problem.getNCols() - 1; i >= 0; --i )
-               if( SCIPisVariableAdmissible(problem, i))
+               if( isVariableAdmissible(problem, i))
                   ++batchsize;
 
             batchsize /= options.nbatches;
@@ -72,7 +72,7 @@ namespace bugger {
 
          for( int var = copy.getNCols() - 1; var >= 0; --var )
          {
-            if( SCIPisVariableAdmissible(copy, var))
+            if( isVariableAdmissible(copy, var))
             {
                SCIP_Real fixedval;
 
@@ -102,7 +102,7 @@ namespace bugger {
                ScipInterface scipInterface { };
                //TODO pass settings to SCIP
                scipInterface.doSetUp(copy);
-               if( scipInterface.runSCIP( ) != Status::kSuccess )
+               if( scipInterface.run(msg) != Status::kSuccess )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions ){

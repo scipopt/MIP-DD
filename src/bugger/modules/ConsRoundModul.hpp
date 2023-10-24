@@ -41,7 +41,9 @@ namespace bugger {
          return false;
       }
 
-      SCIP_Bool SCIPisConsroundAdmissible(Problem<double> &problem, int row) {
+      SCIP_Bool isConsroundAdmissible(Problem<double> &problem, int row) {
+         if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant))
+            return false;
          if( problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf) ||
              problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf))
             return true;
@@ -79,7 +81,7 @@ namespace bugger {
          {
             batchsize = options.nbatches - 1;
             for( int i = 0; i < problem.getNRows( ); ++i )
-               if( SCIPisConsroundAdmissible(problem, i))
+               if( isConsroundAdmissible(problem, i))
                   ++batchsize;
             batchsize /= options.nbatches;
          }
@@ -88,7 +90,7 @@ namespace bugger {
          int nbatch = 0;
          for( int row = 0; row < copy.getNRows( ); ++row )
          {
-            if( SCIPisConsroundAdmissible(copy, row))
+            if( isConsroundAdmissible(copy, row))
             {
                auto data = copy.getConstraintMatrix( ).getRowCoefficients(row);
 
@@ -137,7 +139,7 @@ namespace bugger {
                ScipInterface scipInterface { };
                //TODO pass settings to SCIP
                scipInterface.doSetUp(copy);
-               if( scipInterface.runSCIP( ) != Status::kSuccess )
+               if( scipInterface.run(msg) != Status::kSuccess )
                {
                   copy = Problem<double>(problem);
                   SmallVec<int, 32> buffer;

@@ -40,7 +40,7 @@ namespace bugger {
          return false;
       }
 
-      bool SCIPisVarroundAdmissible(const Problem<double> &problem, int var) {
+      bool isVarroundAdmissible(const Problem<double> &problem, int var) {
          /* leave sparkling or fixed variables */
          double obj = problem.getObjective( ).coefficients[ var ];
          return !num.isIntegral(obj) || problem.getColFlags( )[ var ].test(ColFlag::kUbInf) ||
@@ -69,7 +69,7 @@ namespace bugger {
          {
             batchsize = options.nbatches - 1;
             for( int i = 0; i < problem.getNCols( ); ++i )
-               if( SCIPisVarroundAdmissible(problem, i))
+               if( isVarroundAdmissible(problem, i))
                   ++batchsize;
 
             batchsize /= options.nbatches;
@@ -78,7 +78,7 @@ namespace bugger {
          int nbatch = 0;
          for( int var = 0; var < copy.getNCols( ); ++var )
          {
-            if( SCIPisVarroundAdmissible(copy, var))
+            if( isVarroundAdmissible(copy, var))
             {
                if( !num.isIntegral(copy.getObjective( ).coefficients[ var ]))
                {
@@ -123,7 +123,7 @@ namespace bugger {
                ScipInterface scipInterface { };
                //TODO pass settings to SCIP
                scipInterface.doSetUp(copy);
-               if( scipInterface.runSCIP( ) != Status::kSuccess )
+               if( scipInterface.run(msg) != Status::kSuccess )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_lb )

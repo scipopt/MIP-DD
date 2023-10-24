@@ -86,35 +86,35 @@ namespace bugger {
 
          vars.resize( problem.getNCols() );
 
-         for( int i = 0; i < ncols; ++i )
+         for( int col = 0; col < ncols; ++col )
          {
             SCIP_VAR* var;
-            assert( !domains.flags[i].test( ColFlag::kInactive ) );
+            assert( !domains.flags[col].test(ColFlag::kInactive ) );
 
-            SCIP_Real lb = domains.flags[i].test( ColFlag::kLbInf )
+            SCIP_Real lb = domains.flags[col].test(ColFlag::kLbInf )
                            ? -SCIPinfinity( scip )
-                           : SCIP_Real( domains.lower_bounds[i] );
-            SCIP_Real ub = domains.flags[i].test( ColFlag::kUbInf )
+                           : SCIP_Real( domains.lower_bounds[col] );
+            SCIP_Real ub = domains.flags[col].test(ColFlag::kUbInf )
                            ? SCIPinfinity( scip )
-                           : SCIP_Real( domains.upper_bounds[i] );
+                           : SCIP_Real( domains.upper_bounds[col] );
             SCIP_VARTYPE type;
-            if( domains.flags[i].test( ColFlag::kIntegral ) )
+            if( domains.flags[col].test(ColFlag::kIntegral ) )
             {
                if( lb == 0  && ub ==  1 )
                   type = SCIP_VARTYPE_BINARY;
                else
                   type = SCIP_VARTYPE_INTEGER;
             }
-            else if( domains.flags[i].test( ColFlag::kImplInt ) )
+            else if( domains.flags[col].test(ColFlag::kImplInt ) )
                type = SCIP_VARTYPE_IMPLINT;
             else
                type = SCIP_VARTYPE_CONTINUOUS;
 
             SCIP_CALL( SCIPcreateVarBasic(
-                  scip, &var, varNames[i].c_str(), lb, ub,
-                  SCIP_Real( obj.coefficients[i] ), type ) );
+                  scip, &var, varNames[col].c_str(), lb, ub,
+                  SCIP_Real( obj.coefficients[col] ), type ) );
             SCIP_CALL( SCIPaddVar( scip, var ) );
-            vars[i] = var;
+            vars[col] = var;
 
             SCIP_CALL( SCIPreleaseVar( scip, &var ) );
          }
@@ -124,19 +124,21 @@ namespace bugger {
          consvars.resize( problem.getNCols() );
          consvals.resize( problem.getNCols() );
 
-         for( int i = 0; i < nrows; ++i )
+         for( int row = 0; row < nrows; ++row )
          {
+            if(problem.getRowFlags()[row].test(RowFlag::kRedundant))
+               continue;
             SCIP_CONS* cons;
 
-            auto rowvec = consMatrix.getRowCoefficients( i );
+            auto rowvec = consMatrix.getRowCoefficients(row );
             const double* vals = rowvec.getValues();
             const int* inds = rowvec.getIndices();
-            SCIP_Real lhs = rflags[i].test( RowFlag::kLhsInf )
+            SCIP_Real lhs = rflags[row].test(RowFlag::kLhsInf )
                             ? -SCIPinfinity( scip )
-                            : SCIP_Real( lhs_values[i] );
-            SCIP_Real rhs = rflags[i].test( RowFlag::kRhsInf )
+                            : SCIP_Real( lhs_values[row] );
+            SCIP_Real rhs = rflags[row].test(RowFlag::kRhsInf )
                             ? SCIPinfinity( scip )
-                            : SCIP_Real( rhs_values[i] );
+                            : SCIP_Real( rhs_values[row] );
 
             for( int k = 0; k != rowvec.getLength(); ++k )
             {
@@ -145,7 +147,7 @@ namespace bugger {
             }
 
             SCIP_CALL( SCIPcreateConsBasicLinear(
-                  scip, &cons, consNames[i].c_str(), rowvec.getLength(),
+                  scip, &cons, consNames[row].c_str(), rowvec.getLength(),
                   consvars.data(), consvals.data(), lhs, rhs ) );
             SCIP_CALL( SCIPaddCons( scip, cons ) );
             SCIP_CALL( SCIPreleaseCons( scip, &cons ) );
@@ -160,7 +162,8 @@ namespace bugger {
 
       SCIP* getSCIP(){ return scip; }
 
-      void
+      //TODO add solution
+      SCIP_SOL*
       add_solution(Solution<double> solution)
       {
          SCIP_SOL * sol;
@@ -170,17 +173,16 @@ namespace bugger {
             retcode = SCIPsetSolVal(scip, sol, vars[ i ], solution.primal[ i ]);
             assert(retcode == SCIP_OKAY);
          }
-         this->solution = sol;
+         return sol;
       }
 
    /** tests the given SCIP instance in a copy and reports detected bug; if a primal bug solution is provided, the
     *  resulting dual bound is also checked; on UNIX platforms aborts are caught, hence assertions can be enabled here
     */
-      Status runSCIP() {
+      Status run(const Message& msg ) {
          SCIP *test = nullptr;
          SCIP_HASHMAP *varmap = nullptr;
          SCIP_HASHMAP *consmap = nullptr;
-         int i;
 
          //TODO: overload with command line paramter
 #ifdef CATCH_ASSERT_BUG
@@ -212,10 +214,10 @@ namespace bugger {
             SCIPhashmapFree(&consmap);
          if( varmap != nullptr )
             SCIPhashmapFree(&varmap);
-         SCIPinfoMessage(scip, nullptr, "\n");
+         msg.info("\tSCIP solved mps with return code {}\n", retcode);
 
          // TODO: what are passcodes doing?
-//         for( i = 0; i < presoldata->npasscodes; ++i )
+//         for( int i = 0; i < presoldata->npasscodes; ++i )
 //            if( retcode == presoldata->passcodes[i] )
 //               return 0;
 
@@ -225,12 +227,11 @@ namespace bugger {
       /** creates a SCIP instance test, variable map varmap, and constraint map consmap, copies setting, problem, and
        *  solutions apart from the primal bug solution, tries to solve, and reports detected bug
        */
-      Status trySCIP(SCIP **test, SCIP_HASHMAP **varmap, SCIP_HASHMAP **consmap) {
+      Status trySCIP(SCIP **test, SCIP_HASHMAP **varmap, SCIP_HASHMAP **consmap ) {
          SCIP_Real reference = SCIPgetObjsense(scip) * SCIPinfinity(scip);
          SCIP_Bool valid = FALSE;
          SCIP_SOL **sols;
          int nsols;
-         int i;
 
          sols = SCIPgetSols(scip);
          nsols = SCIPgetNSols(scip);
@@ -251,7 +252,8 @@ namespace bugger {
          if( !valid )
             SCIP_CALL_ABORT(SCIP_INVALIDDATA);
 
-         for( i = 0; i < nsols; ++i )
+         //TODO fix this
+         for( int i = 0; i < nsols; ++i )
          {
             SCIP_SOL *sol;
             sol = sols[ i ];

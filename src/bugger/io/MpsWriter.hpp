@@ -87,7 +87,9 @@ struct MpsWriter
       bool hasRangedRow = false;
       for( int i = 0; i < consmatrix.getNRows(); ++i )
       {
-         assert( !consmatrix.isRowRedundant( i ) );
+         //TODO this was original an assert so the nnz ana the ncols might not be correct anymore
+         if( consmatrix.isRowRedundant( i ) )
+            continue;
          char type;
 
          if( row_flags[i].test( RowFlag::kLhsInf ) &&
