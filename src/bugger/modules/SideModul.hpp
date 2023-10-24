@@ -31,8 +31,9 @@ namespace bugger {
 
    class SideModul : public BuggerModul {
    public:
-      SideModul( ) : BuggerModul( ) {
+      SideModul( const Message& _msg ) : BuggerModul( ) {
          this->setName("side");
+         this->msg = _msg;
       }
 
       bool

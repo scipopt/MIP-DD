@@ -39,9 +39,10 @@ namespace bugger
 class FixingModul : public BuggerModul
 {
  public:
-   FixingModul() : BuggerModul()
+   FixingModul( const Message& _msg ) : BuggerModul()
    {
       this->setName( "fixing" );
+      this->msg = _msg;
    }
 
    bool

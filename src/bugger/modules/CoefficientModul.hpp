@@ -33,9 +33,10 @@ namespace bugger
 class CoefficientModul : public BuggerModul
 {
  public:
-   CoefficientModul() : BuggerModul()
+   CoefficientModul(const Message& _msg) : BuggerModul()
    {
       this->setName( "coefficient" );
+      this->msg = _msg;
    }
 
    bool

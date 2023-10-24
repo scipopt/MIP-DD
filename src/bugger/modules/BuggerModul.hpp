@@ -105,7 +105,7 @@ namespace bugger {
          }
 
          ++ncalls;
-
+         msg.info( "module {} running\n", name);
 #ifdef BUGGER_TBB
          auto start = tbb::tick_count::now( );
 #else
@@ -123,7 +123,7 @@ namespace bugger {
          execTime = execTime + std::chrono::duration_cast<std::chrono::milliseconds>(
                                    end- start ).count()/1000;
 #endif
-
+         msg.info( " {} finished\n", name);
          return result;
       }
 
@@ -228,6 +228,7 @@ namespace bugger {
       int nchgsides;
       int naggrvars;
       Num<double> num;
+      Message msg;
    };
 
 } // namespace bugger

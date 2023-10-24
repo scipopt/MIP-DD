@@ -33,9 +33,10 @@ namespace bugger
 class ObjectiveModul : public BuggerModul
 {
  public:
-   ObjectiveModul() : BuggerModul()
+   ObjectiveModul(const Message& _msg) : BuggerModul()
    {
       this->setName( "objective" );
+      this->msg = _msg;
    }
 
    bool

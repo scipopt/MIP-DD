@@ -38,9 +38,10 @@ namespace bugger
 class ConstraintModul : public BuggerModul
 {
  public:
-   ConstraintModul() : BuggerModul()
+   ConstraintModul( const Message& _msg ) : BuggerModul()
    {
       this->setName( "constraint" );
+      this->msg = _msg;
    }
 
    bool

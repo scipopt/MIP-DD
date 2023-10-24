@@ -31,8 +31,9 @@ namespace bugger {
 
    class ConsRoundModul : public BuggerModul {
    public:
-      ConsRoundModul( ) : BuggerModul( ) {
+      ConsRoundModul( const Message& _msg ) : BuggerModul( ) {
          this->setName("consround");
+         this->msg = _msg;
       }
 
       bool
@@ -52,9 +53,9 @@ namespace bugger {
          auto data = problem.getConstraintMatrix( ).getRowCoefficients(row);
          for( int i = 0; i < data.getLength( ); ++i )
             if( num.isIntegral(data.getValues( )[ i ]))
-               return TRUE;
+               return true;
          /* leave sparkling or fixed constraints */
-         return FALSE;
+         return false;
       }
 
 
@@ -63,6 +64,8 @@ namespace bugger {
               const Timer &timer) override {
 
          ModulStatus result = ModulStatus::kUnsuccesful;
+         return result;
+         //TODO weird behavior
          auto copy = Problem<double>(problem);
          MatrixBuffer<double> applied_entries { };
          Vec<std::pair<int, int >> applied_reductions_lhs { };
@@ -168,6 +171,7 @@ namespace bugger {
             }
             nbatch = 0;
          }
+         problem = Problem<double>(copy);
          return result;
       }
    };

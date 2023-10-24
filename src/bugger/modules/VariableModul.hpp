@@ -31,8 +31,9 @@ namespace bugger {
 
    class VariableModul : public BuggerModul {
    public:
-      VariableModul( ) : BuggerModul( ) {
+      VariableModul( const Message& _msg ) : BuggerModul( ) {
          this->setName("variable");
+         this->msg = _msg;
       }
 
       bool

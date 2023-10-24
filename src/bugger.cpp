@@ -65,6 +65,7 @@ namespace bugger {
 
       Vec<int> origcol_mapping;
       Vec<int> origrow_mapping;
+      Message msg{};
 
    public:
 
@@ -123,8 +124,6 @@ namespace bugger {
       }
 
       void printStats(){
-         //TODO: move msg
-            Message msg {};
             msg.info( "\n {:>18} {:>12} {:>12} {:>18} {:>18} \n", "modules",
                       "nb calls", "changes", "success calls(%)", "execution time(s)" );
             for(const auto & module : modules)
@@ -134,16 +133,15 @@ namespace bugger {
 
       void addDefaultModules( ) {
          using uptr = std::unique_ptr<BuggerModul>;
-         //TODO define order
-         addModul(uptr(new CoefficientModul( )));
-         addModul(uptr(new ConsRoundModul( )));
-         addModul(uptr(new ConstraintModul( )));
+         addModul(uptr(new SettingModul( msg )));
+         addModul(uptr(new ConstraintModul( msg )));
+         addModul(uptr(new VariableModul( msg )));
+         addModul(uptr(new SideModul( msg )));
+         addModul(uptr(new ObjectiveModul( msg )));
+         addModul(uptr(new CoefficientModul( msg )));
 ////         addModul(uptr(new FixingModul( )));
-         addModul(uptr(new ObjectiveModul( )));
-         addModul(uptr(new SideModul( )));
-         addModul(uptr(new SettingModul( )));
-         addModul(uptr(new VariableModul( )));
-         addModul(uptr(new VarroundModul( )));
+         addModul(uptr(new VarroundModul( msg )));
+         addModul(uptr(new ConsRoundModul( msg )));
       }
 
       void

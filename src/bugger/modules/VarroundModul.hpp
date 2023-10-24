@@ -30,8 +30,9 @@ namespace bugger {
 
    class VarroundModul : public BuggerModul {
    public:
-      VarroundModul( ) : BuggerModul( ) {
+      VarroundModul( const Message& _msg ) : BuggerModul( ) {
          this->setName("varround");
+         this->msg = _msg;
       }
 
       bool
@@ -42,11 +43,11 @@ namespace bugger {
       bool SCIPisVarroundAdmissible(const Problem<double> &problem, int var) {
          /* leave sparkling or fixed variables */
          double obj = problem.getObjective( ).coefficients[ var ];
-         return num.isIntegral(obj) || problem.getColFlags( )[ var ].test(ColFlag::kUbInf) ||
+         return !num.isIntegral(obj) || problem.getColFlags( )[ var ].test(ColFlag::kUbInf) ||
                 problem.getColFlags( )[ var ].test(ColFlag::kLbInf) ||
                 ( !num.isEq(problem.getLowerBounds( )[ var ], problem.getLowerBounds( )[ var ]) &&
-                  ( num.isIntegral(problem.getLowerBounds( )[ var ]) ||
-                    num.isIntegral(problem.getUpperBounds( )[ var ])));
+                  ( !num.isIntegral(problem.getLowerBounds( )[ var ]) ||
+                    !num.isIntegral(problem.getUpperBounds( )[ var ])));
       }
 
       ModulStatus
@@ -79,20 +80,20 @@ namespace bugger {
          {
             if( SCIPisVarroundAdmissible(copy, var))
             {
-               if( num.isIntegral(copy.getObjective( ).coefficients[ var ]))
+               if( !num.isIntegral(copy.getObjective( ).coefficients[ var ]))
                {
                   copy.getObjective( ).coefficients[ var ] = num.round(copy.getObjective( ).coefficients[ var ]);
                   batches_obj.emplace_back(var, copy.getObjective( ).coefficients[ var ]);
                }
                if( solution_exists )
                {
-                  if( num.isIntegral(copy.getLowerBounds( )[ var ]))
+                  if( !num.isIntegral(copy.getLowerBounds( )[ var ]))
                   {
                      copy.getLowerBounds( )[ var ] = num.round(copy.getLowerBounds( )[ var ]);
                      batches_lb.emplace_back(var, copy.getLowerBounds( )[ var ]);
 
                   }
-                  if( num.isIntegral(copy.getUpperBounds( )[ var ]))
+                  if( !num.isIntegral(copy.getUpperBounds( )[ var ]))
                   {
                      copy.getUpperBounds( )[ var ] = num.round(copy.getUpperBounds( )[ var ]);
                      batches_ub.emplace_back(var, copy.getUpperBounds( )[ var ]);
@@ -100,14 +101,14 @@ namespace bugger {
                }
                else
                {
-                  if( num.isIntegral(copy.getLowerBounds( )[ var ]))
+                  if( !num.isIntegral(copy.getLowerBounds( )[ var ]))
                   {
                      copy.getLowerBounds( )[ var ] = MIN(num.round(copy.getLowerBounds( )[ var ]),
                                                          num.epsFloor(solution.primal[ var ]));
                      batches_lb.emplace_back(var, copy.getLowerBounds( )[ var ]);
 
                   }
-                  if( num.isIntegral(copy.getUpperBounds( )[ var ]))
+                  if( !num.isIntegral(copy.getUpperBounds( )[ var ]))
                   {
                      copy.getUpperBounds( )[ var ] = MIN(num.round(copy.getUpperBounds( )[ var ]),
                                                          num.epsCeil(solution.primal[ var ]));
@@ -126,11 +127,11 @@ namespace bugger {
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_lb )
-                     problem.getLowerBounds( )[ item.first ] = item.second;
+                     copy.getLowerBounds( )[ item.first ] = item.second;
                   for( const auto &item: applied_ub )
-                     problem.getUpperBounds( )[ item.first ] = item.second;
+                     copy.getUpperBounds( )[ item.first ] = item.second;
                   for( const auto &item: applied_obj )
-                     problem.getObjective( ).coefficients[ item.first ] = item.second;
+                     copy.getObjective( ).coefficients[ item.first ] = item.second;
 
                }
                else
