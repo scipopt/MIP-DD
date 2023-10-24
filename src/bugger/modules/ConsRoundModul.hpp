@@ -90,12 +90,8 @@ namespace bugger {
                auto data = copy.getConstraintMatrix( ).getRowCoefficients(row);
 
                for( int j = 0; j < data.getLength( ); ++j )
-               {
                   if( !num.isIntegral(data.getValues( )[ j ]))
-                  {
                      batches_coeff.addEntry( row, data.getIndices( )[ j ], num.round(data.getValues( )[ j ]) );
-                  }
-               }
 
                double lhs = copy.getConstraintMatrix( ).getLeftHandSides( )[ row ];
                double rhs = copy.getConstraintMatrix( ).getRightHandSides( )[ row ];
@@ -129,7 +125,9 @@ namespace bugger {
                }
                ++nbatch;
             }
-            copy.getConstraintMatrix().changeCoefficients(batches_coeff);
+            //TODO: check if the change is working
+            if(!batches_coeff.empty())
+               copy.getConstraintMatrix().changeCoefficients(batches_coeff);
 
             if( nbatch >= 1 && ( nbatch >= batchsize || row >= copy.getNRows( ) - 1 ))
             {
@@ -140,7 +138,8 @@ namespace bugger {
                {
                   copy = Problem<double>(problem);
                   SmallVec<int, 32> buffer;
-                  copy.getConstraintMatrix().changeCoefficients(applied_entries);
+                  if(!applied_entries.empty())
+                     copy.getConstraintMatrix().changeCoefficients(applied_entries);
                   for( const auto &item: applied_reductions_lhs )
                      copy.getConstraintMatrix( ).getLeftHandSides( )[ item.first ] = item.second;
                   for( const auto &item: applied_reductions_rhs )
@@ -151,21 +150,16 @@ namespace bugger {
             {
 
                for( const auto &item: batches_lhs )
-               {
                   applied_reductions_lhs.emplace_back(item);
-                  nchgsides++;
-               }
                for( const auto &item: batches_rhs )
-               {
                   applied_reductions_rhs.emplace_back(item);
-                  nchgsides++;
-               }
+               nchgsides += batches_lhs.size() + batches_rhs.size();
                SmallVec<int, 32> buffer;
                const MatrixEntry<double> *iter = batches_coeff.template begin<true>(buffer);
                while( iter != applied_entries.end( ))
                {
                   applied_entries.addEntry(iter->row, iter->col, iter->val);
-                  nchgsides++;
+                  nchgcoefs++;
                }
                batches_rhs.clear( );
                batches_lhs.clear( );
