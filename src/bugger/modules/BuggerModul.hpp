@@ -167,6 +167,13 @@ namespace bugger {
 
    protected:
 
+      double get_linear_activity(SparseVectorView<double> &data, Solution<double> &solution) {
+         StableSum<double> sum;
+         for( int i = 0; i < data.getLength( ); i++ )
+            sum.add(solution.primal[data.getIndices()[i]] * data.getValues()[i]);
+         return sum.get();
+      }
+
       virtual ModulStatus
       execute(Problem<double> &problem, Solution<double>& solution, bool solution_exists, const BuggerOptions &options, const Timer &timer) = 0;
 

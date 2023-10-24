@@ -26,14 +26,7 @@
 
 #include "bugger/modules/BuggerModul.hpp"
 #include "bugger/interfaces/Status.hpp"
-#if BUGGER_HAVE_SCIP
-#include "scip/var.h"
-#include "scip/scip_sol.h"
-#include "scip/cons_linear.h"
-#include "scip/scip.h"
-#include "scip/scip_numerics.h"
-#include "scip/def.h"
-#endif
+
 namespace bugger
 {
 
