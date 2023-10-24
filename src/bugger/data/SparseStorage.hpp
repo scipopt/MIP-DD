@@ -185,10 +185,9 @@ class SparseStorage
    // function to change existing coefficients in row. Must not be called with
    // coefficients that are currently not in the row. Changes must be given in
    // sorted order.
-   template <typename HasNext, typename GetNext, typename CoeffChanged>
+   template <typename HasNext, typename GetNext >
    int
-   changeRowInplace( int row, HasNext&& hasNext, GetNext&& getNext,
-                     CoeffChanged&& coeffChanged )
+   changeRowInplace( int row, HasNext&& hasNext, GetNext&& getNext )
    {
       int i = rowranges[row].start;
       int j = 0;
@@ -210,7 +209,7 @@ class SparseStorage
             ++i;
          }
 
-         coeffChanged( row, col, values[i], newval );
+//         coeffChanged( row, col, values[i], newval );
 
          if( newval == 0 )
          {

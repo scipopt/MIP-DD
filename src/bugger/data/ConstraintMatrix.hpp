@@ -387,12 +387,9 @@ class ConstraintMatrix
       return colsize;
    }
 
-   template <typename CoeffChanged>
+//   template <typename CoeffChanged>
    void
-   changeCoefficients( const MatrixBuffer<REAL>& matrixBuffer,
-                       Vec<int>& singletonRows, Vec<int>& singletonCols,
-                       Vec<int>& emptyCols, Vec<RowActivity<REAL>>& activities,
-                       CoeffChanged&& coeffChanged )
+   changeCoefficients( const MatrixBuffer<REAL>& matrixBuffer )
    {
       if( matrixBuffer.empty() )
          return;
@@ -419,22 +416,21 @@ class ConstraintMatrix
                        auto nextval = std::make_pair( iter->col, iter->val );
                        iter = matrixBuffer.template next<true>( buffer );
                        return nextval;
-                    },
-                    coeffChanged );
+                    } );
 
                 if( newsize != rowsize[row] )
                 {
-                   switch( newsize )
-                   {
-                   case 0:
-                      activities[row].min = 0;
-                      activities[row].max = 0;
-                      break;
-                   case 1:
-                      singletonRows.push_back( row );
-                   default:
-                      break;
-                   }
+//                   switch( newsize )
+//                   {
+//                   case 0:
+//                      activities[row].min = 0;
+//                      activities[row].max = 0;
+//                      break;
+//                   case 1:
+//                      singletonRows.push_back( row );
+//                   default:
+//                      break;
+//                   }
 
                    rowsize[row] = newsize;
                 }
@@ -464,21 +460,23 @@ class ConstraintMatrix
                        auto nextval = std::make_pair( iter2->row, iter2->val );
                        iter2 = matrixBuffer.template next<false>( buffer2 );
                        return nextval;
-                    },
-                    []( int, int, REAL, REAL ) {} );
+                    }
+//                    ,
+//                    []( int, int, REAL, REAL ) {}
+                    );
 
                 if( newsize != colsize[col] )
                 {
-                   switch( newsize )
-                   {
-                   case 0:
-                      emptyCols.push_back( col );
-                      break;
-                   case 1:
-                      singletonCols.push_back( col );
-                   default:
-                      break;
-                   }
+//                   switch( newsize )
+//                   {
+//                   case 0:
+//                      emptyCols.push_back( col );
+//                      break;
+//                   case 1:
+//                      singletonCols.push_back( col );
+//                   default:
+//                      break;
+//                   }
                    // in case that a singleton var is aggregated and has 2
                    // appearances and then is reduced again immediately it may
                    // appear two times in the list -> causes no bug but some
@@ -1177,8 +1175,10 @@ ConstraintMatrix<REAL>::sparsify(
              [&]() {
                 assert( count == 1 );
                 return std::make_pair( targetrow, newval );
-             },
-             []( int, int, REAL, REAL ) {} );
+             }
+//             ,
+//             []( int, int, REAL, REAL ) {}
+             );
 
          UNUSED(newsize);
          assert( newsize == colsize[col] );

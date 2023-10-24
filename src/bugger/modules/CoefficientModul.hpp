@@ -44,27 +44,27 @@ class CoefficientModul : public BuggerModul
       return false;
    }
 
-   static
-   SCIP_Bool SCIPisCoefficientAdmissible(
-         SCIP*                      scip,          /**< SCIP data structure */
-         SCIP_CONS*                 cons           /**< SCIP constraint pointer */
-   )
-   {
-      SCIP_CONSDATALINEAR consdata;
-      int i;
-
-      if( !SCIPconsIsChecked(cons) || strcmp(SCIPconshdlrGetName(SCIPconsGetHdlr(cons)), "linear") != 0 )
-         return FALSE;
-
-      (void)SCIPconsGetDataLinear(cons, &consdata);
-
-      for( i = 0; i < consdata.nvars; ++i )
-         if( SCIPisGE(scip, consdata.vars[i]->data.original.origdom.lb, consdata.vars[i]->data.original.origdom.ub) )
-            return true;
-
-      /* leave clean constraints */
-      return false;
-   }
+//   static
+//   SCIP_Bool SCIPisCoefficientAdmissible(
+//         SCIP*                      scip,          /**< SCIP data structure */
+//         SCIP_CONS*                 cons           /**< SCIP constraint pointer */
+//   )
+//   {
+//      SCIP_CONSDATALINEAR consdata;
+//      int i;
+//
+//      if( !SCIPconsIsChecked(cons) || strcmp(SCIPconshdlrGetName(SCIPconsGetHdlr(cons)), "linear") != 0 )
+//         return FALSE;
+//
+//      (void)SCIPconsGetDataLinear(cons, &consdata);
+//
+//      for( i = 0; i < consdata.nvars; ++i )
+//         if( SCIPisGE(scip, consdata.vars[i]->data.original.origdom.lb, consdata.vars[i]->data.original.origdom.ub) )
+//            return true;
+//
+//      /* leave clean constraints */
+//      return false;
+//   }
 
 
    ModulStatus

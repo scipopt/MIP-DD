@@ -27,194 +27,156 @@
 #include "bugger/modules/BuggerModul.hpp"
 #include "bugger/interfaces/Status.hpp"
 
-#if BUGGER_HAVE_SCIP
-#include "scip/var.h"
-#include "scip/scip_sol.h"
-#include "scip/scip.h"
-#include "scip/scip_numerics.h"
-#include "scip/def.h"
-#include "scip/cons_linear.h"
-#endif
-namespace bugger
-{
+namespace bugger {
 
-class ConsRoundModul : public BuggerModul
-{
- public:
-   ConsRoundModul() : BuggerModul()
-   {
-      this->setName( "consround" );
-   }
+   class ConsRoundModul : public BuggerModul {
+   public:
+      ConsRoundModul( ) : BuggerModul( ) {
+         this->setName("consround");
+      }
 
-   bool
-   initialize( ) override
-   {
-      return false;
-   }
+      bool
+      initialize( ) override {
+         return false;
+      }
 
-   SCIP_Bool SCIPisConsroundAdmissible(
-         SCIP_CONS*                 cons           /**< SCIP constraint pointer */
-   )
-   {
-      SCIP_CONSDATALINEAR consdata;
-      int i;
+      SCIP_Bool SCIPisConsroundAdmissible(Problem<double> &problem, int row) {
+         if( problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf) ||
+             problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf))
+            return true;
 
-      if( !SCIPconsIsChecked(cons) || strcmp(SCIPconshdlrGetName(SCIPconsGetHdlr(cons)), "linear") != 0 )
+         double lhs = problem.getConstraintMatrix( ).getLeftHandSides( )[ row ];
+         double rhs = problem.getConstraintMatrix( ).getRightHandSides( )[ row ];
+         if( !num.isEq(lhs, rhs) && ( !num.isIntegral(lhs) || !num.isIntegral(rhs)))
+            return true;
+         auto data = problem.getConstraintMatrix( ).getRowCoefficients(row);
+         for( int i = 0; i < data.getLength( ); ++i )
+            if( num.isIntegral(data.getValues( )[ i ]))
+               return TRUE;
+         /* leave sparkling or fixed constraints */
          return FALSE;
-
-      (void)SCIPconsGetDataLinear(cons, &consdata);
-
-      if( consdata.lhs != consdata.rhs && ( rint(consdata.lhs) != consdata.lhs || rint(consdata.rhs) != consdata.rhs ) )
-         return TRUE;
-
-      for( i = 0; i < consdata.nvars; ++i )
-         if( consdata.vals[i] == 0.0 || rint(consdata.vals[i]) != consdata.vals[i] )
-            return TRUE;
-
-      /* leave sparkling or fixed constraints */
-      return FALSE;
-   }
+      }
 
 
-   ModulStatus
-   execute(Problem<double> &problem, Solution<double>& solution, bool solution_exists, const BuggerOptions &options, const Timer &timer) override
-   {
+      ModulStatus
+      execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
+              const Timer &timer) override {
 
-      ModulStatus result = ModulStatus::kUnsuccesful;
-//      SCIP* scip = iscip.getSCIP();
-//      SCIP_CONS**conss = SCIPgetOrigConss(scip);
-//      int nconss = SCIPgetNOrigConss(scip);
-//      SCIP_CONSDATALINEAR* batch;
-//      int* inds;
-//
-//      int batchsize = 1;
-//      if( options.nbatches > 0 )
-//      {
-//         batchsize = options.nbatches - 1;
-//
-//         for( int i = 0; i < nconss; ++i )
-//            if( SCIPisConsroundAdmissible(conss[i]) )
-//               ++batchsize;
-//
-//         batchsize /= options.nbatches;
-//      }
-//
-//      ( SCIPallocBufferArray(scip, &inds, batchsize) );
-//      ( SCIPallocBufferArray(scip, &batch, batchsize) );
-//      int nbatch = 0;
-//
-//      for( int i = 0; i < nconss; ++i )
-//      {
-//         SCIP_CONS* cons;
-//
-//         cons = conss[i];
-//
-//         if( SCIPisConsroundAdmissible(cons) )
-//         {
-//            SCIP_CONSDATALINEAR consdata;
-//            int j;
-//
-//            ( SCIPconsGetDataLinear(cons, &consdata) );
-//            ( SCIPallocBufferArray(scip, &batch[nbatch].vars, consdata.nvars) );
-//            ( SCIPallocBufferArray(scip, &batch[nbatch].vals, consdata.nvars) );
-//            inds[nbatch] = i;
-//            batch[nbatch].lhs = consdata.lhs;
-//            batch[nbatch].rhs = consdata.rhs;
-//            batch[nbatch].nvars = consdata.nvars;
-//
-//            for( j = 0, consdata.nvars = 0; j < batch[nbatch].nvars; ++j )
-//            {
-//               batch[nbatch].vars[j] = consdata.vars[j];
-//               batch[nbatch].vals[j] = consdata.vals[j];
-//               consdata.vals[consdata.nvars] = rint(consdata.vals[j]);
-//
-//               if( consdata.vals[consdata.nvars] != 0.0 )
-//                  consdata.vars[consdata.nvars++] = consdata.vars[j];
-//            }
-//
-//            consdata.lhs = rint(consdata.lhs);
-//            consdata.rhs = rint(consdata.rhs);
-//
-//            if( iscip.exists_solution() )
-//            {
-//               SCIP_Real activity;
-//
-//               ( SCIPconsSetDataLinear(cons, &consdata) );
-//               activity = SCIPgetActivityLinear(scip, cons, iscip.get_solution());
-//               consdata.lhs = MIN(consdata.lhs, SCIPfloor(scip, activity));
-//               consdata.rhs = MAX(consdata.rhs, SCIPceil(scip, activity));
-//            }
-//
-//            ( SCIPconsSetDataLinear(cons, &consdata) );
-//            ++nbatch;
-//         }
-//
-//         if( nbatch >= 1 && ( nbatch >= batchsize || i >= nconss - 1 ) )
-//         {
-//            if( iscip.runSCIP() != Status::kSuccess )
-//            {
-//               for( int j = nbatch - 1; j >= 0; --j )
-//               {
-//                  SCIP_CONSDATALINEAR consdata;
-//
-//                  cons = conss[inds[j]];
-//                  ( SCIPconsGetDataLinear(cons, &consdata) );
-//                  consdata.lhs = batch[j].lhs;
-//                  consdata.rhs = batch[j].rhs;
-//
-//                  for( consdata.nvars = 0; consdata.nvars < batch[j].nvars; ++consdata.nvars )
-//                  {
-//                     consdata.vars[consdata.nvars] = batch[j].vars[consdata.nvars];
-//                     consdata.vals[consdata.nvars] = batch[j].vals[consdata.nvars];
-//                  }
-//
-//                  ( SCIPconsSetDataLinear(cons, &consdata) );
-//               }
-//            }
-//            else
-//            {
-//               for( int j = nbatch - 1; j >= 0; --j )
-//               {
-//                  if( rint(batch[j].lhs) != batch[j].lhs )
-//                     nchgcoefs++;
-//
-//                  if( rint(batch[j].rhs) != batch[j].rhs )
-//                     nchgcoefs++;
-//
-//                  for( int k = batch[j].nvars - 1; k >= 0; --k )
-//                  {
-//                     SCIP_Real val;
-//
-//                     val = rint(batch[j].vals[k]);
-//
-//                     if( batch[j].vals[k] == 0.0 || val != batch[j].vals[k] )
-//                     {
-//                        nchgcoefs++;
-//
-//                        if( val == 0.0 )
-//                           ( SCIPreleaseVar(scip, &batch[j].vars[k]) );
-//                     }
-//                  }
-//               }
-//
-//               result = ModulStatus::kSuccessful;
-//            }
-//
-//            for( int j = nbatch - 1; j >= 0; --j )
-//            {
-//               SCIPfreeBufferArray(scip, &batch[j].vals);
-//               SCIPfreeBufferArray(scip, &batch[j].vars);
-//            }
-//
-//            nbatch = 0;
-//         }
-//      }
-//
-//      SCIPfreeBufferArray(scip, &batch);
-//      SCIPfreeBufferArray(scip, &inds);
-      return result;
-   }
-};
+         ModulStatus result = ModulStatus::kUnsuccesful;
+         auto copy = Problem<double>(problem);
+         MatrixBuffer<double> applied_entries { };
+         Vec<std::pair<int, int >> applied_reductions_lhs { };
+         Vec<std::pair<int, int>> applied_reductions_rhs { };
+         Vec<std::pair<int, double>> batches_lhs { };
+         Vec<std::pair<int, double>> batches_rhs { };
+         MatrixBuffer<double> batches_coeff { };
+
+         int batchsize = 1;
+         if( options.nbatches > 0 )
+         {
+            batchsize = options.nbatches - 1;
+            for( int i = 0; i < problem.getNRows( ); ++i )
+               if( SCIPisConsroundAdmissible(problem, i))
+                  ++batchsize;
+            batchsize /= options.nbatches;
+         }
+
+
+         int nbatch = 0;
+         for( int row = 0; row < copy.getNRows( ); ++row )
+         {
+            if( SCIPisConsroundAdmissible(copy, row))
+            {
+               auto data = copy.getConstraintMatrix( ).getRowCoefficients(row);
+
+               for( int j = 0; j < data.getLength( ); ++j )
+               {
+                  if( !num.isIntegral(data.getValues( )[ j ]))
+                  {
+                     batches_coeff.addEntry( row, data.getIndices( )[ j ], num.round(data.getValues( )[ j ]) );
+                  }
+               }
+
+               double lhs = copy.getConstraintMatrix( ).getLeftHandSides( )[ row ];
+               double rhs = copy.getConstraintMatrix( ).getRightHandSides( )[ row ];
+               if( solution_exists )
+               {
+                  if( !num.isIntegral(lhs))
+                  {
+                     double new_val = MIN(num.round(lhs), num.epsFloor(get_linear_activity(data, solution)));
+                     batches_lhs.push_back({ row, new_val });
+                     copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = new_val;
+                  }
+                  if( !num.isIntegral(rhs))
+                  {
+                     double new_val = MIN(num.round(rhs), num.epsCeil(get_linear_activity(data, solution)));
+                     batches_rhs.push_back({ row, new_val });
+                     copy.getConstraintMatrix( ).getRightHandSides( )[ row ] = new_val;
+                  }
+               }
+               else
+               {
+                  if( !num.isIntegral(lhs))
+                  {
+                     batches_lhs.push_back({ row, num.round(lhs) });
+                     copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = num.round(lhs);
+                  }
+                  if( !num.isIntegral(rhs))
+                  {
+                     batches_rhs.push_back({ row, num.round(rhs) });
+                     copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = num.round(rhs);
+                  }
+               }
+               ++nbatch;
+            }
+            copy.getConstraintMatrix().changeCoefficients(batches_coeff);
+
+            if( nbatch >= 1 && ( nbatch >= batchsize || row >= copy.getNRows( ) - 1 ))
+            {
+               ScipInterface scipInterface { };
+               //TODO pass settings to SCIP
+               scipInterface.doSetUp(copy);
+               if( scipInterface.runSCIP( ) != Status::kSuccess )
+               {
+                  copy = Problem<double>(problem);
+                  SmallVec<int, 32> buffer;
+                  copy.getConstraintMatrix().changeCoefficients(applied_entries);
+                  for( const auto &item: applied_reductions_lhs )
+                     copy.getConstraintMatrix( ).getLeftHandSides( )[ item.first ] = item.second;
+                  for( const auto &item: applied_reductions_rhs )
+                     copy.getConstraintMatrix( ).getRightHandSides( )[ item.first ] = item.second;
+               }
+            }
+            else
+            {
+
+               for( const auto &item: batches_lhs )
+               {
+                  applied_reductions_lhs.emplace_back(item);
+                  nchgsides++;
+               }
+               for( const auto &item: batches_rhs )
+               {
+                  applied_reductions_rhs.emplace_back(item);
+                  nchgsides++;
+               }
+               SmallVec<int, 32> buffer;
+               const MatrixEntry<double> *iter = batches_coeff.template begin<true>(buffer);
+               while( iter != applied_entries.end( ))
+               {
+                  applied_entries.addEntry(iter->row, iter->col, iter->val);
+                  nchgsides++;
+               }
+               batches_rhs.clear( );
+               batches_lhs.clear( );
+               batches_coeff.clear( );
+               result = ModulStatus::kSuccessful;
+            }
+            nbatch = 0;
+         }
+         return result;
+      }
+   };
 
 
 } // namespace bugger
