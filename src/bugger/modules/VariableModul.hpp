@@ -41,7 +41,7 @@ namespace bugger {
          return false;
       }
 
-      SCIP_Bool isVariableAdmissible(const Problem<double>& problem, int var) {
+      bool isVariableAdmissible(const Problem<double>& problem, int var) {
          /* keep restricted variables because they might be already fixed */
          return problem.getColFlags()[var].test(ColFlag::kLbInf) || problem.getColFlags()[var].test(ColFlag::kUbInf) ||
             num.isLT(problem.getLowerBounds()[var], problem.getUpperBounds()[var]);

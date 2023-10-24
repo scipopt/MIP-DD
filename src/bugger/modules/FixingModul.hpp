@@ -51,7 +51,7 @@ class FixingModul : public BuggerModul
       return false;
    }
 
-   SCIP_Bool SCIPisFixingAdmissible(
+   bool SCIPisFixingAdmissible(
          SCIP*                      scip,          /**< SCIP data structure */
          SCIP_VAR*                  var            /**< SCIP variable pointer */
    )
@@ -77,7 +77,7 @@ class FixingModul : public BuggerModul
       int nvars;
       SCIPgetOrigVarsData(scip, &vars, &nvars, nullptr, nullptr, nullptr, nullptr);
 
-      SCIP_Bool* constrained;
+      bool* constrained;
       ( SCIPallocCleanBufferArray(scip, &constrained, nvars) );
 
 
@@ -86,7 +86,7 @@ class FixingModul : public BuggerModul
       {
          SCIP_VAR** consvars;
          SCIP_CONS* cons;
-         SCIP_Bool success;
+         bool success;
          int nconsvars;
 
          cons = conss[i];

@@ -41,7 +41,7 @@ namespace bugger {
          return false;
       }
 
-      SCIP_Bool isConsroundAdmissible(Problem<double> &problem, int row) {
+      bool isConsroundAdmissible(Problem<double> &problem, int row) {
          if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant))
             return false;
          if( problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf) ||

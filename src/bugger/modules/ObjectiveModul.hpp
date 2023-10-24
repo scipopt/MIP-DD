@@ -45,7 +45,7 @@ class ObjectiveModul : public BuggerModul
       return false;
    }
 
-   SCIP_Bool isObjectiveAdmissible(Problem<double>& problem, int var )
+   bool isObjectiveAdmissible(Problem<double>& problem, int var )
    {
       /* preserve restricted variables because they might be deleted anyway */
       return !num.isZero(problem.getObjective().coefficients[var]) && num.isLT(problem.getLowerBounds()[var], problem.getUpperBounds()[var]);

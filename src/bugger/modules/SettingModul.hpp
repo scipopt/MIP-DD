@@ -51,7 +51,7 @@ class SettingModul : public BuggerModul
       return false;
    }
 
-   SCIP_Bool isSettingAdmissible(SCIP_PARAM* param )
+   bool isSettingAdmissible(SCIP_PARAM* param )
    {
       /* keep reading and writing settings because input and output is not monitored */
       return ( param->isfixed || !SCIPparamIsDefault(param) )
@@ -103,7 +103,7 @@ class SettingModul : public BuggerModul
 //            {
 //               case SCIP_PARAMTYPE_BOOL:
 //               {
-//                  SCIP_Bool* ptrbool;
+//                  bool* ptrbool;
 //                  ptrbool = (param->data.boolparam.valueptr == nullptr ? &param->data.boolparam.curvalue : param->data.boolparam.valueptr);
 //                  batch[nbatch].data.boolparam.curvalue = *ptrbool;
 //                  *ptrbool = param->data.boolparam.defaultvalue;
