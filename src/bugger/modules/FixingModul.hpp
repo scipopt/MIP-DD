@@ -26,206 +26,158 @@
 
 #include "bugger/modules/BuggerModul.hpp"
 #include "bugger/interfaces/Status.hpp"
-#if BUGGER_HAVE_SCIP
-#include "scip/var.h"
-#include "scip/scip_sol.h"
-#include "scip/scip.h"
-#include "scip/scip_numerics.h"
-#include "scip/def.h"
-#endif
-namespace bugger
-{
 
-class FixingModul : public BuggerModul
-{
- public:
-   FixingModul( const Message& _msg ) : BuggerModul()
-   {
-      this->setName( "fixing" );
-      this->msg = _msg;
-   }
+namespace bugger {
 
-   bool
-   initialize( ) override
-   {
-      return false;
-   }
-
-   bool SCIPisFixingAdmissible(
-         SCIP*                      scip,          /**< SCIP data structure */
-         SCIP_VAR*                  var            /**< SCIP variable pointer */
-   )
-   {
-      /* leave clean variables */
-      return SCIPisGE(scip, var->data.original.origdom.lb, var->data.original.origdom.ub);
-   }
-
-
-   ModulStatus
-   execute( ScipInterface& iscip, const BuggerOptions& options, const Timer& timer ) override
-   {
-
-      SCIP* scip = iscip.getSCIP();
-      ModulStatus result = ModulStatus::kUnsuccesful;
-      SCIP_CONS** conss = SCIPgetOrigConss(scip);
-      int nconss = SCIPgetNOrigConss(scip);
-      int* inds;
-
-      SCIP_VAR** batch;
-
-      SCIP_VAR **vars;
-      int nvars;
-      SCIPgetOrigVarsData(scip, &vars, &nvars, nullptr, nullptr, nullptr, nullptr);
-
-      bool* constrained;
-      ( SCIPallocCleanBufferArray(scip, &constrained, nvars) );
-
-
-
-      for( int  i = 0; i < nconss; ++i )
-      {
-         SCIP_VAR** consvars;
-         SCIP_CONS* cons;
-         bool success;
-         int nconsvars;
-
-         cons = conss[i];
-         ( SCIPgetConsNVars(scip, cons, &nconsvars, &success) );
-
-         if( !success )
-            continue;
-
-         ( SCIPallocBufferArray(scip, &consvars, nconsvars) );
-         ( SCIPgetConsVars(scip, cons, consvars, nconsvars, &success) );
-
-         if( success )
-         {
-            int j;
-
-            for( j = 0; j < nconsvars; ++j )
-               constrained[consvars[j]->probindex] = TRUE;
-         }
-
-         SCIPfreeBufferArray(scip, &consvars);
+   class FixingModul : public BuggerModul {
+   public:
+      FixingModul(const Message &_msg) : BuggerModul( ) {
+         this->setName("fixing");
+         this->msg = _msg;
       }
 
-      int batchsize = 1;
-      if( options.nbatches > 0 )
-      {
-         batchsize = options.nbatches - 1;
-
-         for( int i = nvars - 1; i >= 0; --i )
-            if( !constrained[i] && SCIPisFixingAdmissible(scip, vars[i]) )
-               ++batchsize;
-
-         batchsize /= options.nbatches;
+      bool
+      initialize( ) override {
+         return false;
       }
 
-      ( SCIPallocBufferArray(scip, &inds, batchsize) );
-      ( SCIPallocBufferArray(scip, &batch, batchsize) );
-      int nbatch = 0;
+      bool isFixingAdmissible(Problem<double> &problem, int var) {
+         return !problem.getColFlags( )[ var ].test(ColFlag::kUbInf) ||
+                !problem.getColFlags( )[ var ].test(ColFlag::kLbInf) ||
+                !num.isLT(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
+      }
 
-//      if( iscip.get_solution() != NULL )
-//         obj = presoldata->solution->obj;
+      void
+      removeFixedCol(Problem<double> &problem, int col) {
+         return;
+         Objective<double> &obj = problem.getObjective( );
+         const Vec<double> &lbs = problem.getLowerBounds( );
+         Vec<RowActivity<double>> &activities = problem.getRowActivities( );
+         ConstraintMatrix<double> &consMatrix = problem.getConstraintMatrix( );
+         Vec<RowFlags> &rflags = consMatrix.getRowFlags( );
+         Vec<double> &lhs = consMatrix.getLeftHandSides( );
+         Vec<double> &rhs = consMatrix.getRightHandSides( );
 
-      for( int i = nvars - 1; i >= 0; --i )
-      {
-         SCIP_VAR* var;
+         assert(
+               num.isEq(lbs[ col ], problem.getUpperBounds( )[ col ]) && !problem.getColFlags( )[ col ]
+                     .test(ColFlag::kUbInf) &&
+               !problem.getColFlags( )[ col ].test(ColFlag::kLbInf));
 
-         var = vars[i];
+         auto colvec = consMatrix.getColumnCoefficients(col);
 
-         if( constrained[i] )
-            constrained[i] = FALSE;
-         else if( SCIPisFixingAdmissible(scip, var) )
+         // if it is fixed to zero activities and sides do not need to be
+         // updated
+
+         // update objective offset
+         if( obj.coefficients[ col ] != 0 )
          {
-            inds[nbatch] = i;
-            batch[nbatch] = var;
-
-//            if( iscip.get_solution() != NULL )
-//               iscip.get_solution()->obj -= var->obj * SCIPgetSolVal(scip, iscip.get_solution(), var);
-
-            vars[i] = vars[--nvars];
-            vars[i]->probindex = i;
-            var->probindex = -1;
-
-            switch( SCIPvarGetType(var) )
-            {
-               //TODO: how to implement that from outside
-               case SCIP_VARTYPE_BINARY:
-                  --scip->origprob->nbinvars;
-                  break;
-               case SCIP_VARTYPE_INTEGER:
-                  --scip->origprob->nintvars;
-                  break;
-               case SCIP_VARTYPE_IMPLINT:
-                  --scip->origprob->nimplvars;
-                  break;
-               case SCIP_VARTYPE_CONTINUOUS:
-                  --scip->origprob->ncontvars;
-                  break;
-               default:
-                  SCIPerrorMessage("unknown variable type\n");
-                  return ModulStatus::kUnsuccesful;
-            }
-
-            ++nbatch;
+            obj.offset += lbs[ col ] * obj.coefficients[ col ];
+            obj.coefficients[ col ] = 0;
          }
 
-         if( nbatch >= 1 && ( nbatch >= batchsize || i <= 0 ) )
+
+         // fixed to nonzero value, so update sides and activities
+         int collen = colvec.getLength( );
+         const int *colrows = colvec.getIndices( );
+         const double *colvals = colvec.getValues( );
+
+         assert( !problem.getColFlags()[col].test( ColFlag::kFixed ) );
+         problem.getColFlags()[col].set( ColFlag::kFixed );
+
+         for( int i = 0; i != collen; ++i )
          {
-            if( iscip.runSCIP() != Status::kSuccess )
+            int row = colrows[ i ];
+
+            // if the row is redundant it will also be removed and does not need
+            // to be updated
+            if( rflags[ row ].test(RowFlag::kRedundant))
+               continue;
+
+            // subtract constant contribution from activity and sides
+            double constant = lbs[ col ] * colvals[ i ];
+            activities[ row ].min -= constant;
+            activities[ row ].max -= constant;
+
+            if( !rflags[ row ].test(RowFlag::kLhsInf))
+               lhs[ row ] -= constant;
+
+            if( !rflags[ row ].test(RowFlag::kRhsInf))
+               rhs[ row ] -= constant;
+
+            // due to numerics a ranged row can become an equality
+            if( !rflags[ row ].test(RowFlag::kLhsInf, RowFlag::kRhsInf,
+                                    RowFlag::kEquation) &&
+                lhs[ row ] == rhs[ row ] )
+               rflags[ row ].set(RowFlag::kEquation);
+         }
+
+      }
+
+      ModulStatus
+      execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
+              const Timer &timer) override {
+
+         ModulStatus result = ModulStatus::kUnsuccesful;
+
+         auto copy = Problem < double > ( problem );
+         Vec<int> applied_vars { };
+         Vec<int> batches { };
+         int batchsize = 1;
+
+         if( options.nbatches > 0 )
+         {
+            batchsize = options.nbatches - 1;
+
+            for( int var = problem.getNCols( ) - 1; var >= 0; --var )
+               if( isFixingAdmissible(problem, var))
+                  ++batchsize;
+            batchsize /= options.nbatches;
+         }
+
+         int nbatch = 0;
+
+         for( int var = copy.getNCols( ) - 1; var >= 0; --var )
+         {
+
+            if( isFixingAdmissible(copy, var))
             {
-               for( int j = nbatch - 1; j >= 0; --j )
+               // TODO currently the variables are only removed from the model, but since the matrix is not shrinked they are technically still part of the problem
+               //TODO check this for non zero ub/lb
+               //TODO remove just updates the rhs/lhs but the entries are still present they should be ruled out with Fixed flag -> all other modules have to cast on the fixed flag
+               removeFixedCol(copy, var);
+               batches.push_back(var);
+               ++nbatch;
+
+               if( nbatch >= 1 && ( nbatch >= batchsize || var <= 0 ))
                {
-                  var = batch[j];
-                  scip->origprob->vars[inds[j]] = var;
-                  var->probindex = inds[j];
-                  scip->origprob->vars[scip->origprob->nvars]->probindex = scip->origprob->nvars;
-                  ++scip->origprob->nvars;
-
-                  switch( SCIPvarGetType(var) )
+                  ScipInterface scipInterface { };
+                  // TODO pass settings to SCIP
+                  scipInterface.doSetUp(copy);
+                  if( scipInterface.run(msg) != Status::kSuccess )
                   {
-                     case SCIP_VARTYPE_BINARY:
-                        ++scip->origprob->nbinvars;
-                        break;
-                     case SCIP_VARTYPE_INTEGER:
-                        ++scip->origprob->nintvars;
-                        break;
-                     case SCIP_VARTYPE_IMPLINT:
-                        ++scip->origprob->nimplvars;
-                        break;
-                     case SCIP_VARTYPE_CONTINUOUS:
-                        ++scip->origprob->ncontvars;
-                        break;
-                     default:
-                        assert(false);
-                        SCIPerrorMessage("unknown variable type\n");
-                        return ModulStatus::kUnsuccesful;
+                     copy = Problem < double > ( problem );
+                     for( const auto &item: applied_vars )
+                        removeFixedCol(copy, item);
                   }
+                  else
+                  {
+                     //TODO: push back together
+                     for( const auto &item: batches )
+                        applied_vars.push_back(item);
+                     naggrvars += nbatch;
+                     batches.clear( );
+                     result = ModulStatus::kSuccessful;
+                  }
+                  nbatch = 0;
                }
-
+               ++nbatch;
             }
-            else
-            {
-               for( int j = 0; j < nbatch; ++j )
-               {
-                  ( SCIPreleaseVar(scip, &batch[j]) );
-                  naggrvars++;
-               }
-
-               result = ModulStatus::kSuccessful;
-            }
-
-            nbatch = 0;
          }
-      }
 
-      SCIPfreeBufferArray(scip, &batch);
-      SCIPfreeBufferArray(scip, &inds);
-      SCIPfreeCleanBufferArray(scip, &constrained);
-      return result;
-   }
-};
+         problem = Problem < double > ( copy );
+         return result;
+      }
+   };
 
 
 } // namespace bugger

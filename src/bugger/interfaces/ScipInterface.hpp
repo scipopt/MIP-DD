@@ -131,6 +131,7 @@ namespace bugger {
             SCIP_CONS* cons;
 
             auto rowvec = consMatrix.getRowCoefficients(row );
+            //TODO: remove fixed variables from the Vector
             const double* vals = rowvec.getValues();
             const int* inds = rowvec.getIndices();
             SCIP_Real lhs = rflags[row].test(RowFlag::kLhsInf )

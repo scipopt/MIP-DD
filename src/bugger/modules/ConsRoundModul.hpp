@@ -54,8 +54,12 @@ namespace bugger {
             return true;
          auto data = problem.getConstraintMatrix( ).getRowCoefficients(row);
          for( int i = 0; i < data.getLength( ); ++i )
+         {
+            if( problem.getColFlags()[data.getIndices()[i]].test(ColFlag::kFixed))
+               continue;
             if( num.isIntegral(data.getValues( )[ i ]))
                return true;
+         }
          /* leave sparkling or fixed constraints */
          return false;
       }
@@ -86,7 +90,7 @@ namespace bugger {
             batchsize /= options.nbatches;
          }
 
-
+         //TODO: consider fixed variables
          int nbatch = 0;
          for( int row = 0; row < copy.getNRows( ); ++row )
          {

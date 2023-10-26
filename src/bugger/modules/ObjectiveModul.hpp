@@ -48,7 +48,9 @@ class ObjectiveModul : public BuggerModul
    bool isObjectiveAdmissible(Problem<double>& problem, int var )
    {
       /* preserve restricted variables because they might be deleted anyway */
-      return !num.isZero(problem.getObjective().coefficients[var]) && num.isLT(problem.getLowerBounds()[var], problem.getUpperBounds()[var]);
+      return !problem.getColFlags()[data.getIndices()[i]].test(ColFlag::kFixed)
+         && !num.isZero(problem.getObjective().coefficients[var])
+         && num.isLT(problem.getLowerBounds()[var], problem.getUpperBounds()[var]);
    }
 
    ModulStatus

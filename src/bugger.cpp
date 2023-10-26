@@ -42,7 +42,7 @@
 #include "bugger/modules/CoefficientModul.hpp"
 #include "bugger/modules/ConsRoundModul.hpp"
 #include "bugger/modules/ConstraintModul.hpp"
-//#include "bugger/modules/FixingModul.hpp"
+#include "bugger/modules/FixingModul.hpp"
 #include "bugger/modules/ObjectiveModul.hpp"
 #include "bugger/modules/SettingModul.hpp"
 #include "bugger/modules/SideModul.hpp"
@@ -139,7 +139,7 @@ namespace bugger {
          addModul(uptr(new SideModul( msg )));
          addModul(uptr(new ObjectiveModul( msg )));
          addModul(uptr(new CoefficientModul( msg )));
-////         addModul(uptr(new FixingModul( )));
+         addModul(uptr(new FixingModul( msg )));
          addModul(uptr(new VarroundModul( msg )));
          addModul(uptr(new ConsRoundModul( msg )));
       }

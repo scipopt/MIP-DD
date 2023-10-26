@@ -41,7 +41,8 @@ namespace bugger {
       }
 
       bool isVarroundAdmissible(const Problem<double> &problem, int var) {
-         /* leave sparkling or fixed variables */
+         if( problem.getColFlags()[data.getIndices()[i]].test(ColFlag::kFixed) )
+            return false;
          double obj = problem.getObjective( ).coefficients[ var ];
          return !num.isIntegral(obj) || problem.getColFlags( )[ var ].test(ColFlag::kUbInf) ||
                 problem.getColFlags( )[ var ].test(ColFlag::kLbInf) ||

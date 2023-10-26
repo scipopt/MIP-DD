@@ -42,6 +42,8 @@ namespace bugger {
       }
 
       bool isVariableAdmissible(const Problem<double>& problem, int var) {
+         if( problem.getColFlags()[data.getIndices()[i]].test(ColFlag::kFixed) )
+            return false;
          /* keep restricted variables because they might be already fixed */
          return problem.getColFlags()[var].test(ColFlag::kLbInf) || problem.getColFlags()[var].test(ColFlag::kUbInf) ||
             num.isLT(problem.getLowerBounds()[var], problem.getUpperBounds()[var]);
