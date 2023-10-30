@@ -113,7 +113,7 @@ namespace bugger {
             {
                ScipInterface scipInterface { };
                //TODO pass settings to SCIP
-               scipInterface.doSetUp(copy);
+               scipInterface.doSetUp(copy, solution_exists, solution);
 
 
                if( scipInterface.run(msg) != Status::kSuccess )

@@ -68,7 +68,7 @@ namespace bugger {
 
 
       SCIP_RETCODE
-      doSetUp( const Problem<double>& problem )
+      doSetUp( const Problem<double>& problem, bool solution_exits, const Solution<double> sol )
       {
          SCIP_CALL(SCIPincludeDefaultPlugins(scip));
          int ncols = problem.getNCols();
@@ -158,23 +158,27 @@ namespace bugger {
          if( obj.offset !=  0 )
             SCIP_CALL( SCIPaddOrigObjoffset( scip, SCIP_Real( obj.offset ) ) );
 
+         if ( solution_exits )
+            solution = add_solution(sol);
          return SCIP_OKAY;
       }
 
       SCIP* getSCIP(){ return scip; }
 
-      //TODO add solution
       SCIP_SOL*
-      add_solution(Solution<double> solution)
+      add_solution(Solution<double> sol)
       {
-         SCIP_SOL * sol;
+         SCIP_SOL * s;
          SCIP_RETCODE retcode;
-         for(int i=0; i< solution.primal.size(); i++)
+         retcode = SCIPcreateSol(scip, &s, NULL);
+         assert(retcode == SCIP_OKAY);
+
+         for(int i=0; i< sol.primal.size(); i++)
          {
-            retcode = SCIPsetSolVal(scip, sol, vars[ i ], solution.primal[ i ]);
+            retcode = SCIPsetSolVal(scip, s, vars[ i ], sol.primal[ i ]);
             assert(retcode == SCIP_OKAY);
          }
-         return sol;
+         return s;
       }
 
    /** tests the given SCIP instance in a copy and reports detected bug; if a primal bug solution is provided, the
@@ -284,12 +288,13 @@ namespace bugger {
          return Status::kSuccess;
       }
 
-
-
       ~ScipInterface( ) {
          if( scip != nullptr )
          {
-            SCIP_RETCODE retcode = SCIPfree(&scip);
+            SCIP_RETCODE retcode = SCIPfreeSol(scip, &solution);
+            UNUSED(retcode);
+            assert(retcode == SCIP_OKAY);
+            retcode = SCIPfree(&scip);
             UNUSED(retcode);
             assert(retcode == SCIP_OKAY);
          }
