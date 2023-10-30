@@ -70,8 +70,6 @@ namespace bugger {
               const Timer &timer) override {
 
          ModulStatus result = ModulStatus::kUnsuccesful;
-         return result;
-         //TODO weird behavior
          auto copy = Problem<double>(problem);
          MatrixBuffer<double> applied_entries { };
          Vec<std::pair<int, int >> applied_reductions_lhs { };
@@ -147,35 +145,36 @@ namespace bugger {
                {
                   copy = Problem<double>(problem);
                   SmallVec<int, 32> buffer;
-                  if(!applied_entries.empty())
-                     copy.getConstraintMatrix().changeCoefficients(applied_entries);
+                  if( !applied_entries.empty( ))
+                     copy.getConstraintMatrix( ).changeCoefficients(applied_entries);
                   for( const auto &item: applied_reductions_lhs )
                      copy.getConstraintMatrix( ).getLeftHandSides( )[ item.first ] = item.second;
                   for( const auto &item: applied_reductions_rhs )
                      copy.getConstraintMatrix( ).getRightHandSides( )[ item.first ] = item.second;
                }
-            }
-            else
-            {
 
-               for( const auto &item: batches_lhs )
-                  applied_reductions_lhs.emplace_back(item);
-               for( const auto &item: batches_rhs )
-                  applied_reductions_rhs.emplace_back(item);
-               nchgsides += batches_lhs.size() + batches_rhs.size();
-               SmallVec<int, 32> buffer;
-               const MatrixEntry<double> *iter = batches_coeff.template begin<true>(buffer);
-               while( iter != applied_entries.end( ))
+               else
                {
-                  applied_entries.addEntry(iter->row, iter->col, iter->val);
-                  nchgcoefs++;
+
+                  for( const auto &item: batches_lhs )
+                     applied_reductions_lhs.emplace_back(item);
+                  for( const auto &item: batches_rhs )
+                     applied_reductions_rhs.emplace_back(item);
+                  nchgsides += batches_lhs.size( ) + batches_rhs.size( );
+                  SmallVec<int, 32> buffer;
+                  const MatrixEntry<double> *iter = batches_coeff.template begin<true>(buffer);
+                  while( iter != applied_entries.end( ))
+                  {
+                     applied_entries.addEntry(iter->row, iter->col, iter->val);
+                     nchgcoefs++;
+                  }
+                  batches_rhs.clear( );
+                  batches_lhs.clear( );
+                  batches_coeff.clear( );
+                  result = ModulStatus::kSuccessful;
                }
-               batches_rhs.clear( );
-               batches_lhs.clear( );
-               batches_coeff.clear( );
-               result = ModulStatus::kSuccessful;
+               nbatch = 0;
             }
-            nbatch = 0;
          }
          problem = Problem<double>(copy);
          return result;
