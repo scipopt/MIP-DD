@@ -57,96 +57,97 @@ namespace bugger {
 
    private:
       BuggerOptions options;
-      Problem<double>& problem;
-      Solution<double>& solution;
+      Problem<double> &problem;
+      Solution<double> &solution;
       bool solution_exists;
-      Vec<std::unique_ptr<BuggerModul>>& modules;
+      Vec<std::unique_ptr<BuggerModul>> &modules;
       Vec<ModulStatus> results;
 
       Vec<int> origcol_mapping;
       Vec<int> origrow_mapping;
-      Message msg{};
+      Message msg { };
 
    public:
 
-      BuggerRun(Problem<double> &_problem, Solution<double>& _solution, bool _solution_exists, Vec<std::unique_ptr<BuggerModul>>& _modules)
-            : options({ }), problem(_problem), solution(_solution), solution_exists(_solution_exists), modules( _modules )
-      {
+      BuggerRun(Problem<double> &_problem, Solution<double> &_solution, bool _solution_exists,
+                Vec<std::unique_ptr<BuggerModul>> &_modules)
+            : options({ }), problem(_problem), solution(_solution), solution_exists(_solution_exists),
+              modules(_modules) {
       }
 
       ModulStatus
-      evaluateResults()
-      {
+      evaluateResults( ) {
          int largestValue = static_cast<int>( ModulStatus::kDidNotRun );
 
-         for( auto& i : results )
-            largestValue = std::max( largestValue, static_cast<int>( i ) );
+         for( auto &i: results )
+            largestValue = std::max(largestValue, static_cast<int>( i ));
 
          return static_cast<ModulStatus>( largestValue );
       }
 
-      void apply(Timer& timer, std::string filename ) {
-         results.resize(modules.size());
+      void apply(Timer &timer, std::string filename) {
+         results.resize(modules.size( ));
 
          //TODO: delete the variable names and constraint names also during updates
-         for( unsigned int i = 0; i < problem.getNRows(); ++i )
-            origrow_mapping.push_back( (int) i );
+         for( unsigned int i = 0; i < problem.getNRows( ); ++i )
+            origrow_mapping.push_back(( int ) i);
 
-         for( unsigned int i = 0; i < problem.getNCols(); ++i )
-            origcol_mapping.push_back( (int) i );
+         for( unsigned int i = 0; i < problem.getNCols( ); ++i )
+            origcol_mapping.push_back(( int ) i);
 
          if( options.nrounds < 0 )
             options.nrounds = INT_MAX;
 
-         if( options.nstages < 0 || options.nstages > modules.size() )
-            options.nstages = modules.size();
+         if( options.nstages < 0 || options.nstages > modules.size( ))
+            options.nstages = modules.size( );
 
          int ending = 4;
-         if( filename.substr( filename.length() - 3 ) == ".gz" )
+         if( filename.substr(filename.length( ) - 3) == ".gz" )
             ending = 7;
-         if( filename.substr( filename.length() - 3 ) == ".bz2" )
+         if( filename.substr(filename.length( ) - 3) == ".bz2" )
             ending = 7;
 
          for( int round = 0; round < options.nrounds; ++round )
          {
-            for( int module = 0; module < modules.size(); module++ )
-               results[module] = modules[module]->run(problem, solution, solution_exists, options, timer);
+            for( int module = 0; module < modules.size( ); module++ )
+               results[ module ] = modules[ module ]->run(problem, solution, solution_exists, options, timer);
 
             //TODO:write also parameters
-            std::string newfilename = filename.substr( 0, filename.length() - ending ) + "_" +  std::to_string(round) + ".mps";
+            std::string newfilename =
+                  filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round) + ".mps";
 
             MpsWriter<double>::writeProb(newfilename, problem, origrow_mapping, origcol_mapping);
-            ModulStatus status = evaluateResults();
-            if( status != ModulStatus::kSuccessful)
+            ModulStatus status = evaluateResults( );
+            if( status != ModulStatus::kSuccessful )
                break;
          }
-         printStats();
+         printStats( );
       }
 
-      void printStats(){
-            msg.info( "\n {:>18} {:>12} {:>12} {:>18} {:>18} \n", "modules",
-                      "nb calls", "changes", "success calls(%)", "execution time(s)" );
-            for(const auto & module : modules)
-               module->printStats( msg );
+      void printStats( ) {
+         msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>18} \n", "modules",
+                  "nb calls", "changes", "success calls(%)", "execution time(s)");
+         for( const auto &module: modules )
+            module->printStats(msg);
 
-         }
+      }
 
       void addDefaultModules( ) {
          using uptr = std::unique_ptr<BuggerModul>;
-         addModul(uptr(new SettingModul( msg )));
-         addModul(uptr(new ConstraintModul( msg )));
-         addModul(uptr(new VariableModul( msg )));
-         addModul(uptr(new SideModul( msg )));
-         addModul(uptr(new ObjectiveModul( msg )));
-         addModul(uptr(new CoefficientModul( msg )));
-         addModul(uptr(new FixingModul( msg )));
-         addModul(uptr(new VarroundModul( msg )));
-         addModul(uptr(new ConsRoundModul( msg )));
+         addModul(uptr(new SettingModul(msg)));
+         addModul(uptr(new ConstraintModul(msg)));
+         addModul(uptr(new VariableModul(msg)));
+         addModul(uptr(new SideModul(msg)));
+         addModul(uptr(new ObjectiveModul(msg)));
+         addModul(uptr(new CoefficientModul(msg)));
+         addModul(uptr(new FixingModul(msg)));
+         addModul(uptr(new VarroundModul(msg)));
+         addModul(uptr(new ConsRoundModul(msg)));
       }
 
       void
       addModul(std::unique_ptr<BuggerModul> module) {
-         modules.emplace_back( std::move( module ) );
+         modules.emplace_back(std::move(module));
       }
 
       ParameterSet getParameters( ) {
@@ -157,9 +158,7 @@ namespace bugger {
          return paramSet;
       }
    };
-}
-
-void parse_parameters(bugger::OptionsInfo &optionsInfo, bugger::ParameterSet bugger);
+} // namespace bugger
 
 int
 main(int argc, char *argv[]) {
@@ -184,22 +183,22 @@ main(int argc, char *argv[]) {
       return 0;
 
    //TODO: maybe use a static parser from scip to support more cases
-   auto prob = MpsParser<double>::loadProblem( optionsInfo.instance_file );
+   auto prob = MpsParser<double>::loadProblem(optionsInfo.instance_file);
 
    if( !prob )
    {
-      fmt::print( "error loading problem {}\n", optionsInfo.instance_file );
+      fmt::print("error loading problem {}\n", optionsInfo.instance_file);
       return -1;
    }
-   auto problem = prob.get();
+   auto problem = prob.get( );
    Solution<double> sol;
    bool sol_exists = false;
-   if(!optionsInfo.solution_file.empty())
+   if( !optionsInfo.solution_file.empty( ))
    {
-      bool success = SolParser<double>::read( optionsInfo.solution_file, problem.getVariableNames(), sol );
+      bool success = SolParser<double>::read(optionsInfo.solution_file, problem.getVariableNames( ), sol);
       if( !success )
       {
-         fmt::print( "error loading problem {}\n", optionsInfo.instance_file );
+         fmt::print("error loading problem {}\n", optionsInfo.instance_file);
          return -1;
       }
       sol_exists = true;
@@ -209,22 +208,13 @@ main(int argc, char *argv[]) {
 //   scip.read_parameters(optionsInfo.scip_settings_file);
 
    //TODO: why can this not be auto generated in the class?
-   Vec<std::unique_ptr<BuggerModul>> list{};
-   BuggerRun bugger{problem, sol, sol_exists, list};
+   Vec<std::unique_ptr<BuggerModul>> list { };
+   BuggerRun bugger { problem, sol, sol_exists, list };
    bugger.addDefaultModules( );
-   //TODO scip gets deleted
-//   parse_parameters(optionsInfo, bugger.getParameters());
-   double time = 0;
-   Timer timer (time);
 
-   bugger.apply( timer, optionsInfo.instance_file );
-
-   return 0;
-}
-
-void parse_parameters(bugger::OptionsInfo &optionsInfo, bugger::ParameterSet &paramSet) {
    if( !optionsInfo.param_settings_file.empty( ) || !optionsInfo.unparsed_options.empty( ))
    {
+      auto paramSet = bugger.getParameters( );
       if( !optionsInfo.param_settings_file.empty( ))
       {
          std::ifstream input(optionsInfo.param_settings_file);
@@ -300,6 +290,13 @@ void parse_parameters(bugger::OptionsInfo &optionsInfo, bugger::ParameterSet &pa
          }
       }
    }
-} // namespace bugger
+   double time = 0;
+   Timer timer(time);
+
+   bugger.apply(timer, optionsInfo.instance_file);
+
+   return 0;
+}
+
 
 #endif

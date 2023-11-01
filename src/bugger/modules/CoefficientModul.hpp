@@ -61,6 +61,7 @@ namespace bugger {
       }
 
 
+      //TODO: here seems to be a bug so that there is infinity loop
       ModulStatus
       execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
               const Timer &timer) override {
@@ -88,7 +89,7 @@ namespace bugger {
          }
 
          int nbatch = 0;
-         for( int row = copy.getNRows( ) -1 ; row >= 0; --row )
+         for( int row = copy.getNRows( ) - 1; row >= 0; --row )
          {
             if( isCoefficientAdmissible(copy, row))
             {
@@ -97,40 +98,40 @@ namespace bugger {
                // add abort criteria
                for( int index = data.getLength( ) - 1; index >= 0; --index )
                {
-                  int var = data.getIndices()[index];
+                  int var = data.getIndices( )[ index ];
                   if( is_lb_ge_than_ub(copy.getVariableDomains( ), var))
                   {
                      SCIP_Real fixedval;
 
                      if( solution_exists )
                      {
-                        if( copy.getColFlags()[var].test(ColFlag::kIntegral))
-                           fixedval = MAX(MIN(0.0, num.epsFloor(copy.getUpperBounds()[var])),
-                                          num.epsCeil(copy.getLowerBounds()[var]));
+                        if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral))
+                           fixedval = MAX(MIN(0.0, num.epsFloor(copy.getUpperBounds( )[ var ])),
+                                          num.epsCeil(copy.getLowerBounds( )[ var ]));
                         else
-                           fixedval = MAX(MIN(0.0, copy.getUpperBounds()[var]), copy.getLowerBounds()[var]);
+                           fixedval = MAX(MIN(0.0, copy.getUpperBounds( )[ var ]), copy.getLowerBounds( )[ var ]);
                      }
                      else
                      {
-                        if( copy.getColFlags()[var].test(ColFlag::kIntegral))
-                           fixedval = num.round( solution.primal[var]);
+                        if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral))
+                           fixedval = num.round(solution.primal[ var ]);
                         else
-                           fixedval = solution.primal[var];
+                           fixedval = solution.primal[ var ];
                      }
 
-                     if( !copy.getRowFlags()[row].test(RowFlag::kLhsInf))
+                     if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf))
                      {
                         copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] -= data.getValues( )[ index ] * fixedval;
                         batches_rhs.push_back({ row, copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] });
                      }
-                     if( !copy.getRowFlags()[row].test(RowFlag::kRhsInf))
+                     if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf))
                      {
                         copy.getConstraintMatrix( ).getRightHandSides( )[ row ] -=
                               data.getValues( )[ index ] * fixedval;
                         batches_rhs.push_back({ row, copy.getConstraintMatrix( ).getRightHandSides( )[ row ] });
 
                      }
-                     batches_coeff.addEntry( row, var, fixedval );
+                     batches_coeff.addEntry(row, var, fixedval);
                   }
                }
                ++nbatch;
@@ -164,10 +165,13 @@ namespace bugger {
                   nchgsides += batches_lhs.size( ) + batches_rhs.size( );
                   SmallVec<int, 32> buffer;
                   const MatrixEntry<double> *iter = batches_coeff.template begin<true>(buffer);
-                  while( iter != applied_entries.end( ))
+                  if( !applied_entries.empty( ))
                   {
-                     applied_entries.addEntry(iter->row, iter->col, iter->val);
-                     nchgcoefs++;
+                     while( iter != applied_entries.end( ))
+                     {
+                        applied_entries.addEntry(iter->row, iter->col, iter->val);
+                        nchgcoefs++;
+                     }
                   }
                   batches_rhs.clear( );
                   batches_lhs.clear( );
