@@ -169,6 +169,16 @@ namespace bugger {
 
    protected:
 
+      SolverInterface*
+      createSolver(){
+#ifdef BUGGER_HAVE_SCIP
+         return new ScipInterface { };
+#else
+         msg.error("No solver specified -- aborting ....");
+         return nullptr;
+#endif
+      }
+
       double get_linear_activity(SparseVectorView<double> &data, Solution<double> &solution) {
          StableSum<double> sum;
          for( int i = 0; i < data.getLength( ); i++ )

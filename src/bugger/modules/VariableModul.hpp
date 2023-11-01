@@ -101,10 +101,10 @@ namespace bugger {
 
             if( nbatch >= 1 && ( nbatch >= batchsize || var <= 0 ))
             {
-               ScipInterface scipInterface { };
-               //TODO pass settings to SCIP
-               scipInterface.doSetUp(copy, solution_exists, solution);
-               if( scipInterface.run(msg) != Status::kSuccess )
+               auto solver = createSolver();
+               solver->parseParameters();
+               solver->doSetUp(copy, solution_exists, solution);
+               if( solver->run(msg) != Status::kSuccess )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions ){

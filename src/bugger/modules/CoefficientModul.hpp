@@ -141,10 +141,10 @@ namespace bugger {
 
             if( nbatch >= 1 && ( nbatch >= batchsize || row >= copy.getNRows( ) - 1 ))
             {
-               ScipInterface scipInterface { };
-               //TODO pass settings to SCIP
-               scipInterface.doSetUp(copy, solution_exists, solution);
-               if( scipInterface.run(msg) != Status::kSuccess )
+               auto solver = createSolver();
+               solver->parseParameters();
+               solver->doSetUp(copy, solution_exists, solution);
+               if( solver->run(msg) != Status::kSuccess )
                {
                   copy = Problem<double>(problem);
                   SmallVec<int, 32> buffer;
