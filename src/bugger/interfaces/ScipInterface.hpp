@@ -54,8 +54,8 @@ namespace bugger {
    while( FALSE )
 
 
-   class ScipInterface : public SolverInterface
-   {
+   class ScipInterface : public SolverInterface {
+
    private:
       SCIP *scip;
       SCIP_Sol *solution;
@@ -71,7 +71,183 @@ namespace bugger {
       void
       doSetUp(const Problem<double> &problem, bool solution_exits, const Solution<double> sol) override {
          auto result = setup(problem, solution_exits, sol);
-         assert(result == SCIP_OKAY );
+         assert(result == SCIP_OKAY);
+      }
+
+      void modify_parameters(int nbatches) override {
+         SCIP_PARAM *batch;
+
+         int *inds;
+         int nparams = SCIPgetNParams(scip);
+         SCIP_PARAM **params = SCIPgetParams(scip);
+         int batchsize = 1;
+
+         if( nbatches > 0 )
+         {
+            batchsize = nbatches - 1;
+
+            for( int i = 0; i < nparams; ++i )
+               if( isSettingAdmissible(params[ i ]))
+                  ++batchsize;
+
+            batchsize /= nbatches;
+         }
+
+         (SCIPallocBufferArray(scip, &inds, batchsize));
+         (SCIPallocBufferArray(scip, &batch, batchsize));
+         int nbatch = 0;
+
+         for( int i = 0; i < nparams; ++i )
+         {
+            SCIP_PARAM *param;
+
+            param = params[ i ];
+
+            if( isSettingAdmissible(param))
+            {
+               inds[ nbatch ] = i;
+               batch[ nbatch ].isfixed = param->isfixed;
+               param->isfixed = FALSE;
+
+               switch( SCIPparamGetType(param))
+               {
+                  case SCIP_PARAMTYPE_BOOL:
+                  {
+                     //TODO: that does not work
+                     bool *ptrbool;
+//                     ptrbool = ( param->data.boolparam.valueptr == nullptr ? &param->data.boolparam.curvalue
+//                                                                           : param->data.boolparam.valueptr );
+//                     batch[ nbatch ].data.boolparam.curvalue = *ptrbool;
+//                     *ptrbool = param->data.boolparam.defaultvalue;
+                     break;
+                  }
+                  case SCIP_PARAMTYPE_INT:
+                  {
+                     int *ptrint;
+                     ptrint = ( param->data.intparam.valueptr == nullptr ? &param->data.intparam.curvalue
+                                                                         : param->data.intparam.valueptr );
+                     batch[ nbatch ].data.intparam.curvalue = *ptrint;
+                     *ptrint = param->data.intparam.defaultvalue;
+                     break;
+                  }
+                  case SCIP_PARAMTYPE_LONGINT:
+                  {
+                     SCIP_Longint *ptrlongint;
+                     ptrlongint = ( param->data.longintparam.valueptr == nullptr ? &param->data.longintparam.curvalue
+                                                                                 : param->data.longintparam.valueptr );
+                     batch[ nbatch ].data.longintparam.curvalue = *ptrlongint;
+                     *ptrlongint = param->data.longintparam.defaultvalue;
+                     break;
+                  }
+                  case SCIP_PARAMTYPE_REAL:
+                  {
+                     SCIP_Real *ptrreal;
+                     ptrreal = ( param->data.realparam.valueptr == nullptr ? &param->data.realparam.curvalue
+                                                                           : param->data.realparam.valueptr );
+                     batch[ nbatch ].data.realparam.curvalue = *ptrreal;
+                     *ptrreal = param->data.realparam.defaultvalue;
+                     break;
+                  }
+                  case SCIP_PARAMTYPE_CHAR:
+                  {
+                     char *ptrchar;
+                     ptrchar = ( param->data.charparam.valueptr == nullptr ? &param->data.charparam.curvalue
+                                                                           : param->data.charparam.valueptr );
+                     batch[ nbatch ].data.charparam.curvalue = *ptrchar;
+                     *ptrchar = param->data.charparam.defaultvalue;
+                     break;
+                  }
+                  case SCIP_PARAMTYPE_STRING:
+                  {
+                     char **ptrstring;
+                     ptrstring = ( param->data.stringparam.valueptr == nullptr ? &param->data.stringparam.curvalue
+                                                                               : param->data.stringparam.valueptr );
+                     batch[ nbatch ].data.stringparam.curvalue = *ptrstring;
+                     (BMSduplicateMemoryArray(ptrstring, param->data.stringparam.defaultvalue,
+                                              strlen(param->data.stringparam.defaultvalue) + 1));
+                     break;
+                  }
+                  default:
+                     SCIPerrorMessage("unknown parameter type\n");
+               }
+
+               ++nbatch;
+            }
+
+         }
+
+      }
+
+
+      /** tests the given SCIP instance in a copy and reports detected bug; if a primal bug solution is provided, the
+       *  resulting dual bound is also checked; on UNIX platforms aborts are caught, hence assertions can be enabled here
+       */
+      Status run(const Message &msg) override {
+         SCIP *test = nullptr;
+         SCIP_HASHMAP *varmap = nullptr;
+         SCIP_HASHMAP *consmap = nullptr;
+
+         //TODO: overload with command line paramter
+#ifdef CATCH_ASSERT_BUG
+         if( fork() == 0 )
+      exit(trySCIP(iscip.getSCIP(), iscip.get_solution(), &test, &varmap, &consmap));
+   else
+   {
+      int status;
+
+      wait(&status);
+
+      if( WIFEXITED(status) )
+         retcode = WEXITSTATUS(status);
+      else if( WIFSIGNALED(status) )
+      {
+         retcode = WTERMSIG(status);
+
+         if( retcode == SIGINT )
+            retcode = 0;
+      }
+   }
+#else
+         Status retcode = trySCIP(&test, &varmap, &consmap);
+#endif
+
+         if( test != nullptr )
+            SCIPfree(&test);
+         if( consmap != nullptr )
+            SCIPhashmapFree(&consmap);
+         if( varmap != nullptr )
+            SCIPhashmapFree(&varmap);
+         msg.info("\tSCIP solved mps with return code {}\n", retcode);
+
+         // TODO: what are passcodes doing?
+//         for( int i = 0; i < presoldata->npasscodes; ++i )
+//            if( retcode == presoldata->passcodes[i] )
+//               return 0;
+
+         return retcode;
+      }
+
+      ~ScipInterface( ) {
+         if( scip != nullptr )
+         {
+            SCIP_RETCODE retcode = SCIPfreeSol(scip, &solution);
+            UNUSED(retcode);
+            assert(retcode == SCIP_OKAY);
+            retcode = SCIPfree(&scip);
+            UNUSED(retcode);
+            assert(retcode == SCIP_OKAY);
+         }
+      }
+
+   private:
+
+      bool isSettingAdmissible(SCIP_PARAM *param) {
+         /* keep reading and writing settings because input and output is not monitored */
+         return ( param->isfixed || !SCIPparamIsDefault(param))
+                && strncmp("display/", SCIPparamGetName(param), 8) != 0 &&
+                strncmp("limits/", SCIPparamGetName(param), 7) != 0
+                && strncmp("reading/", SCIPparamGetName(param), 8) != 0 &&
+                strncmp("write/", SCIPparamGetName(param), 6) != 0;
       }
 
       SCIP_RETCODE
@@ -206,57 +382,6 @@ namespace bugger {
          return s;
       }
 
-      /** tests the given SCIP instance in a copy and reports detected bug; if a primal bug solution is provided, the
-       *  resulting dual bound is also checked; on UNIX platforms aborts are caught, hence assertions can be enabled here
-       */
-      Status run(const Message &msg) override {
-         SCIP *test = nullptr;
-         SCIP_HASHMAP *varmap = nullptr;
-         SCIP_HASHMAP *consmap = nullptr;
-
-         //TODO: overload with command line paramter
-#ifdef CATCH_ASSERT_BUG
-         if( fork() == 0 )
-      exit(trySCIP(iscip.getSCIP(), iscip.get_solution(), &test, &varmap, &consmap));
-   else
-   {
-      int status;
-
-      wait(&status);
-
-      if( WIFEXITED(status) )
-         retcode = WEXITSTATUS(status);
-      else if( WIFSIGNALED(status) )
-      {
-         retcode = WTERMSIG(status);
-
-         if( retcode == SIGINT )
-            retcode = 0;
-      }
-   }
-#else
-         Status retcode = trySCIP(&test, &varmap, &consmap);
-#endif
-
-         if( test != nullptr )
-            SCIPfree(&test);
-         if( consmap != nullptr )
-            SCIPhashmapFree(&consmap);
-         if( varmap != nullptr )
-            SCIPhashmapFree(&varmap);
-         msg.info("\tSCIP solved mps with return code {}\n", retcode);
-
-         // TODO: what are passcodes doing?
-//         for( int i = 0; i < presoldata->npasscodes; ++i )
-//            if( retcode == presoldata->passcodes[i] )
-//               return 0;
-
-         return retcode;
-      }
-
-      /** creates a SCIP instance test, variable map varmap, and constraint map consmap, copies setting, problem, and
-       *  solutions apart from the primal bug solution, tries to solve, and reports detected bug
-       */
       Status trySCIP(SCIP **test, SCIP_HASHMAP **varmap, SCIP_HASHMAP **consmap) {
          SCIP_Real reference = SCIPgetObjsense(scip) * SCIPinfinity(scip);
          SCIP_Bool valid = FALSE;
@@ -313,17 +438,6 @@ namespace bugger {
          return Status::kSuccess;
       }
 
-      ~ScipInterface( ) {
-         if( scip != nullptr )
-         {
-            SCIP_RETCODE retcode = SCIPfreeSol(scip, &solution);
-            UNUSED(retcode);
-            assert(retcode == SCIP_OKAY);
-            retcode = SCIPfree(&scip);
-            UNUSED(retcode);
-            assert(retcode == SCIP_OKAY);
-         }
-      }
 
    };
 

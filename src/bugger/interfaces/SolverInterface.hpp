@@ -46,9 +46,8 @@ namespace bugger {
       virtual
       Status run(const Message &msg) = 0;
 
-      //TODO: implement these functions for SCIP
-      void
-      modify_parameters(){}
+      virtual
+      void modify_parameters(int nbatches) { }
 
       void parseParameters( ) {
 
