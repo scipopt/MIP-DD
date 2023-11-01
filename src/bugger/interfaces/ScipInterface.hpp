@@ -128,10 +128,10 @@ namespace bugger {
          {
             if(problem.getRowFlags()[row].test(RowFlag::kRedundant))
                continue;
+            assert( !rflags[row].test(RowFlag::kLhsInf ) || !rflags[row].test(RowFlag::kRhsInf ));
             SCIP_CONS* cons;
 
             auto rowvec = consMatrix.getRowCoefficients(row );
-            //TODO: remove fixed variables from the Vector
             const double* vals = rowvec.getValues();
             const int* inds = rowvec.getIndices();
             SCIP_Real lhs = rflags[row].test(RowFlag::kLhsInf )
@@ -141,14 +141,33 @@ namespace bugger {
                             ? SCIPinfinity( scip )
                             : SCIP_Real( rhs_values[row] );
 
+            //TODO: @Dominik can you maybe double-check this and also check if the code is understandable
+            //the first length entries of consvars-/vals are the entries of the current constraint
+            int length = 0;
+            int counter = 0;
             for( int k = 0; k != rowvec.getLength(); ++k )
             {
-               consvars[k] = vars[inds[k]];
-               consvals[k] = SCIP_Real( vals[k] );
+               if(problem.getColFlags()[k].test(ColFlag::kFixed))
+               {
+                  double value = problem.getLowerBounds( )[ inds[ k ]];
+                  assert(value == problem.getUpperBounds()[k] );
+                  if(vals[k] == 0)
+                     continue;
+                  //update rhs and lhs if fixed variable is still
+                  if( !rflags[row].test(RowFlag::kLhsInf ) )
+                     lhs -= (vals[k] * value);
+                  if( !rflags[row].test(RowFlag::kRhsInf ) )
+                     rhs -= (vals[k] * value);
+                  continue;
+               }
+               consvars[counter] = vars[inds[k]];
+               consvals[counter] = SCIP_Real( vals[k] );
+               length++;
+               counter++;
             }
 
             SCIP_CALL( SCIPcreateConsBasicLinear(
-                  scip, &cons, consNames[row].c_str(), rowvec.getLength(),
+                  scip, &cons, consNames[row].c_str(), length,
                   consvars.data(), consvals.data(), lhs, rhs ) );
             SCIP_CALL( SCIPaddCons( scip, cons ) );
             SCIP_CALL( SCIPreleaseCons( scip, &cons ) );

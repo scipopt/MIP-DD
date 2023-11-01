@@ -118,7 +118,6 @@ namespace bugger {
               const Timer &timer) override {
 
          ModulStatus result = ModulStatus::kUnsuccesful;
-         return result;
          auto copy = Problem < double > ( problem );
          Vec<int> applied_vars { };
          Vec<int> batches { };
