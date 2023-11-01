@@ -36,7 +36,8 @@
 #include "scip/scip.h"
 #include "scip/scipdefplugins.h"
 #include "scip/struct_paramset.h"
-#include "Status.hpp"
+#include "bugger/interfaces/Status.hpp"
+#include "bugger/interfaces/SolverInterface.hpp"
 
 namespace bugger {
 
@@ -53,7 +54,8 @@ namespace bugger {
    while( FALSE )
 
 
-   class ScipInterface {
+   class ScipInterface : public SolverInterface
+   {
    private:
       SCIP *scip;
       SCIP_Sol *solution;
@@ -66,9 +68,14 @@ namespace bugger {
             throw std::runtime_error("could not create SCIP");
       }
 
+      void
+      doSetUp(const Problem<double> &problem, bool solution_exits, const Solution<double> sol) override {
+         auto result = setup(problem, solution_exits, sol);
+         assert(result == SCIP_OKAY );
+      }
 
       SCIP_RETCODE
-      doSetUp(const Problem<double> &problem, bool solution_exits, const Solution<double> sol) {
+      setup(const Problem<double> &problem, bool solution_exits, const Solution<double> sol) {
          SCIP_CALL(SCIPincludeDefaultPlugins(scip));
          int ncols = problem.getNCols( );
          int nrows = problem.getNRows( );
@@ -202,7 +209,7 @@ namespace bugger {
       /** tests the given SCIP instance in a copy and reports detected bug; if a primal bug solution is provided, the
        *  resulting dual bound is also checked; on UNIX platforms aborts are caught, hence assertions can be enabled here
        */
-      Status run(const Message &msg) {
+      Status run(const Message &msg) override {
          SCIP *test = nullptr;
          SCIP_HASHMAP *varmap = nullptr;
          SCIP_HASHMAP *consmap = nullptr;
