@@ -42,75 +42,11 @@ namespace bugger {
       }
 
       bool isFixingAdmissible(Problem<double> &problem, int var) {
+         if( problem.getColFlags( )[ var ].test(ColFlag::kFixed))
+            return false;
          return !problem.getColFlags( )[ var ].test(ColFlag::kUbInf) ||
                 !problem.getColFlags( )[ var ].test(ColFlag::kLbInf) ||
                 !num.isLT(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
-      }
-
-      void
-      removeFixedCol(Problem<double> &problem, int col) {
-         return;
-         Objective<double> &obj = problem.getObjective( );
-         const Vec<double> &lbs = problem.getLowerBounds( );
-         Vec<RowActivity<double>> &activities = problem.getRowActivities( );
-         ConstraintMatrix<double> &consMatrix = problem.getConstraintMatrix( );
-         Vec<RowFlags> &rflags = consMatrix.getRowFlags( );
-         Vec<double> &lhs = consMatrix.getLeftHandSides( );
-         Vec<double> &rhs = consMatrix.getRightHandSides( );
-
-         assert(
-               num.isEq(lbs[ col ], problem.getUpperBounds( )[ col ]) && !problem.getColFlags( )[ col ]
-                     .test(ColFlag::kUbInf) &&
-               !problem.getColFlags( )[ col ].test(ColFlag::kLbInf));
-
-         auto colvec = consMatrix.getColumnCoefficients(col);
-
-         // if it is fixed to zero activities and sides do not need to be
-         // updated
-
-         // update objective offset
-         if( obj.coefficients[ col ] != 0 )
-         {
-            obj.offset += lbs[ col ] * obj.coefficients[ col ];
-            obj.coefficients[ col ] = 0;
-         }
-
-
-         // fixed to nonzero value, so update sides and activities
-         int collen = colvec.getLength( );
-         const int *colrows = colvec.getIndices( );
-         const double *colvals = colvec.getValues( );
-
-         assert( !problem.getColFlags()[col].test( ColFlag::kFixed ) );
-         problem.getColFlags()[col].set( ColFlag::kFixed );
-
-         for( int i = 0; i != collen; ++i )
-         {
-            int row = colrows[ i ];
-
-            // if the row is redundant it will also be removed and does not need
-            // to be updated
-            if( rflags[ row ].test(RowFlag::kRedundant))
-               continue;
-
-            // subtract constant contribution from activity and sides
-            double constant = lbs[ col ] * colvals[ i ];
-            activities[ row ].min -= constant;
-            activities[ row ].max -= constant;
-
-            if( !rflags[ row ].test(RowFlag::kLhsInf))
-               lhs[ row ] -= constant;
-
-            if( !rflags[ row ].test(RowFlag::kRhsInf))
-               rhs[ row ] -= constant;
-
-            // due to numerics a ranged row can become an equality
-            if( !rflags[ row ].test(RowFlag::kLhsInf, RowFlag::kRhsInf,
-                                    RowFlag::kEquation) &&
-                lhs[ row ] == rhs[ row ] )
-               rflags[ row ].set(RowFlag::kEquation);
-         }
-
       }
 
       ModulStatus
@@ -140,10 +76,7 @@ namespace bugger {
 
             if( isFixingAdmissible(copy, var))
             {
-               // TODO currently the variables are only removed from the model, but since the matrix is not shrinked they are technically still part of the problem
-               //TODO check this for non zero ub/lb
-               //TODO remove just updates the rhs/lhs but the entries are still present they should be ruled out with Fixed flag -> all other modules have to cast on the fixed flag
-               removeFixedCol(copy, var);
+               copy.getColFlags( )[ var ].set(ColFlag::kFixed);
                batches.push_back(var);
                ++nbatch;
 
@@ -156,7 +89,7 @@ namespace bugger {
                   {
                      copy = Problem < double > ( problem );
                      for( const auto &item: applied_vars )
-                        removeFixedCol(copy, item);
+                        copy.getColFlags( )[ item ].set(ColFlag::kFixed);
                   }
                   else
                   {
