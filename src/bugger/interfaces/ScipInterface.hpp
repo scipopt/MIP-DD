@@ -48,7 +48,7 @@ namespace bugger {
       if( (_restat_ = (x)) != SCIP_OKAY )                             \
       {                                                               \
          SCIPerrorMessage("Error <%d> in function call\n", _restat_); \
-         return Status::kErrorDuringSCIP;                             \
+         return Status::kUnexpectedError;                             \
       }                                                               \
    }                                                                  \
    while( FALSE )
