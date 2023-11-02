@@ -58,7 +58,7 @@ namespace bugger {
 
    private:
       SCIP *scip;
-      SCIP_Sol *solution;
+      double reference = INFINITY;
       Vec<SCIP_VAR *> vars;
 
 
@@ -187,29 +187,16 @@ namespace bugger {
          SCIP_HASHMAP *varmap = nullptr;
          SCIP_HASHMAP *consmap = nullptr;
 
-         //TODO: overload with command line paramter
-#ifdef CATCH_ASSERT_BUG
-         if( fork() == 0 )
-      exit(trySCIP(iscip.getSCIP(), iscip.get_solution(), &test, &varmap, &consmap));
-   else
-   {
-      int status;
-
-      wait(&status);
-
-      if( WIFEXITED(status) )
-         retcode = WEXITSTATUS(status);
-      else if( WIFSIGNALED(status) )
-      {
-         retcode = WTERMSIG(status);
-
-         if( retcode == SIGINT )
-            retcode = 0;
-      }
-   }
-#else
-         Status retcode = trySCIP(&test, &varmap, &consmap);
-#endif
+         Status retcode;
+         try
+         {
+            retcode = trySCIP(&test, &varmap, &consmap);
+         }
+         catch (const std::exception& ex)
+         {
+            //TODO add that failed assertion is expected.
+            retcode = Status::kSuccess;
+         }
 
          if( test != nullptr )
             SCIPfree(&test);
@@ -217,7 +204,18 @@ namespace bugger {
             SCIPhashmapFree(&consmap);
          if( varmap != nullptr )
             SCIPhashmapFree(&varmap);
-         msg.info("\tSCIP solved mps with return code {}\n", retcode);
+         switch( retcode )
+         {
+            case Status::kSuccess:
+               msg.info("\tSCIP could not reproduce the error\n");
+               break;
+            case Status::kFail:
+               msg.info("\tSCIP could reproduce the error\n");
+               break;
+            case Status::kErrorDuringSCIP:
+               msg.info("\tSCIP returned an error\n");
+               break;
+         }
 
          // TODO: what are passcodes doing?
 //         for( int i = 0; i < presoldata->npasscodes; ++i )
@@ -230,10 +228,10 @@ namespace bugger {
       ~ScipInterface( ) {
          if( scip != nullptr )
          {
-            SCIP_RETCODE retcode = SCIPfreeSol(scip, &solution);
-            UNUSED(retcode);
-            assert(retcode == SCIP_OKAY);
-            retcode = SCIPfree(&scip);
+//            SCIP_RETCODE retcode = SCIPfreeSol(scip, &solution);
+//            UNUSED(retcode);
+//            assert(retcode == SCIP_OKAY);
+            auto retcode = SCIPfree(&scip);
             UNUSED(retcode);
             assert(retcode == SCIP_OKAY);
          }
@@ -268,6 +266,9 @@ namespace bugger {
 
          vars.resize(problem.getNCols( ));
 
+         if(solution_exits)
+            reference = 0;
+
          for( int col = 0; col < ncols; ++col )
          {
             SCIP_VAR *var;
@@ -296,6 +297,8 @@ namespace bugger {
             SCIP_CALL(SCIPcreateVarBasic(
                   scip, &var, varNames[ col ].c_str( ), lb, ub,
                   SCIP_Real(obj.coefficients[ col ]), type));
+            if(solution_exits)
+               reference += obj.coefficients[ col ]* sol.primal[col];
             SCIP_CALL(SCIPaddVar(scip, var));
             vars[ col ] = var;
 
@@ -360,8 +363,6 @@ namespace bugger {
          if( obj.offset != 0 )
             SCIP_CALL(SCIPaddOrigObjoffset(scip, SCIP_Real(obj.offset)));
 
-         if( solution_exits )
-            solution = add_solution(sol);
          return SCIP_OKAY;
       }
 
@@ -383,19 +384,17 @@ namespace bugger {
       }
 
       Status trySCIP(SCIP **test, SCIP_HASHMAP **varmap, SCIP_HASHMAP **consmap) {
-         SCIP_Real reference = SCIPgetObjsense(scip) * SCIPinfinity(scip);
          SCIP_Bool valid = FALSE;
          SCIP_SOL **sols;
          int nsols;
 
          sols = SCIPgetSols(scip);
          nsols = SCIPgetNSols(scip);
+         //TODO the copying is probably not necessary for the current design
          SCIP_CALL_RETURN(SCIPhashmapCreate(varmap, SCIPblkmem(scip), SCIPgetNVars(scip)));
          SCIP_CALL_RETURN(SCIPhashmapCreate(consmap, SCIPblkmem(scip), SCIPgetNConss(scip)));
          SCIP_CALL_RETURN(SCIPcreate(test));
-#ifndef SCIP_DEBUG
          SCIPsetMessagehdlrQuiet(*test, TRUE);
-#endif
          SCIP_CALL_RETURN(SCIPincludeDefaultPlugins(*test));
          SCIP_CALL_RETURN(SCIPcopyParamSettings(scip, *test));
          SCIP_CALL_RETURN(SCIPcopyOrigProb(scip, *test, *varmap, *consmap, SCIPgetProbName(scip)));
@@ -407,33 +406,62 @@ namespace bugger {
          if( !valid )
             SCIP_CALL_ABORT(SCIP_INVALIDDATA);
 
-         //TODO fix this
-         for( int i = 0; i < nsols; ++i )
-         {
-            SCIP_SOL *sol;
-            sol = sols[ i ];
-            if( sol == solution )
-            {
-               //TODO: parse Solution<REAL> solution to SCIP
-               reference = SCIPgetSolOrigObj(scip, sol);
-            }
-            else
-            {
-               SCIP_SOL *initsol = NULL;
-
-               SCIP_CALL_RETURN(SCIPtranslateSubSol(*test, scip, sol, NULL, SCIPgetOrigVars(scip), &initsol));
-
-               if( initsol == NULL )
-                  SCIP_CALL_ABORT(SCIP_INVALIDCALL);
-
-               SCIP_CALL_RETURN(SCIPaddSolFree(*test, &initsol, &valid));
-            }
-         }
+//         //TODO @DOminink I am not sure why multiple solutions are present?
+//         for( int i = 0; i < nsols; ++i )
+//         {
+//            SCIP_SOL *sol;
+//            sol = sols[ i ];
+//            if( sol == solution )
+//            {
+//               reference = SCIPgetSolOrigObj(scip, sol);
+//            }
+//            else
+//            {
+//               SCIP_SOL *initsol = NULL;
+//
+//               SCIP_CALL_RETURN(SCIPtranslateSubSol(*test, scip, sol, NULL, SCIPgetOrigVars(scip), &initsol));
+//
+//               if( initsol == NULL )
+//                  SCIP_CALL_ABORT(SCIP_INVALIDCALL);
+//
+//               SCIP_CALL_RETURN(SCIPaddSolFree(*test, &initsol, &valid));
+//            }
+//         }
 
          SCIP_CALL_RETURN(SCIPsolve(*test));
 
-         if( SCIPisSumNegative(scip, SCIPgetObjsense(*test) * ( reference - SCIPgetDualbound(*test))))
-            return Status::kFail;
+         if ( reference != INFINITY )
+         {
+            switch( SCIPgetStatus( scip ) )
+            {
+               case SCIP_STATUS_UNKNOWN:
+                  return Status::kErrorDuringSCIP;
+               case SCIP_STATUS_USERINTERRUPT:
+               case SCIP_STATUS_NODELIMIT:
+               case SCIP_STATUS_TOTALNODELIMIT:
+               case SCIP_STATUS_STALLNODELIMIT:
+               case SCIP_STATUS_TIMELIMIT:
+               case SCIP_STATUS_MEMLIMIT:
+               case SCIP_STATUS_GAPLIMIT:
+               case SCIP_STATUS_SOLLIMIT:
+               case SCIP_STATUS_BESTSOLLIMIT:
+               case SCIP_STATUS_RESTARTLIMIT:
+#if SCIP_VERSION_MAJOR >= 6
+               case SCIP_STATUS_TERMINATE:
+#endif
+               //TODO check if the reference is still within gap?
+                  break;
+               //TODO: not all cases are covered
+               case SCIP_STATUS_INFORUNBD:
+               case SCIP_STATUS_INFEASIBLE:
+               case SCIP_STATUS_UNBOUNDED:
+                  if( reference != INFINITY)
+                     return Status::kFail;
+               case SCIP_STATUS_OPTIMAL:
+                  if( SCIPisSumNegative(scip, SCIPgetObjsense(*test) * ( reference - SCIPgetDualbound(*test))))
+                     return Status::kFail;
+            }
+         }
 
          return Status::kSuccess;
       }
