@@ -165,14 +165,13 @@ namespace bugger {
                   nchgsides += batches_lhs.size( ) + batches_rhs.size( );
                   SmallVec<int, 32> buffer;
                   const MatrixEntry<double> *iter = batches_coeff.template begin<true>(buffer);
-                  if( !applied_entries.empty( ))
-                  {
-                     while( iter != applied_entries.end( ))
+                  if( !batches_coeff.empty())
+                     while( iter != batches_coeff.end( ))
                      {
                         applied_entries.addEntry(iter->row, iter->col, iter->val);
+                        iter = batches_coeff.template next<true>( buffer );
                         nchgcoefs++;
                      }
-                  }
                   batches_rhs.clear( );
                   batches_lhs.clear( );
                   batches_coeff.clear( );

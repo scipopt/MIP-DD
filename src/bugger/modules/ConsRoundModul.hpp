@@ -50,14 +50,14 @@ namespace bugger {
 
          double lhs = problem.getConstraintMatrix( ).getLeftHandSides( )[ row ];
          double rhs = problem.getConstraintMatrix( ).getRightHandSides( )[ row ];
-         if( !num.isEq(lhs, rhs) && ( !num.isIntegral(lhs) || !num.isIntegral(rhs)))
+         if( num.isEq(lhs, rhs) && ( !num.isIntegral(lhs) || !num.isIntegral(rhs)))
             return true;
          auto data = problem.getConstraintMatrix( ).getRowCoefficients(row);
          for( int i = 0; i < data.getLength( ); ++i )
          {
             if( problem.getColFlags()[data.getIndices()[i]].test(ColFlag::kFixed))
                continue;
-            if( num.isIntegral(data.getValues( )[ i ]))
+            if( !num.isIntegral(data.getValues( )[ i ]))
                return true;
          }
          /* leave sparkling or fixed constraints */
@@ -90,6 +90,7 @@ namespace bugger {
 
          //TODO: consider fixed variables
          int nbatch = 0;
+         assert(batches_coeff.empty());
          for( int row = 0; row < copy.getNRows( ); ++row )
          {
             if( isConsroundAdmissible(copy, row))
@@ -163,11 +164,13 @@ namespace bugger {
                   nchgsides += batches_lhs.size( ) + batches_rhs.size( );
                   SmallVec<int, 32> buffer;
                   const MatrixEntry<double> *iter = batches_coeff.template begin<true>(buffer);
-                  while( iter != applied_entries.end( ))
-                  {
-                     applied_entries.addEntry(iter->row, iter->col, iter->val);
-                     nchgcoefs++;
-                  }
+                  if( !batches_coeff.empty())
+                     while( iter != batches_coeff.end( ))
+                     {
+                        applied_entries.addEntry(iter->row, iter->col, iter->val);
+                        iter = batches_coeff.template next<true>( buffer );
+                        nchgcoefs++;
+                     }
                   batches_rhs.clear( );
                   batches_lhs.clear( );
                   batches_coeff.clear( );

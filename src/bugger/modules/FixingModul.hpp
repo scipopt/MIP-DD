@@ -44,9 +44,9 @@ namespace bugger {
       bool isFixingAdmissible(Problem<double> &problem, int var) {
          if( problem.getColFlags( )[ var ].test(ColFlag::kFixed))
             return false;
-         return !problem.getColFlags( )[ var ].test(ColFlag::kUbInf) ||
-                !problem.getColFlags( )[ var ].test(ColFlag::kLbInf) ||
-                !num.isLT(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
+         return !problem.getColFlags( )[ var ].test(ColFlag::kUbInf) &&
+                !problem.getColFlags( )[ var ].test(ColFlag::kLbInf) &&
+                num.isEq(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
       }
 
       ModulStatus
