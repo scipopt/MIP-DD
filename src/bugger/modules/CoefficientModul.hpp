@@ -144,7 +144,7 @@ namespace bugger {
                auto solver = createSolver();
                solver->parseParameters();
                solver->doSetUp(copy, solution_exists, solution);
-               if( solver->run(msg) != Status::kSuccess )
+               if( solver->run(msg) != Status::kFail )
                {
                   copy = Problem<double>(problem);
                   SmallVec<int, 32> buffer;

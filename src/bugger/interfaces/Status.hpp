@@ -30,7 +30,7 @@ enum class Status : int {
 
    kSuccess = 1,
 
-   kErrorDuringSCIP = 2,
+   kUnexpectedError = 2,
 
 };
 #endif //BUGGER_STATUS_HPP

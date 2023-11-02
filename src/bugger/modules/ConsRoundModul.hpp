@@ -31,7 +31,7 @@ namespace bugger {
 
    class ConsRoundModul : public BuggerModul {
    public:
-      ConsRoundModul( const Message& _msg ) : BuggerModul( ) {
+      explicit ConsRoundModul( const Message& _msg ) : BuggerModul( ) {
          this->setName("consround");
          this->msg = _msg;
       }
@@ -108,13 +108,13 @@ namespace bugger {
                   if( !num.isIntegral(lhs))
                   {
                      double new_val = MIN(num.round(lhs), num.epsFloor(get_linear_activity(data, solution)));
-                     batches_lhs.push_back({ row, new_val });
+                     batches_lhs.emplace_back( row, new_val );
                      copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = new_val;
                   }
                   if( !num.isIntegral(rhs))
                   {
                      double new_val = MIN(num.round(rhs), num.epsCeil(get_linear_activity(data, solution)));
-                     batches_rhs.push_back({ row, new_val });
+                     batches_rhs.emplace_back( row, new_val );
                      copy.getConstraintMatrix( ).getRightHandSides( )[ row ] = new_val;
                   }
                }
@@ -122,12 +122,12 @@ namespace bugger {
                {
                   if( !num.isIntegral(lhs))
                   {
-                     batches_lhs.push_back({ row, num.round(lhs) });
+                     batches_lhs.emplace_back( row, num.round(lhs) );
                      copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = num.round(lhs);
                   }
                   if( !num.isIntegral(rhs))
                   {
-                     batches_rhs.push_back({ row, num.round(rhs) });
+                     batches_rhs.emplace_back( row, num.round(rhs) );
                      copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = num.round(rhs);
                   }
                }
@@ -142,7 +142,7 @@ namespace bugger {
                auto solver = createSolver();
                solver->parseParameters();
                solver->doSetUp(copy, solution_exists, solution);
-               if( solver->run(msg) != Status::kSuccess )
+               if( solver->run(msg) != Status::kFail )
                {
                   copy = Problem<double>(problem);
                   SmallVec<int, 32> buffer;

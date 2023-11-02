@@ -212,7 +212,7 @@ namespace bugger {
             case Status::kFail:
                msg.info("\tSCIP could reproduce the error\n");
                break;
-            case Status::kErrorDuringSCIP:
+            case Status::kUnexpectedError:
                msg.info("\tSCIP returned an error\n");
                break;
          }
@@ -432,10 +432,10 @@ namespace bugger {
 
          if ( reference != INFINITY )
          {
-            switch( SCIPgetStatus( scip ) )
+            switch( SCIPgetStatus( *test ) )
             {
                case SCIP_STATUS_UNKNOWN:
-                  return Status::kErrorDuringSCIP;
+                  return Status::kUnexpectedError;
                case SCIP_STATUS_USERINTERRUPT:
                case SCIP_STATUS_NODELIMIT:
                case SCIP_STATUS_TOTALNODELIMIT:
