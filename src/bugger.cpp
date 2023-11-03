@@ -48,116 +48,12 @@
 #include "bugger/modules/SideModul.hpp"
 #include "bugger/modules/VariableModul.hpp"
 #include "bugger/modules/VarroundModul.hpp"
+#include "bugger/data/BuggerRun.hpp"
 
 #include <boost/program_options.hpp>
 
 namespace bugger {
 
-   class BuggerRun {
-
-   private:
-      BuggerOptions options;
-      Problem<double> &problem;
-      Solution<double> &solution;
-      bool solution_exists;
-      Vec<std::unique_ptr<BuggerModul>> &modules;
-      Vec<ModulStatus> results;
-
-      Vec<int> origcol_mapping;
-      Vec<int> origrow_mapping;
-      Message msg { };
-
-   public:
-
-      BuggerRun(Problem<double> &_problem, Solution<double> &_solution, bool _solution_exists,
-                Vec<std::unique_ptr<BuggerModul>> &_modules)
-            : options({ }), problem(_problem), solution(_solution), solution_exists(_solution_exists),
-              modules(_modules) {
-      }
-
-      ModulStatus
-      evaluateResults( ) {
-         int largestValue = static_cast<int>( ModulStatus::kDidNotRun );
-
-         for( auto &i: results )
-            largestValue = std::max(largestValue, static_cast<int>( i ));
-
-         return static_cast<ModulStatus>( largestValue );
-      }
-
-      void apply(Timer &timer, std::string filename) {
-         results.resize(modules.size( ));
-
-         //TODO: delete the variable names and constraint names also during updates
-         for( unsigned int i = 0; i < problem.getNRows( ); ++i )
-            origrow_mapping.push_back(( int ) i);
-
-         for( unsigned int i = 0; i < problem.getNCols( ); ++i )
-            origcol_mapping.push_back(( int ) i);
-
-         if( options.nrounds < 0 )
-            options.nrounds = INT_MAX;
-
-         if( options.nstages < 0 || options.nstages > modules.size( ))
-            options.nstages = modules.size( );
-
-         int ending = 4;
-         if( filename.substr(filename.length( ) - 3) == ".gz" )
-            ending = 7;
-         if( filename.substr(filename.length( ) - 3) == ".bz2" )
-            ending = 7;
-
-         for( int round = 0; round < options.nrounds; ++round )
-         {
-            for( int module = 0; module < modules.size( ); module++ )
-               results[ module ] = modules[ module ]->run(problem, solution, solution_exists, options, timer);
-
-            //TODO:write also parameters
-            std::string newfilename =
-                  filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round) + ".mps";
-
-            MpsWriter<double>::writeProb(newfilename, problem, origrow_mapping, origcol_mapping);
-            ModulStatus status = evaluateResults( );
-            if( status != ModulStatus::kSuccessful )
-               break;
-         }
-         printStats( );
-      }
-
-      void printStats( ) {
-         msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>18} \n", "modules",
-                  "nb calls", "changes", "success calls(%)", "execution time(s)");
-         for( const auto &module: modules )
-            module->printStats(msg);
-
-      }
-
-      void addDefaultModules( ) {
-         using uptr = std::unique_ptr<BuggerModul>;
-         addModul(uptr(new SettingModul(msg)));
-         addModul(uptr(new ConstraintModul(msg)));
-         addModul(uptr(new VariableModul(msg)));
-         addModul(uptr(new SideModul(msg)));
-         addModul(uptr(new ObjectiveModul(msg)));
-         addModul(uptr(new CoefficientModul(msg)));
-         addModul(uptr(new FixingModul(msg)));
-         addModul(uptr(new VarroundModul(msg)));
-         addModul(uptr(new ConsRoundModul(msg)));
-      }
-
-      void
-      addModul(std::unique_ptr<BuggerModul> module) {
-         modules.emplace_back(std::move(module));
-      }
-
-      ParameterSet getParameters( ) {
-         ParameterSet paramSet;
-         options.addParameters(paramSet);
-         for( const auto &module: modules )
-            module->addParameters(paramSet);
-         return paramSet;
-      }
-   };
 } // namespace bugger
 
 int
@@ -204,8 +100,6 @@ main(int argc, char *argv[]) {
       sol_exists = true;
    }
 
-   //TODO: parse settings file and hand it down
-//   scip.read_parameters(optionsInfo.scip_settings_file);
 
    //TODO: why can this not be auto generated in the class?
    Vec<std::unique_ptr<BuggerModul>> list { };
