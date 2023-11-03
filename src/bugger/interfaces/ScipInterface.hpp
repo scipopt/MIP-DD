@@ -181,16 +181,11 @@ namespace bugger {
       }
 
 
-      /** tests the given SCIP instance in a copy and reports detected bug; if a primal bug solution is provided, the
-       *  resulting dual bound is also checked; on UNIX platforms aborts are caught, hence assertions can be enabled here
-       */
-      BuggerStatus run(const Message &msg) override {
+      BuggerStatus run(const Message &msg, SolverStatus originalStatus) override {
 
          SolverStatus status = solve( );
          //TODO add that failed assertion is expected.
 
-         //TODO set this by the original status
-         SolverStatus originalStatus = SolverStatus::kInfeasibleOrUnbounded;
 
          BuggerStatus result = BuggerStatus::kSuccess;
          if( status == SolverStatus::kOptimal || status == SolverStatus::kLimit )
@@ -198,9 +193,9 @@ namespace bugger {
             if( SCIPisSumNegative(scip, SCIPgetObjsense(scip) * ( reference - SCIPgetDualbound(scip))))
                result = BuggerStatus::kFail;
          }
-         else if (status == SolverStatus::kError)
+         else if( status == SolverStatus::kError )
             return BuggerStatus::kUnexpectedError;
-         else if (originalStatus == status )
+         else if( originalStatus == status )
             result = BuggerStatus::kFail;
 
          switch( result )
@@ -380,7 +375,7 @@ namespace bugger {
          return s;
       }
 
-      SolverStatus solve( ) override{
+      SolverStatus solve( ) override {
 
          SCIPsetMessagehdlrQuiet(scip, TRUE);
 
@@ -412,39 +407,34 @@ namespace bugger {
 
          SCIP_CALL_RETURN(SCIPsolve(scip));
 
-         if( reference != INFINITY)
+         switch( SCIPgetStatus(scip))
          {
-            switch( SCIPgetStatus(scip))
-            {
-               case SCIP_STATUS_UNKNOWN:
-                  return SolverStatus::kError;
-               case SCIP_STATUS_USERINTERRUPT:
-               case SCIP_STATUS_NODELIMIT:
-               case SCIP_STATUS_TOTALNODELIMIT:
-               case SCIP_STATUS_STALLNODELIMIT:
-               case SCIP_STATUS_TIMELIMIT:
-               case SCIP_STATUS_MEMLIMIT:
-               case SCIP_STATUS_GAPLIMIT:
-               case SCIP_STATUS_SOLLIMIT:
-               case SCIP_STATUS_BESTSOLLIMIT:
-               case SCIP_STATUS_RESTARTLIMIT:
+            case SCIP_STATUS_UNKNOWN:
+               return SolverStatus::kError;
+            case SCIP_STATUS_USERINTERRUPT:
+            case SCIP_STATUS_NODELIMIT:
+            case SCIP_STATUS_TOTALNODELIMIT:
+            case SCIP_STATUS_STALLNODELIMIT:
+            case SCIP_STATUS_TIMELIMIT:
+            case SCIP_STATUS_MEMLIMIT:
+            case SCIP_STATUS_GAPLIMIT:
+            case SCIP_STATUS_SOLLIMIT:
+            case SCIP_STATUS_BESTSOLLIMIT:
+            case SCIP_STATUS_RESTARTLIMIT:
 #if SCIP_VERSION_MAJOR >= 6
-               case SCIP_STATUS_TERMINATE:
+            case SCIP_STATUS_TERMINATE:
 #endif
-                  //TODO check if the reference is still within gap?
-                  break;
-                  //TODO: not all cases are covered
-               case SCIP_STATUS_INFORUNBD:
-                  return SolverStatus::kInfeasibleOrUnbounded;
-               case SCIP_STATUS_INFEASIBLE:
-                  return SolverStatus::kInfeasible;
-               case SCIP_STATUS_UNBOUNDED:
-                  return SolverStatus::kUnbounded;
-               case SCIP_STATUS_OPTIMAL:
-//                  if( SCIPisSumNegative(scip, SCIPgetObjsense(scip) * ( reference - SCIPgetDualbound(scip))))
-                  return SolverStatus::kOptimal;
-            }
+               return SolverStatus::kLimit;
+            case SCIP_STATUS_INFORUNBD:
+               return SolverStatus::kInfeasibleOrUnbounded;
+            case SCIP_STATUS_INFEASIBLE:
+               return SolverStatus::kInfeasible;
+            case SCIP_STATUS_UNBOUNDED:
+               return SolverStatus::kUnbounded;
+            case SCIP_STATUS_OPTIMAL:
+               return SolverStatus::kOptimal;
          }
+
 
          return SolverStatus::kError;
       }

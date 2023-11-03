@@ -74,6 +74,10 @@ namespace bugger {
       void apply(bugger::Timer &timer, std::string filename) {
          results.resize(modules.size( ));
 
+         auto solverstatus = getOriginalSolveStatus( );
+         for( int module = 0; module < modules.size( ); module++ )
+             modules[ module ]->setOriginalSolverStatus(solverstatus);
+
          //TODO: delete the variable names and constraint names also during updates
          for( unsigned int i = 0; i < problem.getNRows( ); ++i )
             origrow_mapping.push_back(( int ) i);
@@ -93,7 +97,6 @@ namespace bugger {
          if( filename.substr(filename.length( ) - 3) == ".bz2" )
             ending = 7;
 
-         auto solverstatus = getOriginalSolveStatus( );
 
          for( int round = 0; round < options.nrounds; ++round )
          {

@@ -44,7 +44,7 @@ namespace bugger {
       doSetUp(const Problem<double> &problem, bool solution_exits, const Solution<double> sol) = 0;
 
       virtual
-      BuggerStatus run(const Message &msg) = 0;
+      BuggerStatus run(const Message &msg, SolverStatus originalStatus) = 0;
 
       virtual
       SolverStatus solve( ) = 0;

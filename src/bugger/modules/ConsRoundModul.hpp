@@ -133,16 +133,16 @@ namespace bugger {
                }
                ++nbatch;
             }
-            //TODO: check if the change is working
-            if(!batches_coeff.empty())
-               copy.getConstraintMatrix().changeCoefficients(batches_coeff);
 
             if( nbatch >= 1 && ( nbatch >= batchsize || row >= copy.getNRows( ) - 1 ))
             {
+               if(!batches_coeff.empty())
+                  copy.getConstraintMatrix().changeCoefficients(batches_coeff);
+
                auto solver = createSolver();
                solver->parseParameters();
                solver->doSetUp(copy, solution_exists, solution);
-               if( solver->run(msg) != BuggerStatus::kFail )
+               if( solver->run(msg,originalSolverStatus) != BuggerStatus::kFail )
                {
                   copy = Problem<double>(problem);
                   SmallVec<int, 32> buffer;

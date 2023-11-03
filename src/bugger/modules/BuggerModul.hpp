@@ -85,6 +85,12 @@ namespace bugger {
       }
 
       void
+      setOriginalSolverStatus( SolverStatus status)
+      {
+         originalSolverStatus = status;
+      }
+
+      void
       addParameters(ParameterSet &paramSet) {
          paramSet.addParameter(
                fmt::format("{}.enabled", this->name).c_str( ),
@@ -236,6 +242,7 @@ namespace bugger {
       unsigned int nsuccessCall;
       unsigned int skip;
    protected:
+      SolverStatus originalSolverStatus;
       int nchgcoefs;
       int nfixedvars;
       int nchgsides;

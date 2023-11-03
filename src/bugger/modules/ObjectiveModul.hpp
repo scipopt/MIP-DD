@@ -92,7 +92,7 @@ class ObjectiveModul : public BuggerModul
                auto solver = createSolver();
                solver->parseParameters();
                solver->doSetUp(copy, solution_exists, solution);
-               if( solver->run(msg) != BuggerStatus::kFail )
+               if( solver->run(msg,originalSolverStatus) != BuggerStatus::kFail )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions )

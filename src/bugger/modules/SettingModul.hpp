@@ -56,7 +56,7 @@ namespace bugger {
             solver->modify_parameters(options.nbatches);
             solver->doSetUp(problem, solution_exists, solution);
             //TODO: add batches for solving
-            if( solver->run(msg) != BuggerStatus::kFail )
+            if( solver->run(msg,originalSolverStatus) != BuggerStatus::kFail )
             {
                //TODO: ignore new parameter file
             }
