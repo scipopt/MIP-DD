@@ -88,9 +88,9 @@ namespace bugger {
             batchsize /= options.nbatches;
          }
 
-         //TODO: consider fixed variables
          int nbatch = 0;
-         assert(batches_coeff.empty());
+         batches_rhs.reserve(batchsize);
+         batches_lhs.reserve(batchsize);
          for( int row = 0; row < copy.getNRows( ); ++row )
          {
             if( isConsroundAdmissible(copy, row))
@@ -171,11 +171,13 @@ namespace bugger {
                         iter = batches_coeff.template next<true>( buffer );
                         nchgcoefs++;
                      }
-                  batches_rhs.clear( );
-                  batches_lhs.clear( );
-                  batches_coeff.clear( );
                   result = ModulStatus::kSuccessful;
                }
+               batches_rhs.clear( );
+               batches_lhs.clear( );
+               batches_coeff.clear( );
+               batches_rhs.reserve(batchsize);
+               batches_lhs.reserve(batchsize);
                nbatch = 0;
             }
          }

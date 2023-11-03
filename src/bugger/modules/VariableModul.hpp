@@ -71,7 +71,7 @@ namespace bugger {
          }
 
          int nbatch = 0;
-
+         batches.clear( );
          for( int var = copy.getNCols() - 1; var >= 0; --var )
          {
             if( isVariableAdmissible(copy, var))
@@ -119,9 +119,10 @@ namespace bugger {
                      applied_reductions.push_back(item);
                   nfixedvars += nbatch;
                   result = ModulStatus::kSuccessful;
-                  batches.clear();
                }
                nbatch = 0;
+               batches.clear( );
+               batches.reserve(batchsize);
             }
          }
          problem = Problem<double>(copy);

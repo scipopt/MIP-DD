@@ -80,6 +80,8 @@ namespace bugger {
 
          for( int row = copy.getNRows( ) - 1; row >= 0; --row )
          {
+            batches.clear();
+            batches.reserve(batchsize);
             if( isConstraintAdmissible(copy, row))
             {
                assert(!copy.getRowFlags( )[ row ].test(RowFlag::kRedundant));
@@ -108,8 +110,14 @@ namespace bugger {
                      for( const auto &item: batches )
                         applied_redundant_rows.push_back(item);
                      ndeletedrows += nbatch;
-                     batches.clear( );
                      result = ModulStatus::kSuccessful;
+
+                     auto copy2 = Problem<double>(problem);
+                     for( const auto &item: applied_redundant_rows )
+                     {
+                        assert(!copy2.getRowFlags( )[ item ].test(RowFlag::kRedundant));
+                        copy2.getRowFlags( )[ item ].set(RowFlag::kRedundant);
+                     }
                   }
                   nbatch = 0;
                }

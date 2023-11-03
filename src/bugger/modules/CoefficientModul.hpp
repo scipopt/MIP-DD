@@ -89,8 +89,11 @@ namespace bugger {
          }
 
          int nbatch = 0;
+         batches_rhs.reserve(batchsize);
+         batches_lhs.reserve(batchsize);
          for( int row = copy.getNRows( ) - 1; row >= 0; --row )
          {
+
             if( isCoefficientAdmissible(copy, row))
             {
                auto data = problem.getConstraintMatrix( ).getRowCoefficients(row);
@@ -174,12 +177,14 @@ namespace bugger {
                         iter = batches_coeff.template next<true>( buffer );
                         nchgcoefs++;
                      }
-                  batches_rhs.clear( );
-                  batches_lhs.clear( );
-                  batches_coeff.clear( );
                   result = ModulStatus::kSuccessful;
                }
                nbatch = 0;
+               batches_rhs.clear( );
+               batches_lhs.clear( );
+               batches_coeff.clear( );
+               batches_rhs.reserve(batchsize);
+               batches_lhs.reserve(batchsize);
             }
          }
          problem = Problem<double>(copy);

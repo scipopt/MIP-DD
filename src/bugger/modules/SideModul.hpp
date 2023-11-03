@@ -66,11 +66,9 @@ namespace bugger {
          }
 
          int nbatch = 0;
-         batches.clear( );
          batches.reserve(batchsize);
          for( int row = copy.getNRows( ) - 1; row >= 0; --row )
          {
-
             if( isSideAdmissable(copy, row))
             {
                ConstraintMatrix<double> &matrix = copy.getConstraintMatrix( );
@@ -129,10 +127,11 @@ namespace bugger {
                   for( const auto &item: batches )
                      applied_reductions.push_back(item);
                   nchgsides += nbatch;
-                  batches.clear( );
                   result = ModulStatus::kSuccessful;
                }
                nbatch = 0;
+               batches.clear( );
+               batches.reserve(batchsize);
             }
          }
 

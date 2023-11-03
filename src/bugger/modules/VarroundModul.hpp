@@ -145,11 +145,15 @@ namespace bugger {
                   for( const auto &item: batches_ub )
                      applied_ub.push_back(item);
                   nchgcoefs += batches_lb.size() + batches_ub.size() + batches_lb.size();
-                  batches_lb.clear();
-                  batches_ub.clear();
-                  batches_obj.clear();
+
                   result = ModulStatus::kSuccessful;
                }
+               batches_lb.clear();
+               batches_ub.clear();
+               batches_obj.clear();
+               batches_lb.reserve(batchsize);
+               batches_ub.reserve(batchsize);
+               batches_obj.reserve(batchsize);
                nbatch = 0;
             }
          }

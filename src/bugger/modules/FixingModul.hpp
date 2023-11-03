@@ -70,7 +70,7 @@ namespace bugger {
          }
 
          int nbatch = 0;
-
+         batches.reserve(batchsize);
          for( int var = copy.getNCols( ) - 1; var >= 0; --var )
          {
 
@@ -97,13 +97,14 @@ namespace bugger {
                      for( const auto &item: batches )
                         applied_vars.push_back(item);
                      naggrvars += nbatch;
-                     batches.clear( );
                      result = ModulStatus::kSuccessful;
                   }
                   nbatch = 0;
                }
                ++nbatch;
             }
+            batches.clear( );
+            batches.reserve(batchsize);
          }
 
          problem = Problem < double > ( copy );

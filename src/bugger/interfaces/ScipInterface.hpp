@@ -201,13 +201,13 @@ namespace bugger {
          switch( result )
          {
             case BuggerStatus::kSuccess:
-               msg.info("\tSCIP could not reproduce the error\n");
+               msg.info("\tError could not be reproduced\n");
                break;
             case BuggerStatus::kFail:
-               msg.info("\tSCIP could reproduce the error\n");
+               msg.info("\tError could be reproduced\n");
                break;
             case BuggerStatus::kUnexpectedError:
-               msg.info("\tSCIP returned an error\n");
+               msg.info("\tAn error was returned\n");
                break;
          }
 
@@ -377,7 +377,7 @@ namespace bugger {
 
       SolverStatus solve( ) override {
 
-         SCIPsetMessagehdlrQuiet(scip, TRUE);
+         SCIPsetMessagehdlrQuiet(scip, true);
 
 
          //TODO: fix this

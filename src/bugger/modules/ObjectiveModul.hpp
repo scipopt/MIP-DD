@@ -75,15 +75,11 @@ class ObjectiveModul : public BuggerModul
 
       int nbatch = 0;
 
-
+      batches.reserve(batchsize);
       for( int var = copy.getNCols() - 1; var >= 0; --var )
       {
          if( isObjectiveAdmissible(copy, var))
          {
-            //TODO updating does not work in debug mode
-//            if( iscip.exists_solution() )
-//               SCIPsolUpdateVarObj(iscip.get_solution(), var, var->obj, 0);
-
             batches.push_back({ var, copy.getObjective( ).coefficients[ var ] });
             copy.getObjective( ).coefficients[ var ] = 0;
             ++nbatch;
@@ -104,10 +100,11 @@ class ObjectiveModul : public BuggerModul
                   for( const auto &item: batches )
                      applied_reductions.push_back(item);
                   nchgcoefs += nbatch;
-                  batches.clear();
                   result = ModulStatus::kSuccessful;
                }
                nbatch = 0;
+               batches.clear( );
+               batches.reserve(batchsize);
             }
          }
       }
