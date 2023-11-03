@@ -47,9 +47,8 @@
 #include <algorithm>
 
 namespace bugger {
+
    class BuggerRun {
-
-
 
    private:
       bugger::BuggerOptions options;
@@ -58,7 +57,6 @@ namespace bugger {
       bool solution_exists;
       bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &modules;
       bugger::Vec<bugger::ModulStatus> results;
-
       bugger::Vec<int> origcol_mapping;
       bugger::Vec<int> origrow_mapping;
       bugger::Message msg { };
@@ -95,6 +93,8 @@ namespace bugger {
          if( filename.substr(filename.length( ) - 3) == ".bz2" )
             ending = 7;
 
+         auto solverstatus = getOriginalSolveStatus( );
+
          for( int round = 0; round < options.nrounds; ++round )
          {
             for( int module = 0; module < modules.size( ); module++ )
@@ -111,6 +111,8 @@ namespace bugger {
          }
          printStats( );
       }
+
+
 
       void addDefaultModules( ) {
          using uptr = std::unique_ptr<bugger::BuggerModul>;
@@ -139,6 +141,23 @@ namespace bugger {
       }
 
    private:
+
+      SolverStatus getOriginalSolveStatus( ) {
+         auto solver = createSolver();
+         solver->doSetUp(problem, false, solution);
+         return solver->solve();
+      }
+
+      //TODO this is duplicates function in BuggerModul -> move this to a function to hand it to BuggerModul so that is has to be declared only once
+      SolverInterface*
+      createSolver(){
+#ifdef BUGGER_HAVE_SCIP
+         return new ScipInterface { };
+#else
+         msg.error("No solver specified -- aborting ....");
+         return nullptr;
+#endif
+      }
 
       bugger::ModulStatus
       evaluateResults( ) {

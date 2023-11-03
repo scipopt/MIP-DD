@@ -25,7 +25,7 @@
 #define BUGGER_MODUL_SETTING_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
-#include "bugger/interfaces/Status.hpp"
+#include "bugger/interfaces/BuggerStatus.hpp"
 
 namespace bugger {
 
@@ -56,7 +56,7 @@ namespace bugger {
             solver->modify_parameters(options.nbatches);
             solver->doSetUp(problem, solution_exists, solution);
             //TODO: add batches for solving
-            if( solver->run(msg) != Status::kFail )
+            if( solver->run(msg) != BuggerStatus::kFail )
             {
                //TODO: ignore new parameter file
             }

@@ -25,7 +25,7 @@
 #define BUGGER_MODUL_FIXING_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
-#include "bugger/interfaces/Status.hpp"
+#include "bugger/interfaces/BuggerStatus.hpp"
 
 namespace bugger {
 
@@ -85,7 +85,7 @@ namespace bugger {
                   auto solver = createSolver();
                   solver->parseParameters();
                   solver->doSetUp(copy, solution_exists, solution);
-                  if( solver->run(msg) != Status::kFail )
+                  if( solver->run(msg) != BuggerStatus::kFail )
                   {
                      copy = Problem < double > ( problem );
                      for( const auto &item: applied_vars )

@@ -25,12 +25,18 @@
 #define BUGGER_STATUS_HPP
 
 
-enum class Status : int {
-   kFail = 0,
+enum class SolverStatus : int {
+   kOptimal = 0,
 
-   kSuccess = 1,
+   kInfeasible = 1,
 
-   kUnexpectedError = 2,
+   kInfeasibleOrUnbounded = 2,
+
+   kUnbounded = 3,
+
+   kLimit = 4,
+
+   kError = 5,
 
 };
 #endif //BUGGER_STATUS_HPP

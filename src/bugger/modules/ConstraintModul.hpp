@@ -93,7 +93,7 @@ namespace bugger {
                   auto solver = createSolver();
                   solver->parseParameters();
                   solver->doSetUp(copy, solution_exists, solution);
-                  if( solver->run(msg) != Status::kFail )
+                  if( solver->run(msg) != BuggerStatus::kFail )
                   {
                      copy = Problem<double>(problem);
                      for( const auto &item: applied_redundant_rows )

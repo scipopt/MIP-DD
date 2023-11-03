@@ -21,42 +21,16 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef _BUGGER_INTERFACES_SOLVER_INTERFACE_HPP_
-#define _BUGGER_INTERFACES_SOLVER_INTERFACE_HPP_
+#ifndef BUGGER_BUGGERSTATUS_HPP
+#define BUGGER_BUGGERSTATUS_HPP
 
 
-#include "bugger/misc/Vec.hpp"
-#include <cassert>
-#include <stdexcept>
+enum class BuggerStatus : int {
+   kFail = 0,
 
-#include "bugger/data/Problem.hpp"
-#include "bugger/data/Solution.hpp"
+   kSuccess = 1,
 
-namespace bugger {
+   kUnexpectedError = 2,
 
-   class SolverInterface {
-
-
-   public:
-      SolverInterface( ) { }
-
-      virtual void
-      doSetUp(const Problem<double> &problem, bool solution_exits, const Solution<double> sol) = 0;
-
-      virtual
-      BuggerStatus run(const Message &msg) = 0;
-
-      virtual
-      SolverStatus solve( ) = 0;
-
-      virtual
-      void modify_parameters(int nbatches) { }
-
-      void parseParameters( ) {
-
-      }
-   };
-
-} // namespace bugger
-
-#endif
+};
+#endif //BUGGER_BUGGERSTATUS_HPP

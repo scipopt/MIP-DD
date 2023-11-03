@@ -21,8 +21,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef _BUGGER_INTERFACES_SCIP_INTERFACE_HPP_
-#define _BUGGER_INTERFACES_SCIP_INTERFACE_HPP_
+#ifndef BUGGER_INTERFACES_SCIP_INTERFACE_HPP_
+#define BUGGER_INTERFACES_SCIP_INTERFACE_HPP_
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
 
@@ -36,8 +36,10 @@
 #include "scip/scip.h"
 #include "scip/scipdefplugins.h"
 #include "scip/struct_paramset.h"
-#include "bugger/interfaces/Status.hpp"
+#include "bugger/interfaces/BuggerStatus.hpp"
+#include "bugger/interfaces/SolverStatus.hpp"
 #include "bugger/interfaces/SolverInterface.hpp"
+#include "SolverStatus.hpp"
 
 namespace bugger {
 
@@ -48,7 +50,7 @@ namespace bugger {
       if( (_restat_ = (x)) != SCIP_OKAY )                             \
       {                                                               \
          SCIPerrorMessage("Error <%d> in function call\n", _restat_); \
-         return Status::kUnexpectedError;                             \
+         return SolverStatus::kError;                                 \
       }                                                               \
    }                                                                  \
    while( FALSE )
@@ -182,37 +184,34 @@ namespace bugger {
       /** tests the given SCIP instance in a copy and reports detected bug; if a primal bug solution is provided, the
        *  resulting dual bound is also checked; on UNIX platforms aborts are caught, hence assertions can be enabled here
        */
-      Status run(const Message &msg) override {
-         SCIP *test = nullptr;
-         SCIP_HASHMAP *varmap = nullptr;
-         SCIP_HASHMAP *consmap = nullptr;
+      BuggerStatus run(const Message &msg) override {
 
-         Status retcode;
-         try
-         {
-            retcode = trySCIP(&test, &varmap, &consmap);
-         }
-         catch (const std::exception& ex)
-         {
-            //TODO add that failed assertion is expected.
-            retcode = Status::kSuccess;
-         }
+         SolverStatus status = solve( );
+         //TODO add that failed assertion is expected.
 
-         if( test != nullptr )
-            SCIPfree(&test);
-         if( consmap != nullptr )
-            SCIPhashmapFree(&consmap);
-         if( varmap != nullptr )
-            SCIPhashmapFree(&varmap);
-         switch( retcode )
+         //TODO set this by the original status
+         SolverStatus originalStatus = SolverStatus::kInfeasibleOrUnbounded;
+
+         BuggerStatus result = BuggerStatus::kSuccess;
+         if( status == SolverStatus::kOptimal || status == SolverStatus::kLimit )
          {
-            case Status::kSuccess:
+            if( SCIPisSumNegative(scip, SCIPgetObjsense(scip) * ( reference - SCIPgetDualbound(scip))))
+               result = BuggerStatus::kFail;
+         }
+         else if (status == SolverStatus::kError)
+            return BuggerStatus::kUnexpectedError;
+         else if (originalStatus == status )
+            result = BuggerStatus::kFail;
+
+         switch( result )
+         {
+            case BuggerStatus::kSuccess:
                msg.info("\tSCIP could not reproduce the error\n");
                break;
-            case Status::kFail:
+            case BuggerStatus::kFail:
                msg.info("\tSCIP could reproduce the error\n");
                break;
-            case Status::kUnexpectedError:
+            case BuggerStatus::kUnexpectedError:
                msg.info("\tSCIP returned an error\n");
                break;
          }
@@ -222,7 +221,7 @@ namespace bugger {
 //            if( retcode == presoldata->passcodes[i] )
 //               return 0;
 
-         return retcode;
+         return result;
       }
 
       ~ScipInterface( ) {
@@ -266,7 +265,7 @@ namespace bugger {
 
          vars.resize(problem.getNCols( ));
 
-         if(solution_exits)
+         if( solution_exits )
             reference = 0;
 
          for( int col = 0; col < ncols; ++col )
@@ -297,8 +296,8 @@ namespace bugger {
             SCIP_CALL(SCIPcreateVarBasic(
                   scip, &var, varNames[ col ].c_str( ), lb, ub,
                   SCIP_Real(obj.coefficients[ col ]), type));
-            if(solution_exits)
-               reference += obj.coefficients[ col ]* sol.primal[col];
+            if( solution_exits )
+               reference += obj.coefficients[ col ] * sol.primal[ col ];
             SCIP_CALL(SCIPaddVar(scip, var));
             vars[ col ] = var;
 
@@ -366,13 +365,11 @@ namespace bugger {
          return SCIP_OKAY;
       }
 
-      SCIP *getSCIP( ) { return scip; }
-
       SCIP_SOL *
       add_solution(Solution<double> sol) {
          SCIP_SOL *s;
          SCIP_RETCODE retcode;
-         retcode = SCIPcreateSol(scip, &s, NULL);
+         retcode = SCIPcreateSol(scip, &s, nullptr);
          assert(retcode == SCIP_OKAY);
 
          for( int i = 0; i < sol.primal.size( ); i++ )
@@ -383,28 +380,13 @@ namespace bugger {
          return s;
       }
 
-      Status trySCIP(SCIP **test, SCIP_HASHMAP **varmap, SCIP_HASHMAP **consmap) {
-         SCIP_Bool valid = FALSE;
-         SCIP_SOL **sols;
-         int nsols;
+      SolverStatus solve( ) override{
 
-         sols = SCIPgetSols(scip);
-         nsols = SCIPgetNSols(scip);
-         //TODO the copying is probably not necessary for the current design
-         SCIP_CALL_RETURN(SCIPhashmapCreate(varmap, SCIPblkmem(scip), SCIPgetNVars(scip)));
-         SCIP_CALL_RETURN(SCIPhashmapCreate(consmap, SCIPblkmem(scip), SCIPgetNConss(scip)));
-         SCIP_CALL_RETURN(SCIPcreate(test));
-         SCIPsetMessagehdlrQuiet(*test, TRUE);
-         SCIP_CALL_RETURN(SCIPincludeDefaultPlugins(*test));
-         SCIP_CALL_RETURN(SCIPcopyParamSettings(scip, *test));
-         SCIP_CALL_RETURN(SCIPcopyOrigProb(scip, *test, *varmap, *consmap, SCIPgetProbName(scip)));
-         SCIP_CALL_RETURN(SCIPcopyOrigVars(scip, *test, *varmap, *consmap, NULL, NULL, 0));
-         SCIP_CALL_RETURN(SCIPcopyOrigConss(scip, *test, *varmap, *consmap, FALSE, &valid));
+         SCIPsetMessagehdlrQuiet(scip, TRUE);
+
+
          //TODO: fix this
 //         (*test)->stat->subscipdepth = 0;
-
-         if( !valid )
-            SCIP_CALL_ABORT(SCIP_INVALIDDATA);
 
 //         //TODO @DOminink I am not sure why multiple solutions are present?
 //         for( int i = 0; i < nsols; ++i )
@@ -428,14 +410,14 @@ namespace bugger {
 //            }
 //         }
 
-         SCIP_CALL_RETURN(SCIPsolve(*test));
+         SCIP_CALL_RETURN(SCIPsolve(scip));
 
-         if ( reference != INFINITY )
+         if( reference != INFINITY)
          {
-            switch( SCIPgetStatus( *test ) )
+            switch( SCIPgetStatus(scip))
             {
                case SCIP_STATUS_UNKNOWN:
-                  return Status::kUnexpectedError;
+                  return SolverStatus::kError;
                case SCIP_STATUS_USERINTERRUPT:
                case SCIP_STATUS_NODELIMIT:
                case SCIP_STATUS_TOTALNODELIMIT:
@@ -449,21 +431,22 @@ namespace bugger {
 #if SCIP_VERSION_MAJOR >= 6
                case SCIP_STATUS_TERMINATE:
 #endif
-               //TODO check if the reference is still within gap?
+                  //TODO check if the reference is still within gap?
                   break;
-               //TODO: not all cases are covered
+                  //TODO: not all cases are covered
                case SCIP_STATUS_INFORUNBD:
+                  return SolverStatus::kInfeasibleOrUnbounded;
                case SCIP_STATUS_INFEASIBLE:
+                  return SolverStatus::kInfeasible;
                case SCIP_STATUS_UNBOUNDED:
-                  if( reference != INFINITY)
-                     return Status::kFail;
+                  return SolverStatus::kUnbounded;
                case SCIP_STATUS_OPTIMAL:
-                  if( SCIPisSumNegative(scip, SCIPgetObjsense(*test) * ( reference - SCIPgetDualbound(*test))))
-                     return Status::kFail;
+//                  if( SCIPisSumNegative(scip, SCIPgetObjsense(scip) * ( reference - SCIPgetDualbound(scip))))
+                  return SolverStatus::kOptimal;
             }
          }
 
-         return Status::kSuccess;
+         return SolverStatus::kError;
       }
 
 
