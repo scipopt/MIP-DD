@@ -69,7 +69,12 @@ namespace bugger {
               modules(_modules) {
       }
 
-
+      bool
+      is_time_exceeded( const Timer& timer ) const
+      {
+         return options.tlim != std::numeric_limits<double>::max() &&
+                timer.getTime() >= options.tlim;
+      }
 
       void apply(bugger::Timer &timer, std::string filename) {
          results.resize(modules.size( ));
@@ -85,8 +90,8 @@ namespace bugger {
          for( unsigned int i = 0; i < problem.getNCols( ); ++i )
             origcol_mapping.push_back(( int ) i);
 
-         if( options.nrounds < 0 )
-            options.nrounds = INT_MAX;
+         if( options.maxrounds < 0 )
+            options.maxrounds = INT_MAX;
 
          if( options.nstages < 0 || options.nstages > modules.size( ))
             options.nstages = modules.size( );
@@ -98,8 +103,10 @@ namespace bugger {
             ending = 7;
 
 
-         for( int round = 0; round < options.nrounds; ++round )
+         for( int round = 0; round < options.maxrounds; ++round )
          {
+            if( round == options.maxrounds || is_time_exceeded(timer) )
+               break;
             for( int module = 0; module < modules.size( ); module++ )
                results[ module ] = modules[ module ]->run(problem, solution, solution_exists, options, timer);
 

@@ -29,26 +29,22 @@ cmake -DSCIP_DIR=PATH_TO_SCIP_BUILD_DIR ..
 make
 ```
 
+If Boost is not installed the Boost_Root directory has to be passed to the cmake command.
+
+
 # Usage of the binary
 
 
-If Boost is not installed the Boost_Root directory has to be passed to the cmake command.
 
 ```
-build/bin/bugger -f PATH_TO_INSTANCE_FILE -o PATH_TO_SOL_FILE -p PATH_TO_BUGGER_SETTINGS -s PATH_TO_SCIP_SETTINGS
+build/bin/bugger -f PATH_TO_INSTANCE_FILE -o PATH_TO_SOL_FILE -p PATH_TO_BUGGER_SETTINGS -s PATH_TO_SOLVER_SETTINGS
 ```
 
 # Parameters
 
-* [initround] is the initial bugger round (defaults to 0)
-
-* [initstage] is the initial bugger stage (defaults to 0)
-
-* [nrounds] is the maximum number of bugger rounds or -1 for no limit (defaults to -1)
+* [maxrounds] is the maximum number of bugger rounds or -1 for no limit (defaults to -1)
 
 * [nstages] is the maximum number of bugger stages or -1 for number of included bugger modules (defaults to -1)
 
 * [nbatches] is the maximum number of reduction batches in each bugger call or 0 for singleton batches (defaults to 0)
-
-* [passcodes] ... is the list of non-zero exit codes to treat as pass (empty by default)
 

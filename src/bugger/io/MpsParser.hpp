@@ -916,14 +916,15 @@ MpsParser<REAL>::parse( boost::iostreams::filtering_istream& file )
       {
          if( '0' <= c && c <= '9' )
          {
-            if(behind_comma > 0)
+            REAL number = REAL { c - '0' };
+            if( behind_comma > 0)
             {
-               answer += REAL{c - '0'}/REAL{ pow(10, behind_comma)};
+               answer += number / REAL{ pow(10, behind_comma)};
             }
             else
             {
                answer *= REAL{10};
-               answer += REAL{c - '0'};
+               answer += number;
             }
          }
          else if( c == '.' )

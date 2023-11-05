@@ -39,7 +39,7 @@ struct BuggerOptions
 
    int initstage = 0;
 
-   int nrounds = -1;
+   int maxrounds = -1;
 
    int nstages = -1;
 
@@ -53,7 +53,7 @@ struct BuggerOptions
       paramSet.addParameter( "tlim", "bugger time limit", tlim, 0.0 );
       paramSet.addParameter( "initround", "initial bugger round", initround, 0 );
       paramSet.addParameter( "initstage", "initial bugger stage", initstage, 0 );
-      paramSet.addParameter( "nrounds", "the maximum number of bugger rounds or -1 for no limit", nrounds, -1 );
+      paramSet.addParameter( "maxrounds", "the maximum number of bugger rounds or -1 for no limit", maxrounds, -1 );
       paramSet.addParameter( "nbatches", "the maximum number of batches or -1 for no limit", nbatches, -1 );
       paramSet.addParameter( "nstages", " maximum number of bugger stages or -1 for number of included bugger modules", nstages, -1 );
       paramSet.addParameter( "threads", "maximal number of threads to use (0: automatic)", threads, 0 );
