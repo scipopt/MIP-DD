@@ -916,7 +916,7 @@ MpsParser<REAL>::parse( boost::iostreams::filtering_istream& file )
       {
          if( '0' <= c && c <= '9' )
          {
-            REAL number = REAL { c - '0' };
+            REAL number = REAL { double(c - '0') };
             if( behind_comma > 0)
             {
                answer += number / REAL{ pow(10, behind_comma)};
