@@ -44,10 +44,11 @@ namespace bugger {
       bool isSideFractional(Problem<double> &problem, int row) {
          double lhs = problem.getConstraintMatrix( ).getLeftHandSides( )[ row ];
          double rhs = problem.getConstraintMatrix( ).getRightHandSides( )[ row ];
-         if( !problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf) &&
-             !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf) &&
-             num.isEq(lhs, rhs))
+         if(problem.getRowFlags()[row].test(RowFlag::kEquation))
             return false;
+         assert( !(!problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf) &&
+             !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf) &&
+             num.isEq(lhs, rhs)));
          return ( !num.isIntegral(lhs) && problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf))
              || (!num.isIntegral(rhs) && problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf));
       }
