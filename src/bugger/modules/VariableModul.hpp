@@ -96,6 +96,7 @@ namespace bugger {
 
                copy.getLowerBounds()[var] = fixedval;
                copy.getUpperBounds()[var] = fixedval;
+               batches.push_back({var, fixedval});
                ++nbatch;
             }
 
