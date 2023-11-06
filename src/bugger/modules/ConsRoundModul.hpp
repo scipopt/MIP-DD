@@ -46,11 +46,11 @@ namespace bugger {
             return false;
          if( problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf) ||
              problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf))
-            return true;
+            return false;
 
          double lhs = problem.getConstraintMatrix( ).getLeftHandSides( )[ row ];
          double rhs = problem.getConstraintMatrix( ).getRightHandSides( )[ row ];
-         if( num.isEq(lhs, rhs) && ( !num.isIntegral(lhs) || !num.isIntegral(rhs)))
+         if( !num.isEq(lhs, rhs) && ( !num.isIntegral(lhs) || !num.isIntegral(rhs)))
             return true;
          auto data = problem.getConstraintMatrix( ).getRowCoefficients(row);
          for( int i = 0; i < data.getLength( ); ++i )
