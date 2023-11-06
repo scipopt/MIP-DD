@@ -108,8 +108,8 @@ namespace bugger {
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions ){
-                     problem.getLowerBounds()[item.first] = item.second;
-                     problem.getUpperBounds()[item.first] = item.second;
+                     copy.getLowerBounds()[item.first] = item.second;
+                     copy.getUpperBounds()[item.first] = item.second;
                   }
                }
                else
