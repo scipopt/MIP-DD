@@ -31,7 +31,7 @@ namespace bugger {
 
    class ConsRoundModul : public BuggerModul {
    public:
-      explicit ConsRoundModul( const Message& _msg ) : BuggerModul( ) {
+      explicit ConsRoundModul(const Message &_msg) : BuggerModul( ) {
          this->setName("consround");
          this->msg = _msg;
       }
@@ -41,21 +41,27 @@ namespace bugger {
          return false;
       }
 
+      bool isSideFractional(Problem<double> &problem, int row) {
+         double lhs = problem.getConstraintMatrix( ).getLeftHandSides( )[ row ];
+         double rhs = problem.getConstraintMatrix( ).getRightHandSides( )[ row ];
+         if( !problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf) &&
+             !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf) &&
+             num.isEq(lhs, rhs))
+            return false;
+         return ( !num.isIntegral(lhs) && problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf))
+             || (!num.isIntegral(rhs) && problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf));
+      }
+
       bool isConsroundAdmissible(Problem<double> &problem, int row) {
          if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant))
             return false;
-         if( problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf) ||
-             problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf))
-            return false;
 
-         double lhs = problem.getConstraintMatrix( ).getLeftHandSides( )[ row ];
-         double rhs = problem.getConstraintMatrix( ).getRightHandSides( )[ row ];
-         if( !num.isEq(lhs, rhs) && ( !num.isIntegral(lhs) || !num.isIntegral(rhs)))
+         if( isSideFractional(problem, row))
             return true;
          auto data = problem.getConstraintMatrix( ).getRowCoefficients(row);
          for( int i = 0; i < data.getLength( ); ++i )
          {
-            if( problem.getColFlags()[data.getIndices()[i]].test(ColFlag::kFixed))
+            if( problem.getColFlags( )[ data.getIndices( )[ i ]].test(ColFlag::kFixed))
                continue;
             if( !num.isIntegral(data.getValues( )[ i ]))
                return true;
@@ -99,7 +105,7 @@ namespace bugger {
 
                for( int j = 0; j < data.getLength( ); ++j )
                   if( !num.isIntegral(data.getValues( )[ j ]))
-                     batches_coeff.addEntry( row, data.getIndices( )[ j ], num.round(data.getValues( )[ j ]) );
+                     batches_coeff.addEntry(row, data.getIndices( )[ j ], num.round(data.getValues( )[ j ]));
 
                double lhs = copy.getConstraintMatrix( ).getLeftHandSides( )[ row ];
                double rhs = copy.getConstraintMatrix( ).getRightHandSides( )[ row ];
@@ -108,13 +114,13 @@ namespace bugger {
                   if( !num.isIntegral(lhs))
                   {
                      double new_val = MIN(num.round(lhs), num.epsFloor(get_linear_activity(data, solution)));
-                     batches_lhs.emplace_back( row, new_val );
+                     batches_lhs.emplace_back(row, new_val);
                      copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = new_val;
                   }
                   if( !num.isIntegral(rhs))
                   {
                      double new_val = MIN(num.round(rhs), num.epsCeil(get_linear_activity(data, solution)));
-                     batches_rhs.emplace_back( row, new_val );
+                     batches_rhs.emplace_back(row, new_val);
                      copy.getConstraintMatrix( ).getRightHandSides( )[ row ] = new_val;
                   }
                }
@@ -122,12 +128,12 @@ namespace bugger {
                {
                   if( !num.isIntegral(lhs))
                   {
-                     batches_lhs.emplace_back( row, num.round(lhs) );
+                     batches_lhs.emplace_back(row, num.round(lhs));
                      copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = num.round(lhs);
                   }
                   if( !num.isIntegral(rhs))
                   {
-                     batches_rhs.emplace_back( row, num.round(rhs) );
+                     batches_rhs.emplace_back(row, num.round(rhs));
                      copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = num.round(rhs);
                   }
                }
@@ -136,13 +142,13 @@ namespace bugger {
 
             if( nbatch >= 1 && ( nbatch >= batchsize || row >= copy.getNRows( ) - 1 ))
             {
-               if(!batches_coeff.empty())
-                  copy.getConstraintMatrix().changeCoefficients(batches_coeff);
+               if( !batches_coeff.empty( ))
+                  copy.getConstraintMatrix( ).changeCoefficients(batches_coeff);
 
-               auto solver = createSolver();
-               solver->parseParameters();
+               auto solver = createSolver( );
+               solver->parseParameters( );
                solver->doSetUp(copy, solution_exists, solution);
-               if( solver->run(msg,originalSolverStatus) != BuggerStatus::kFail )
+               if( solver->run(msg, originalSolverStatus) != BuggerStatus::kFail )
                {
                   copy = Problem<double>(problem);
                   SmallVec<int, 32> buffer;
@@ -164,11 +170,11 @@ namespace bugger {
                   nchgsides += batches_lhs.size( ) + batches_rhs.size( );
                   SmallVec<int, 32> buffer;
                   const MatrixEntry<double> *iter = batches_coeff.template begin<true>(buffer);
-                  if( !batches_coeff.empty())
+                  if( !batches_coeff.empty( ))
                      while( iter != batches_coeff.end( ))
                      {
                         applied_entries.addEntry(iter->row, iter->col, iter->val);
-                        iter = batches_coeff.template next<true>( buffer );
+                        iter = batches_coeff.template next<true>(buffer);
                         nchgcoefs++;
                      }
                   result = ModulStatus::kSuccessful;
