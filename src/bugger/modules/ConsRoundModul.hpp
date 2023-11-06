@@ -49,8 +49,8 @@ namespace bugger {
          assert( !(!problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf) &&
              !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf) &&
              num.isEq(lhs, rhs)));
-         return ( !num.isIntegral(lhs) && problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf))
-             || (!num.isIntegral(rhs) && problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf));
+         return ( !num.isIntegral(lhs) && !problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf))
+             || (!num.isIntegral(rhs) && !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf));
       }
 
       bool isConsroundAdmissible(Problem<double> &problem, int row) {
