@@ -248,6 +248,7 @@ namespace bugger {
       int nchgsides;
       int naggrvars;
       int ndeletedrows;
+      //TODO: init from outside and make epsilon parameterable
       Num<double> num;
       Message msg;
    };
