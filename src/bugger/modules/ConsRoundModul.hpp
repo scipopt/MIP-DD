@@ -114,13 +114,13 @@ namespace bugger {
                {
                   if( !num.isIntegral(lhs))
                   {
-                     double new_val = MIN(num.round(lhs), num.epsFloor(get_linear_activity(data, solution)));
+                     double new_val = MIN(num.round(lhs), num.feasFloor(get_linear_activity(data, solution)));
                      batches_lhs.emplace_back(row, new_val);
                      copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = new_val;
                   }
                   if( !num.isIntegral(rhs))
                   {
-                     double new_val = MIN(num.round(rhs), num.epsCeil(get_linear_activity(data, solution)));
+                     double new_val = MIN(num.round(rhs), num.feasCeil(get_linear_activity(data, solution)));
                      batches_rhs.emplace_back(row, new_val);
                      copy.getConstraintMatrix( ).getRightHandSides( )[ row ] = new_val;
                   }

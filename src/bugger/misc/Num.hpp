@@ -181,7 +181,7 @@ class Num
 {
  public:
    Num()
-       : epsilon( REAL{ 0 } ), feastol( REAL{ 1e-6 } ),
+       : epsilon( REAL{ 0 } ), feastol( REAL{ 1e-9 } ),
          hugeval( REAL{ 1e8 } )
    {
    }
