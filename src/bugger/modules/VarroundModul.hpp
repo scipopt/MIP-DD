@@ -30,9 +30,10 @@ namespace bugger {
 
    class VarroundModul : public BuggerModul {
    public:
-      VarroundModul( const Message& _msg ) : BuggerModul( ) {
+      VarroundModul( const Message& _msg, const Num<double> &_num ) : BuggerModul( ) {
          this->setName("varround");
          this->msg = _msg;
+         this->num = _num;
       }
 
       bool
@@ -46,7 +47,7 @@ namespace bugger {
          double obj = problem.getObjective( ).coefficients[ var ];
          return !num.isIntegral(obj) || problem.getColFlags( )[ var ].test(ColFlag::kUbInf) ||
                 problem.getColFlags( )[ var ].test(ColFlag::kLbInf) ||
-                ( !num.isEq(problem.getLowerBounds( )[ var ], problem.getLowerBounds( )[ var ]) &&
+                ( !num.isZetaEq(problem.getLowerBounds( )[ var ], problem.getLowerBounds( )[ var ]) &&
                   ( !num.isIntegral(problem.getLowerBounds( )[ var ]) ||
                     !num.isIntegral(problem.getUpperBounds( )[ var ])));
       }
@@ -105,14 +106,14 @@ namespace bugger {
                   if( !num.isIntegral(copy.getLowerBounds( )[ var ]))
                   {
                      copy.getLowerBounds( )[ var ] = MIN(num.round(copy.getLowerBounds( )[ var ]),
-                                                         num.epsFloor(solution.primal[ var ]));
+                                                         num.zetaFloor(solution.primal[ var ]));
                      batches_lb.emplace_back(var, copy.getLowerBounds( )[ var ]);
 
                   }
                   if( !num.isIntegral(copy.getUpperBounds( )[ var ]))
                   {
                      copy.getUpperBounds( )[ var ] = MIN(num.round(copy.getUpperBounds( )[ var ]),
-                                                         num.epsCeil(solution.primal[ var ]));
+                                                         num.zetaCeil(solution.primal[ var ]));
                      batches_ub.emplace_back(var, copy.getUpperBounds( )[ var ]);
                   }
                }

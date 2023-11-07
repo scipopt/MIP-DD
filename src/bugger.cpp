@@ -104,7 +104,6 @@ main(int argc, char *argv[]) {
    //TODO: why can this not be auto generated in the class?
    Vec<std::unique_ptr<BuggerModul>> list { };
    BuggerRun bugger { problem, sol, sol_exists, list };
-   bugger.addDefaultModules( );
 
    if( !optionsInfo.param_settings_file.empty( ) || !optionsInfo.unparsed_options.empty( ))
    {
@@ -184,6 +183,14 @@ main(int argc, char *argv[]) {
          }
       }
    }
+
+
+   Num<double> num{};
+   num.setFeasTol( bugger.getOptions().feastol );
+   num.setEpsilon( bugger.getOptions().epsilon );
+   num.setZeta( bugger.getOptions().zeta );
+   bugger.addDefaultModules( num );
+
    double time = 0;
    Timer timer(time);
 

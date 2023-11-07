@@ -68,8 +68,6 @@ namespace bugger {
          nchgsides = 0;
          naggrvars = 0;
          ndeletedrows = 0;
-         //TODO: double init from outside to be configurable
-         num = { };
       }
 
       virtual ~BuggerModul( ) = default;
@@ -248,7 +246,6 @@ namespace bugger {
       int nchgsides;
       int naggrvars;
       int ndeletedrows;
-      //TODO: init from outside and make epsilon parameterable
       Num<double> num;
       Message msg;
    };

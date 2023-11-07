@@ -31,9 +31,10 @@ namespace bugger {
 
    class ConsRoundModul : public BuggerModul {
    public:
-      explicit ConsRoundModul(const Message &_msg) : BuggerModul( ) {
+      explicit ConsRoundModul(const Message &_msg, const Num<double> &_num) : BuggerModul( ) {
          this->setName("consround");
          this->msg = _msg;
+         this->num = _num;
       }
 
       bool
@@ -48,7 +49,7 @@ namespace bugger {
             return false;
          assert( !(!problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf) &&
              !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf) &&
-             num.isEq(lhs, rhs)));
+               num.isZetaEq(lhs, rhs)));
          return ( !problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf) && !num.isIntegral(lhs) )
              || ( !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf) && !num.isIntegral(rhs));
       }
@@ -114,13 +115,13 @@ namespace bugger {
                {
                   if( !num.isIntegral(lhs))
                   {
-                     double new_val = MIN(num.round(lhs), num.feasFloor(get_linear_activity(data, solution)));
+                     double new_val = num.min(num.round(lhs), num.feasFloor(get_linear_activity(data, solution)));
                      batches_lhs.emplace_back(row, new_val);
                      copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = new_val;
                   }
                   if( !num.isIntegral(rhs))
                   {
-                     double new_val = MIN(num.round(rhs), num.feasCeil(get_linear_activity(data, solution)));
+                     double new_val = num.max(num.round(rhs), num.feasCeil(get_linear_activity(data, solution)));
                      batches_rhs.emplace_back(row, new_val);
                      copy.getConstraintMatrix( ).getRightHandSides( )[ row ] = new_val;
                   }

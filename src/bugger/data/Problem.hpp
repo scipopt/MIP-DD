@@ -764,7 +764,7 @@ Problem<REAL>::substituteVarInObj( const Num<REAL>& num, int col, int row )
          continue;
 
       REAL newobjcoeff = objcoefficients[indices[j]] + values[j] * substscale;
-      if( num.isZero( newobjcoeff ) )
+      if( num.isEpsZero(newobjcoeff) )
          newobjcoeff = 0;
 
       objcoefficients[indices[j]] = newobjcoeff;

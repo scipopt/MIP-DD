@@ -31,9 +31,10 @@ namespace bugger {
 
    class FixingModul : public BuggerModul {
    public:
-      FixingModul(const Message &_msg) : BuggerModul( ) {
+      FixingModul(const Message &_msg, const Num<double> &_num) : BuggerModul( ) {
          this->setName("fixing");
          this->msg = _msg;
+         this->num = _num;
       }
 
       bool
@@ -46,7 +47,7 @@ namespace bugger {
             return false;
          return !problem.getColFlags( )[ var ].test(ColFlag::kUbInf) &&
                 !problem.getColFlags( )[ var ].test(ColFlag::kLbInf) &&
-                num.isEq(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
+               num.isZetaEq(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
       }
 
       ModulStatus

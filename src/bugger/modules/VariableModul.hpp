@@ -31,9 +31,10 @@ namespace bugger {
 
    class VariableModul : public BuggerModul {
    public:
-      VariableModul( const Message& _msg ) : BuggerModul( ) {
+      VariableModul( const Message& _msg, const Num<double> &_num ) : BuggerModul( ) {
          this->setName("variable");
          this->msg = _msg;
+         this->num = _num;
       }
 
       bool
@@ -46,7 +47,7 @@ namespace bugger {
             return false;
          /* keep restricted variables because they might be already fixed */
          return problem.getColFlags()[var].test(ColFlag::kLbInf) || problem.getColFlags()[var].test(ColFlag::kUbInf) ||
-            num.isLT(problem.getLowerBounds()[var], problem.getUpperBounds()[var]);
+               num.isZetaLT(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
       }
 
       ModulStatus
@@ -81,8 +82,8 @@ namespace bugger {
                if( !solution_exists)
                {
                   if( copy.getColFlags()[var].test(ColFlag::kIntegral))
-                     fixedval = MAX(MIN(0.0, num.epsFloor(copy.getUpperBounds()[var])),
-                                    num.epsCeil(copy.getLowerBounds()[var]));
+                     fixedval = MAX(MIN(0.0, num.zetaFloor(copy.getUpperBounds( )[ var ])),
+                                    num.zetaCeil(copy.getLowerBounds( )[ var ]));
                   else
                      fixedval = MAX(MIN(0.0, copy.getUpperBounds()[var]), copy.getLowerBounds()[var]);
                }

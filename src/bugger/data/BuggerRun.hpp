@@ -76,12 +76,22 @@ namespace bugger {
                 timer.getTime() >= options.tlim;
       }
 
+      bugger::BuggerOptions
+      getOptions()
+      {
+         return options;
+      }
+
       void apply(bugger::Timer &timer, std::string filename) {
          results.resize(modules.size( ));
+
+
 
          auto solverstatus = getOriginalSolveStatus( );
          for( int module = 0; module < modules.size( ); module++ )
              modules[ module ]->setOriginalSolverStatus(solverstatus);
+
+         msg.info("original instance solve-status {}\n", solverstatus);
 
          //TODO: delete the variable names and constraint names also during updates
          for( unsigned int i = 0; i < problem.getNRows( ); ++i )
@@ -124,17 +134,17 @@ namespace bugger {
 
 
 
-      void addDefaultModules( ) {
+      void addDefaultModules( const Num<double>& num ) {
          using uptr = std::unique_ptr<bugger::BuggerModul>;
-         addModul(uptr(new SettingModul(msg)));
-         addModul(uptr(new ConstraintModul(msg)));
-         addModul(uptr(new VariableModul(msg)));
-         addModul(uptr(new SideModul(msg)));
-         addModul(uptr(new ObjectiveModul(msg)));
-         addModul(uptr(new CoefficientModul(msg)));
-         addModul(uptr(new FixingModul(msg)));
-         addModul(uptr(new VarroundModul(msg)));
-         addModul(uptr(new ConsRoundModul(msg)));
+         addModul(uptr(new SettingModul(msg, num)));
+         addModul(uptr(new ConstraintModul(msg, num)));
+         addModul(uptr(new VariableModul(msg, num)));
+         addModul(uptr(new SideModul(msg, num)));
+         addModul(uptr(new ObjectiveModul(msg, num)));
+         addModul(uptr(new CoefficientModul(msg, num)));
+         addModul(uptr(new FixingModul(msg, num)));
+         addModul(uptr(new VarroundModul(msg, num)));
+         addModul(uptr(new ConsRoundModul(msg, num)));
       }
 
       void

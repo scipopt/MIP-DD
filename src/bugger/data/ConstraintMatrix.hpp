@@ -294,7 +294,7 @@ class ConstraintMatrix
       {
          flags[index].unset( RowFlag::kLhsInf );
 
-         if( num.isEq( value, rhs_values[index] ) )
+         if( num.isZetaEq(value, rhs_values[ index ]) )
             lhs_values[index] = rhs_values[index];
          else
             lhs_values[index] = value;
@@ -323,7 +323,7 @@ class ConstraintMatrix
       if( !infval )
       {
          flags[index].unset( RowFlag::kRhsInf );
-         if( num.isEq( value, lhs_values[index] ) )
+         if( num.isZetaEq(value, lhs_values[ index ]) )
             rhs_values[index] = lhs_values[index];
          else
             rhs_values[index] = value;
@@ -1065,7 +1065,7 @@ ConstraintMatrix<REAL>::sparsify(
       {
          REAL newval = rowvals[j] * scale + rowvals[k];
 
-         if( num.isZero( newval ) )
+         if( num.isEpsZero(newval) )
             ++ncancel;
          else if( num.isFeasZero( newval ) )
             return 0;
@@ -1153,7 +1153,7 @@ ConstraintMatrix<REAL>::sparsify(
 
          REAL newval = rowvals[k] + scale * rowvals[j];
 
-         if( num.isZero( newval ) )
+         if( num.isEpsZero(newval) )
          {
             --colsize[col];
 
@@ -1248,7 +1248,7 @@ ConstraintMatrix<REAL>::sparsify(
        [&]( int i ) { return scale * rowvals[i]; },
        [&]( const REAL& a, const REAL& b ) {
           REAL val = a + b;
-          if( num.isZero( val ) )
+          if( num.isEpsZero(val) )
              val = 0;
           return val;
        },
@@ -1335,7 +1335,7 @@ ConstraintMatrix<REAL>::aggregate(
 
    auto mergeVal = [&]( const REAL& oldval, const REAL& addition ) {
       REAL val = oldval + addition;
-      if( num.isZero( val ) )
+      if( num.isEpsZero(val) )
          return REAL{ 0 };
 
       return val;

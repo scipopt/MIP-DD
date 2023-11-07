@@ -31,9 +31,10 @@ namespace bugger {
 
    class CoefficientModul : public BuggerModul {
    public:
-      CoefficientModul(const Message &_msg) : BuggerModul( ) {
+      CoefficientModul(const Message &_msg, const Num<double> &_num) : BuggerModul( ) {
          this->setName("coefficient");
          this->msg = _msg;
+         this->num = _num;
       }
 
       bool
@@ -57,7 +58,7 @@ namespace bugger {
 
       bool is_lb_ge_than_ub(const VariableDomains<double> &domains, int var) const {
          return domains.flags[ var ].test(ColFlag::kUbInf) || domains.flags[ var ].test(ColFlag::kLbInf)
-                || num.isGE(domains.lower_bounds[ var ], domains.upper_bounds[ var ]);
+                || num.isZetaGE(domains.lower_bounds[ var ], domains.upper_bounds[ var ]);
       }
 
 
@@ -109,8 +110,8 @@ namespace bugger {
                      if( solution_exists )
                      {
                         if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral))
-                           fixedval = MAX(MIN(0.0, num.epsFloor(copy.getUpperBounds( )[ var ])),
-                                          num.epsCeil(copy.getLowerBounds( )[ var ]));
+                           fixedval = MAX(MIN(0.0, num.zetaFloor(copy.getUpperBounds( )[ var ])),
+                                          num.zetaCeil(copy.getLowerBounds( )[ var ]));
                         else
                            fixedval = MAX(MIN(0.0, copy.getUpperBounds( )[ var ]), copy.getLowerBounds( )[ var ]);
                      }

@@ -31,9 +31,10 @@ namespace bugger {
 
    class SideModul : public BuggerModul {
    public:
-      SideModul(const Message &_msg) : BuggerModul( ) {
+      SideModul(const Message &_msg, const Num<double> &_num) : BuggerModul( ) {
          this->setName("side");
          this->msg = _msg;
+         this->num = _num;
       }
 
       bool
@@ -88,8 +89,8 @@ namespace bugger {
                if( !solution_exists )
                {
                   if( integral )
-                     fixedval = MAX(MIN(0.0, num.epsFloor(matrix.getRightHandSides( )[ row ])),
-                                    num.epsCeil(matrix.getLeftHandSides( )[ row ]));
+                     fixedval = MAX(MIN(0.0, num.zetaFloor(matrix.getRightHandSides( )[ row ])),
+                                    num.zetaCeil(matrix.getLeftHandSides( )[ row ]));
                   else
                      fixedval = MAX(MIN(0.0, matrix.getRightHandSides( )[ row ]), matrix.getLeftHandSides( )[ row ]);
                }

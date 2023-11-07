@@ -33,10 +33,11 @@ namespace bugger
 class ObjectiveModul : public BuggerModul
 {
  public:
-   ObjectiveModul(const Message& _msg) : BuggerModul()
+   ObjectiveModul(const Message& _msg, const Num<double> &_num) : BuggerModul()
    {
       this->setName( "objective" );
       this->msg = _msg;
+      this->num = _num;
    }
 
    bool
@@ -49,8 +50,8 @@ class ObjectiveModul : public BuggerModul
    {
       /* preserve restricted variables because they might be deleted anyway */
       return !problem.getColFlags()[var].test(ColFlag::kFixed)
-         && !num.isZero(problem.getObjective().coefficients[var])
-         && num.isLT(problem.getLowerBounds()[var], problem.getUpperBounds()[var]);
+         && !num.isZetaZero(problem.getObjective( ).coefficients[ var ])
+         && num.isZetaLT(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
    }
 
    ModulStatus
