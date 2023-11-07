@@ -64,8 +64,8 @@ struct BuggerOptions
       paramSet.addParameter( "nstages", " maximum number of bugger stages or -1 for number of included bugger modules", nstages, -1 );
       paramSet.addParameter( "zeta", "maximal number of threads to use (0: automatic)", threads, 0 );
       paramSet.addParameter( "numerics.feastol", "the feasibility tolerance", feastol, 0.0, 1e-1 );
-      paramSet.addParameter( "numerics.epsilon", "epsilon tolerance to consider two values equal", epsilon, 0.0, 1e-1 );
-      paramSet.addParameter( "numerics.zeta", "zeta tolerance to consider two values equal", zeta, 0.0, 1e-1 );
+      paramSet.addParameter( "numerics.epsilon", "epsilon tolerance to consider two values numerically equal", epsilon, 0.0, 1e-1 );
+      paramSet.addParameter( "numerics.zeta", "zeta tolerance to consider two values exactly equal", zeta, 0.0, 1e-1 );
    }
 
    bool
