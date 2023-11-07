@@ -87,7 +87,7 @@ namespace bugger {
                   copy.getObjective( ).coefficients[ var ] = num.round(copy.getObjective( ).coefficients[ var ]);
                   batches_obj.emplace_back(var, copy.getObjective( ).coefficients[ var ]);
                }
-               if( solution_exists )
+               if( !solution_exists )
                {
                   if( !num.isIntegral(copy.getLowerBounds( )[ var ]))
                   {

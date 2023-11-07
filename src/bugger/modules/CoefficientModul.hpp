@@ -107,7 +107,7 @@ namespace bugger {
                   {
                      SCIP_Real fixedval;
 
-                     if( solution_exists )
+                     if( !solution_exists )
                      {
                         if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral))
                            fixedval = MAX(MIN(0.0, num.zetaFloor(copy.getUpperBounds( )[ var ])),
