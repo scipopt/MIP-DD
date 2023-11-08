@@ -43,11 +43,12 @@ namespace bugger {
       }
 
       bool isFixingAdmissible(Problem<double> &problem, int var) {
-         if( problem.getColFlags( )[ var ].test(ColFlag::kFixed))
+         if( problem.getColFlags( )[ var ].test(ColFlag::kFixed) )
             return false;
-         return !problem.getColFlags( )[ var ].test(ColFlag::kUbInf) &&
-                !problem.getColFlags( )[ var ].test(ColFlag::kLbInf) &&
-               num.isZetaEq(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
+         return !problem.getColFlags( )[ var ].test(ColFlag::kLbInf)
+             && !problem.getColFlags( )[ var ].test(ColFlag::kUbInf)
+             && num.isZetaEq(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ])
+             && problem.getConstraintMatrix( ).getColumnCoefficients( var ).getLength( ) == 0;
       }
 
       ModulStatus
