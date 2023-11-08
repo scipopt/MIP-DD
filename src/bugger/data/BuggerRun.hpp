@@ -112,23 +112,23 @@ namespace bugger {
          if( filename.substr(filename.length( ) - 3) == ".bz2" )
             ending = 7;
 
-
          for( int round = 0; round < options.maxrounds; ++round )
          {
-            if( round == options.maxrounds || is_time_exceeded(timer) )
-               break;
-            for( int module = 0; module < modules.size( ); module++ )
-               results[ module ] = modules[ module ]->run(problem, solution, solution_exists, options, timer);
-
             //TODO:write also parameters
             std::string newfilename =
                   filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round) + ".mps";
-
             bugger::MpsWriter<double>::writeProb(newfilename, problem, origrow_mapping, origcol_mapping);
-            bugger::ModulStatus status = evaluateResults( );
-            if( status != bugger::ModulStatus::kSuccessful )
+
+            if( is_time_exceeded(timer) )
+               break;
+
+            for( int module = 0; module < modules.size( ); ++module )
+               results[ module ] = modules[ module ]->run(problem, solution, solution_exists, options, timer);
+
+            if( evaluateResults( ) != bugger::ModulStatus::kSuccessful )
                break;
          }
+
          printStats( );
       }
 
