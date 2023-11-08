@@ -41,15 +41,23 @@ namespace bugger {
          return false;
       }
 
-      bool isVarroundAdmissible(const Problem<double> &problem, int var) {
-         if( problem.getColFlags()[var].test(ColFlag::kFixed) )
+      bool isBoundFractional(const Problem<double> &problem, int var) {
+         double lb = problem.getLowerBounds( )[ var ];
+         double ub = problem.getUpperBounds( )[ var ];
+         if( !problem.getColFlags( )[ var ].test(ColFlag::kLbInf)
+          && !problem.getColFlags( )[ var ].test(ColFlag::kUbInf)
+          && num.isZetaEq(lb, ub) )
             return false;
-         double obj = problem.getObjective( ).coefficients[ var ];
-         return !num.isIntegral(obj) || problem.getColFlags( )[ var ].test(ColFlag::kUbInf) ||
-                problem.getColFlags( )[ var ].test(ColFlag::kLbInf) ||
-                ( !num.isZetaEq(problem.getLowerBounds( )[ var ], problem.getLowerBounds( )[ var ]) &&
-                  ( !num.isIntegral(problem.getLowerBounds( )[ var ]) ||
-                    !num.isIntegral(problem.getUpperBounds( )[ var ])));
+         return ( !problem.getColFlags( )[ var ].test(ColFlag::kLbInf) && !num.isIntegral(lb) )
+             || ( !problem.getColFlags( )[ var ].test(ColFlag::kUbInf) && !num.isIntegral(ub) );
+      }
+
+      bool isVarroundAdmissible(const Problem<double> &problem, int var) {
+         if( problem.getColFlags( )[ var ].test(ColFlag::kFixed) )
+            return false;
+         if( isBoundFractional(problem, var) )
+            return true;
+         return !num.isIntegral(problem.getObjective( ).coefficients[ var ]);
       }
 
       ModulStatus

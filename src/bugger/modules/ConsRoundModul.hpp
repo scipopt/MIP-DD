@@ -42,22 +42,21 @@ namespace bugger {
          return false;
       }
 
-      bool isSideFractional(Problem<double> &problem, int row) {
+      bool isSideFractional(const Problem<double> &problem, int row) {
+         if( problem.getRowFlags( )[ row ].test(RowFlag::kEquation) )
+            return false;
          double lhs = problem.getConstraintMatrix( ).getLeftHandSides( )[ row ];
          double rhs = problem.getConstraintMatrix( ).getRightHandSides( )[ row ];
-         if(problem.getRowFlags()[row].test(RowFlag::kEquation))
-            return false;
-         assert( !(!problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf) &&
-             !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf) &&
-               num.isZetaEq(lhs, rhs)));
+         assert( !( !problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
+                 && !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
+                 && num.isZetaEq(lhs, rhs) ) );
          return ( !problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf) && !num.isIntegral(lhs) )
-             || ( !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf) && !num.isIntegral(rhs));
+             || ( !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf) && !num.isIntegral(rhs) );
       }
 
-      bool isConsroundAdmissible(Problem<double> &problem, int row) {
+      bool isConsroundAdmissible(const Problem<double> &problem, int row) {
          if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant))
             return false;
-
          if( isSideFractional(problem, row))
             return true;
          auto data = problem.getConstraintMatrix( ).getRowCoefficients(row);
@@ -68,10 +67,8 @@ namespace bugger {
             if( !num.isIntegral(data.getValues( )[ i ]))
                return true;
          }
-         /* leave sparkling or fixed constraints */
          return false;
       }
-
 
       ModulStatus
       execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
