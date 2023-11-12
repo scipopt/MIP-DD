@@ -905,36 +905,11 @@ MpsParser<REAL>::parse( boost::iostreams::filtering_istream& file )
    return true;
 }
 
-   template<typename REAL>
-   REAL
-   MpsParser<REAL>::read_number(const std::string &s) {
-      //TODO: extend for E and consider errors
-      REAL answer = 0;
-      int behind_comma = 0;
-      bool negative = false;
-      for( char c: s )
-      {
-         if( '0' <= c && c <= '9' )
-         {
-            REAL number = REAL { double(c - '0') };
-            if( behind_comma > 0)
-            {
-               answer += number / REAL{ pow(10, behind_comma)};
-            }
-            else
-            {
-               answer *= REAL{10};
-               answer += number;
-            }
-         }
-         else if( c == '.' )
-            behind_comma = 1;
-         else if( c == '-' )
-            negative = true;
-      }
-      return negative ? -answer : answer;
-   }
-
+template<>
+double
+MpsParser<double>::read_number(const std::string &s) {
+   return std::stod(s);
+}
 
 } // namespace bugger
 
