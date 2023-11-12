@@ -110,10 +110,10 @@ namespace bugger {
                      if( !solution_exists )
                      {
                         if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral))
-                           fixedval = MAX(MIN(0.0, num.zetaFloor(copy.getUpperBounds( )[ var ])),
+                           fixedval = num.max(num.min(0.0, num.zetaFloor(copy.getUpperBounds( )[ var ])),
                                           num.zetaCeil(copy.getLowerBounds( )[ var ]));
                         else
-                           fixedval = MAX(MIN(0.0, copy.getUpperBounds( )[ var ]), copy.getLowerBounds( )[ var ]);
+                           fixedval = num.max(num.min(0.0, copy.getUpperBounds( )[ var ]), copy.getLowerBounds( )[ var ]);
                      }
                      else
                      {

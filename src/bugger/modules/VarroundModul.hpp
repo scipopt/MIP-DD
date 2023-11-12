@@ -113,14 +113,14 @@ namespace bugger {
                {
                   if( !num.isZetaIntegral(copy.getLowerBounds( )[ var ]))
                   {
-                     copy.getLowerBounds( )[ var ] = MIN(num.round(copy.getLowerBounds( )[ var ]),
+                     copy.getLowerBounds( )[ var ] = num.min(num.round(copy.getLowerBounds( )[ var ]),
                                                          num.zetaFloor(solution.primal[ var ]));
                      batches_lb.emplace_back(var, copy.getLowerBounds( )[ var ]);
 
                   }
                   if( !num.isZetaIntegral(copy.getUpperBounds( )[ var ]))
                   {
-                     copy.getUpperBounds( )[ var ] = MIN(num.round(copy.getUpperBounds( )[ var ]),
+                     copy.getUpperBounds( )[ var ] = num.min(num.round(copy.getUpperBounds( )[ var ]),
                                                          num.zetaCeil(solution.primal[ var ]));
                      batches_ub.emplace_back(var, copy.getUpperBounds( )[ var ]);
                   }

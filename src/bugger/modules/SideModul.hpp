@@ -89,10 +89,10 @@ namespace bugger {
                if( !solution_exists )
                {
                   if( integral )
-                     fixedval = MAX(MIN(0.0, num.zetaFloor(matrix.getRightHandSides( )[ row ])),
+                     fixedval = num.max(num.min(0.0, num.zetaFloor(matrix.getRightHandSides( )[ row ])),
                                     num.zetaCeil(matrix.getLeftHandSides( )[ row ]));
                   else
-                     fixedval = MAX(MIN(0.0, matrix.getRightHandSides( )[ row ]), matrix.getLeftHandSides( )[ row ]);
+                     fixedval = num.max(num.min(0.0, matrix.getRightHandSides( )[ row ]), matrix.getLeftHandSides( )[ row ]);
                }
                else
                {
