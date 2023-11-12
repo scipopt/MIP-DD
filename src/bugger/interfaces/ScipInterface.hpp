@@ -77,15 +77,15 @@ namespace bugger {
       }
 
       static boost::optional<Problem<double>>
-      readProblem(const std::string& filename) {
+      readProblem(const std::string &filename) {
          Problem<double> problem;
-         SCIP* scip = NULL;
+         SCIP *scip = NULL;
 
          SCIPcreate(&scip);
          SCIPincludeDefaultPlugins(scip);
          //TODO: this can be done easier
-         auto retcode = SCIPreadProb(scip, filename.c_str(), NULL);
-         if(retcode != SCIP_OKAY)
+         auto retcode = SCIPreadProb(scip, filename.c_str( ), NULL);
+         if( retcode != SCIP_OKAY )
             return problem;
          return buildProblem(scip);
 
@@ -456,9 +456,8 @@ namespace bugger {
 
       static
       Problem<SCIP_Real> buildProblem(
-            SCIP*                 scip               /**< SCIP data structure */
-      )
-      {
+            SCIP *scip               /**< SCIP data structure */
+      ) {
          ProblemBuilder<SCIP_Real> builder;
 
          /* build problem from matrix */
@@ -469,9 +468,9 @@ namespace bugger {
          /* set up columns */
          builder.setNumCols(nvars);
          auto vars = SCIPgetVars(scip);
-         for(int i = 0; i != nvars; ++i)
+         for( int i = 0; i != nvars; ++i )
          {
-            SCIP_VAR* var = vars[i];
+            SCIP_VAR *var = vars[ i ];
             SCIP_Real lb = SCIPvarGetLbGlobal(var);
             SCIP_Real ub = SCIPvarGetUbGlobal(var);
             builder.setColLb(i, lb);
@@ -483,16 +482,20 @@ namespace bugger {
          }
 
          /* set up rows */
-//         builder.setNumRows(nrows);
-//         for(int i = 0; i != nrows; ++i)
+         builder.setNumRows(nrows);
+         auto conss = SCIPgetConss(scip);
+
+//         TODO: iterate over the linear constraint handler and add the data.
+//         for( int i = 0; i != nrows; ++i )
 //         {
-//            int* rowcols = SCIPmatrixGetRowIdxPtr(matrix, i);
-//            SCIP_Real* rowvals = SCIPmatrixGetRowValPtr(matrix, i);
-//            int rowlen = SCIPmatrixGetRowNNonzs(matrix, i);
+//            auto row = SCIPgetRowLinear(scip, conss[ i ]);
+//            int *rowcols = SCIPgetRow(matrix, i);
+//            SCIP_Real *rowvals = SCIPmatrixGetRowValPtr(matrix, i);
+//            int rowlen = SCIProwGetNNonz(row);
 //            builder.addRowEntries(i, rowlen, rowcols, rowvals);
 //
-//            SCIP_Real lhs = SCIPmatrixGetRowLhs(matrix, i);
-//            SCIP_Real rhs = SCIPmatrixGetRowRhs(matrix, i);
+//            SCIP_Real lhs = SCIProwGetLhs(row);
+//            SCIP_Real rhs = SCIProwGetRhs(row);
 //            builder.setRowLhs(i, lhs);
 //            builder.setRowRhs(i, rhs);
 //            builder.setRowLhsInf(i, SCIPisInfinity(scip, -lhs));
@@ -502,7 +505,7 @@ namespace bugger {
          //TODO: add objective offset.
          builder.setObjOffset(0);
 
-         return builder.build();
+         return builder.build( );
       }
 
 
