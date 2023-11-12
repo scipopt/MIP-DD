@@ -308,7 +308,7 @@ class Num
 
    template <typename R>
    bool
-   isIntegral( const R& a ) const
+   isZetaIntegral(const R& a ) const
    {
       return isZetaEq(a, round(a));
    }

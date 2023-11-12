@@ -48,8 +48,8 @@ namespace bugger {
           && !problem.getColFlags( )[ var ].test(ColFlag::kUbInf)
           && num.isZetaEq(lb, ub) )
             return false;
-         return ( !problem.getColFlags( )[ var ].test(ColFlag::kLbInf) && !num.isIntegral(lb) )
-             || ( !problem.getColFlags( )[ var ].test(ColFlag::kUbInf) && !num.isIntegral(ub) );
+         return ( !problem.getColFlags( )[ var ].test(ColFlag::kLbInf) && !num.isZetaIntegral(lb) )
+             || ( !problem.getColFlags( )[ var ].test(ColFlag::kUbInf) && !num.isZetaIntegral(ub) );
       }
 
       bool isVarroundAdmissible(const Problem<double> &problem, int var) {
@@ -57,7 +57,7 @@ namespace bugger {
             return false;
          if( isBoundFractional(problem, var) )
             return true;
-         return !num.isIntegral(problem.getObjective( ).coefficients[ var ]);
+         return !num.isZetaIntegral(problem.getObjective( ).coefficients[ var ]);
       }
 
       ModulStatus
@@ -90,20 +90,20 @@ namespace bugger {
          {
             if( isVarroundAdmissible(copy, var))
             {
-               if( !num.isIntegral(copy.getObjective( ).coefficients[ var ]))
+               if( !num.isZetaIntegral(copy.getObjective( ).coefficients[ var ]))
                {
                   copy.getObjective( ).coefficients[ var ] = num.round(copy.getObjective( ).coefficients[ var ]);
                   batches_obj.emplace_back(var, copy.getObjective( ).coefficients[ var ]);
                }
                if( !solution_exists )
                {
-                  if( !num.isIntegral(copy.getLowerBounds( )[ var ]))
+                  if( !num.isZetaIntegral(copy.getLowerBounds( )[ var ]))
                   {
                      copy.getLowerBounds( )[ var ] = num.round(copy.getLowerBounds( )[ var ]);
                      batches_lb.emplace_back(var, copy.getLowerBounds( )[ var ]);
 
                   }
-                  if( !num.isIntegral(copy.getUpperBounds( )[ var ]))
+                  if( !num.isZetaIntegral(copy.getUpperBounds( )[ var ]))
                   {
                      copy.getUpperBounds( )[ var ] = num.round(copy.getUpperBounds( )[ var ]);
                      batches_ub.emplace_back(var, copy.getUpperBounds( )[ var ]);
@@ -111,14 +111,14 @@ namespace bugger {
                }
                else
                {
-                  if( !num.isIntegral(copy.getLowerBounds( )[ var ]))
+                  if( !num.isZetaIntegral(copy.getLowerBounds( )[ var ]))
                   {
                      copy.getLowerBounds( )[ var ] = MIN(num.round(copy.getLowerBounds( )[ var ]),
                                                          num.zetaFloor(solution.primal[ var ]));
                      batches_lb.emplace_back(var, copy.getLowerBounds( )[ var ]);
 
                   }
-                  if( !num.isIntegral(copy.getUpperBounds( )[ var ]))
+                  if( !num.isZetaIntegral(copy.getUpperBounds( )[ var ]))
                   {
                      copy.getUpperBounds( )[ var ] = MIN(num.round(copy.getUpperBounds( )[ var ]),
                                                          num.zetaCeil(solution.primal[ var ]));

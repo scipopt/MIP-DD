@@ -50,8 +50,8 @@ namespace bugger {
          assert( !( !problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
                  && !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
                  && num.isZetaEq(lhs, rhs) ) );
-         return ( !problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf) && !num.isIntegral(lhs) )
-             || ( !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf) && !num.isIntegral(rhs) );
+         return ( !problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf) && !num.isZetaIntegral(lhs) )
+             || ( !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf) && !num.isZetaIntegral(rhs) );
       }
 
       bool isConsroundAdmissible(const Problem<double> &problem, int row) {
@@ -64,7 +64,7 @@ namespace bugger {
          {
             if( problem.getColFlags( )[ data.getIndices( )[ i ]].test(ColFlag::kFixed))
                continue;
-            if( !num.isIntegral(data.getValues( )[ i ]))
+            if( !num.isZetaIntegral(data.getValues( )[ i ]))
                return true;
          }
          return false;
@@ -103,20 +103,20 @@ namespace bugger {
                auto data = copy.getConstraintMatrix( ).getRowCoefficients(row);
 
                for( int j = 0; j < data.getLength( ); ++j )
-                  if( !num.isIntegral(data.getValues( )[ j ]))
+                  if( !num.isZetaIntegral(data.getValues( )[ j ]))
                      batches_coeff.addEntry(row, data.getIndices( )[ j ], num.round(data.getValues( )[ j ]));
 
                double lhs = copy.getConstraintMatrix( ).getLeftHandSides( )[ row ];
                double rhs = copy.getConstraintMatrix( ).getRightHandSides( )[ row ];
                if( solution_exists )
                {
-                  if( !num.isIntegral(lhs))
+                  if( !num.isZetaIntegral(lhs))
                   {
                      double new_val = num.min(num.round(lhs), num.epsFloor(get_linear_activity(data, solution)));
                      batches_lhs.emplace_back(row, new_val);
                      copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = new_val;
                   }
-                  if( !num.isIntegral(rhs))
+                  if( !num.isZetaIntegral(rhs))
                   {
                      double new_val = num.max(num.round(rhs), num.epsCeil(get_linear_activity(data, solution)));
                      batches_rhs.emplace_back(row, new_val);
@@ -125,12 +125,12 @@ namespace bugger {
                }
                else
                {
-                  if( !num.isIntegral(lhs))
+                  if( !num.isZetaIntegral(lhs))
                   {
                      batches_lhs.emplace_back(row, num.round(lhs));
                      copy.getConstraintMatrix( ).modifyLeftHandSide( row, num,  num.round( lhs ) );
                   }
-                  if( !num.isIntegral(rhs))
+                  if( !num.isZetaIntegral(rhs))
                   {
                      batches_rhs.emplace_back(row, num.round(rhs));
                      copy.getConstraintMatrix( ).modifyRightHandSide( row, num,  num.round( rhs ) );

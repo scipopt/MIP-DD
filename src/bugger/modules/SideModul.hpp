@@ -79,7 +79,7 @@ namespace bugger {
                for( int j = 0; j < data.getLength( ); ++j )
                {
                   if( !copy.getColFlags( )[ data.getIndices( )[ j ]].test(ColFlag::kIntegral) ||
-                      !num.isIntegral(data.getValues( )[ j ]))
+                      !num.isZetaIntegral(data.getValues( )[ j ]))
                   {
                      integral = false;
                      break;
