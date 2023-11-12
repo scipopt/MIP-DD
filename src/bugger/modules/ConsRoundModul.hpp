@@ -128,12 +128,12 @@ namespace bugger {
                   if( !num.isIntegral(lhs))
                   {
                      batches_lhs.emplace_back(row, num.round(lhs));
-                     copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = num.round(lhs);
+                     copy.getConstraintMatrix( ).modifyLeftHandSide( row, num,  num.round( lhs ) );
                   }
                   if( !num.isIntegral(rhs))
                   {
                      batches_rhs.emplace_back(row, num.round(rhs));
-                     copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = num.round(rhs);
+                     copy.getConstraintMatrix( ).modifyRightHandSide( row, num,  num.round( rhs ) );
                   }
                }
                ++nbatch;
@@ -154,9 +154,9 @@ namespace bugger {
                   if( !applied_entries.empty( ))
                      copy.getConstraintMatrix( ).changeCoefficients(applied_entries);
                   for( const auto &item: applied_reductions_lhs )
-                     copy.getConstraintMatrix( ).getLeftHandSides( )[ item.first ] = item.second;
+                     copy.getConstraintMatrix( ).modifyLeftHandSide( item.first, num,  item.second );
                   for( const auto &item: applied_reductions_rhs )
-                     copy.getConstraintMatrix( ).getRightHandSides( )[ item.first ] = item.second;
+                     copy.getConstraintMatrix( ).modifyRightHandSide( item.first, num,  item.second );
                }
 
                else

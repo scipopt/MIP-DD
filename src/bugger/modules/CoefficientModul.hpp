@@ -125,14 +125,17 @@ namespace bugger {
 
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf))
                      {
-                        copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] -= data.getValues( )[ index ] * fixedval;
-                        batches_rhs.push_back({ row, copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] });
+                        double new_value = copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] - data.getValues( )[ index ] * fixedval;
+                        batches_rhs.push_back({ row, new_value });
+                        copy.getConstraintMatrix( ).modifyRightHandSide( row, num,  new_value );
+
                      }
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf))
                      {
-                        copy.getConstraintMatrix( ).getRightHandSides( )[ row ] -=
+                        double new_value = copy.getConstraintMatrix( ).getRightHandSides( )[ row ] -
                               data.getValues( )[ index ] * fixedval;
                         batches_rhs.push_back({ row, copy.getConstraintMatrix( ).getRightHandSides( )[ row ] });
+                        copy.getConstraintMatrix( ).modifyLeftHandSide( row, num,  new_value );
 
                      }
                      batches_coeff.addEntry(row, var, fixedval);
@@ -157,9 +160,10 @@ namespace bugger {
                   if( !applied_entries.empty( ))
                      copy.getConstraintMatrix( ).changeCoefficients(applied_entries);
                   for( const auto &item: applied_reductions_lhs )
-                     copy.getConstraintMatrix( ).getLeftHandSides( )[ item.first ] = item.second;
+                     copy.getConstraintMatrix( ).modifyLeftHandSide( item.first, num,  item.second );
                   for( const auto &item: applied_reductions_rhs )
-                     copy.getConstraintMatrix( ).getRightHandSides( )[ item.first ] = item.second;
+                     copy.getConstraintMatrix( ).modifyRightHandSide( item.first, num,  item.second );
+
                }
 
                else
