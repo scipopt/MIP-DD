@@ -43,6 +43,8 @@ namespace bugger {
       virtual void
       doSetUp(const Problem<double> &problem, bool solution_exits, const Solution<double> sol) = 0;
 
+
+
       virtual
       BuggerStatus run(const Message &msg, SolverStatus originalStatus) = 0;
 
@@ -54,6 +56,13 @@ namespace bugger {
 
       void parseParameters( ) {
 
+      }
+
+      static boost::optional<Problem<double>>
+      readProblem(const std::string& filename)
+      {
+         Problem<double > prob;
+         return prob;
       }
    };
 

@@ -78,7 +78,9 @@ main(int argc, char *argv[]) {
    if( !optionsInfo.is_complete )
       return 0;
 
-   //TODO: maybe use a static parser from scip to support more cases
+   //TODO: think how to implement this. and handle more cases
+//   ScipInterface scip{};
+//   auto prob = scip.readProblem(optionsInfo.instance_file);
    auto prob = MpsParser<double>::loadProblem(optionsInfo.instance_file);
 
    if( !prob )

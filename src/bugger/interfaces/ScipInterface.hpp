@@ -76,6 +76,21 @@ namespace bugger {
          assert(result == SCIP_OKAY);
       }
 
+      static boost::optional<Problem<double>>
+      readProblem(const std::string& filename) {
+         Problem<double> problem;
+         SCIP* scip = NULL;
+
+         SCIPcreate(&scip);
+         SCIPincludeDefaultPlugins(scip);
+         //TODO: this can be done easier
+         auto retcode = SCIPreadProb(scip, filename.c_str(), NULL);
+         if(retcode != SCIP_OKAY)
+            return problem;
+         return buildProblem(scip);
+
+      }
+
       void modify_parameters(int nbatches) override {
          SCIP_PARAM *batch;
 
@@ -437,6 +452,57 @@ namespace bugger {
 
 
          return SolverStatus::kError;
+      }
+
+      static
+      Problem<SCIP_Real> buildProblem(
+            SCIP*                 scip               /**< SCIP data structure */
+      )
+      {
+         ProblemBuilder<SCIP_Real> builder;
+
+         /* build problem from matrix */
+         int nnz = SCIPgetNNZs(scip);
+         int nvars = SCIPgetNVars(scip);
+         int nrows = SCIPgetNConss(scip);
+         builder.reserve(nnz, nrows, nvars);
+         /* set up columns */
+         builder.setNumCols(nvars);
+         auto vars = SCIPgetVars(scip);
+         for(int i = 0; i != nvars; ++i)
+         {
+            SCIP_VAR* var = vars[i];
+            SCIP_Real lb = SCIPvarGetLbGlobal(var);
+            SCIP_Real ub = SCIPvarGetUbGlobal(var);
+            builder.setColLb(i, lb);
+            builder.setColUb(i, ub);
+            builder.setColLbInf(i, SCIPisInfinity(scip, -lb));
+            builder.setColUbInf(i, SCIPisInfinity(scip, ub));
+            builder.setColIntegral(i, SCIPvarIsIntegral(var));
+            builder.setObj(i, SCIPvarGetObj(var));
+         }
+
+         /* set up rows */
+//         builder.setNumRows(nrows);
+//         for(int i = 0; i != nrows; ++i)
+//         {
+//            int* rowcols = SCIPmatrixGetRowIdxPtr(matrix, i);
+//            SCIP_Real* rowvals = SCIPmatrixGetRowValPtr(matrix, i);
+//            int rowlen = SCIPmatrixGetRowNNonzs(matrix, i);
+//            builder.addRowEntries(i, rowlen, rowcols, rowvals);
+//
+//            SCIP_Real lhs = SCIPmatrixGetRowLhs(matrix, i);
+//            SCIP_Real rhs = SCIPmatrixGetRowRhs(matrix, i);
+//            builder.setRowLhs(i, lhs);
+//            builder.setRowRhs(i, rhs);
+//            builder.setRowLhsInf(i, SCIPisInfinity(scip, -lhs));
+//            builder.setRowRhsInf(i, SCIPisInfinity(scip, rhs));
+//         }
+
+         //TODO: add objective offset.
+         builder.setObjOffset(0);
+
+         return builder.build();
       }
 
 
