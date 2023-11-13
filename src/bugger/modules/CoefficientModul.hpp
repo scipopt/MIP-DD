@@ -127,7 +127,7 @@ namespace bugger {
                      {
                         double new_value = copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] - data.getValues( )[ index ] * fixedval;
                         batches_lhs.push_back({ row, new_value });
-                        copy.getConstraintMatrix( ).modifyRightHandSide( row, num,  new_value );
+                        copy.getConstraintMatrix( ).modifyLeftHandSide( row, num,  new_value );
 
                      }
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf))
