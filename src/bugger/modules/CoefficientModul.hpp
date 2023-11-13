@@ -126,7 +126,7 @@ namespace bugger {
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf))
                      {
                         double new_value = copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] - data.getValues( )[ index ] * fixedval;
-                        batches_rhs.push_back({ row, new_value });
+                        batches_lhs.push_back({ row, new_value });
                         copy.getConstraintMatrix( ).modifyRightHandSide( row, num,  new_value );
 
                      }
@@ -135,7 +135,7 @@ namespace bugger {
                         double new_value = copy.getConstraintMatrix( ).getRightHandSides( )[ row ] -
                               data.getValues( )[ index ] * fixedval;
                         batches_rhs.push_back({ row, copy.getConstraintMatrix( ).getRightHandSides( )[ row ] });
-                        copy.getConstraintMatrix( ).modifyLeftHandSide( row, num,  new_value );
+                        copy.getConstraintMatrix( ).modifyRightHandSide( row, num,  new_value );
 
                      }
                      batches_coeff.addEntry(row, var, fixedval);
