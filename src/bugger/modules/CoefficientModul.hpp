@@ -132,9 +132,8 @@ namespace bugger {
                      }
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf))
                      {
-                        double new_value = copy.getConstraintMatrix( ).getRightHandSides( )[ row ] -
-                              data.getValues( )[ index ] * fixedval;
-                        batches_rhs.push_back({ row, copy.getConstraintMatrix( ).getRightHandSides( )[ row ] });
+                        double new_value = copy.getConstraintMatrix( ).getRightHandSides( )[ row ] - data.getValues( )[ index ] * fixedval;
+                        batches_rhs.push_back({ row, new_value });
                         copy.getConstraintMatrix( ).modifyRightHandSide( row, num,  new_value );
 
                      }
