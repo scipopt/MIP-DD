@@ -70,7 +70,7 @@ namespace bugger {
             batchsize = options.nbatches - 1;
 
             for( int i = problem.getNRows( ) - 1; i >= 0; --i )
-               if( isConstraintAdmissible(problem, i))
+               if( isConstraintAdmissible(problem, i) )
                   ++batchsize;
             batchsize /= options.nbatches;
          }
@@ -86,7 +86,7 @@ namespace bugger {
                batches.push_back(row);
             }
 
-            if( batches.size() >= 1 && ( batches.size() >= batchsize || row <= 0 ) )
+            if( !batches.empty() && ( batches.size() >= batchsize || row <= 0 ) )
             {
                auto solver = createSolver();
                solver->parseParameters();
@@ -112,7 +112,7 @@ namespace bugger {
          problem = Problem<double>(copy);
          ndeletedrows += applied_redundant_rows.size();
 
-         return applied_redundant_rows.size() > 0 ? ModulStatus::kSuccessful : ModulStatus::kUnsuccesful;
+         return applied_redundant_rows.empty() ? ModulStatus::kUnsuccesful : ModulStatus::kSuccessful;
       }
    };
 
