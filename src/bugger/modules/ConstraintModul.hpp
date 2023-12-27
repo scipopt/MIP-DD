@@ -91,7 +91,7 @@ namespace bugger {
                auto solver = createSolver();
                solver->parseParameters();
                solver->doSetUp(copy, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus) != BuggerStatus::kFail )
+               if( solver->run(msg, originalSolverStatus) == BuggerStatus::kSuccess )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_redundant_rows )
