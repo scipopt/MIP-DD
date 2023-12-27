@@ -53,85 +53,82 @@ namespace bugger {
       ModulStatus
       execute(Problem<double> &problem, Solution<double>& solution, bool solution_exists, const BuggerOptions &options, const Timer &timer) override {
 
-         ModulStatus result = ModulStatus::kUnsuccesful;
-
          auto copy = Problem<double>(problem);
-         Vec<std::pair<int, double>> applied_reductions{};
-         Vec<std::pair<int, double>> batches{};
-
+         Vec<std::pair<int, double>> applied_reductions { };
+         Vec<std::pair<int, double>> batches { };
          int batchsize = 1;
+
          if( options.nbatches > 0 )
          {
             batchsize = options.nbatches - 1;
-
             for( int i = problem.getNCols() - 1; i >= 0; --i )
-               if( isVariableAdmissible(problem, i))
+               if( isVariableAdmissible(problem, i) )
                   ++batchsize;
-
             batchsize /= options.nbatches;
          }
 
-         int nbatch = 0;
-         batches.clear( );
+         batches.reserve(batchsize);
+
          for( int var = copy.getNCols() - 1; var >= 0; --var )
          {
-            if( isVariableAdmissible(copy, var))
+            if( isVariableAdmissible(copy, var) )
             {
-               SCIP_Real fixedval;
+               double fixedval;
 
-               if( !solution_exists)
+               if( !solution_exists )
                {
-                  if( copy.getColFlags()[var].test(ColFlag::kIntegral))
-                     fixedval = num.max(num.min(0.0, num.zetaFloor(copy.getUpperBounds( )[ var ])),
-                                    num.zetaCeil(copy.getLowerBounds( )[ var ]));
+                  if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
+                     fixedval = num.max(num.min(0.0, num.zetaFloor(copy.getUpperBounds( )[ var ])), num.zetaCeil(copy.getLowerBounds( )[ var ]));
                   else
-                     fixedval = num.max(num.min(0.0, copy.getUpperBounds()[var]), copy.getLowerBounds()[var]);
+                     fixedval = num.max(num.min(0.0, copy.getUpperBounds( )[ var ]), copy.getLowerBounds( )[ var ]);
                }
                else
                {
-                  if( copy.getColFlags()[var].test(ColFlag::kIntegral))
-                     fixedval = num.round(solution.primal[var]);
+                  if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
+                     fixedval = num.round(solution.primal[ var ]);
                   else
-                     fixedval = solution.primal[var];
+                     fixedval = solution.primal[ var ];
                }
 
-               copy.getLowerBounds()[var] = fixedval;
-               copy.getUpperBounds()[var] = fixedval;
-               batches.push_back({var, fixedval});
-               ++nbatch;
+               copy.getLowerBounds( )[ var ] = fixedval;
+               copy.getUpperBounds( )[ var ] = fixedval;
+               batches.push_back({ var, fixedval });
             }
 
-            if( nbatch >= 1 && ( nbatch >= batchsize || var <= 0 ))
+            if( !batches.empty() && ( batches.size() >= batchsize || var <= 0 ) )
             {
                auto solver = createSolver();
                solver->parseParameters();
                solver->doSetUp(copy, solution_exists, solution);
-               if( solver->run(msg,originalSolverStatus) != BuggerStatus::kFail )
+               if( solver->run(msg, originalSolverStatus) == BuggerStatus::kSuccess )
                {
                   copy = Problem<double>(problem);
-                  for( const auto &item: applied_reductions ){
-                     copy.getLowerBounds()[item.first] = item.second;
-                     copy.getUpperBounds()[item.first] = item.second;
+                  for( const auto &item: applied_reductions )
+                  {
+                     copy.getLowerBounds( )[ item.first ] = item.second;
+                     copy.getUpperBounds( )[ item.first ] = item.second;
                   }
                }
                else
                {
-                  //TODO: push back together
-                  for( const auto &item: batches )
-                     applied_reductions.push_back(item);
-                  nfixedvars += nbatch;
-                  result = ModulStatus::kSuccessful;
+                  applied_reductions.insert(applied_reductions.end(), batches.begin(), batches.end());
                }
-               nbatch = 0;
-               batches.clear( );
-               batches.reserve(batchsize);
+               batches.clear();
             }
          }
-         problem = Problem<double>(copy);
-         return result;
+
+         if( applied_reductions.empty() )
+         {
+            return ModulStatus::kUnsuccesful;
+         }
+         else
+         {
+            problem = copy;
+            nfixedvars += applied_reductions.size();
+            return ModulStatus::kSuccessful;
+         }
       }
    };
-
 
 } // namespace bugger
 
