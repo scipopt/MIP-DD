@@ -42,55 +42,53 @@ namespace bugger {
          return false;
       }
 
-
+      bool isSideAdmissable(Problem<double> &copy, int row) const
+      {
+         return !copy.getRowFlags( )[ row ].test(RowFlag::kRedundant) && !copy.getRowFlags( )[ row ].test(RowFlag::kEquation);
+      }
 
       ModulStatus
       execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
               const Timer &timer) override {
 
-         ModulStatus result = ModulStatus::kUnsuccesful;
-
          auto copy = Problem<double>(problem);
+         ConstraintMatrix<double>& matrix = copy.getConstraintMatrix( );
          Vec<std::pair<int, double>> applied_reductions { };
          Vec<std::pair<int, double>> batches { };
-
          int batchsize = 1;
+
          if( options.nbatches > 0 )
          {
             batchsize = options.nbatches - 1;
-
             for( int row = problem.getNRows( ) - 1; row >= 0; --row )
-               if( isSideAdmissable(problem, row))
+               if( isSideAdmissable(problem, row) )
                   ++batchsize;
-
             batchsize /= options.nbatches;
          }
 
-         int nbatch = 0;
          batches.reserve(batchsize);
+
          for( int row = copy.getNRows( ) - 1; row >= 0; --row )
          {
-            if( isSideAdmissable(copy, row))
+            if( isSideAdmissable(copy, row) )
             {
-               ConstraintMatrix<double> &matrix = copy.getConstraintMatrix( );
                auto data = matrix.getRowCoefficients(row);
                bool integral = true;
+               double fixedval;
 
                for( int j = 0; j < data.getLength( ); ++j )
                {
-                  if( !copy.getColFlags( )[ data.getIndices( )[ j ]].test(ColFlag::kIntegral) ||
-                      !num.isZetaIntegral(data.getValues( )[ j ]))
+                  if( !copy.getColFlags( )[ data.getIndices( )[ j ] ].test(ColFlag::kIntegral) || !num.isZetaIntegral(data.getValues( )[ j ]) )
                   {
                      integral = false;
                      break;
                   }
                }
-               double fixedval;
+
                if( !solution_exists )
                {
                   if( integral )
-                     fixedval = num.max(num.min(0.0, num.zetaFloor(matrix.getRightHandSides( )[ row ])),
-                                    num.zetaCeil(matrix.getLeftHandSides( )[ row ]));
+                     fixedval = num.max(num.min(0.0, num.zetaFloor(matrix.getRightHandSides( )[ row ])), num.zetaCeil(matrix.getLeftHandSides( )[ row ]));
                   else
                      fixedval = num.max(num.min(0.0, matrix.getRightHandSides( )[ row ]), matrix.getLeftHandSides( )[ row ]);
                }
@@ -102,50 +100,45 @@ namespace bugger {
                      fixedval = get_linear_activity(data, solution);
                }
 
-               matrix.modifyLeftHandSide(row, num, fixedval);
-               matrix.modifyRightHandSide(row, num, fixedval);
-               batches.emplace_back(row, fixedval);
-               nbatch++;
+               matrix.modifyLeftHandSide( row, num, fixedval );
+               matrix.modifyRightHandSide( row, num, fixedval );
+               batches.push_back({ row, fixedval });
             }
 
-            if( nbatch >= 1 && ( nbatch >= batchsize || row <= 0 ))
+            if( !batches.empty() && ( batches.size() >= batchsize || row <= 0 ) )
             {
                auto solver = createSolver();
                solver->parseParameters();
                solver->doSetUp(copy, solution_exists, solution);
-               if( solver->run(msg,originalSolverStatus) != BuggerStatus::kFail )
+               if( solver->run(msg, originalSolverStatus) == BuggerStatus::kSuccess )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions )
                   {
-                     copy.getConstraintMatrix( ).modifyLeftHandSide(item.first, num, item.second);
-                     copy.getConstraintMatrix( ).modifyRightHandSide(item.first, num, item.second);
+                     matrix.modifyLeftHandSide(item.first, num, item.second);
+                     matrix.modifyRightHandSide(item.first, num, item.second);
                   }
                }
                else
                {
-                  //TODO: push back together
-                  for( const auto &item: batches )
-                     applied_reductions.push_back(item);
-                  nchgsides += nbatch;
-                  result = ModulStatus::kSuccessful;
+                  applied_reductions.insert(applied_reductions.end(), batches.begin(), batches.end());
                }
-               nbatch = 0;
-               batches.clear( );
-               batches.reserve(batchsize);
+               batches.clear();
             }
          }
 
-         problem = Problem<double>(copy);
-         return result;
-      }
-
-      bool isSideAdmissable(Problem<double> &copy, int row) const
-      {
-         return !copy.getRowFlags( )[ row ].test(RowFlag::kRedundant) && !copy.getRowFlags( )[ row ].test(RowFlag::kEquation);
+         if( applied_reductions.empty() )
+         {
+            return ModulStatus::kUnsuccesful;
+         }
+         else
+         {
+            problem = copy;
+            nchgsides += 2 * applied_reductions.size();
+            return ModulStatus::kSuccessful;
+         }
       }
    };
-
 
 } // namespace bugger
 

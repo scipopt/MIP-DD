@@ -90,14 +90,14 @@ namespace bugger {
          {
             if( isCoefficientAdmissible(copy, row) )
             {
-               auto data = problem.getConstraintMatrix( ).getRowCoefficients(row);
+               auto data = copy.getConstraintMatrix( ).getRowCoefficients(row);
 
                for( int index = data.getLength( ) - 1; index >= 0; --index )
                {
                   int var = data.getIndices( )[ index ];
                   if( is_lb_ge_than_ub(copy.getVariableDomains( ), var) )
                   {
-                     SCIP_Real fixedval;
+                     double fixedval;
 
                      if( !solution_exists )
                      {
