@@ -55,8 +55,7 @@ namespace bugger {
       execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
               const Timer &timer) override {
 
-         ModulStatus result = ModulStatus::kUnsuccesful;
-         auto copy = Problem < double > ( problem );
+         auto copy = Problem<double>(problem);
          Vec<int> applied_vars { };
          Vec<int> batches { };
          int batchsize = 1;
@@ -66,54 +65,57 @@ namespace bugger {
             batchsize = options.nbatches - 1;
 
             for( int var = problem.getNCols( ) - 1; var >= 0; --var )
-               if( isFixingAdmissible(problem, var))
+               if( isFixingAdmissible(problem, var) )
                   ++batchsize;
             batchsize /= options.nbatches;
          }
 
-         int nbatch = 0;
          batches.reserve(batchsize);
+
          for( int var = copy.getNCols( ) - 1; var >= 0; --var )
          {
-
-            if( isFixingAdmissible(copy, var))
+            if( isFixingAdmissible(copy, var) )
             {
+               assert(!copy.getColFlags( )[ var ].test(ColFlag::kFixed));
                copy.getColFlags( )[ var ].set(ColFlag::kFixed);
                batches.push_back(var);
-               ++nbatch;
-
-               if( nbatch >= 1 && ( nbatch >= batchsize || var <= 0 ))
-               {
-                  auto solver = createSolver();
-                  solver->parseParameters();
-                  solver->doSetUp(copy, solution_exists, solution);
-                  if( solver->run(msg,originalSolverStatus) != BuggerStatus::kFail )
-                  {
-                     copy = Problem < double > ( problem );
-                     for( const auto &item: applied_vars )
-                        copy.getColFlags( )[ item ].set(ColFlag::kFixed);
-                  }
-                  else
-                  {
-                     //TODO: push back together
-                     for( const auto &item: batches )
-                        applied_vars.push_back(item);
-                     naggrvars += nbatch;
-                     result = ModulStatus::kSuccessful;
-                  }
-                  nbatch = 0;
-               }
-               ++nbatch;
             }
-            batches.clear( );
-            batches.reserve(batchsize);
+
+            if( !batches.empty() && ( batches.size() >= batchsize || var <= 0 ) )
+            {
+               auto solver = createSolver();
+               solver->parseParameters();
+               solver->doSetUp(copy, solution_exists, solution);
+               if( solver->run(msg, originalSolverStatus) == BuggerStatus::kSuccess )
+               {
+                  copy = Problem<double>(problem);
+                  for( const auto &item: applied_vars )
+                  {
+                     assert(!copy.getColFlags( )[ item ].test(ColFlag::kFixed));
+                     copy.getColFlags( )[ item ].set(ColFlag::kFixed);
+                  }
+               }
+               else
+               {
+                  applied_vars.insert(applied_vars.end(), batches.begin(), batches.end());
+               }
+               batches.clear();
+            }
          }
 
-         problem = Problem < double > ( copy );
-         return result;
+         if( applied_vars.empty() )
+         {
+            return ModulStatus::kUnsuccesful;
+         }
+         else
+         {
+            //TODO: remove the variables from the problem might be ideal at least at the end
+            problem = copy;
+            naggrvars += applied_vars.size();
+            return ModulStatus::kSuccessful;
+         }
       }
    };
-
 
 } // namespace bugger
 

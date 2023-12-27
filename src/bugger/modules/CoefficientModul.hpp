@@ -165,11 +165,17 @@ namespace bugger {
             }
          }
 
-         problem = Problem<double>(copy);
-         nchgcoefs += applied_entries.getNnz();
-         nchgsides += applied_reductions_lhs.size()+applied_reductions_rhs.size();
-
-         return applied_reductions_lhs.empty() ? ModulStatus::kUnsuccesful : ModulStatus::kSuccessful;
+         if( applied_reductions_lhs.empty() )
+         {
+            return ModulStatus::kUnsuccesful;
+         }
+         else
+         {
+            problem = copy;
+            nchgcoefs += applied_entries.getNnz();
+            nchgsides += applied_reductions_lhs.size()+applied_reductions_rhs.size();
+            return ModulStatus::kSuccessful;
+         }
       }
    };
 

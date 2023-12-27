@@ -108,14 +108,19 @@ namespace bugger {
             }
          }
 
-         //TODO: remove the constraints from the problem might be ideal at least at the end
-         problem = Problem<double>(copy);
-         ndeletedrows += applied_redundant_rows.size();
-
-         return applied_redundant_rows.empty() ? ModulStatus::kUnsuccesful : ModulStatus::kSuccessful;
+         if( applied_redundant_rows.empty() )
+         {
+            return ModulStatus::kUnsuccesful;
+         }
+         else
+         {
+            //TODO: remove the constraints from the problem might be ideal at least at the end
+            problem = copy;
+            ndeletedrows += applied_redundant_rows.size();
+            return ModulStatus::kSuccessful;
+         }
       }
    };
-
 
 } // namespace bugger
 
