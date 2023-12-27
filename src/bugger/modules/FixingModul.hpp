@@ -63,7 +63,6 @@ namespace bugger {
          if( options.nbatches > 0 )
          {
             batchsize = options.nbatches - 1;
-
             for( int var = problem.getNCols( ) - 1; var >= 0; --var )
                if( isFixingAdmissible(problem, var) )
                   ++batchsize;

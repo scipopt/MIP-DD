@@ -29,91 +29,90 @@
 
 namespace bugger
 {
-
-class ObjectiveModul : public BuggerModul
-{
- public:
-   ObjectiveModul(const Message& _msg, const Num<double> &_num) : BuggerModul()
+   class ObjectiveModul : public BuggerModul
    {
-      this->setName( "objective" );
-      this->msg = _msg;
-      this->num = _num;
-   }
-
-   bool
-   initialize( ) override
-   {
-      return false;
-   }
-
-   bool isObjectiveAdmissible(Problem<double>& problem, int var )
-   {
-      /* preserve restricted variables because they might be deleted anyway */
-      return !problem.getColFlags()[var].test(ColFlag::kFixed)
-         && !num.isZetaZero(problem.getObjective( ).coefficients[ var ])
-         && num.isZetaLT(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
-   }
-
-   ModulStatus
-   execute(Problem<double> &problem, Solution<double>& solution, bool solution_exists, const BuggerOptions &options, const Timer &timer) override
-   {
-
-      ModulStatus result = ModulStatus::kUnsuccesful;
-
-      auto copy = Problem<double>(problem);
-      Vec<std::pair<int, double>> applied_reductions{};
-      Vec<std::pair<int, double>> batches{};
-      int batchsize = 1;
-
-      if( options.nbatches > 0 )
+    public:
+      ObjectiveModul(const Message& _msg, const Num<double> &_num) : BuggerModul()
       {
-         batchsize = options.nbatches - 1;
-         for( int i = problem.getNCols() - 1; i >= 0; --i )
-            if( isObjectiveAdmissible(problem, i) )
-               ++batchsize;
-         batchsize /= options.nbatches;
+         this->setName( "objective" );
+         this->msg = _msg;
+         this->num = _num;
       }
 
-      int nbatch = 0;
-
-      batches.reserve(batchsize);
-      for( int var = copy.getNCols() - 1; var >= 0; --var )
+      bool
+      initialize( ) override
       {
-         if( isObjectiveAdmissible(copy, var))
+         return false;
+      }
+
+      bool isObjectiveAdmissible(Problem<double>& problem, int var )
+      {
+         /* preserve restricted variables because they might be deleted anyway */
+         return !problem.getColFlags()[var].test(ColFlag::kFixed)
+            && !num.isZetaZero(problem.getObjective( ).coefficients[ var ])
+            && num.isZetaLT(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
+      }
+
+      ModulStatus
+      execute(Problem<double> &problem, Solution<double>& solution, bool solution_exists, const BuggerOptions &options, const Timer &timer) override
+      {
+         auto copy = Problem<double>(problem);
+         Vec<int> applied_reductions { };
+         Vec<int> batches { };
+         int batchsize = 1;
+
+         if( options.nbatches > 0 )
          {
-            batches.push_back({ var, copy.getObjective( ).coefficients[ var ] });
-            copy.getObjective( ).coefficients[ var ] = 0;
-            ++nbatch;
-            if( nbatch >= 1 && ( nbatch >= batchsize || var <= 0 ))
+            batchsize = options.nbatches - 1;
+            for( int i = problem.getNCols( ) - 1; i >= 0; --i )
+               if( isObjectiveAdmissible(problem, i) )
+                  ++batchsize;
+            batchsize /= options.nbatches;
+         }
+
+         batches.reserve(batchsize);
+
+         for( int var = copy.getNCols( ) - 1; var >= 0; --var )
+         {
+            if( isObjectiveAdmissible(copy, var) )
+            {
+               copy.getObjective( ).coefficients[ var ] = 0.0;
+               batches.push_back(var);
+            }
+
+            if( !batches.empty() && ( batches.size() >= batchsize || var <= 0 ) )
             {
                auto solver = createSolver();
                solver->parseParameters();
                solver->doSetUp(copy, solution_exists, solution);
-               if( solver->run(msg,originalSolverStatus) != BuggerStatus::kFail )
+               if( solver->run(msg, originalSolverStatus) == BuggerStatus::kSuccess )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions )
-                     copy.getObjective( ).coefficients[ item.first ] = item.second;
+                  {
+                     copy.getObjective( ).coefficients[ item ] = 0.0;
+                  }
                }
                else
                {
-                  //TODO: push back together
-                  for( const auto &item: batches )
-                     applied_reductions.push_back(item);
-                  nchgcoefs += nbatch;
-                  result = ModulStatus::kSuccessful;
+                  applied_reductions.insert(applied_reductions.end(), batches.begin(), batches.end());
                }
-               nbatch = 0;
-               batches.clear( );
-               batches.reserve(batchsize);
+               batches.clear();
             }
          }
-      }
-      problem = Problem<double>(copy);
-      return result;
-   }
-};
 
+         if( applied_reductions.empty() )
+         {
+            return ModulStatus::kUnsuccesful;
+         }
+         else
+         {
+            problem = copy;
+            nchgcoefs += applied_reductions.size();
+            return ModulStatus::kSuccessful;
+         }
+      }
+   };
 
 } // namespace bugger
 

@@ -68,7 +68,6 @@ namespace bugger {
          if( options.nbatches > 0 )
          {
             batchsize = options.nbatches - 1;
-
             for( int i = problem.getNRows( ) - 1; i >= 0; --i )
                if( isConstraintAdmissible(problem, i) )
                   ++batchsize;
