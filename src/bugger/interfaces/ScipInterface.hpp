@@ -336,29 +336,27 @@ namespace bugger {
                             ? SCIPinfinity(scip)
                             : SCIP_Real(rhs_values[ row ]);
 
-            //TODO: @Dominik can you maybe double-check this and also check if the code is understandable
-            //the first length entries of consvars-/vals are the entries of the current constraint
+            // the first length entries of consvars/-vals are the entries of the current constraint
             int length = 0;
-            int counter = 0;
             for( int k = 0; k != rowvec.getLength( ); ++k )
             {
-               if( problem.getColFlags( )[ k ].test(ColFlag::kFixed))
+               if( problem.getColFlags( )[ k ].test(ColFlag::kFixed) )
                {
-                  double value = problem.getLowerBounds( )[ inds[ k ]];
-                  assert(value == problem.getUpperBounds( )[ k ]);
-                  if( vals[ k ] == 0 )
-                     continue;
-                  //update rhs and lhs if fixed variable is still
-                  if( !rflags[ row ].test(RowFlag::kLhsInf))
-                     lhs -= ( vals[ k ] * value );
-                  if( !rflags[ row ].test(RowFlag::kRhsInf))
-                     rhs -= ( vals[ k ] * value );
+                  double value = problem.getLowerBounds( )[ inds[ k ] ];
+                  assert(value == problem.getUpperBounds( )[ inds[ k ] ]);
+                  if( value != 0.0 )
+                  {
+                     // update lhs and rhs if fixed variable is still present
+                     if( !rflags[ row ].test(RowFlag::kLhsInf) )
+                        lhs -= ( vals[ k ] * value );
+                     if( !rflags[ row ].test(RowFlag::kRhsInf) )
+                        rhs -= ( vals[ k ] * value );
+                  }
                   continue;
                }
-               consvars[ counter ] = vars[ inds[ k ]];
-               consvals[ counter ] = SCIP_Real(vals[ k ]);
-               length++;
-               counter++;
+               consvars[ length ] = vars[ inds[ k ] ];
+               consvals[ length ] = SCIP_Real(vals[ k ]);
+               ++length;
             }
 
             SCIP_CALL(SCIPcreateConsBasicLinear(
@@ -398,7 +396,7 @@ namespace bugger {
          //TODO: fix this
 //         (*test)->stat->subscipdepth = 0;
 
-//         //TODO @DOminink I am not sure why multiple solutions are present?
+//         //TODO: Support initial solutions
 //         for( int i = 0; i < nsols; ++i )
 //         {
 //            SCIP_SOL *sol;
