@@ -198,19 +198,12 @@ namespace bugger {
 
       BuggerStatus run(const Message &msg, SolverStatus originalStatus) override {
 
+         //TODO: Expect failing assertion
          SolverStatus status = solve( );
-         //TODO add that failed assertion is expected.
-
-
          BuggerStatus result = BuggerStatus::kSuccess;
-         if( status == SolverStatus::kOptimal || status == SolverStatus::kLimit )
-         {
-            if( SCIPisSumNegative(scip, SCIPgetObjsense(scip) * ( reference - SCIPgetDualbound(scip))))
-               result = BuggerStatus::kFail;
-         }
-         else if( status == SolverStatus::kError )
-            return BuggerStatus::kUnexpectedError;
-         else if( originalStatus == status )
+         if( status == SolverStatus::kError )
+            result = BuggerStatus::kUnexpectedError;
+         else if( originalStatus == status || SCIPisSumNegative(scip, SCIPgetObjsense(scip) * ( reference - SCIPgetDualbound(scip) )) )
             result = BuggerStatus::kFail;
 
          switch( result )
@@ -391,10 +384,6 @@ namespace bugger {
       SolverStatus solve( ) override {
 
          SCIPsetMessagehdlrQuiet(scip, true);
-
-
-         //TODO: fix this
-//         (*test)->stat->subscipdepth = 0;
 
 //         //TODO: Support initial solutions
 //         for( int i = 0; i < nsols; ++i )
