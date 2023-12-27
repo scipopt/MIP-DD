@@ -64,8 +64,6 @@ namespace bugger {
       execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
               const Timer &timer) override {
 
-         ModulStatus result = ModulStatus::kUnsuccesful;
-
          auto copy = Problem<double>(problem);
          Vec<std::pair<int, double>> applied_lb { };
          Vec<std::pair<int, double>> applied_ub { };
@@ -73,104 +71,87 @@ namespace bugger {
          Vec<std::pair<int, double>> batches_lb { };
          Vec<std::pair<int, double>> batches_ub { };
          Vec<std::pair<int, double>> batches_obj { };
-
          int batchsize = 1;
+
          if( options.nbatches > 0 )
          {
             batchsize = options.nbatches - 1;
             for( int i = 0; i < problem.getNCols( ); ++i )
-               if( isVarroundAdmissible(problem, i))
+               if( isVarroundAdmissible(problem, i) )
                   ++batchsize;
-
             batchsize /= options.nbatches;
          }
 
-         int nbatch = 0;
+         batches_lb.reserve(batchsize);
+         batches_ub.reserve(batchsize);
+         batches_obj.reserve(batchsize);
+
          for( int var = 0; var < copy.getNCols( ); ++var )
          {
-            if( isVarroundAdmissible(copy, var))
+            if( isVarroundAdmissible(copy, var) )
             {
-               if( !num.isZetaIntegral(copy.getObjective( ).coefficients[ var ]))
-               {
-                  copy.getObjective( ).coefficients[ var ] = num.round(copy.getObjective( ).coefficients[ var ]);
-                  batches_obj.emplace_back(var, copy.getObjective( ).coefficients[ var ]);
-               }
                if( !solution_exists )
                {
-                  if( !num.isZetaIntegral(copy.getLowerBounds( )[ var ]))
-                  {
-                     copy.getLowerBounds( )[ var ] = num.round(copy.getLowerBounds( )[ var ]);
-                     batches_lb.emplace_back(var, copy.getLowerBounds( )[ var ]);
-
-                  }
-                  if( !num.isZetaIntegral(copy.getUpperBounds( )[ var ]))
-                  {
-                     copy.getUpperBounds( )[ var ] = num.round(copy.getUpperBounds( )[ var ]);
-                     batches_ub.emplace_back(var, copy.getUpperBounds( )[ var ]);
-                  }
+                  copy.getLowerBounds( )[ var ] = num.round(copy.getLowerBounds( )[ var ]);
+                  copy.getUpperBounds( )[ var ] = num.round(copy.getUpperBounds( )[ var ]);
                }
                else
                {
-                  if( !num.isZetaIntegral(copy.getLowerBounds( )[ var ]))
-                  {
-                     copy.getLowerBounds( )[ var ] = num.min(num.round(copy.getLowerBounds( )[ var ]),
-                                                         num.zetaFloor(solution.primal[ var ]));
-                     batches_lb.emplace_back(var, copy.getLowerBounds( )[ var ]);
-
-                  }
-                  if( !num.isZetaIntegral(copy.getUpperBounds( )[ var ]))
-                  {
-                     copy.getUpperBounds( )[ var ] = num.min(num.round(copy.getUpperBounds( )[ var ]),
-                                                         num.zetaCeil(solution.primal[ var ]));
-                     batches_ub.emplace_back(var, copy.getUpperBounds( )[ var ]);
-                  }
+                  copy.getLowerBounds( )[ var ] = num.min(num.round(copy.getLowerBounds( )[ var ]), num.epsFloor(solution.primal[ var ]));
+                  copy.getUpperBounds( )[ var ] = num.max(num.round(copy.getUpperBounds( )[ var ]), num.epsCeil(solution.primal[ var ]));
                }
-               ++nbatch;
+
+               copy.getObjective( ).coefficients[ var ] = num.round(copy.getObjective( ).coefficients[ var ]);
+               batches_lb.push_back({ var, copy.getLowerBounds( )[ var ] });
+               batches_ub.push_back({ var, copy.getUpperBounds( )[ var ] });
+               batches_obj.push_back({ var, copy.getObjective( ).coefficients[ var ] });
             }
 
-            if( nbatch >= 1 && ( nbatch >= batchsize || var >= copy.getNCols( ) - 1 ))
+            if( !batches_obj.empty() && ( batches_obj.size() >= batchsize || var >= copy.getNCols( ) - 1 ) )
             {
                auto solver = createSolver();
                solver->parseParameters();
                solver->doSetUp(copy, solution_exists, solution);
-               if( solver->run(msg,originalSolverStatus) != BuggerStatus::kFail )
+               if( solver->run(msg, originalSolverStatus) == BuggerStatus::kSuccess )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_lb )
+                  {
                      copy.getLowerBounds( )[ item.first ] = item.second;
+                  }
                   for( const auto &item: applied_ub )
+                  {
                      copy.getUpperBounds( )[ item.first ] = item.second;
+                  }
                   for( const auto &item: applied_obj )
+                  {
                      copy.getObjective( ).coefficients[ item.first ] = item.second;
-
+                  }
                }
                else
                {
-                  //TODO: push back together
-                  for( const auto &item: batches_lb )
-                     applied_lb.push_back(item);
-                  for( const auto &item: batches_obj )
-                     applied_obj.push_back(item);
-                  for( const auto &item: batches_ub )
-                     applied_ub.push_back(item);
-                  nchgcoefs += batches_lb.size() + batches_ub.size() + batches_lb.size();
-
-                  result = ModulStatus::kSuccessful;
+                  applied_lb.insert(applied_lb.end(), batches_lb.begin(), batches_lb.end());
+                  applied_ub.insert(applied_ub.end(), batches_ub.begin(), batches_ub.end());
+                  applied_obj.insert(applied_obj.end(), batches_obj.begin(), batches_obj.end());
                }
                batches_lb.clear();
                batches_ub.clear();
                batches_obj.clear();
-               batches_lb.reserve(batchsize);
-               batches_ub.reserve(batchsize);
-               batches_obj.reserve(batchsize);
-               nbatch = 0;
             }
          }
-         problem = Problem<double>(copy);
-         return result;
+
+         if( applied_obj.empty() )
+         {
+            return ModulStatus::kUnsuccesful;
+         }
+         else
+         {
+            problem = copy;
+            nchgcoefs += applied_lb.size() + applied_ub.size() + applied_obj.size();
+            return ModulStatus::kSuccessful;
+         }
       }
    };
-
 
 } // namespace bugger
 
