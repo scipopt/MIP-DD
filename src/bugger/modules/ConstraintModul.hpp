@@ -100,17 +100,13 @@ namespace bugger {
                   }
                }
                else
-               {
                   applied_redundant_rows.insert(applied_redundant_rows.end(), batches.begin(), batches.end());
-               }
                batches.clear();
             }
          }
 
          if( applied_redundant_rows.empty() )
-         {
             return ModulStatus::kUnsuccesful;
-         }
          else
          {
             //TODO: remove the constraints from the problem might be ideal at least at the end

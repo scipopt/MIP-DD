@@ -95,17 +95,13 @@ namespace bugger {
                   }
                }
                else
-               {
                   applied_vars.insert(applied_vars.end(), batches.begin(), batches.end());
-               }
                batches.clear();
             }
          }
 
          if( applied_vars.empty() )
-         {
             return ModulStatus::kUnsuccesful;
-         }
          else
          {
             //TODO: remove the variables from the problem might be ideal at least at the end

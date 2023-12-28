@@ -115,13 +115,9 @@ namespace bugger {
                      }
 
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
-                     {
-                        copy.getConstraintMatrix( ).modifyLeftHandSide( row, num, copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] - data.getValues( )[ index ] * fixedval );
-                     }
+                        copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] -= data.getValues( )[ index ] * fixedval;
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
-                     {
-                        copy.getConstraintMatrix( ).modifyRightHandSide( row, num, copy.getConstraintMatrix( ).getRightHandSides( )[ row ] - data.getValues( )[ index ] * fixedval );
-                     }
+                        copy.getConstraintMatrix( ).getRightHandSides( )[ row ] -= data.getValues( )[ index ] * fixedval;
 
                      batches_coeff.addEntry(row, var, 0.0);
                   }
@@ -142,9 +138,9 @@ namespace bugger {
                   copy = Problem<double>(problem);
                   copy.getConstraintMatrix( ).changeCoefficients(applied_entries);
                   for( const auto &item: applied_reductions_lhs )
-                     copy.getConstraintMatrix( ).modifyLeftHandSide( item.first, num, item.second );
+                     copy.getConstraintMatrix( ).getLeftHandSides( )[ item.first ] = item.second;
                   for( const auto &item: applied_reductions_rhs )
-                     copy.getConstraintMatrix( ).modifyRightHandSide( item.first, num, item.second );
+                     copy.getConstraintMatrix( ).getRightHandSides( )[ item.first ] = item.second;
                }
                else
                {
@@ -165,14 +161,12 @@ namespace bugger {
          }
 
          if( applied_reductions_lhs.empty() )
-         {
             return ModulStatus::kUnsuccesful;
-         }
          else
          {
             problem = copy;
             nchgcoefs += applied_entries.getNnz();
-            nchgsides += applied_reductions_lhs.size()+applied_reductions_rhs.size();
+            nchgsides += applied_reductions_lhs.size() + applied_reductions_rhs.size();
             return ModulStatus::kSuccessful;
          }
       }

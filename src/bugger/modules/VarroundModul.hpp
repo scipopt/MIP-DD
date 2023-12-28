@@ -90,18 +90,16 @@ namespace bugger {
          {
             if( isVarroundAdmissible(copy, var) )
             {
-               if( !solution_exists )
+               copy.getLowerBounds( )[ var ] = num.round(copy.getLowerBounds( )[ var ]);
+               copy.getUpperBounds( )[ var ] = num.round(copy.getLowerBounds( )[ var ]);
+               copy.getObjective( ).coefficients[ var ] = num.round(copy.getObjective( ).coefficients[ var ]);
+
+               if( solution_exists )
                {
-                  copy.getLowerBounds( )[ var ] = num.round(copy.getLowerBounds( )[ var ]);
-                  copy.getUpperBounds( )[ var ] = num.round(copy.getUpperBounds( )[ var ]);
-               }
-               else
-               {
-                  copy.getLowerBounds( )[ var ] = num.min(num.round(copy.getLowerBounds( )[ var ]), num.epsFloor(solution.primal[ var ]));
-                  copy.getUpperBounds( )[ var ] = num.max(num.round(copy.getUpperBounds( )[ var ]), num.epsCeil(solution.primal[ var ]));
+                  copy.getLowerBounds( )[ var ] = num.min(copy.getLowerBounds( )[ var ], num.epsFloor(solution.primal[ var ]));
+                  copy.getUpperBounds( )[ var ] = num.max(copy.getUpperBounds( )[ var ], num.epsCeil(solution.primal[ var ]));
                }
 
-               copy.getObjective( ).coefficients[ var ] = num.round(copy.getObjective( ).coefficients[ var ]);
                batches_lb.push_back({ var, copy.getLowerBounds( )[ var ] });
                batches_ub.push_back({ var, copy.getUpperBounds( )[ var ] });
                batches_obj.push_back({ var, copy.getObjective( ).coefficients[ var ] });
@@ -116,17 +114,11 @@ namespace bugger {
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_lb )
-                  {
                      copy.getLowerBounds( )[ item.first ] = item.second;
-                  }
                   for( const auto &item: applied_ub )
-                  {
                      copy.getUpperBounds( )[ item.first ] = item.second;
-                  }
                   for( const auto &item: applied_obj )
-                  {
                      copy.getObjective( ).coefficients[ item.first ] = item.second;
-                  }
                }
                else
                {
@@ -141,9 +133,7 @@ namespace bugger {
          }
 
          if( applied_obj.empty() )
-         {
             return ModulStatus::kUnsuccesful;
-         }
          else
          {
             problem = copy;

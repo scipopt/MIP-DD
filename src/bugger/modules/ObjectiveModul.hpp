@@ -89,22 +89,16 @@ namespace bugger
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions )
-                  {
                      copy.getObjective( ).coefficients[ item ] = 0.0;
-                  }
                }
                else
-               {
                   applied_reductions.insert(applied_reductions.end(), batches.begin(), batches.end());
-               }
                batches.clear();
             }
          }
 
          if( applied_reductions.empty() )
-         {
             return ModulStatus::kUnsuccesful;
-         }
          else
          {
             problem = copy;

@@ -100,8 +100,8 @@ namespace bugger {
                      fixedval = get_linear_activity(data, solution);
                }
 
-               matrix.modifyLeftHandSide( row, num, fixedval );
-               matrix.modifyRightHandSide( row, num, fixedval );
+               matrix.getLeftHandSides( )[ row ] = fixedval;
+               matrix.getRightHandSides( )[ row ] = fixedval;
                batches.push_back({ row, fixedval });
             }
 
@@ -115,22 +115,18 @@ namespace bugger {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions )
                   {
-                     matrix.modifyLeftHandSide(item.first, num, item.second);
-                     matrix.modifyRightHandSide(item.first, num, item.second);
+                     matrix.getLeftHandSides( )[ item.first ] = item.second;
+                     matrix.getRightHandSides( )[ item.first ] = item.second;
                   }
                }
                else
-               {
                   applied_reductions.insert(applied_reductions.end(), batches.begin(), batches.end());
-               }
                batches.clear();
             }
          }
 
          if( applied_reductions.empty() )
-         {
             return ModulStatus::kUnsuccesful;
-         }
          else
          {
             problem = copy;

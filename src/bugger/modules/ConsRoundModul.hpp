@@ -74,123 +74,97 @@ namespace bugger {
       execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
               const Timer &timer) override {
 
-         ModulStatus result = ModulStatus::kUnsuccesful;
          auto copy = Problem<double>(problem);
          MatrixBuffer<double> applied_entries { };
-         Vec<std::pair<int, int >> applied_reductions_lhs { };
-         Vec<std::pair<int, int>> applied_reductions_rhs { };
+         Vec<std::pair<int, double>> applied_reductions_lhs { };
+         Vec<std::pair<int, double>> applied_reductions_rhs { };
+         MatrixBuffer<double> batches_coeff { };
          Vec<std::pair<int, double>> batches_lhs { };
          Vec<std::pair<int, double>> batches_rhs { };
-         MatrixBuffer<double> batches_coeff { };
-
          int batchsize = 1;
+
          if( options.nbatches > 0 )
          {
             batchsize = options.nbatches - 1;
             for( int i = 0; i < problem.getNRows( ); ++i )
-               if( isConsroundAdmissible(problem, i))
+               if( isConsroundAdmissible(problem, i) )
                   ++batchsize;
             batchsize /= options.nbatches;
          }
 
-         int nbatch = 0;
-         batches_rhs.reserve(batchsize);
          batches_lhs.reserve(batchsize);
+         batches_rhs.reserve(batchsize);
+
          for( int row = 0; row < copy.getNRows( ); ++row )
          {
-            if( isConsroundAdmissible(copy, row))
+            if( isConsroundAdmissible(copy, row) )
             {
                auto data = copy.getConstraintMatrix( ).getRowCoefficients(row);
 
                for( int j = 0; j < data.getLength( ); ++j )
-                  if( !num.isZetaIntegral(data.getValues( )[ j ]))
+                  if( !num.isZetaIntegral(data.getValues( )[ j ]) )
                      batches_coeff.addEntry(row, data.getIndices( )[ j ], num.round(data.getValues( )[ j ]));
 
-               double lhs = copy.getConstraintMatrix( ).getLeftHandSides( )[ row ];
-               double rhs = copy.getConstraintMatrix( ).getRightHandSides( )[ row ];
+               //TODO: Change single row
+               copy.getConstraintMatrix( ).changeCoefficients(batches_coeff);
+               copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = num.round(copy.getConstraintMatrix( ).getLeftHandSides( )[ row ]);
+               copy.getConstraintMatrix( ).getRightHandSides( )[ row ] = num.round(copy.getConstraintMatrix( ).getRightHandSides( )[ row ]);
+
                if( solution_exists )
                {
-                  if( !num.isZetaIntegral(lhs))
-                  {
-                     double new_val = num.min(num.round(lhs), num.epsFloor(get_linear_activity(data, solution)));
-                     batches_lhs.emplace_back(row, new_val);
-                     copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = new_val;
-                  }
-                  if( !num.isZetaIntegral(rhs))
-                  {
-                     double new_val = num.max(num.round(rhs), num.epsCeil(get_linear_activity(data, solution)));
-                     batches_rhs.emplace_back(row, new_val);
-                     copy.getConstraintMatrix( ).getRightHandSides( )[ row ] = new_val;
-                  }
+                  double activity = get_linear_activity(data, solution);
+
+                  copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = num.min(copy.getConstraintMatrix( ).getLeftHandSides( )[ row ], num.epsFloor(activity));
+                  copy.getConstraintMatrix( ).getRightHandSides( )[ row ] = num.max(copy.getConstraintMatrix( ).getRightHandSides( )[ row ], num.epsCeil(activity));
                }
-               else
-               {
-                  if( !num.isZetaIntegral(lhs))
-                  {
-                     batches_lhs.emplace_back(row, num.round(lhs));
-                     copy.getConstraintMatrix( ).modifyLeftHandSide( row, num,  num.round( lhs ) );
-                  }
-                  if( !num.isZetaIntegral(rhs))
-                  {
-                     batches_rhs.emplace_back(row, num.round(rhs));
-                     copy.getConstraintMatrix( ).modifyRightHandSide( row, num,  num.round( rhs ) );
-                  }
-               }
-               ++nbatch;
+
+               batches_lhs.push_back({ row, copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] });
+               batches_rhs.push_back({ row, copy.getConstraintMatrix( ).getRightHandSides( )[ row ] });
             }
 
-            if( nbatch >= 1 && ( nbatch >= batchsize || row >= copy.getNRows( ) - 1 ))
+            if( !batches_lhs.empty() && ( batches_lhs.size() >= batchsize || row >= copy.getNRows( ) - 1 ) )
             {
-               if( !batches_coeff.empty( ))
-                  copy.getConstraintMatrix( ).changeCoefficients(batches_coeff);
-
                auto solver = createSolver( );
                solver->parseParameters( );
                solver->doSetUp(copy, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus) != BuggerStatus::kFail )
+               if( solver->run(msg, originalSolverStatus) == BuggerStatus::kSuccess )
                {
                   copy = Problem<double>(problem);
-                  SmallVec<int, 32> buffer;
-                  if( !applied_entries.empty( ))
-                     copy.getConstraintMatrix( ).changeCoefficients(applied_entries);
+                  copy.getConstraintMatrix( ).changeCoefficients(applied_entries);
                   for( const auto &item: applied_reductions_lhs )
-                     copy.getConstraintMatrix( ).modifyLeftHandSide( item.first, num,  item.second );
+                     copy.getConstraintMatrix( ).getLeftHandSides( )[ item.first ] = item.second;
                   for( const auto &item: applied_reductions_rhs )
-                     copy.getConstraintMatrix( ).modifyRightHandSide( item.first, num,  item.second );
+                     copy.getConstraintMatrix( ).getRightHandSides( )[ item.first ] = item.second;
                }
-
                else
                {
-
-                  for( const auto &item: batches_lhs )
-                     applied_reductions_lhs.emplace_back(item);
-                  for( const auto &item: batches_rhs )
-                     applied_reductions_rhs.emplace_back(item);
-                  nchgsides += batches_lhs.size( ) + batches_rhs.size( );
                   SmallVec<int, 32> buffer;
                   const MatrixEntry<double> *iter = batches_coeff.template begin<true>(buffer);
-                  if( !batches_coeff.empty( ))
-                     while( iter != batches_coeff.end( ))
-                     {
-                        applied_entries.addEntry(iter->row, iter->col, iter->val);
-                        iter = batches_coeff.template next<true>(buffer);
-                        nchgcoefs++;
-                     }
-                  result = ModulStatus::kSuccessful;
+                  while( iter != batches_coeff.end( ) )
+                  {
+                     applied_entries.addEntry(iter->row, iter->col, iter->val);
+                     iter = batches_coeff.template next<true>( buffer );
+                  }
+                  applied_reductions_lhs.insert(applied_reductions_lhs.end(), batches_lhs.begin(), batches_lhs.end());
+                  applied_reductions_rhs.insert(applied_reductions_rhs.end(), batches_rhs.begin(), batches_rhs.end());
                }
-               batches_rhs.clear( );
-               batches_lhs.clear( );
-               batches_coeff.clear( );
-               batches_rhs.reserve(batchsize);
-               batches_lhs.reserve(batchsize);
-               nbatch = 0;
+               batches_coeff.clear();
+               batches_lhs.clear();
+               batches_rhs.clear();
             }
          }
-         problem = Problem<double>(copy);
-         return result;
+
+         if( applied_reductions_lhs.empty() )
+            return ModulStatus::kUnsuccesful;
+         else
+         {
+            problem = copy;
+            nchgcoefs += applied_entries.getNnz();
+            nchgsides += applied_reductions_lhs.size() + applied_reductions_rhs.size();
+            return ModulStatus::kSuccessful;
+         }
       }
    };
-
 
 } // namespace bugger
 
