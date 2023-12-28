@@ -275,38 +275,39 @@ namespace bugger {
 
          for( int col = 0; col < ncols; ++col )
          {
-            SCIP_VAR *var;
-
-
-            SCIP_Real lb = domains.flags[ col ].test(ColFlag::kLbInf)
-                           ? -SCIPinfinity(scip)
-                           : SCIP_Real(domains.lower_bounds[ col ]);
-            SCIP_Real ub = domains.flags[ col ].test(ColFlag::kUbInf)
-                           ? SCIPinfinity(scip)
-                           : SCIP_Real(domains.upper_bounds[ col ]);
-            assert(!domains.flags[ col ].test(ColFlag::kInactive) || ( lb == ub ));
-            SCIP_VARTYPE type;
-            if( domains.flags[ col ].test(ColFlag::kIntegral))
-            {
-               if( lb == 0 && ub == 1 )
-                  type = SCIP_VARTYPE_BINARY;
-               else
-                  type = SCIP_VARTYPE_INTEGER;
-            }
-            else if( domains.flags[ col ].test(ColFlag::kImplInt))
-               type = SCIP_VARTYPE_IMPLINT;
+            if( domains.flags[ col ].test(ColFlag::kFixed) )
+               vars[ col ] = nullptr;
             else
-               type = SCIP_VARTYPE_CONTINUOUS;
-
-            SCIP_CALL(SCIPcreateVarBasic(
-                  scip, &var, varNames[ col ].c_str( ), lb, ub,
-                  SCIP_Real(obj.coefficients[ col ]), type));
-            if( solution_exits )
-               reference += obj.coefficients[ col ] * sol.primal[ col ];
-            SCIP_CALL(SCIPaddVar(scip, var));
-            vars[ col ] = var;
-
-            SCIP_CALL(SCIPreleaseVar(scip, &var));
+            {
+               SCIP_VAR *var;
+               SCIP_Real lb = domains.flags[ col ].test(ColFlag::kLbInf)
+                              ? -SCIPinfinity(scip)
+                              : SCIP_Real(domains.lower_bounds[ col ]);
+               SCIP_Real ub = domains.flags[ col ].test(ColFlag::kUbInf)
+                              ? SCIPinfinity(scip)
+                              : SCIP_Real(domains.upper_bounds[ col ]);
+               assert(!domains.flags[ col ].test(ColFlag::kInactive) || ( lb == ub ));
+               SCIP_VARTYPE type;
+               if( domains.flags[ col ].test(ColFlag::kIntegral))
+               {
+                  if( lb == 0 && ub == 1 )
+                     type = SCIP_VARTYPE_BINARY;
+                  else
+                     type = SCIP_VARTYPE_INTEGER;
+               }
+               else if( domains.flags[ col ].test(ColFlag::kImplInt))
+                  type = SCIP_VARTYPE_IMPLINT;
+               else
+                  type = SCIP_VARTYPE_CONTINUOUS;
+               SCIP_CALL(SCIPcreateVarBasic(
+                     scip, &var, varNames[ col ].c_str( ), lb, ub,
+                     SCIP_Real(obj.coefficients[ col ]), type));
+               if( solution_exits )
+                  reference += obj.coefficients[ col ] * sol.primal[ col ];
+               SCIP_CALL(SCIPaddVar(scip, var));
+               vars[ col ] = var;
+               SCIP_CALL(SCIPreleaseVar(scip, &var));
+            }
          }
 
          Vec<SCIP_VAR *> consvars;
@@ -343,9 +344,9 @@ namespace bugger {
                   {
                      // update lhs and rhs if fixed variable is still present
                      if( !rflags[ row ].test(RowFlag::kLhsInf) )
-                        lhs -= ( vals[ k ] * value );
+                        lhs -= vals[ k ] * value;
                      if( !rflags[ row ].test(RowFlag::kRhsInf) )
-                        rhs -= ( vals[ k ] * value );
+                        rhs -= vals[ k ] * value;
                   }
                   continue;
                }
