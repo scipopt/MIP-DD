@@ -31,7 +31,7 @@ namespace bugger {
 
    class ConsRoundModul : public BuggerModul {
    public:
-      explicit ConsRoundModul(const Message &_msg, const Num<double> &_num) : BuggerModul( ) {
+      explicit ConsRoundModul(const std::string& _setting, const Message &_msg, const Num<double> &_num) : BuggerModul(_setting) {
          this->setName("consround");
          this->msg = _msg;
          this->num = _num;

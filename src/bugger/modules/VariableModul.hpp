@@ -31,7 +31,7 @@ namespace bugger {
 
    class VariableModul : public BuggerModul {
    public:
-      VariableModul( const Message& _msg, const Num<double> &_num ) : BuggerModul( ) {
+      VariableModul(const std::string& _setting, const Message& _msg, const Num<double> &_num) : BuggerModul(_setting) {
          this->setName("variable");
          this->msg = _msg;
          this->num = _num;

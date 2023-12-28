@@ -59,13 +59,14 @@ namespace bugger {
    class ScipInterface : public SolverInterface {
 
    private:
-      SCIP *scip;
+      const std::string& setting;
+      SCIP* scip;
       double reference = INFINITY;
-      Vec<SCIP_VAR *> vars;
+      Vec<SCIP_VAR*> vars;
 
 
    public:
-      ScipInterface( ) : scip(nullptr) {
+      ScipInterface(const std::string& _setting) : setting(_setting), scip(nullptr) {
          if( SCIPcreate(&scip) != SCIP_OKAY )
             throw std::runtime_error("could not create SCIP");
       }
@@ -253,6 +254,7 @@ namespace bugger {
       SCIP_RETCODE
       setup(const Problem<double> &problem, bool solution_exits, const Solution<double> sol) {
          SCIP_CALL(SCIPincludeDefaultPlugins(scip));
+         SCIP_CALL(SCIPreadParams(scip, setting.c_str( )));
          int ncols = problem.getNCols( );
          int nrows = problem.getNRows( );
          const Vec<String> &varNames = problem.getVariableNames( );

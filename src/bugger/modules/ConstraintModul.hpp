@@ -39,7 +39,7 @@ namespace bugger {
 
    class ConstraintModul : public BuggerModul {
    public:
-      explicit ConstraintModul(const Message &_msg, const Num<double> &_num) : BuggerModul( ) {
+      explicit ConstraintModul(const std::string& _setting, const Message &_msg, const Num<double> &_num) : BuggerModul(_setting) {
          this->setName("constraint");
          this->msg = _msg;
          this->num = _num;

@@ -52,6 +52,7 @@ namespace bugger {
 
    private:
       bugger::BuggerOptions options;
+      const std::string& setting;
       bugger::Problem<double> &problem;
       bugger::Solution<double> &solution;
       bool solution_exists;
@@ -63,11 +64,10 @@ namespace bugger {
 
    public:
 
-      BuggerRun(bugger::Problem<double> &_problem, bugger::Solution<double> &_solution, bool _solution_exists,
-                bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
-            : options({ }), problem(_problem), solution(_solution), solution_exists(_solution_exists),
-              modules(_modules) {
-      }
+      BuggerRun(const std::string& _setting, bugger::Problem<double> &_problem, bugger::Solution<double> &_solution,
+                bool _solution_exists, bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
+            : options({ }), setting(_setting), problem(_problem), solution(_solution),
+              solution_exists(_solution_exists), modules(_modules) { }
 
       bool
       is_time_exceeded( const Timer& timer ) const
@@ -136,15 +136,15 @@ namespace bugger {
 
       void addDefaultModules( const Num<double>& num ) {
          using uptr = std::unique_ptr<bugger::BuggerModul>;
-         addModul(uptr(new SettingModul(msg, num)));
-         addModul(uptr(new ConstraintModul(msg, num)));
-         addModul(uptr(new VariableModul(msg, num)));
-         addModul(uptr(new SideModul(msg, num)));
-         addModul(uptr(new ObjectiveModul(msg, num)));
-         addModul(uptr(new CoefficientModul(msg, num)));
-         addModul(uptr(new FixingModul(msg, num)));
-         addModul(uptr(new VarroundModul(msg, num)));
-         addModul(uptr(new ConsRoundModul(msg, num)));
+         addModul(uptr(new SettingModul(setting, msg, num)));
+         addModul(uptr(new ConstraintModul(setting, msg, num)));
+         addModul(uptr(new VariableModul(setting, msg, num)));
+         addModul(uptr(new SideModul(setting, msg, num)));
+         addModul(uptr(new ObjectiveModul(setting, msg, num)));
+         addModul(uptr(new CoefficientModul(setting, msg, num)));
+         addModul(uptr(new FixingModul(setting, msg, num)));
+         addModul(uptr(new VarroundModul(setting, msg, num)));
+         addModul(uptr(new ConsRoundModul(setting, msg, num)));
       }
 
       void
@@ -172,7 +172,7 @@ namespace bugger {
       SolverInterface*
       createSolver(){
 #ifdef BUGGER_HAVE_SCIP
-         return new ScipInterface { };
+         return new ScipInterface {setting};
 #else
          msg.error("No solver specified -- aborting ....");
          return nullptr;

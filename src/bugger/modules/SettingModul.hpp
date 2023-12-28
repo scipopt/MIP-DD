@@ -31,7 +31,7 @@ namespace bugger {
 
    class SettingModul : public BuggerModul {
    public:
-      SettingModul(const Message &_msg, const Num<double> &_num) : BuggerModul( ) {
+      SettingModul(const std::string& _setting, const Message &_msg, const Num<double> &_num) : BuggerModul(_setting) {
          this->setName("setting");
          this->msg = _msg;
          this->num = _num;
