@@ -203,7 +203,7 @@ namespace bugger {
          BuggerStatus result = BuggerStatus::kSuccess;
          if( status == SolverStatus::kError )
             result = BuggerStatus::kUnexpectedError;
-         else if( originalStatus == status || SCIPisSumNegative(scip, SCIPgetObjsense(scip) * ( reference - SCIPgetDualbound(scip) )) )
+         else if( SCIPisSumNegative(scip, SCIPgetObjsense(scip) * (reference - SCIPgetDualbound(scip))) )
             result = BuggerStatus::kFail;
 
          switch( result )
