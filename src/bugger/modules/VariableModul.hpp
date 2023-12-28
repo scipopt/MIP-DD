@@ -77,17 +77,27 @@ namespace bugger {
 
                if( !solution_exists )
                {
+                  fixedval = 0.0;
                   if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
-                     fixedval = num.max(num.min(0.0, num.zetaFloor(copy.getUpperBounds( )[ var ])), num.zetaCeil(copy.getLowerBounds( )[ var ]));
+                  {
+                     if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
+                        fixedval = num.min(fixedval, num.zetaFloor(copy.getUpperBounds( )[ var ]));
+                     if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
+                        fixedval = num.max(fixedval, num.zetaCeil(copy.getLowerBounds( )[ var ]));
+                  }
                   else
-                     fixedval = num.max(num.min(0.0, copy.getUpperBounds( )[ var ]), copy.getLowerBounds( )[ var ]);
+                  {
+                     if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
+                        fixedval = num.min(fixedval, copy.getUpperBounds( )[ var ]);
+                     if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
+                        fixedval = num.max(fixedval, copy.getLowerBounds( )[ var ]);
+                  }
                }
                else
                {
+                  fixedval = solution.primal[ var ];
                   if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
-                     fixedval = num.round(solution.primal[ var ]);
-                  else
-                     fixedval = solution.primal[ var ];
+                     fixedval = num.round(fixedval);
                }
 
                copy.getColFlags( )[ var ].unset(ColFlag::kLbInf);

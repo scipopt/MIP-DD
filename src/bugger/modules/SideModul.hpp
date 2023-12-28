@@ -87,17 +87,27 @@ namespace bugger {
 
                if( !solution_exists )
                {
+                  fixedval = 0.0;
                   if( integral )
-                     fixedval = num.max(num.min(0.0, num.zetaFloor(matrix.getRightHandSides( )[ row ])), num.zetaCeil(matrix.getLeftHandSides( )[ row ]));
+                  {
+                     if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
+                        fixedval = num.min(fixedval, num.zetaFloor(matrix.getRightHandSides( )[ row ]));
+                     if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
+                        fixedval = num.max(fixedval, num.zetaCeil(matrix.getLeftHandSides( )[ row ]));
+                  }
                   else
-                     fixedval = num.max(num.min(0.0, matrix.getRightHandSides( )[ row ]), matrix.getLeftHandSides( )[ row ]);
+                  {
+                     if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
+                        fixedval = num.min(fixedval, matrix.getRightHandSides( )[ row ]);
+                     if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
+                        fixedval = num.max(fixedval, matrix.getLeftHandSides( )[ row ]);
+                  }
                }
                else
                {
+                  fixedval = get_linear_activity(data, solution);
                   if( integral )
-                     fixedval = num.round(get_linear_activity(data, solution));
-                  else
-                     fixedval = get_linear_activity(data, solution);
+                     fixedval = num.round(fixedval);
                }
 
                matrix.modifyLeftHandSide( row, num, fixedval );
