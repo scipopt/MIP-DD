@@ -90,6 +90,8 @@ namespace bugger {
                      fixedval = solution.primal[ var ];
                }
 
+               copy.getColFlags( )[ var ].unset(ColFlag::kLbInf);
+               copy.getColFlags( )[ var ].unset(ColFlag::kUbInf);
                copy.getLowerBounds( )[ var ] = fixedval;
                copy.getUpperBounds( )[ var ] = fixedval;
                batches.push_back({ var, fixedval });
@@ -105,6 +107,8 @@ namespace bugger {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions )
                   {
+                     copy.getColFlags( )[ item.first ].unset(ColFlag::kLbInf);
+                     copy.getColFlags( )[ item.first ].unset(ColFlag::kUbInf);
                      copy.getLowerBounds( )[ item.first ] = item.second;
                      copy.getUpperBounds( )[ item.first ] = item.second;
                   }

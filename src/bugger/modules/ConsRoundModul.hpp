@@ -100,26 +100,30 @@ namespace bugger {
             if( isConsroundAdmissible(copy, row) )
             {
                auto data = copy.getConstraintMatrix( ).getRowCoefficients(row);
+               double lhs = num.round(copy.getConstraintMatrix( ).getLeftHandSides( )[ row ]);
+               double rhs = num.round(copy.getConstraintMatrix( ).getRightHandSides( )[ row ]);
 
                for( int j = 0; j < data.getLength( ); ++j )
                   if( !num.isZetaIntegral(data.getValues( )[ j ]) )
                      batches_coeff.addEntry(row, data.getIndices( )[ j ], num.round(data.getValues( )[ j ]));
 
-               //TODO: Change single row
+               //TODO: Change row only
                copy.getConstraintMatrix( ).changeCoefficients(batches_coeff);
-               copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = num.round(copy.getConstraintMatrix( ).getLeftHandSides( )[ row ]);
-               copy.getConstraintMatrix( ).getRightHandSides( )[ row ] = num.round(copy.getConstraintMatrix( ).getRightHandSides( )[ row ]);
 
                if( solution_exists )
                {
                   double activity = get_linear_activity(data, solution);
 
-                  copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] = num.min(copy.getConstraintMatrix( ).getLeftHandSides( )[ row ], num.epsFloor(activity));
-                  copy.getConstraintMatrix( ).getRightHandSides( )[ row ] = num.max(copy.getConstraintMatrix( ).getRightHandSides( )[ row ], num.epsCeil(activity));
+                  lhs = num.min(lhs, num.epsFloor(activity));
+                  rhs = num.max(rhs, num.epsCeil(activity));
                }
 
-               batches_lhs.push_back({ row, copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] });
-               batches_rhs.push_back({ row, copy.getConstraintMatrix( ).getRightHandSides( )[ row ] });
+               if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
+                  copy.getConstraintMatrix( ).modifyLeftHandSide( row, num, lhs );
+               if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
+                  copy.getConstraintMatrix( ).modifyRightHandSide( row, num, rhs );
+               batches_lhs.push_back({ row, lhs });
+               batches_rhs.push_back({ row, rhs });
             }
 
             if( !batches_lhs.empty() && ( batches_lhs.size() >= batchsize || row >= copy.getNRows( ) - 1 ) )
@@ -132,9 +136,11 @@ namespace bugger {
                   copy = Problem<double>(problem);
                   copy.getConstraintMatrix( ).changeCoefficients(applied_entries);
                   for( const auto &item: applied_reductions_lhs )
-                     copy.getConstraintMatrix( ).getLeftHandSides( )[ item.first ] = item.second;
+                     if( !copy.getRowFlags( )[ item.first ].test(RowFlag::kLhsInf) )
+                        copy.getConstraintMatrix( ).modifyLeftHandSide( item.first, num, item.second );
                   for( const auto &item: applied_reductions_rhs )
-                     copy.getConstraintMatrix( ).getRightHandSides( )[ item.first ] = item.second;
+                     if( !copy.getRowFlags( )[ item.first ].test(RowFlag::kRhsInf) )
+                        copy.getConstraintMatrix( ).modifyRightHandSide( item.first, num, item.second );
                }
                else
                {

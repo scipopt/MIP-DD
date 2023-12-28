@@ -90,18 +90,28 @@ namespace bugger {
          {
             if( isVarroundAdmissible(copy, var) )
             {
-               copy.getLowerBounds( )[ var ] = num.round(copy.getLowerBounds( )[ var ]);
-               copy.getUpperBounds( )[ var ] = num.round(copy.getLowerBounds( )[ var ]);
-               copy.getObjective( ).coefficients[ var ] = num.round(copy.getObjective( ).coefficients[ var ]);
+               double lb = num.round(copy.getLowerBounds( )[ var ]);
+               double ub = num.round(copy.getUpperBounds( )[ var ]);
 
                if( solution_exists )
                {
-                  copy.getLowerBounds( )[ var ] = num.min(copy.getLowerBounds( )[ var ], num.epsFloor(solution.primal[ var ]));
-                  copy.getUpperBounds( )[ var ] = num.max(copy.getUpperBounds( )[ var ], num.epsCeil(solution.primal[ var ]));
+                  double value = solution.primal[ var ];
+
+                  lb = num.min(lb, num.epsFloor(value));
+                  ub = num.max(ub, num.epsCeil(value));
                }
 
-               batches_lb.push_back({ var, copy.getLowerBounds( )[ var ] });
-               batches_ub.push_back({ var, copy.getUpperBounds( )[ var ] });
+               if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
+               {
+                  copy.getLowerBounds( )[ var ] = lb;
+                  batches_lb.push_back({ var, lb });
+               }
+               if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
+               {
+                  copy.getUpperBounds( )[ var ] = ub;
+                  batches_ub.push_back({ var, lb });
+               }
+               copy.getObjective( ).coefficients[ var ] = num.round(copy.getObjective( ).coefficients[ var ]);
                batches_obj.push_back({ var, copy.getObjective( ).coefficients[ var ] });
             }
 

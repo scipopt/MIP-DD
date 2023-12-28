@@ -67,11 +67,9 @@ namespace bugger {
 
          auto copy = Problem<double>(problem);
          MatrixBuffer<double> applied_entries { };
-         Vec<std::pair<int, double>> applied_reductions_lhs { };
-         Vec<std::pair<int, double>> applied_reductions_rhs { };
+         Vec<std::pair<int, double>> applied_reductions { };
          MatrixBuffer<double> batches_coeff { };
-         Vec<std::pair<int, double>> batches_lhs { };
-         Vec<std::pair<int, double>> batches_rhs { };
+         Vec<std::pair<int, double>> batches_offset { };
          int batchsize = 1;
 
          if( options.nbatches > 0 )
@@ -83,14 +81,14 @@ namespace bugger {
             batchsize /= options.nbatches;
          }
 
-         batches_lhs.reserve(batchsize);
-         batches_rhs.reserve(batchsize);
+         batches_offset.reserve(batchsize);
 
          for( int row = copy.getNRows( ) - 1; row >= 0; --row )
          {
             if( isCoefficientAdmissible(copy, row) )
             {
                auto data = copy.getConstraintMatrix( ).getRowCoefficients(row);
+               double offset = 0.0;
 
                for( int index = data.getLength( ) - 1; index >= 0; --index )
                {
@@ -114,20 +112,19 @@ namespace bugger {
                            fixedval = solution.primal[ var ];
                      }
 
-                     if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
-                        copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] -= data.getValues( )[ index ] * fixedval;
-                     if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
-                        copy.getConstraintMatrix( ).getRightHandSides( )[ row ] -= data.getValues( )[ index ] * fixedval;
-
+                     offset -= data.getValues( )[ index ] * fixedval;
                      batches_coeff.addEntry(row, var, 0.0);
                   }
                }
 
-               batches_lhs.push_back({ row, copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] });
-               batches_rhs.push_back({ row, copy.getConstraintMatrix( ).getRightHandSides( )[ row ] });
+               if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
+                  copy.getConstraintMatrix( ).modifyLeftHandSide( row, num, copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] - offset );
+               if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
+                  copy.getConstraintMatrix( ).modifyRightHandSide( row, num, copy.getConstraintMatrix( ).getRightHandSides( )[ row ] - offset );
+               batches_offset.push_back({ row, offset });
             }
 
-            if( !batches_lhs.empty() && ( batches_lhs.size() >= batchsize || row <= 0 ) )
+            if( !batches_offset.empty() && ( batches_offset.size() >= batchsize || row <= 0 ) )
             {
                copy.getConstraintMatrix( ).changeCoefficients(batches_coeff);
                auto solver = createSolver();
@@ -137,10 +134,13 @@ namespace bugger {
                {
                   copy = Problem<double>(problem);
                   copy.getConstraintMatrix( ).changeCoefficients(applied_entries);
-                  for( const auto &item: applied_reductions_lhs )
-                     copy.getConstraintMatrix( ).getLeftHandSides( )[ item.first ] = item.second;
-                  for( const auto &item: applied_reductions_rhs )
-                     copy.getConstraintMatrix( ).getRightHandSides( )[ item.first ] = item.second;
+                  for( const auto &item: applied_reductions )
+                  {
+                     if( !copy.getRowFlags( )[ item.first ].test(RowFlag::kLhsInf) )
+                        copy.getConstraintMatrix( ).modifyLeftHandSide( item.first, num, copy.getConstraintMatrix( ).getLeftHandSides( )[ item.first ] - item.second );
+                     if( !copy.getRowFlags( )[ item.first ].test(RowFlag::kRhsInf) )
+                        copy.getConstraintMatrix( ).modifyRightHandSide( item.first, num, copy.getConstraintMatrix( ).getRightHandSides( )[ item.first ] - item.second );
+                  }
                }
                else
                {
@@ -151,22 +151,20 @@ namespace bugger {
                      applied_entries.addEntry(iter->row, iter->col, iter->val);
                      iter = batches_coeff.template next<true>( buffer );
                   }
-                  applied_reductions_lhs.insert(applied_reductions_lhs.end(), batches_lhs.begin(), batches_lhs.end());
-                  applied_reductions_rhs.insert(applied_reductions_rhs.end(), batches_rhs.begin(), batches_rhs.end());
+                  applied_reductions.insert(applied_reductions.end(), batches_offset.begin(), batches_offset.end());
                }
                batches_coeff.clear();
-               batches_lhs.clear();
-               batches_rhs.clear();
+               batches_offset.clear();
             }
          }
 
-         if( applied_reductions_lhs.empty() )
+         if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
          else
          {
             problem = copy;
             nchgcoefs += applied_entries.getNnz();
-            nchgsides += applied_reductions_lhs.size() + applied_reductions_rhs.size();
+            nchgsides += 2 * applied_reductions.size();
             return ModulStatus::kSuccessful;
          }
       }
