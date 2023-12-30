@@ -315,6 +315,20 @@ class Num
 
    template <typename R>
    bool
+   isEpsIntegral(const R& a ) const
+   {
+      return isEpsEq(a, round(a));
+   }
+
+   template <typename R>
+   bool
+   isFeasIntegral(const R& a ) const
+   {
+      return isFeasEq(a, round(a));
+   }
+
+   template <typename R>
+   bool
    isEpsZero(const R& a ) const
    {
       return abs( a ) <= epsilon;

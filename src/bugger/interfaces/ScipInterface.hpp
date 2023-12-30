@@ -336,18 +336,14 @@ namespace bugger {
             int length = 0;
             for( int k = 0; k != rowvec.getLength( ); ++k )
             {
+               // update lhs and rhs if fixed variable is present
                if( problem.getColFlags( )[ k ].test(ColFlag::kFixed) )
                {
                   double value = problem.getLowerBounds( )[ inds[ k ] ];
-                  assert(value == problem.getUpperBounds( )[ inds[ k ] ]);
-                  if( value != 0.0 )
-                  {
-                     // update lhs and rhs if fixed variable is still present
-                     if( !rflags[ row ].test(RowFlag::kLhsInf) )
-                        lhs -= vals[ k ] * value;
-                     if( !rflags[ row ].test(RowFlag::kRhsInf) )
-                        rhs -= vals[ k ] * value;
-                  }
+                  if( !rflags[ row ].test(RowFlag::kLhsInf) )
+                     lhs -= vals[ k ] * value;
+                  if( !rflags[ row ].test(RowFlag::kRhsInf) )
+                     rhs -= vals[ k ] * value;
                   continue;
                }
                consvars[ length ] = vars[ inds[ k ] ];

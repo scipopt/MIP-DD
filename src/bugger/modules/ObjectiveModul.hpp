@@ -45,12 +45,12 @@ namespace bugger
          return false;
       }
 
-      bool isObjectiveAdmissible(Problem<double>& problem, int var )
+      bool isObjectiveAdmissible(const Problem<double>& problem, int var)
       {
-         /* preserve restricted variables because they might be deleted anyway */
-         return !problem.getColFlags()[var].test(ColFlag::kFixed)
-            && !num.isZetaZero(problem.getObjective( ).coefficients[ var ])
-            && num.isZetaLT(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
+         return !num.isZetaZero(problem.getObjective( ).coefficients[ var ])
+           && ( problem.getColFlags( )[ var ].test(ColFlag::kLbInf)
+             || problem.getColFlags( )[ var ].test(ColFlag::kUbInf)
+             || !num.isZetaEq(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]) );
       }
 
       ModulStatus

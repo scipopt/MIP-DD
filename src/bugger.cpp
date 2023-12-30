@@ -40,7 +40,7 @@
 #include "bugger/interfaces/ScipInterface.hpp"
 #include "bugger/modules/BuggerModul.hpp"
 #include "bugger/modules/CoefficientModul.hpp"
-#include "bugger/modules/ConsRoundModul.hpp"
+#include "bugger/modules/ConsroundModul.hpp"
 #include "bugger/modules/ConstraintModul.hpp"
 #include "bugger/modules/FixingModul.hpp"
 #include "bugger/modules/ObjectiveModul.hpp"

@@ -42,23 +42,21 @@ namespace bugger {
          return false;
       }
 
-      bool isCoefficientAdmissible(const Problem<double> problem, int row) {
-         if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant))
-            return false;
-         auto data = problem.getConstraintMatrix( ).getRowCoefficients(row);
-         const VariableDomains<double> &domains = problem.getVariableDomains( );
-         for( int i = 0; i < data.getLength( ); ++i )
-         {
-            int var = data.getIndices( )[ i ];
-            if( is_lb_ge_than_ub(domains, var))
-               return true;
-         }
-         return false;
+      bool isFixingAdmissible(const Problem<double>& problem, int var) {
+         return !problem.getColFlags( )[ var ].test(ColFlag::kFixed)
+             && !problem.getColFlags( )[ var ].test(ColFlag::kLbInf)
+             && !problem.getColFlags( )[ var ].test(ColFlag::kUbInf)
+             && num.isZetaEq(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
       }
 
-      bool is_lb_ge_than_ub(const VariableDomains<double> &domains, int var) const {
-         return domains.flags[ var ].test(ColFlag::kUbInf) || domains.flags[ var ].test(ColFlag::kLbInf)
-                || num.isZetaGE(domains.lower_bounds[ var ], domains.upper_bounds[ var ]);
+      bool isCoefficientAdmissible(const Problem<double>& problem, int row) {
+         if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant) )
+            return false;
+         auto data = problem.getConstraintMatrix( ).getRowCoefficients(row);
+         for( int index = 0; index < data.getLength( ); ++index )
+            if( !num.isZetaZero(data.getValues( )[ index ]) && isFixingAdmissible(problem, data.getIndices( )[ index ]) )
+               return true;
+         return false;
       }
 
       ModulStatus
@@ -93,19 +91,25 @@ namespace bugger {
                for( int index = data.getLength( ) - 1; index >= 0; --index )
                {
                   int var = data.getIndices( )[ index ];
-                  if( is_lb_ge_than_ub(copy.getVariableDomains( ), var) )
+                  if( !num.isZetaZero(data.getValues( )[ index ]) && isFixingAdmissible(copy, var) )
                   {
                      double fixedval;
 
-                     if( !solution_exists )
+                     if( solution_exists )
+                     {
+                        fixedval = solution.primal[ var ];
+                        if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
+                           fixedval = num.round(fixedval);
+                     }
+                     else
                      {
                         fixedval = 0.0;
                         if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
                         {
                            if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
-                              fixedval = num.min(fixedval, num.zetaFloor(copy.getUpperBounds( )[ var ]));
+                              fixedval = num.min(fixedval, num.epsFloor(copy.getUpperBounds( )[ var ]));
                            if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
-                              fixedval = num.max(fixedval, num.zetaCeil(copy.getLowerBounds( )[ var ]));
+                              fixedval = num.max(fixedval, num.epsCeil(copy.getLowerBounds( )[ var ]));
                         }
                         else
                         {
@@ -114,12 +118,6 @@ namespace bugger {
                            if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
                               fixedval = num.max(fixedval, copy.getLowerBounds( )[ var ]);
                         }
-                     }
-                     else
-                     {
-                        fixedval = solution.primal[ var ];
-                        if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
-                           fixedval = num.round(fixedval);
                      }
 
                      offset -= data.getValues( )[ index ] * fixedval;

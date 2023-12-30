@@ -42,7 +42,7 @@ namespace bugger {
          return false;
       }
 
-      bool isFixingAdmissible(Problem<double> &problem, int var) {
+      bool isFixingAdmissible(const Problem<double>& problem, int var) {
          return !problem.getColFlags( )[ var ].test(ColFlag::kFixed)
              && !problem.getColFlags( )[ var ].test(ColFlag::kLbInf)
              && !problem.getColFlags( )[ var ].test(ColFlag::kUbInf)

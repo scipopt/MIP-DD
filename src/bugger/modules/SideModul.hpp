@@ -42,9 +42,12 @@ namespace bugger {
          return false;
       }
 
-      bool isSideAdmissable(Problem<double> &copy, int row) const
+      bool isSideAdmissable(const Problem<double>& problem, int row) const
       {
-         return !copy.getRowFlags( )[ row ].test(RowFlag::kRedundant) && !copy.getRowFlags( )[ row ].test(RowFlag::kEquation);
+         return !problem.getRowFlags( )[ row ].test(RowFlag::kRedundant)
+           && ( problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
+             || problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
+             || !num.isZetaEq(problem.getConstraintMatrix( ).getLeftHandSides( )[ row ], problem.getConstraintMatrix( ).getRightHandSides( )[ row ]) );
       }
 
       ModulStatus
@@ -76,24 +79,30 @@ namespace bugger {
                bool integral = true;
                double fixedval;
 
-               for( int j = 0; j < data.getLength( ); ++j )
+               for( int index = 0; index < data.getLength( ); ++index )
                {
-                  if( !copy.getColFlags( )[ data.getIndices( )[ j ] ].test(ColFlag::kIntegral) || !num.isZetaIntegral(data.getValues( )[ j ]) )
+                  if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral) || !num.isEpsIntegral(data.getValues( )[ index ]) )
                   {
                      integral = false;
                      break;
                   }
                }
 
-               if( !solution_exists )
+               if( solution_exists )
+               {
+                  fixedval = get_linear_activity(data, solution);
+                  if( integral )
+                     fixedval = num.round(fixedval);
+               }
+               else
                {
                   fixedval = 0.0;
                   if( integral )
                   {
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
-                        fixedval = num.min(fixedval, num.zetaFloor(matrix.getRightHandSides( )[ row ]));
+                        fixedval = num.min(fixedval, num.epsFloor(matrix.getRightHandSides( )[ row ]));
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
-                        fixedval = num.max(fixedval, num.zetaCeil(matrix.getLeftHandSides( )[ row ]));
+                        fixedval = num.max(fixedval, num.epsCeil(matrix.getLeftHandSides( )[ row ]));
                   }
                   else
                   {
@@ -102,12 +111,6 @@ namespace bugger {
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
                         fixedval = num.max(fixedval, matrix.getLeftHandSides( )[ row ]);
                   }
-               }
-               else
-               {
-                  fixedval = get_linear_activity(data, solution);
-                  if( integral )
-                     fixedval = num.round(fixedval);
                }
 
                matrix.modifyLeftHandSide( row, num, fixedval );

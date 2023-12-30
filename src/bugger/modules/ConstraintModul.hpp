@@ -50,8 +50,8 @@ namespace bugger {
          return false;
       }
 
-      bool isConstraintAdmissible(const Problem<double> problem, int row) {
-         if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant))
+      bool isConstraintAdmissible(const Problem<double>& problem, int row) {
+         if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant) )
             return false;
          return true;
       }

@@ -43,11 +43,9 @@ namespace bugger {
       }
 
       bool isVariableAdmissible(const Problem<double>& problem, int var) {
-         if( problem.getColFlags()[var].test(ColFlag::kFixed) )
-            return false;
-         /* keep restricted variables because they might be already fixed */
-         return problem.getColFlags()[var].test(ColFlag::kLbInf) || problem.getColFlags()[var].test(ColFlag::kUbInf) ||
-               num.isZetaLT(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
+         return problem.getColFlags( )[ var ].test(ColFlag::kLbInf)
+             || problem.getColFlags( )[ var ].test(ColFlag::kUbInf)
+             || !num.isZetaEq(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
       }
 
       ModulStatus
@@ -75,15 +73,21 @@ namespace bugger {
             {
                double fixedval;
 
-               if( !solution_exists )
+               if( solution_exists )
+               {
+                  fixedval = solution.primal[ var ];
+                  if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
+                     fixedval = num.round(fixedval);
+               }
+               else
                {
                   fixedval = 0.0;
                   if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
                   {
                      if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
-                        fixedval = num.min(fixedval, num.zetaFloor(copy.getUpperBounds( )[ var ]));
+                        fixedval = num.min(fixedval, num.epsFloor(copy.getUpperBounds( )[ var ]));
                      if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
-                        fixedval = num.max(fixedval, num.zetaCeil(copy.getLowerBounds( )[ var ]));
+                        fixedval = num.max(fixedval, num.epsCeil(copy.getLowerBounds( )[ var ]));
                   }
                   else
                   {
@@ -92,12 +96,6 @@ namespace bugger {
                      if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
                         fixedval = num.max(fixedval, copy.getLowerBounds( )[ var ]);
                   }
-               }
-               else
-               {
-                  fixedval = solution.primal[ var ];
-                  if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
-                     fixedval = num.round(fixedval);
                }
 
                copy.getColFlags( )[ var ].unset(ColFlag::kLbInf);

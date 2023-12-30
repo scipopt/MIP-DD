@@ -42,31 +42,19 @@ namespace bugger {
          return false;
       }
 
-      bool isSideFractional(const Problem<double> &problem, int row) {
-         if( problem.getRowFlags( )[ row ].test(RowFlag::kEquation) )
+      bool isConsroundAdmissible(const Problem<double>& problem, int row) {
+         if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant) )
             return false;
+         bool lhsinf = problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf);
+         bool rhsinf = problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf);
          double lhs = problem.getConstraintMatrix( ).getLeftHandSides( )[ row ];
          double rhs = problem.getConstraintMatrix( ).getRightHandSides( )[ row ];
-         assert( !( !problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
-                 && !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
-                 && num.isZetaEq(lhs, rhs) ) );
-         return ( !problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf) && !num.isZetaIntegral(lhs) )
-             || ( !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf) && !num.isZetaIntegral(rhs) );
-      }
-
-      bool isConsroundAdmissible(const Problem<double> &problem, int row) {
-         if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant))
-            return false;
-         if( isSideFractional(problem, row))
+         if( ( lhsinf || rhsinf || !num.isZetaEq(lhs, rhs) ) && ( ( !lhsinf && !num.isZetaIntegral(lhs) ) || ( !rhsinf && !num.isZetaIntegral(rhs) ) ) )
             return true;
          auto data = problem.getConstraintMatrix( ).getRowCoefficients(row);
-         for( int i = 0; i < data.getLength( ); ++i )
-         {
-            if( problem.getColFlags( )[ data.getIndices( )[ i ]].test(ColFlag::kFixed))
-               continue;
-            if( !num.isZetaIntegral(data.getValues( )[ i ]))
+         for( int index = 0; index < data.getLength( ); ++index )
+            if( !num.isZetaIntegral(data.getValues( )[ index ]) )
                return true;
-         }
          return false;
       }
 
@@ -103,9 +91,9 @@ namespace bugger {
                double lhs = num.round(copy.getConstraintMatrix( ).getLeftHandSides( )[ row ]);
                double rhs = num.round(copy.getConstraintMatrix( ).getRightHandSides( )[ row ]);
 
-               for( int j = 0; j < data.getLength( ); ++j )
-                  if( !num.isZetaIntegral(data.getValues( )[ j ]) )
-                     batches_coeff.addEntry(row, data.getIndices( )[ j ], num.round(data.getValues( )[ j ]));
+               for( int index = 0; index < data.getLength( ); ++index )
+                  if( !num.isZetaIntegral(data.getValues( )[ index ]) )
+                     batches_coeff.addEntry(row, data.getIndices( )[ index ], num.round(data.getValues( )[ index ]));
 
                //TODO: Change row only
                copy.getConstraintMatrix( ).changeCoefficients(batches_coeff);

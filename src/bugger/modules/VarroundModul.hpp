@@ -41,23 +41,16 @@ namespace bugger {
          return false;
       }
 
-      bool isBoundFractional(const Problem<double> &problem, int var) {
-         double lb = problem.getLowerBounds( )[ var ];
-         double ub = problem.getUpperBounds( )[ var ];
-         if( !problem.getColFlags( )[ var ].test(ColFlag::kLbInf)
-          && !problem.getColFlags( )[ var ].test(ColFlag::kUbInf)
-          && num.isZetaEq(lb, ub) )
-            return false;
-         return ( !problem.getColFlags( )[ var ].test(ColFlag::kLbInf) && !num.isZetaIntegral(lb) )
-             || ( !problem.getColFlags( )[ var ].test(ColFlag::kUbInf) && !num.isZetaIntegral(ub) );
-      }
-
-      bool isVarroundAdmissible(const Problem<double> &problem, int var) {
+      bool isVarroundAdmissible(const Problem<double>& problem, int var) {
          if( problem.getColFlags( )[ var ].test(ColFlag::kFixed) )
             return false;
-         if( isBoundFractional(problem, var) )
+         if( !num.isZetaIntegral(problem.getObjective( ).coefficients[ var ]) )
             return true;
-         return !num.isZetaIntegral(problem.getObjective( ).coefficients[ var ]);
+         bool lbinf = problem.getColFlags( )[ var ].test(ColFlag::kLbInf);
+         bool ubinf = problem.getColFlags( )[ var ].test(ColFlag::kUbInf);
+         double lb = problem.getLowerBounds( )[ var ];
+         double ub = problem.getUpperBounds( )[ var ];
+         return ( lbinf || ubinf || !num.isZetaEq(lb, ub) ) && ( ( !lbinf && !num.isZetaIntegral(lb) ) || ( !ubinf && !num.isZetaIntegral(ub) ) );
       }
 
       ModulStatus
@@ -109,7 +102,7 @@ namespace bugger {
                if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
                {
                   copy.getUpperBounds( )[ var ] = ub;
-                  batches_ub.push_back({ var, lb });
+                  batches_ub.push_back({ var, ub });
                }
                copy.getObjective( ).coefficients[ var ] = num.round(copy.getObjective( ).coefficients[ var ]);
                batches_obj.push_back({ var, copy.getObjective( ).coefficients[ var ] });
