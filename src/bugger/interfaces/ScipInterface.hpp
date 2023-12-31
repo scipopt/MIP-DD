@@ -445,6 +445,7 @@ namespace bugger {
          int nvars = SCIPgetNVars(scip);
          int nrows = SCIPgetNConss(scip);
          builder.reserve(nnz, nrows, nvars);
+         builder.setProblemName(SCIPgetProbName(scip));
          builder.setObjOffset(SCIPgetOrigObjoffset(scip));
          builder.setObjSense(SCIPgetObjsense(scip) == SCIP_OBJSENSE_MINIMIZE);
 

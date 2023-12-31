@@ -34,6 +34,7 @@
 #include "bugger/misc/Num.hpp"
 #include "bugger/external/pdqsort/pdqsort.h"
 #include <algorithm>
+#include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/dynamic_bitset.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
@@ -106,7 +107,7 @@ class MpsParser
                                   std::move( parser.ub4cols ),
                                   std::move( parser.col_flags ) );
       problem.setVariableNames( std::move( parser.colnames ) );
-      problem.setName( std::move( filename ) );
+      problem.setName( std::move( parser.probname ) );
       problem.setConstraintNames( std::move( parser.rownames ) );
 
       problem.setInputTolerance(
@@ -180,6 +181,7 @@ class MpsParser
     * data for mps problem
     */
 
+   std::string probname { };
    Vec<Triplet<REAL>> entries;
    Vec<std::pair<int, REAL>> coeffobj;
    Vec<REAL> rowlhs;
@@ -204,10 +206,10 @@ class MpsParser
    /// checks first word of strline and wraps it by it_begin and it_end
    parsekey
    checkFirstWord( std::string& strline, std::string::iterator& it,
-                   boost::string_ref& word_ref ) const;
+                   boost::string_ref& word_ref );
 
    parsekey
-   parseDefault( boost::iostreams::filtering_istream& file ) const;
+   parseDefault( boost::iostreams::filtering_istream& file );
 
    parsekey
    parseObjsense( boost::iostreams::filtering_istream& file );
@@ -236,7 +238,7 @@ template <typename REAL>
 typename MpsParser<REAL>::parsekey
 MpsParser<REAL>::checkFirstWord( std::string& strline,
                                  std::string::iterator& it,
-                                 boost::string_ref& word_ref ) const
+                                 boost::string_ref& word_ref )
 {
    using namespace boost::spirit;
 
@@ -263,6 +265,11 @@ MpsParser<REAL>::checkFirstWord( std::string& strline,
       else
          return MpsParser<REAL>::parsekey::kNone;
    }
+   else if( word == "NAME" )
+   {
+      probname = boost::trim_copy( std::string( it_start+4, strline.end() ) );
+      return MpsParser<REAL>::parsekey::kNone;
+   }
    else if( word == "OBJSENSE" )
       return MpsParser<REAL>::parsekey::kObjsense;
    else if( word == "COLUMNS" )
@@ -277,7 +284,7 @@ MpsParser<REAL>::checkFirstWord( std::string& strline,
 
 template <typename REAL>
 typename MpsParser<REAL>::parsekey
-MpsParser<REAL>::parseDefault( boost::iostreams::filtering_istream& file ) const
+MpsParser<REAL>::parseDefault( boost::iostreams::filtering_istream& file )
 {
    std::string strline;
    getline( file, strline );
