@@ -100,6 +100,7 @@ namespace bugger {
 
                if( solution_exists )
                {
+                  data = copy.getConstraintMatrix( ).getRowCoefficients(row);
                   double activity = get_linear_activity(data, solution);
 
                   lhs = num.min(lhs, num.epsFloor(activity));

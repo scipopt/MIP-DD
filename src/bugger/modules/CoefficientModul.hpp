@@ -126,9 +126,9 @@ namespace bugger {
                }
 
                if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
-                  copy.getConstraintMatrix( ).modifyLeftHandSide( row, num, copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] - offset );
+                  copy.getConstraintMatrix( ).modifyLeftHandSide( row, num, copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] + offset );
                if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
-                  copy.getConstraintMatrix( ).modifyRightHandSide( row, num, copy.getConstraintMatrix( ).getRightHandSides( )[ row ] - offset );
+                  copy.getConstraintMatrix( ).modifyRightHandSide( row, num, copy.getConstraintMatrix( ).getRightHandSides( )[ row ] + offset );
                batches_offset.push_back({ row, offset });
             }
 
@@ -145,9 +145,9 @@ namespace bugger {
                   for( const auto &item: applied_reductions )
                   {
                      if( !copy.getRowFlags( )[ item.first ].test(RowFlag::kLhsInf) )
-                        copy.getConstraintMatrix( ).modifyLeftHandSide( item.first, num, copy.getConstraintMatrix( ).getLeftHandSides( )[ item.first ] - item.second );
+                        copy.getConstraintMatrix( ).modifyLeftHandSide( item.first, num, copy.getConstraintMatrix( ).getLeftHandSides( )[ item.first ] + item.second );
                      if( !copy.getRowFlags( )[ item.first ].test(RowFlag::kRhsInf) )
-                        copy.getConstraintMatrix( ).modifyRightHandSide( item.first, num, copy.getConstraintMatrix( ).getRightHandSides( )[ item.first ] - item.second );
+                        copy.getConstraintMatrix( ).modifyRightHandSide( item.first, num, copy.getConstraintMatrix( ).getRightHandSides( )[ item.first ] + item.second );
                   }
                }
                else
