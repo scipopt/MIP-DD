@@ -61,9 +61,8 @@ namespace bugger {
    private:
       const std::string& setting;
       SCIP* scip;
-      double reference = INFINITY;
       Vec<SCIP_VAR*> vars;
-
+      double reference = std::numeric_limits<double>::signaling_NaN();
 
    public:
       ScipInterface(const std::string& _setting) : setting(_setting), scip(nullptr) {
@@ -131,12 +130,11 @@ namespace bugger {
                {
                   case SCIP_PARAMTYPE_BOOL:
                   {
-                     //TODO: that does not work
-                     bool *ptrbool;
-//                     ptrbool = ( param->data.boolparam.valueptr == nullptr ? &param->data.boolparam.curvalue
-//                                                                           : param->data.boolparam.valueptr );
-//                     batch[ nbatch ].data.boolparam.curvalue = *ptrbool;
-//                     *ptrbool = param->data.boolparam.defaultvalue;
+                     SCIP_Bool *ptrbool;
+                     ptrbool = ( param->data.boolparam.valueptr == nullptr ? &param->data.boolparam.curvalue
+                                                                           : param->data.boolparam.valueptr );
+                     batch[ nbatch ].data.boolparam.curvalue = *ptrbool;
+                     *ptrbool = param->data.boolparam.defaultvalue;
                      break;
                   }
                   case SCIP_PARAMTYPE_INT:
@@ -220,7 +218,7 @@ namespace bugger {
                break;
          }
 
-         // TODO: what are passcodes doing?
+         // TODO: Support passing returncodes
 //         for( int i = 0; i < presoldata->npasscodes; ++i )
 //            if( retcode == presoldata->passcodes[i] )
 //               return 0;
@@ -231,9 +229,6 @@ namespace bugger {
       ~ScipInterface( ) {
          if( scip != nullptr )
          {
-//            SCIP_RETCODE retcode = SCIPfreeSol(scip, &solution);
-//            UNUSED(retcode);
-//            assert(retcode == SCIP_OKAY);
             auto retcode = SCIPfree(&scip);
             UNUSED(retcode);
             assert(retcode == SCIP_OKAY);
@@ -254,6 +249,7 @@ namespace bugger {
       SCIP_RETCODE
       setup(const Problem<double> &problem, bool solution_exits, const Solution<double> sol) {
          SCIP_CALL(SCIPincludeDefaultPlugins(scip));
+         //TODO: Store problem settings
          SCIP_CALL(SCIPreadParams(scip, setting.c_str( )));
          int ncols = problem.getNCols( );
          int nrows = problem.getNRows( );
@@ -271,8 +267,7 @@ namespace bugger {
          vars.resize(problem.getNCols( ));
 
          if( solution_exits )
-            reference = 0;
-
+            reference = obj.offset;
          for( int col = 0; col < ncols; ++col )
          {
             if( domains.flags[ col ].test(ColFlag::kFixed) )
@@ -337,18 +332,19 @@ namespace bugger {
             for( int k = 0; k != rowvec.getLength( ); ++k )
             {
                // update lhs and rhs if fixed variable is present
-               if( problem.getColFlags( )[ k ].test(ColFlag::kFixed) )
+               if( problem.getColFlags( )[ inds[ k ] ].test(ColFlag::kFixed) )
                {
-                  double value = problem.getLowerBounds( )[ inds[ k ] ];
                   if( !rflags[ row ].test(RowFlag::kLhsInf) )
-                     lhs -= vals[ k ] * value;
+                     lhs -= vals[ k ] * problem.getLowerBounds( )[ inds[ k ] ];
                   if( !rflags[ row ].test(RowFlag::kRhsInf) )
-                     rhs -= vals[ k ] * value;
-                  continue;
+                     rhs -= vals[ k ] * problem.getLowerBounds( )[ inds[ k ] ];
                }
-               consvars[ length ] = vars[ inds[ k ] ];
-               consvals[ length ] = SCIP_Real(vals[ k ]);
-               ++length;
+               else
+               {
+                  consvars[ length ] = vars[ inds[ k ] ];
+                  consvals[ length ] = SCIP_Real(vals[ k ]);
+                  ++length;
+               }
             }
 
             SCIP_CALL(SCIPcreateConsBasicLinear(
@@ -493,8 +489,6 @@ namespace bugger {
 
          return builder.build( );
       }
-
-
    };
 
 } // namespace bugger
