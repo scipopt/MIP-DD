@@ -263,7 +263,8 @@ namespace bugger {
          const auto &rflags = problem.getRowFlags( );
 
          SCIP_CALL(SCIPcreateProbBasic(scip, problem.getName( ).c_str( )));
-
+         SCIP_CALL(SCIPaddOrigObjoffset(scip, SCIP_Real(obj.offset)));
+         SCIP_CALL(SCIPsetObjsense(scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
          vars.resize(problem.getNCols( ));
 
          if( solution_exits )
@@ -354,10 +355,6 @@ namespace bugger {
             SCIP_CALL(SCIPreleaseCons(scip, &cons));
          }
 
-
-         if( obj.offset != 0 )
-            SCIP_CALL(SCIPaddOrigObjoffset(scip, SCIP_Real(obj.offset)));
-
          return SCIP_OKAY;
       }
 
@@ -440,6 +437,7 @@ namespace bugger {
       Problem<SCIP_Real> buildProblem(
             SCIP *scip               /**< SCIP data structure */
       ) {
+         SCIP_MATRIX* matrix;
          ProblemBuilder<SCIP_Real> builder;
 
          /* build problem from matrix */
@@ -447,6 +445,9 @@ namespace bugger {
          int nvars = SCIPgetNVars(scip);
          int nrows = SCIPgetNConss(scip);
          builder.reserve(nnz, nrows, nvars);
+         builder.setObjOffset(SCIPgetOrigObjoffset(scip));
+         builder.setObjSense(SCIPgetObjsense(scip) == SCIP_OBJSENSE_MINIMIZE);
+
          /* set up columns */
          builder.setNumCols(nvars);
          auto vars = SCIPgetVars(scip);
@@ -464,28 +465,22 @@ namespace bugger {
          }
 
          /* set up rows */
+         (void)SCIPmatrixCreate(scip, &matrix, FALSE, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+         nrows = SCIPmatrixGetNRows(matrix);
          builder.setNumRows(nrows);
-         auto conss = SCIPgetConss(scip);
-
-//         TODO: iterate over the linear constraint handler and add the data.
-//         for( int i = 0; i != nrows; ++i )
-//         {
-//            auto row = SCIPgetRowLinear(scip, conss[ i ]);
-//            int *rowcols = SCIPgetRow(matrix, i);
-//            SCIP_Real *rowvals = SCIPmatrixGetRowValPtr(matrix, i);
-//            int rowlen = SCIProwGetNNonz(row);
-//            builder.addRowEntries(i, rowlen, rowcols, rowvals);
-//
-//            SCIP_Real lhs = SCIProwGetLhs(row);
-//            SCIP_Real rhs = SCIProwGetRhs(row);
-//            builder.setRowLhs(i, lhs);
-//            builder.setRowRhs(i, rhs);
-//            builder.setRowLhsInf(i, SCIPisInfinity(scip, -lhs));
-//            builder.setRowRhsInf(i, SCIPisInfinity(scip, rhs));
-//         }
-
-         //TODO: add objective offset.
-         builder.setObjOffset(0);
+         for( int i = 0; i != nrows; ++i )
+         {
+            int *rowcols = SCIPmatrixGetRowIdxPtr(matrix, i);
+            SCIP_Real *rowvals = SCIPmatrixGetRowValPtr(matrix, i);
+            int rowlen = SCIPmatrixGetRowNNonzs(matrix, i);
+            builder.addRowEntries(i, rowlen, rowcols, rowvals);
+            SCIP_Real lhs = SCIPmatrixGetRowLhs(matrix, i);
+            SCIP_Real rhs = SCIPmatrixGetRowRhs(matrix, i);
+            builder.setRowLhs(i, lhs);
+            builder.setRowRhs(i, rhs);
+            builder.setRowLhsInf(i, SCIPisInfinity(scip, -lhs));
+            builder.setRowRhsInf(i, SCIPisInfinity(scip, rhs));
+         }
 
          return builder.build( );
       }

@@ -82,6 +82,8 @@ struct MpsWriter
       fmt::print( out, "*NONZERO:      {}\n*\n*\n", consmatrix.getNnz() );
 
       fmt::print( out, "NAME          {}\n", prob.getName() );
+      fmt::print( out, "OBJSENSE\n" );
+      fmt::print( out, obj.sense ? " MIN\n" : " MAX\n" );
       fmt::print( out, "ROWS\n" );
       fmt::print( out, " N  OBJ\n" );
       bool hasRangedRow = false;

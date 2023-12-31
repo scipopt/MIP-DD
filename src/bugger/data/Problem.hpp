@@ -65,9 +65,9 @@ class Problem
  public:
    /// set objective function
    void
-   setObjective( Vec<REAL> coefficients, REAL offset = 0.0 )
+   setObjective( Vec<REAL> coefficients, REAL offset = 0.0, bool minimize = true )
    {
-      objective = Objective<REAL>{ std::move( coefficients ), offset };
+      objective = Objective<REAL>{ std::move( coefficients ), offset, minimize };
    }
 
    /// set objective function

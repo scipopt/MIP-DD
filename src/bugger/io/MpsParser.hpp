@@ -96,7 +96,7 @@ class MpsParser
       for( auto i : parser.coeffobj )
          obj_vec[i.first] = i.second;
 
-      problem.setObjective( std::move( obj_vec ), parser.objoffset );
+      problem.setObjective( std::move( obj_vec ), parser.objoffset, parser.objsense );
       problem.setConstraintMatrix(
           SparseStorage<REAL>{ std::move( parser.entries ), parser.nCols,
                                parser.nRows, true },
@@ -135,6 +135,7 @@ class MpsParser
 
    enum class parsekey
    {
+      kObjsense,
       kRows,
       kCols,
       kRhs,
@@ -151,23 +152,26 @@ class MpsParser
    {
       switch( keyword )
       {
+      case parsekey::kObjsense:
+         std::cerr << "read error in section OBJSENSE" << std::endl;
+         break;
       case parsekey::kRows:
-         std::cerr << "read error in section ROWS " << std::endl;
+         std::cerr << "read error in section ROWS" << std::endl;
          break;
       case parsekey::kCols:
-         std::cerr << "read error in section COLUMNS " << std::endl;
+         std::cerr << "read error in section COLUMNS" << std::endl;
          break;
       case parsekey::kRhs:
-         std::cerr << "read error in section RHS " << std::endl;
+         std::cerr << "read error in section RHS" << std::endl;
          break;
       case parsekey::kBounds:
-         std::cerr << "read error in section BOUNDS " << std::endl;
+         std::cerr << "read error in section BOUNDS" << std::endl;
          break;
       case parsekey::kRanges:
-         std::cerr << "read error in section RANGES " << std::endl;
+         std::cerr << "read error in section RANGES" << std::endl;
          break;
       default:
-         std::cerr << "undefined read error " << std::endl;
+         std::cerr << "undefined read error" << std::endl;
          break;
       }
    };
@@ -191,6 +195,7 @@ class MpsParser
    Vec<RowFlags> row_flags;
    Vec<ColFlags> col_flags;
    REAL objoffset = 0;
+   bool objsense = true;
 
    int nCols = 0;
    int nRows = 0;
@@ -203,6 +208,9 @@ class MpsParser
 
    parsekey
    parseDefault( boost::iostreams::filtering_istream& file ) const;
+
+   parsekey
+   parseObjsense( boost::iostreams::filtering_istream& file );
 
    parsekey
    parseRows( boost::iostreams::filtering_istream& file,
@@ -255,6 +263,8 @@ MpsParser<REAL>::checkFirstWord( std::string& strline,
       else
          return MpsParser<REAL>::parsekey::kNone;
    }
+   else if( word == "OBJSENSE" )
+      return MpsParser<REAL>::parsekey::kObjsense;
    else if( word == "COLUMNS" )
       return MpsParser<REAL>::parsekey::kCols;
    else if( word == "BOUNDS" )
@@ -275,6 +285,30 @@ MpsParser<REAL>::parseDefault( boost::iostreams::filtering_istream& file ) const
    std::string::iterator it;
    boost::string_ref word_ref;
    return checkFirstWord( strline, it, word_ref );
+}
+
+template <typename REAL>
+typename MpsParser<REAL>::parsekey
+MpsParser<REAL>::parseObjsense( boost::iostreams::filtering_istream& file )
+{
+   std::string strline;
+
+   while( getline( file, strline ) )
+   {
+      std::string::iterator it;
+      boost::string_ref word_ref;
+      MpsParser<REAL>::parsekey key = checkFirstWord( strline, it, word_ref );
+
+      if( key != parsekey::kNone )
+         return key;
+
+      if( word_ref.starts_with("MIN") )
+         objsense = true;
+      else if( word_ref.starts_with("MAX") )
+         objsense = false;
+   }
+
+   return parsekey::kFail;
 }
 
 template <typename REAL>
@@ -868,6 +902,9 @@ MpsParser<REAL>::parse( boost::iostreams::filtering_istream& file )
       keyword_old = keyword;
       switch( keyword )
       {
+      case parsekey::kObjsense:
+         keyword = parseObjsense( file );
+         break;
       case parsekey::kRows:
          keyword = parseRows( file, row_type );
          break;
