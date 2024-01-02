@@ -41,7 +41,7 @@ struct BuggerOptions
 
    int maxrounds = -1;
 
-   int nstages = -1;
+   int maxstages = -1;
 
    int nbatches = 0;
 
@@ -60,8 +60,8 @@ struct BuggerOptions
       paramSet.addParameter( "initround", "initial bugger round", initround, 0 );
       paramSet.addParameter( "initstage", "initial bugger stage", initstage, 0 );
       paramSet.addParameter( "maxrounds", "the maximum number of bugger rounds or -1 for no limit", maxrounds, -1 );
-      paramSet.addParameter( "nbatches", "the maximum number of batches or -1 for no limit", nbatches, -1 );
-      paramSet.addParameter( "nstages", " maximum number of bugger stages or -1 for number of included bugger modules", nstages, -1 );
+      paramSet.addParameter( "maxstages", " maximum number of bugger stages or -1 for number of included bugger modules", maxstages, -1 );
+      paramSet.addParameter( "nbatches", "the maximum number of batches or 0 for singleton batches", nbatches, 0 );
       paramSet.addParameter( "threads", "maximal number of threads to use (0: automatic)", threads, 0 );
       paramSet.addParameter( "numerics.feastol", "the feasibility tolerance", feastol, 0.0, 1e-1 );
       paramSet.addParameter( "numerics.epsilon", "epsilon tolerance to consider two values numerically equal", epsilon, 0.0, 1e-1 );

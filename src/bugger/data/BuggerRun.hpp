@@ -93,7 +93,6 @@ namespace bugger {
 
          msg.info("original instance solve-status {}\n", solverstatus);
 
-         //TODO: delete the variable names and constraint names also during updates
          for( unsigned int i = 0; i < problem.getNRows( ); ++i )
             origrow_mapping.push_back(( int ) i);
 
@@ -103,8 +102,8 @@ namespace bugger {
          if( options.maxrounds < 0 )
             options.maxrounds = INT_MAX;
 
-         if( options.nstages < 0 || options.nstages > modules.size( ))
-            options.nstages = modules.size( );
+         if( options.maxstages < 0 || options.maxstages > modules.size( ) )
+            options.maxstages = modules.size( );
 
          int ending = 4;
          if( filename.substr(filename.length( ) - 3) == ".gz" )
@@ -114,7 +113,7 @@ namespace bugger {
 
          for( int round = 0; round < options.maxrounds; ++round )
          {
-            //TODO:write also parameters
+            //TODO: Write also parameters
             std::string newfilename =
                   filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round) + ".mps";
             bugger::MpsWriter<double>::writeProb(newfilename, problem, origrow_mapping, origcol_mapping);
@@ -168,7 +167,7 @@ namespace bugger {
          return solver->solve();
       }
 
-      //TODO this is duplicates function in BuggerModul -> move this to a function to hand it to BuggerModul so that is has to be declared only once
+      //TODO: this is duplicates function in BuggerModul -> move this to a function to hand it to BuggerModul so that is has to be declared only once
       SolverInterface*
       createSolver(){
 #ifdef BUGGER_HAVE_SCIP
@@ -196,11 +195,8 @@ namespace bugger {
             module->printStats(msg);
 
       }
-
-
-
-
    };
+
 }
 
 #endif //BUGGER_BUGGERRUN_HPP
