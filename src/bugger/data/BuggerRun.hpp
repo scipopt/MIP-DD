@@ -111,27 +111,33 @@ namespace bugger {
          if( filename.substr(filename.length( ) - 3) == ".bz2" )
             ending = 7;
 
-         for( int round = 0; round < options.maxrounds; ++round )
+         for( int round = options.initround, stage = options.initstage, success = 0; round < options.maxrounds && stage < options.maxstages; ++round )
          {
             //TODO: Write also parameters
-            std::string newfilename =
-                  filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round) + ".mps";
+            std::string newfilename = filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round) + ".mps";
             bugger::MpsWriter<double>::writeProb(newfilename, problem, origrow_mapping, origcol_mapping);
 
             if( is_time_exceeded(timer) )
                break;
 
-            for( int module = 0; module < modules.size( ); ++module )
+            for( int module = 0; module <= stage && stage < options.maxstages; ++module )
+            {
                results[ module ] = modules[ module ]->run(problem, solution, solution_exists, options, timer);
 
-            if( evaluateResults( ) != bugger::ModulStatus::kSuccessful )
-               break;
+               if( results[ module ] == bugger::ModulStatus::kSuccessful )
+                  success = module;
+               else if( success == module )
+               {
+                  module = stage;
+                  ++stage;
+                  success = stage;
+               }
+            }
          }
 
+         assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModulStatus::kSuccessful );
          printStats( );
       }
-
-
 
       void addDefaultModules( const Num<double>& num ) {
          using uptr = std::unique_ptr<bugger::BuggerModul>;
@@ -182,8 +188,8 @@ namespace bugger {
       evaluateResults( ) {
          int largestValue = static_cast<int>( bugger::ModulStatus::kDidNotRun );
 
-         for( auto &i: results )
-            largestValue = std::max(largestValue, static_cast<int>( i ));
+         for( int module = 0; module < options.maxstages; ++module )
+            largestValue = std::max(largestValue, static_cast<int>( results[ module ] ));
 
          return static_cast<bugger::ModulStatus>( largestValue );
       }
