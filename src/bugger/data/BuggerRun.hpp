@@ -174,10 +174,10 @@ namespace bugger {
       }
 
       //TODO: this is duplicates function in BuggerModul -> move this to a function to hand it to BuggerModul so that is has to be declared only once
-      SolverInterface*
+      std::unique_ptr<SolverInterface>
       createSolver(){
 #ifdef BUGGER_HAVE_SCIP
-         return new ScipInterface {setting};
+         return std::unique_ptr<SolverInterface>(new ScipInterface {setting});
 #else
          msg.error("No solver specified -- aborting ....");
          return nullptr;

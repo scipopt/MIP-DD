@@ -173,10 +173,10 @@ namespace bugger {
 
    protected:
 
-      SolverInterface*
+      std::unique_ptr<SolverInterface>
       createSolver(){
 #ifdef BUGGER_HAVE_SCIP
-         return new ScipInterface {setting};
+         return std::unique_ptr<SolverInterface>(new ScipInterface {setting});
 #else
          msg.error("No solver specified -- aborting ....");
          return nullptr;
