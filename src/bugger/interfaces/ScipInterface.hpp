@@ -226,7 +226,7 @@ namespace bugger {
          return result;
       }
 
-      ~ScipInterface( ) {
+      ~ScipInterface( ) override {
          if( scip != nullptr )
          {
             auto retcode = SCIPfree(&scip);

@@ -64,6 +64,9 @@ namespace bugger {
          Problem<double > prob;
          return prob;
       }
+
+
+      virtual ~SolverInterface(){};
    };
 
 } // namespace bugger
