@@ -60,12 +60,12 @@ namespace bugger {
 
    private:
       const std::string& setting;
-      SCIP* scip;
+      SCIP* scip = nullptr;
       Vec<SCIP_VAR*> vars;
       double reference = std::numeric_limits<double>::signaling_NaN();
 
    public:
-      ScipInterface(const std::string& _setting) : setting(_setting), scip(nullptr) {
+      ScipInterface(const std::string& _setting) : setting(_setting) {
          if( SCIPcreate(&scip) != SCIP_OKAY )
             throw std::runtime_error("could not create SCIP");
       }
@@ -483,6 +483,7 @@ namespace bugger {
             builder.setRowLhsInf(i, SCIPisInfinity(scip, -lhs));
             builder.setRowRhsInf(i, SCIPisInfinity(scip, rhs));
          }
+         SCIPmatrixFree(scip, &matrix);
 
          return builder.build( );
       }
