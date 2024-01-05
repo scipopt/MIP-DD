@@ -168,7 +168,9 @@ namespace bugger {
       SolverStatus getOriginalSolveStatus( ) {
          auto solver = createSolver();
          solver->doSetUp(problem, false, solution);
-         return solver->solve();
+         SolverStatus status = solver->solve( );
+         solver.reset();
+         return status;
       }
 
       //TODO: this is duplicates function in BuggerModul -> move this to a function to hand it to BuggerModul so that is has to be declared only once

@@ -97,6 +97,7 @@ namespace bugger {
                else
                   applied_vars.insert(applied_vars.end(), batches.begin(), batches.end());
                batches.clear();
+               solver.reset();
             }
          }
          if(!admissible)
