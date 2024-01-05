@@ -125,7 +125,6 @@ namespace bugger {
                else
                   applied_reductions.insert(applied_reductions.end(), batches.begin(), batches.end());
                batches.clear();
-               solver.reset();
             }
          }
          if(!admissible)

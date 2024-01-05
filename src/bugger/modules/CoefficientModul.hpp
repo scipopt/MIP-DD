@@ -162,7 +162,6 @@ namespace bugger {
                   }
                   applied_reductions.insert(applied_reductions.end(), batches_offset.begin(), batches_offset.end());
                }
-               solver.reset();
                batches_coeff.clear();
                batches_offset.clear();
             }

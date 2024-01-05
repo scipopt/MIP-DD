@@ -134,7 +134,6 @@ namespace bugger {
                batches_lb.clear();
                batches_ub.clear();
                batches_obj.clear();
-               solver.reset();
             }
          }
          if(!admissible)

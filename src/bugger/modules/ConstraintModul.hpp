@@ -104,7 +104,6 @@ namespace bugger {
                else
                   applied_redundant_rows.insert(applied_redundant_rows.end(), batches.begin(), batches.end());
                batches.clear();
-               solver.reset();
             }
          }
          if(!admissible)

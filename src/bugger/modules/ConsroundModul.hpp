@@ -145,8 +145,6 @@ namespace bugger {
                   applied_reductions_lhs.insert(applied_reductions_lhs.end(), batches_lhs.begin(), batches_lhs.end());
                   applied_reductions_rhs.insert(applied_reductions_rhs.end(), batches_rhs.begin(), batches_rhs.end());
                }
-               solver.reset();
-
                batches_coeff.clear();
                batches_lhs.clear();
                batches_rhs.clear();
