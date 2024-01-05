@@ -85,11 +85,9 @@ namespace bugger {
       void apply(bugger::Timer &timer, std::string filename) {
          results.resize(modules.size( ));
 
-
-
          auto solverstatus = getOriginalSolveStatus( );
-         for( int module = 0; module < modules.size( ); module++ )
-             modules[ module ]->setOriginalSolverStatus(solverstatus);
+         for(const auto & module : modules)
+             module->setOriginalSolverStatus(solverstatus);
 
          msg.info("original instance solve-status {}\n", solverstatus);
 

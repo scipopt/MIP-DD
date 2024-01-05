@@ -250,7 +250,8 @@ namespace bugger {
       setup(const Problem<double> &problem, bool solution_exits, const Solution<double> sol) {
          SCIP_CALL(SCIPincludeDefaultPlugins(scip));
          //TODO: Store problem settings
-         SCIP_CALL(SCIPreadParams(scip, setting.c_str( )));
+         if( !setting.empty( ))
+            SCIP_CALL(SCIPreadParams(scip, setting.c_str( )));
          int ncols = problem.getNCols( );
          int nrows = problem.getNRows( );
          const Vec<String> &varNames = problem.getVariableNames( );

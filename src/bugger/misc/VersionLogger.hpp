@@ -73,7 +73,7 @@ print_header()
                BUGGER_VERSION_MAJOR, BUGGER_VERSION_MINOR, BUGGER_VERSION_PATCH,
                mode );
 #endif
-   fmt::print( "Copyright (C) 2020-2022 Zuse Institute Berlin (ZIB)\n" );
+   fmt::print( "Copyright (C) 2024 Zuse Institute Berlin (ZIB)\n" );
    fmt::print( "\n" );
 
    fmt::print( "External libraries: \n" );
