@@ -66,13 +66,14 @@ namespace bugger {
          }
 
          batches.reserve(batchsize);
+         bool admissible = false;
 
          for( int var = copy.getNCols() - 1; var >= 0; --var )
          {
             if( isVariableAdmissible(copy, var) )
             {
                double fixedval;
-
+               admissible = true;
                if( solution_exists )
                {
                   fixedval = solution.primal[ var ];
@@ -126,7 +127,8 @@ namespace bugger {
                batches.clear();
             }
          }
-
+         if(!admissible)
+            return ModulStatus::kDidNotRun;
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
          else

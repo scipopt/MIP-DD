@@ -69,7 +69,6 @@ namespace bugger {
          MatrixBuffer<double> batches_coeff { };
          Vec<std::pair<int, double>> batches_offset { };
          int batchsize = 1;
-
          if( options.nbatches > 0 )
          {
             batchsize = options.nbatches - 1;
@@ -80,11 +79,13 @@ namespace bugger {
          }
 
          batches_offset.reserve(batchsize);
+         bool admissible = false;
 
          for( int row = copy.getNRows( ) - 1; row >= 0; --row )
          {
             if( isCoefficientAdmissible(copy, row) )
             {
+               admissible = true;
                auto data = copy.getConstraintMatrix( ).getRowCoefficients(row);
                double offset = 0.0;
 
@@ -166,6 +167,8 @@ namespace bugger {
             }
          }
 
+         if(!admissible)
+            return ModulStatus::kDidNotRun;
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
          else

@@ -82,11 +82,13 @@ namespace bugger {
 
          batches_lhs.reserve(batchsize);
          batches_rhs.reserve(batchsize);
+         bool admissible = false;
 
          for( int row = 0; row < copy.getNRows( ); ++row )
          {
             if( isConsroundAdmissible(copy, row) )
             {
+               admissible = true;
                auto data = copy.getConstraintMatrix( ).getRowCoefficients(row);
                double lhs = num.round(copy.getConstraintMatrix( ).getLeftHandSides( )[ row ]);
                double rhs = num.round(copy.getConstraintMatrix( ).getRightHandSides( )[ row ]);
@@ -149,6 +151,8 @@ namespace bugger {
             }
          }
 
+         if(!admissible)
+            return ModulStatus::kDidNotRun;
          if( applied_reductions_lhs.empty() )
             return ModulStatus::kUnsuccesful;
          else

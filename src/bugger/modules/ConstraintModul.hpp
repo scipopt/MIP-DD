@@ -75,11 +75,13 @@ namespace bugger {
          }
 
          batches.reserve(batchsize);
+         bool admissible = false;
 
          for( int row = copy.getNRows( ) - 1; row >= 0; --row )
          {
             if( isConstraintAdmissible(copy, row) )
             {
+               admissible = true;
                assert(!copy.getRowFlags( )[ row ].test(RowFlag::kRedundant));
                copy.getRowFlags( )[ row ].set(RowFlag::kRedundant);
                batches.push_back(row);
@@ -104,7 +106,8 @@ namespace bugger {
                batches.clear();
             }
          }
-
+         if(!admissible)
+            return ModulStatus::kDidNotRun;
          if( applied_redundant_rows.empty() )
             return ModulStatus::kUnsuccesful;
          else

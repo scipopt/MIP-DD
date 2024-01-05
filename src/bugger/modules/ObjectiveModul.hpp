@@ -71,11 +71,13 @@ namespace bugger
          }
 
          batches.reserve(batchsize);
+         bool admissible = false;
 
          for( int var = copy.getNCols( ) - 1; var >= 0; --var )
          {
             if( isObjectiveAdmissible(copy, var) )
             {
+               admissible = true;
                copy.getObjective( ).coefficients[ var ] = 0.0;
                batches.push_back(var);
             }
@@ -96,7 +98,8 @@ namespace bugger
                batches.clear();
             }
          }
-
+         if(!admissible)
+            return ModulStatus::kDidNotRun;
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
          else

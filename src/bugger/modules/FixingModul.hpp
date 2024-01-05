@@ -68,11 +68,13 @@ namespace bugger {
          }
 
          batches.reserve(batchsize);
+         bool admissible = false;
 
          for( int var = copy.getNCols( ) - 1; var >= 0; --var )
          {
             if( isFixingAdmissible(copy, var) )
             {
+               admissible = true;
                assert(!copy.getColFlags( )[ var ].test(ColFlag::kFixed));
                copy.getColFlags( )[ var ].set(ColFlag::kFixed);
                batches.push_back(var);
@@ -97,7 +99,8 @@ namespace bugger {
                batches.clear();
             }
          }
-
+         if(!admissible)
+            return ModulStatus::kDidNotRun;
          if( applied_vars.empty() )
             return ModulStatus::kUnsuccesful;
          else

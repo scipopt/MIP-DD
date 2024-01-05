@@ -70,11 +70,13 @@ namespace bugger {
          }
 
          batches.reserve(batchsize);
+         bool admissible = false;
 
          for( int row = copy.getNRows( ) - 1; row >= 0; --row )
          {
             if( isSideAdmissable(copy, row) )
             {
+               admissible = true;
                auto data = matrix.getRowCoefficients(row);
                bool integral = true;
                double fixedval;
@@ -137,7 +139,8 @@ namespace bugger {
                batches.clear();
             }
          }
-
+         if(!admissible)
+            return ModulStatus::kDidNotRun;
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
          else

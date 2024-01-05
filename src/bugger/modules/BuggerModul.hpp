@@ -110,7 +110,6 @@ namespace bugger {
             return ModulStatus::kDidNotRun;
          }
 
-         ++ncalls;
          msg.info("module {} running\n", name);
 #ifdef BUGGER_TBB
          auto start = tbb::tick_count::now( );
@@ -121,6 +120,9 @@ namespace bugger {
 #ifdef BUGGER_TBB
          if( result == ModulStatus::kSuccessful )
             nsuccessCall++;
+         if (result != ModulStatus::kDidNotRun )
+            ncalls++;
+
          auto end = tbb::tick_count::now( );
          auto duration = end - start;
          execTime = execTime + duration.seconds( );

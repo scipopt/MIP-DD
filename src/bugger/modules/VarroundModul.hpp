@@ -78,11 +78,13 @@ namespace bugger {
          batches_lb.reserve(batchsize);
          batches_ub.reserve(batchsize);
          batches_obj.reserve(batchsize);
+         bool admissible = false;
 
          for( int var = 0; var < copy.getNCols( ); ++var )
          {
             if( isVarroundAdmissible(copy, var) )
             {
+               admissible = true;
                double lb = num.round(copy.getLowerBounds( )[ var ]);
                double ub = num.round(copy.getUpperBounds( )[ var ]);
 
@@ -134,7 +136,8 @@ namespace bugger {
                batches_obj.clear();
             }
          }
-
+         if(!admissible)
+            return ModulStatus::kDidNotRun;
          if( applied_obj.empty() )
             return ModulStatus::kUnsuccesful;
          else
