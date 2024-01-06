@@ -118,6 +118,8 @@ namespace bugger {
             if( is_time_exceeded(timer) )
                break;
 
+            msg.info("Round {} Stage {}\n", round+1, stage+1);
+
             for( int module = 0; module <= stage && stage < options.maxstages; ++module )
             {
                results[ module ] = modules[ module ]->run(problem, solution, solution_exists, options, timer);
