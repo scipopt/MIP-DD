@@ -177,18 +177,6 @@ namespace bugger {
 
       BuggerStatus run(const Message &msg, SolverStatus originalStatus, SolverSettings settings) override {
 
-         for(const auto& pair : settings.getBoolSettings())
-            SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getIntSettings())
-            SCIPsetIntParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getLongSettings())
-            SCIPsetLongintParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getDoubleSettings())
-            SCIPsetRealParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getCharSettings())
-            SCIPsetCharParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getStringSettings())
-            SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
 
          //TODO: Expect failing assertion during solve
          SolverStatus status = solve( settings );
@@ -367,6 +355,18 @@ namespace bugger {
       SolverStatus solve( SolverSettings settings ) override {
 
          SCIPsetMessagehdlrQuiet(scip, true);
+         for(const auto& pair : settings.getBoolSettings())
+            SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getIntSettings())
+            SCIPsetIntParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getLongSettings())
+            SCIPsetLongintParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getDoubleSettings())
+            SCIPsetRealParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getCharSettings())
+            SCIPsetCharParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getStringSettings())
+            SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
 
 //         //TODO: Support initial solutions
 //         for( int i = 0; i < nsols; ++i )
@@ -419,7 +419,6 @@ namespace bugger {
             case SCIP_STATUS_OPTIMAL:
                return SolverStatus::kOptimal;
          }
-
 
          return SolverStatus::kError;
       }
