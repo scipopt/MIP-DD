@@ -74,8 +74,8 @@ namespace bugger {
       }
 
       void
-      doSetUp(const Problem<double> &problem, bool solution_exits, const Solution<double> sol) override {
-         auto result = setup(problem, solution_exits, sol);
+      doSetUp(const Problem<double> &problem, bool solution_exits, const Solution<double> sol, SolverSettings settings) override {
+         auto result = setup(problem, solution_exits, sol, settings);
          assert(result == SCIP_OKAY);
       }
 
@@ -227,9 +227,23 @@ namespace bugger {
       }
 
       SCIP_RETCODE
-      setup(const Problem<double> &problem, bool solution_exits, const Solution<double> sol) {
+      setup(const Problem<double> &problem, bool solution_exits, const Solution<double> sol, SolverSettings settings) {
          SCIP_CALL(SCIPincludeDefaultPlugins(scip));
-         //TODO: Store problem settings
+
+         for(const auto& pair : settings.getBoolSettings())
+            SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getIntSettings())
+            SCIPsetIntParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getLongSettings())
+            SCIPsetLongintParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getDoubleSettings())
+            SCIPsetRealParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getCharSettings())
+            SCIPsetCharParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getStringSettings())
+            SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
+         SCIPwriteParams(scip, "test.set", 0, 1);
+
          int ncols = problem.getNCols( );
          int nrows = problem.getNRows( );
          const Vec<String> &varNames = problem.getVariableNames( );
@@ -355,19 +369,6 @@ namespace bugger {
       SolverStatus solve( SolverSettings settings ) override {
 
          SCIPsetMessagehdlrQuiet(scip, true);
-         for(const auto& pair : settings.getBoolSettings())
-            SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getIntSettings())
-            SCIPsetIntParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getLongSettings())
-            SCIPsetLongintParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getDoubleSettings())
-            SCIPsetRealParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getCharSettings())
-            SCIPsetCharParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getStringSettings())
-            SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
-
 //         //TODO: Support initial solutions
 //         for( int i = 0; i < nsols; ++i )
 //         {

@@ -78,8 +78,8 @@ namespace bugger {
          return false;
       }
 
-      void
-      set_target_settings(SolverSettings _target_solver_settings)
+      virtual void
+      set_target_settings(SolverSettings& _target_solver_settings)
       {
       }
 

@@ -42,9 +42,7 @@ namespace bugger {
       SolverInterface( ) { }
 
       virtual void
-      doSetUp(const Problem<double> &problem, bool solution_exits, const Solution<double> sol) = 0;
-
-
+      doSetUp(const Problem<double> &problem, bool solution_exits, const Solution<double> sol, SolverSettings settings) = 0;
 
       virtual
       BuggerStatus run(const Message &msg, SolverStatus originalStatus, SolverSettings settings) = 0;

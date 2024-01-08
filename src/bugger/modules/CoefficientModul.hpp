@@ -137,8 +137,7 @@ namespace bugger {
             {
                copy.getConstraintMatrix( ).changeCoefficients(batches_coeff);
                auto solver = createSolver();
-//               solver->parseParameters();
-               solver->doSetUp(copy, solution_exists, solution);
+               solver->doSetUp(copy, solution_exists, solution, settings);
                if( solver->run(msg, originalSolverStatus, settings) == BuggerStatus::kSuccess )
                {
                   copy = Problem<double>(problem);

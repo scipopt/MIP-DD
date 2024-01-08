@@ -29,19 +29,16 @@
 
 namespace bugger {
 
-
-
    class SettingModul : public BuggerModul {
-
-//      SolverSettings target_solver_settings;
-
+   private:
+      SolverSettings target_solver_settings ;
+      bool initialized = false;
    public:
-
       SettingModul( const Message &_msg, const Num<double> &_num) : BuggerModul() {
          this->setName("setting");
          this->msg = _msg;
          this->num = _num;
-//         target_solver_settings = SolverSettings{};
+
       }
 
       bool
@@ -49,143 +46,146 @@ namespace bugger {
          return false;
       }
 
-      void
-      set_target_settings(SolverSettings _target_solver_settings)
+
+      virtual void
+      set_target_settings(SolverSettings& _target_solver_settings) override
       {
-//         target_solver_settings = _target_solver_settings;
+         target_solver_settings = _target_solver_settings;
+         initialized = true;
       }
+
 
       ModulStatus
       execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
               const SolverSettings& settings, const Timer &timer) override {
 
+         if(!initialized)
+            return ModulStatus::kUnsuccesful;
          ModulStatus result = ModulStatus::kUnsuccesful;
-         return result;
-         auto solver = createSolver( );
-         //TODO: think of a abortion criteria
-         while( true )
-         {
+         SolverSettings copy = SolverSettings(settings);
 
-            solver->modify_parameters(options.nbatches);
-            solver->doSetUp(problem, solution_exists, solution);
-            //TODO: add batches for solving
-            if( solver->run(msg,originalSolverStatus, settings) != BuggerStatus::kFail )
+         Vec<int> batches { };
+         int batchsize = 1;
+
+         auto solver = createSolver( );
+
+         if( options.nbatches > 0 )
+         {
+            batchsize = options.nbatches - 1;
+            for( int i = 0; i < target_solver_settings.getBoolSettings().size(); i++)
             {
-               //TODO: ignore new parameter file
+               assert(target_solver_settings.getBoolSettings()[i].first == settings.getBoolSettings()[i].first);
+               if(target_solver_settings.getBoolSettings()[i].second != settings.getBoolSettings()[i].second)
+                  ++batchsize;
             }
-            else
+            for( int i = 0; i < target_solver_settings.getIntSettings().size(); i++)
             {
-               //TODO: push back together
-               //store new parameter file
-               result = ModulStatus::kSuccessful;
+               assert(target_solver_settings.getIntSettings()[i].first == settings.getIntSettings()[i].first);
+               if(target_solver_settings.getIntSettings()[i].second != settings.getIntSettings()[i].second)
+               ++batchsize;
             }
+            for( int i = 0; i < target_solver_settings.getDoubleSettings().size(); i++)
+            {
+               assert(target_solver_settings.getDoubleSettings()[i].first == settings.getDoubleSettings()[i].first);
+               if(target_solver_settings.getDoubleSettings()[i].second != settings.getDoubleSettings()[i].second)
+                  ++batchsize;
+            }
+            for( int i = 0; i < target_solver_settings.getLongSettings().size(); i++)
+            {
+               assert(target_solver_settings.getLongSettings()[i].first == settings.getLongSettings()[i].first);
+               if(target_solver_settings.getLongSettings()[i].second != settings.getLongSettings()[i].second)
+                  ++batchsize;
+            }
+            for( int i = 0; i < target_solver_settings.getCharSettings().size(); i++)
+            {
+               assert(target_solver_settings.getCharSettings()[i].first == settings.getCharSettings()[i].first);
+               if(target_solver_settings.getCharSettings()[i].second != settings.getCharSettings()[i].second)
+                  ++batchsize;
+            }
+            for( int i = 0; i < target_solver_settings.getStringSettings().size(); i++)
+            {
+               assert(target_solver_settings.getStringSettings()[i].first == settings.getStringSettings()[i].first);
+               if(target_solver_settings.getStringSettings()[i].second != settings.getStringSettings()[i].second)
+                  ++batchsize;
+            }
+            batchsize /= options.nbatches;
          }
 
-         return result;
+         return ModulStatus::kUnsuccesful;
+
+
+         batches.reserve(batchsize);
+         bool admissible = false;
+
+         for( int i = 0; i < target_solver_settings.getBoolSettings().size(); i++)
+         {
+            assert(target_solver_settings.getBoolSettings()[i].first == settings.getBoolSettings()[i].first);
+            if(target_solver_settings.getBoolSettings()[i].second != copy.getBoolSettings()[i].second)
+            {
+               //TODO: overwrite
+//               copy.getBoolSettings( )[ i ] = target_solver_settings.getBoolSettings( )[ i ];
+            }
+            if( !batches.empty() && ( batches.size() >= batchsize ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(problem, solution_exists, solution, copy);
+               if( solver->run(msg, originalSolverStatus, copy) == BuggerStatus::kSuccess )
+               {
+                  copy = SolverSettings(settings);
+                  //TODO restore
+//                  for( const auto &item: applied_reductions )
+//                     copy.getObjective( ).coefficients[ item ] = 0.0;
+               }
+               else
+               {
+                  //TODO:
+               }
+               batches.clear();
+            }
+         }
+         for( int i = 0; i < target_solver_settings.getIntSettings().size(); i++)
+         {
+            assert(target_solver_settings.getIntSettings()[i].first == settings.getIntSettings()[i].first);
+            if(target_solver_settings.getIntSettings()[i].second != settings.getIntSettings()[i].second)
+               ++batchsize;
+         }
+         for( int i = 0; i < target_solver_settings.getDoubleSettings().size(); i++)
+         {
+            assert(target_solver_settings.getDoubleSettings()[i].first == settings.getDoubleSettings()[i].first);
+            if(target_solver_settings.getDoubleSettings()[i].second != settings.getDoubleSettings()[i].second)
+               ++batchsize;
+         }
+         for( int i = 0; i < target_solver_settings.getLongSettings().size(); i++)
+         {
+            assert(target_solver_settings.getLongSettings()[i].first == settings.getLongSettings()[i].first);
+            if(target_solver_settings.getLongSettings()[i].second != settings.getLongSettings()[i].second)
+               ++batchsize;
+         }
+         for( int i = 0; i < target_solver_settings.getCharSettings().size(); i++)
+         {
+            assert(target_solver_settings.getCharSettings()[i].first == settings.getCharSettings()[i].first);
+            if(target_solver_settings.getCharSettings()[i].second != settings.getCharSettings()[i].second)
+               ++batchsize;
+         }
+         for( int i = 0; i < target_solver_settings.getStringSettings().size(); i++)
+         {
+            assert(target_solver_settings.getStringSettings()[i].first == settings.getStringSettings()[i].first);
+            if(target_solver_settings.getStringSettings()[i].second != settings.getStringSettings()[i].second)
+               ++batchsize;
+         }
+
+         if(!admissible)
+            return ModulStatus::kDidNotRun;
+//         if( applied_reductions.empty() )
+//            return ModulStatus::kUnsuccesful;
+//         else
+//         {
+//            problem = copy;
+//            nchgcoefs += applied_reductions.size();
+//            return ModulStatus::kSuccessful;
+//         }
       }
 
-//      void modify_parameters(int nbatches) override {
-//         SCIP_PARAM *batch;
-//
-//         int *inds;
-//         int nparams = SCIPgetNParams(scip);
-//         SCIP_PARAM **params = SCIPgetParams(scip);
-//         int batchsize = 1;
-//
-//         if( nbatches > 0 )
-//         {
-//            batchsize = nbatches - 1;
-//
-//            for( int i = 0; i < nparams; ++i )
-//               if( isSettingAdmissible(params[ i ]))
-//                  ++batchsize;
-//
-//            batchsize /= nbatches;
-//         }
-//
-//         (SCIPallocBufferArray(scip, &inds, batchsize));
-//         (SCIPallocBufferArray(scip, &batch, batchsize));
-//         int nbatch = 0;
-//
-//         for( int i = 0; i < nparams; ++i )
-//         {
-//            SCIP_PARAM *param;
-//
-//            param = params[ i ];
-//
-//            if( isSettingAdmissible(param))
-//            {
-//               inds[ nbatch ] = i;
-//               batch[ nbatch ].isfixed = param->isfixed;
-//               param->isfixed = FALSE;
-//
-//               switch( SCIPparamGetType(param))
-//               {
-//                  case SCIP_PARAMTYPE_BOOL:
-//                  {
-//                     SCIP_Bool *ptrbool;
-//                     ptrbool = ( param->data.boolparam.valueptr == nullptr ? &param->data.boolparam.curvalue
-//                                                                           : param->data.boolparam.valueptr );
-//                     batch[ nbatch ].data.boolparam.curvalue = *ptrbool;
-//                     *ptrbool = param->data.boolparam.defaultvalue;
-//                     break;
-//                  }
-//                  case SCIP_PARAMTYPE_INT:
-//                  {
-//                     int *ptrint;
-//                     ptrint = ( param->data.intparam.valueptr == nullptr ? &param->data.intparam.curvalue
-//                                                                         : param->data.intparam.valueptr );
-//                     batch[ nbatch ].data.intparam.curvalue = *ptrint;
-//                     *ptrint = param->data.intparam.defaultvalue;
-//                     break;
-//                  }
-//                  case SCIP_PARAMTYPE_LONGINT:
-//                  {
-//                     SCIP_Longint *ptrlongint;
-//                     ptrlongint = ( param->data.longintparam.valueptr == nullptr ? &param->data.longintparam.curvalue
-//                                                                                 : param->data.longintparam.valueptr );
-//                     batch[ nbatch ].data.longintparam.curvalue = *ptrlongint;
-//                     *ptrlongint = param->data.longintparam.defaultvalue;
-//                     break;
-//                  }
-//                  case SCIP_PARAMTYPE_REAL:
-//                  {
-//                     SCIP_Real *ptrreal;
-//                     ptrreal = ( param->data.realparam.valueptr == nullptr ? &param->data.realparam.curvalue
-//                                                                           : param->data.realparam.valueptr );
-//                     batch[ nbatch ].data.realparam.curvalue = *ptrreal;
-//                     *ptrreal = param->data.realparam.defaultvalue;
-//                     break;
-//                  }
-//                  case SCIP_PARAMTYPE_CHAR:
-//                  {
-//                     char *ptrchar;
-//                     ptrchar = ( param->data.charparam.valueptr == nullptr ? &param->data.charparam.curvalue
-//                                                                           : param->data.charparam.valueptr );
-//                     batch[ nbatch ].data.charparam.curvalue = *ptrchar;
-//                     *ptrchar = param->data.charparam.defaultvalue;
-//                     break;
-//                  }
-//                  case SCIP_PARAMTYPE_STRING:
-//                  {
-//                     char **ptrstring;
-//                     ptrstring = ( param->data.stringparam.valueptr == nullptr ? &param->data.stringparam.curvalue
-//                                                                               : param->data.stringparam.valueptr );
-//                     batch[ nbatch ].data.stringparam.curvalue = *ptrstring;
-//                     (BMSduplicateMemoryArray(ptrstring, param->data.stringparam.defaultvalue,
-//                                              strlen(param->data.stringparam.defaultvalue) + 1));
-//                     break;
-//                  }
-//                  default:
-//                     SCIPerrorMessage("unknown parameter type\n");
-//               }
-//
-//               ++nbatch;
-//            }
-//
-//         }
-//
-//      }
    };
 
 

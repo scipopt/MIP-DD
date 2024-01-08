@@ -113,8 +113,7 @@ namespace bugger {
             if( !batches_obj.empty() && ( batches_obj.size() >= batchsize || var >= copy.getNCols( ) - 1 ) )
             {
                auto solver = createSolver();
-//               solver->parseParameters();
-               solver->doSetUp(copy, solution_exists, solution);
+               solver->doSetUp(copy, solution_exists, solution, settings);
                if( solver->run(msg, originalSolverStatus, settings) == BuggerStatus::kSuccess )
                {
                   copy = Problem<double>(problem);

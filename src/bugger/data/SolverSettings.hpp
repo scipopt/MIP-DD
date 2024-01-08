@@ -40,6 +40,15 @@ namespace bugger {
 
    public:
 
+      SolverSettings()            :
+            bool_settings( { } ),
+            int_settings( { } ),
+            long_settings( { }),
+            double_settings( { }),
+            char_settings( { }),
+            string_settings( { } ) {
+      };
+
       SolverSettings(Vec<std::pair<std::string, bool>> &_bool_settings,
                      Vec<std::pair<std::string, int>> &_int_settings,
                      Vec<std::pair<std::string, long>> &_long_settings,
