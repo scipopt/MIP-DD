@@ -178,6 +178,18 @@ namespace bugger {
       BuggerStatus run(const Message &msg, SolverStatus originalStatus, SolverSettings settings) override {
 
 
+         SCIPsetBoolParam(scip, "constraints/setppc/cliquelifting", true);
+         SCIPsetIntParam(scip, "presolving/boundshift/maxrounds", -1);
+         SCIPsetIntParam(scip, "presolving/dualagg/maxrounds", -1);
+         SCIPsetIntParam(scip, "presolving/dualinfer/maxrounds", -1);
+         SCIPsetIntParam(scip, "presolving/qpkktref/maxrounds", -1);
+         SCIPsetIntParam(scip, "presolving/redvub/maxrounds", -1);
+         SCIPsetIntParam(scip, "presolving/tworowbnd/maxrounds", -1);
+         SCIPsetIntParam(scip, "presolving/stuffing/maxrounds", -1);
+         SCIPsetIntParam(scip, "propagating/probing/maxuseless", 1500);
+         SCIPsetIntParam(scip, "propagating/probing/maxtotaluseless", 75);
+
+
          //TODO: Expect failing assertion during solve
          SolverStatus status = solve( settings );
          BuggerStatus result = BuggerStatus::kSuccess;
