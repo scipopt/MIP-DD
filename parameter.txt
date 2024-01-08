@@ -1,0 +1,53 @@
+# bugger time limit [Numerical: [0,1.7976931348623157e+308]]
+tlim = 0.0
+      
+# initial bugger round [Integer]
+initround = 0
+ 
+# initial bugger stage [Integer]
+initstage = 0
+
+# maximum number of bugger rounds or -1 for no limit [Integer]
+maxrounds = -1
+
+# maximum number of bugger stages or -1 for number of included bugger modules [Integer]
+maxstages = -1
+
+# maximum number of batches or 0 for singleton batches [Integer]
+nbatches = 0
+
+# the feasibility tolerance [Numerical: [0,1e-1]]
+feastol = 1e-9;
+
+# epsilon tolerance to consider two values numerically equal [Numerical: [0,1e-1]]
+epsilon = 1e-6;
+
+# zeta tolerance to consider two values exactly equal [Numerical: [0,1e-1]]
+zeta = 0;
+
+# is the Module Coefficient enabled? [Boolean]
+coefficient.enabled = true
+
+# is the Module Constraint Rounding enabled? [Boolean]
+consround.enabled = true
+
+# is the Module Constraint enabled? [Boolean]
+constraint.enabled = true
+
+# is the Module Fixing enabled? [Boolean]
+fixing.enabled = true
+
+# is the Module Objective enabled? [Boolean]
+objective.enabled = true
+
+# is the Module Setting enabled? [Boolean]
+setting.enabled = true
+
+# is the Module Side enabled? [Boolean]
+side.enabled = true
+
+# is the Module Variable enabled? [Boolean]
+variable.enabled = true
+
+# is the Module Variable Rounding enabled? [Boolean]
+varround.enabled = true
