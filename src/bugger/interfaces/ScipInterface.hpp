@@ -85,7 +85,6 @@ namespace bugger {
          SCIP *scip = NULL;
 
          SCIPcreate(&scip);
-         SCIPincludeDefaultPlugins(scip);
          //TODO: this can be done easier
          auto retcode = SCIPreadProb(scip, filename.c_str( ), NULL);
          if( retcode != SCIP_OKAY )
@@ -102,7 +101,6 @@ namespace bugger {
       SolverSettings
       parseSettings(const std::string& settings) override
       {
-         SCIPincludeDefaultPlugins(scip);
          Vec<std::pair<std::string, bool>> bool_settings;
          Vec<std::pair<std::string, int>> int_settings;
          Vec<std::pair<std::string, long>> long_settings;
