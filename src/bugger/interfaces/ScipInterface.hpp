@@ -143,7 +143,7 @@ namespace bugger {
                   }
                   case SCIP_PARAMTYPE_REAL:
                   {
-                     SCIP_Real real_val = ( param->data.realparam.valueptr == nullptr ? param->data.realparam.curvalue
+                     double real_val = ( param->data.realparam.valueptr == nullptr ? param->data.realparam.curvalue
                                                                            : *param->data.realparam.valueptr );
                      double_settings.emplace_back(param->name, real_val);
                      break;
