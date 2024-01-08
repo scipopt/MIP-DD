@@ -90,9 +90,6 @@ namespace bugger {
          if( !target_settings_filename.empty( ))
          {
             auto target_solver_settings = parseSettings(target_settings_filename);
-            //TODO: set target settings file to SettingsModule
-            //TODO: file warning if settingsmodule is not there
-
             bool found = false;
             for( auto &item: modules )
                if( item->getName( ) == "setting" )
@@ -135,12 +132,14 @@ namespace bugger {
 
          for( int round = options.initround, stage = options.initstage, success = 0; round < options.maxrounds && stage < options.maxstages; ++round )
          {
-            //TODO: Write also parameters
             std::string newfilename = filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round) + ".mps";
             bugger::MpsWriter<double>::writeProb(newfilename, problem, origrow_mapping, origcol_mapping);
-            std::string newsettingsname = filename.substr(0, settings_filename.length( ) - ending) + "_" + std::to_string(round) + ".set";
-            createSolver()->writeSettings(newsettingsname, solver_settings);
-
+            if(!target_settings_filename.empty( ))
+            {
+               std::string newsettingsname =
+                     filename.substr(0, settings_filename.length( ) - ending) + "_" + std::to_string(round) + ".set";
+               createSolver( )->writeSettings(newsettingsname, solver_settings);
+            }
 
             if( is_time_exceeded(timer) )
                break;
