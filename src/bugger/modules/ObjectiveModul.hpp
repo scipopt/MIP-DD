@@ -54,7 +54,7 @@ namespace bugger
       }
 
       ModulStatus
-      execute(Problem<double> &problem, Solution<double>& solution, bool solution_exists, const BuggerOptions &options,  const SolverSettings& settings, const Timer &timer) override
+      execute(Problem<double> &problem, Solution<double>& solution, bool solution_exists, const BuggerOptions &options,  SolverSettings& settings, const Timer &timer) override
       {
          auto copy = Problem<double>(problem);
          Vec<int> applied_reductions { };

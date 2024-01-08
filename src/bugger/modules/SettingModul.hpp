@@ -57,17 +57,18 @@ namespace bugger {
 
       ModulStatus
       execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
-              const SolverSettings& settings, const Timer &timer) override {
+              SolverSettings& settings, const Timer &timer) override {
 
          if(!initialized)
             return ModulStatus::kUnsuccesful;
          ModulStatus result = ModulStatus::kUnsuccesful;
          SolverSettings copy = SolverSettings(settings);
+         SolverSettings fallback = SolverSettings(settings);
 
-         Vec<int> batches { };
+         //TODO: use batches
+//         Vec<int> batches { };
+         int batches = 0;
          int batchsize = 1;
-
-         auto solver = createSolver( );
 
          if( options.nbatches > 0 )
          {
@@ -82,7 +83,7 @@ namespace bugger {
             {
                assert(target_solver_settings.getIntSettings()[i].first == settings.getIntSettings()[i].first);
                if(target_solver_settings.getIntSettings()[i].second != settings.getIntSettings()[i].second)
-               ++batchsize;
+                  ++batchsize;
             }
             for( int i = 0; i < target_solver_settings.getDoubleSettings().size(); i++)
             {
@@ -108,13 +109,13 @@ namespace bugger {
                if(target_solver_settings.getStringSettings()[i].second != settings.getStringSettings()[i].second)
                   ++batchsize;
             }
+            if(batchsize == 0)
+               return ModulStatus::kDidNotRun;
             batchsize /= options.nbatches;
          }
 
-         return ModulStatus::kUnsuccesful;
-
-
-         batches.reserve(batchsize);
+//         batches.reserve(batchsize);
+         int changed_settings = 0;
          bool admissible = false;
 
          for( int i = 0; i < target_solver_settings.getBoolSettings().size(); i++)
@@ -122,68 +123,154 @@ namespace bugger {
             assert(target_solver_settings.getBoolSettings()[i].first == settings.getBoolSettings()[i].first);
             if(target_solver_settings.getBoolSettings()[i].second != copy.getBoolSettings()[i].second)
             {
-               //TODO: overwrite
-//               copy.getBoolSettings( )[ i ] = target_solver_settings.getBoolSettings( )[ i ];
+               copy.setBoolSettings(i, target_solver_settings.getBoolSettings( )[ i ].second);
+               batches++;
+               admissible = true;
             }
-            if( !batches.empty() && ( batches.size() >= batchsize ) )
+
+            if( batches != 0 && ( batches >= batchsize ) )
             {
                auto solver = createSolver();
                solver->doSetUp(problem, copy, solution_exists, solution);
                if( solver->run(msg, originalSolverStatus, copy) == BuggerStatus::kSuccess )
-               {
-                  copy = SolverSettings(settings);
-                  //TODO restore
-//                  for( const auto &item: applied_reductions )
-//                     copy.getObjective( ).coefficients[ item ] = 0.0;
-               }
+                  copy = SolverSettings(fallback);
                else
                {
-                  //TODO:
+                  fallback = SolverSettings(copy);
+                  changed_settings += batches;
                }
-               batches.clear();
+               batches = 0;
             }
          }
          for( int i = 0; i < target_solver_settings.getIntSettings().size(); i++)
          {
             assert(target_solver_settings.getIntSettings()[i].first == settings.getIntSettings()[i].first);
             if(target_solver_settings.getIntSettings()[i].second != settings.getIntSettings()[i].second)
-               ++batchsize;
+            {
+               copy.setIntSettings(i, target_solver_settings.getIntSettings( )[ i ].second);
+               batches++;
+               admissible = true;
+            }
+
+            if( batches != 0 && ( batches >= batchsize ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(problem, copy, solution_exists, solution);
+               if( solver->run(msg, originalSolverStatus, copy) == BuggerStatus::kSuccess )
+                  copy = SolverSettings(fallback);
+               else
+               {
+                  fallback = SolverSettings(copy);
+                  changed_settings += batches;
+               }
+               batches = 0;
+            }
          }
          for( int i = 0; i < target_solver_settings.getDoubleSettings().size(); i++)
          {
             assert(target_solver_settings.getDoubleSettings()[i].first == settings.getDoubleSettings()[i].first);
             if(target_solver_settings.getDoubleSettings()[i].second != settings.getDoubleSettings()[i].second)
-               ++batchsize;
+            {
+               copy.setDoubleSettings(i, target_solver_settings.getDoubleSettings( )[ i ].second);
+               batches++;
+               admissible = true;
+            }
+
+            if( batches != 0 && ( batches >= batchsize ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(problem, copy, solution_exists, solution);
+               if( solver->run(msg, originalSolverStatus, copy) == BuggerStatus::kSuccess )
+                  copy = SolverSettings(fallback);
+               else
+               {
+                  fallback = SolverSettings(copy);
+                  changed_settings += batches;
+               }
+               batches = 0;
+            }
          }
          for( int i = 0; i < target_solver_settings.getLongSettings().size(); i++)
          {
             assert(target_solver_settings.getLongSettings()[i].first == settings.getLongSettings()[i].first);
             if(target_solver_settings.getLongSettings()[i].second != settings.getLongSettings()[i].second)
-               ++batchsize;
+            {
+               copy.setLongSettings(i, target_solver_settings.getLongSettings( )[ i ].second);
+               batches++;
+               admissible = true;
+            }
+
+            if( batches != 0 && ( batches >= batchsize ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(problem, copy, solution_exists, solution);
+               if( solver->run(msg, originalSolverStatus, copy) == BuggerStatus::kSuccess )
+                  copy = SolverSettings(fallback);
+               else
+               {
+                  fallback = SolverSettings(copy);
+                  changed_settings += batches;
+               }
+               batches = 0;
+            }
          }
          for( int i = 0; i < target_solver_settings.getCharSettings().size(); i++)
          {
             assert(target_solver_settings.getCharSettings()[i].first == settings.getCharSettings()[i].first);
             if(target_solver_settings.getCharSettings()[i].second != settings.getCharSettings()[i].second)
-               ++batchsize;
+            {
+               copy.setCharSettings(i, target_solver_settings.getCharSettings( )[ i ].second);
+               batches++;
+               admissible = true;
+            }
+
+            if( batches != 0 && ( batches >= batchsize ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(problem, copy, solution_exists, solution);
+               if( solver->run(msg, originalSolverStatus, copy) == BuggerStatus::kSuccess )
+                  copy = SolverSettings(fallback);
+               else
+               {
+                  fallback = SolverSettings(copy);
+                  changed_settings += batches;
+               }
+               batches = 0;
+            }
          }
          for( int i = 0; i < target_solver_settings.getStringSettings().size(); i++)
          {
             assert(target_solver_settings.getStringSettings()[i].first == settings.getStringSettings()[i].first);
             if(target_solver_settings.getStringSettings()[i].second != settings.getStringSettings()[i].second)
-               ++batchsize;
+            {
+               copy.setStringSettings(i, target_solver_settings.getStringSettings( )[ i ].second);
+               batches++;
+               admissible = true;
+            }
+
+            if( batches != 0 && ( batches >= batchsize ) && (i + 1) == target_solver_settings.getStringSettings().size() )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(problem, copy, solution_exists, solution);
+               if( solver->run(msg, originalSolverStatus, copy) == BuggerStatus::kSuccess )
+                  copy = SolverSettings(fallback);
+               else
+               {
+                  fallback = SolverSettings(copy);
+                  changed_settings += batches;
+               }
+               batches = 0;
+            }
          }
 
          if(!admissible)
             return ModulStatus::kDidNotRun;
-//         if( applied_reductions.empty() )
-//            return ModulStatus::kUnsuccesful;
-//         else
-//         {
-//            problem = copy;
-//            nchgcoefs += applied_reductions.size();
-//            return ModulStatus::kSuccessful;
-//         }
+         if(changed_settings == 0)
+            return ModulStatus::kUnsuccesful;
+
+         settings = SolverSettings(copy);
+         nchgsettings += changed_settings;
+         return ModulStatus::kSuccessful;
       }
 
    };

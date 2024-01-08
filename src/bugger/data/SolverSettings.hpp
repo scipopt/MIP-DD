@@ -88,6 +88,30 @@ namespace bugger {
       const Vec<std::pair<std::string, std::string>> &getStringSettings( ) const {
          return string_settings;
       }
+
+      void setBoolSettings(int index, bool value) {
+         bool_settings[ index ].second = value;
+      }
+
+      void setIntSettings(int index, int value) {
+         int_settings[ index ].second = value;
+      }
+
+      void setLongSettings(int index, long value) {
+         long_settings[ index ].second = value;
+      }
+
+      void setDoubleSettings(int index, double value) {
+         double_settings[ index ].second = value;
+      }
+
+      void setCharSettings(int index, char value) {
+         char_settings[ index ].second = value;
+      }
+
+      void setStringSettings(int index, std::string value) {
+         string_settings[ index ].second = value;
+      }
    };
 
 } // namespace bugger

@@ -52,9 +52,6 @@
 
 #include <boost/program_options.hpp>
 
-namespace bugger {
-
-} // namespace bugger
 
 int
 main(int argc, char *argv[]) {
@@ -64,6 +61,7 @@ main(int argc, char *argv[]) {
 
    // get the options passed by the user
    OptionsInfo optionsInfo;
+
    try
    {
       optionsInfo = parseOptions(argc, argv);
@@ -79,8 +77,6 @@ main(int argc, char *argv[]) {
       return 0;
 
    //TODO: think how to implement this. and handle more cases
-//   ScipInterface scip{};
-//   auto prob = scip.readProblem(optionsInfo.instance_file);
    auto prob = MpsParser<double>::loadProblem(optionsInfo.instance_file);
 
    if( !prob )

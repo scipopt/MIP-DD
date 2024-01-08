@@ -198,7 +198,7 @@ namespace bugger {
       SolverSettings parseSettings( const std::string& filename) {
          auto solver = createSolver();
          assert(!filename.empty());
-         return solver->parseSettings(settings_filename);
+         return solver->parseSettings(filename);
       }
 
       //TODO: this is duplicates function in BuggerModul -> move this to a function to hand it to BuggerModul so that is has to be declared only once

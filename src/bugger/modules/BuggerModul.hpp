@@ -104,7 +104,7 @@ namespace bugger {
       }
 
       ModulStatus
-      run(Problem<double> &problem, const SolverSettings& settings, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
+      run(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
           const Timer &timer) {
          if( !enabled || delayed )
             return ModulStatus::kDidNotRun;
@@ -199,7 +199,7 @@ namespace bugger {
 
       virtual ModulStatus
       execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
-              const SolverSettings& settings, const Timer &timer) = 0;
+              SolverSettings& settings, const Timer &timer) = 0;
 
       void
       setName(const std::string &value) {
@@ -252,6 +252,7 @@ namespace bugger {
       int nfixedvars;
       int nchgsides;
       int naggrvars;
+      int nchgsettings;
       int ndeletedrows;
       Num<double> num;
       Message msg;
