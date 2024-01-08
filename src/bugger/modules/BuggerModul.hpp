@@ -122,7 +122,7 @@ namespace bugger {
 #else
          auto start = std::chrono::steady_clock::now();
 #endif
-         ModulStatus result = execute(problem, solution, solution_exists, options, settings, timer);
+         ModulStatus result = execute(problem, settings, solution, solution_exists, options, timer);
 #ifdef BUGGER_TBB
          if( result == ModulStatus::kSuccessful )
             nsuccessCall++;
@@ -199,8 +199,8 @@ namespace bugger {
       }
 
       virtual ModulStatus
-      execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
-              SolverSettings& settings, const Timer &timer) = 0;
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists,
+              const BuggerOptions &options, const Timer &timer) = 0;
 
       void
       setName(const std::string &value) {
