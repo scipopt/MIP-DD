@@ -94,9 +94,15 @@ namespace bugger {
 
       }
 
+      void writeSettings(std::string filename, SolverSettings solver_settings ) {
+         set_parameters(solver_settings);
+         SCIPwriteParams(scip, filename.c_str(), 0, 1);
+      };
+
       SolverSettings
       parseSettings(const std::string& settings) override
       {
+         SCIPincludeDefaultPlugins(scip);
          Vec<std::pair<std::string, bool>> bool_settings;
          Vec<std::pair<std::string, int>> int_settings;
          Vec<std::pair<std::string, long>> long_settings;
@@ -177,19 +183,6 @@ namespace bugger {
 
       BuggerStatus run(const Message &msg, SolverStatus originalStatus, SolverSettings settings) override {
 
-
-         SCIPsetBoolParam(scip, "constraints/setppc/cliquelifting", true);
-         SCIPsetIntParam(scip, "presolving/boundshift/maxrounds", -1);
-         SCIPsetIntParam(scip, "presolving/dualagg/maxrounds", -1);
-         SCIPsetIntParam(scip, "presolving/dualinfer/maxrounds", -1);
-         SCIPsetIntParam(scip, "presolving/qpkktref/maxrounds", -1);
-         SCIPsetIntParam(scip, "presolving/redvub/maxrounds", -1);
-         SCIPsetIntParam(scip, "presolving/tworowbnd/maxrounds", -1);
-         SCIPsetIntParam(scip, "presolving/stuffing/maxrounds", -1);
-         SCIPsetIntParam(scip, "propagating/probing/maxuseless", 1500);
-         SCIPsetIntParam(scip, "propagating/probing/maxtotaluseless", 75);
-
-
          //TODO: Expect failing assertion during solve
          SolverStatus status = solve( settings );
          BuggerStatus result = BuggerStatus::kSuccess;
@@ -240,19 +233,7 @@ namespace bugger {
       SCIP_RETCODE
       setup(const Problem<double> &problem, bool solution_exits, const Solution<double> sol, SolverSettings settings) {
 
-         for(const auto& pair : settings.getBoolSettings())
-            SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getIntSettings())
-            SCIPsetIntParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getLongSettings())
-            SCIPsetLongintParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getDoubleSettings())
-            SCIPsetRealParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getCharSettings())
-            SCIPsetCharParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getStringSettings())
-            SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
-         SCIPwriteParams(scip, "test.set", 0, 1);
+         set_parameters(settings);
 
          int ncols = problem.getNCols( );
          int nrows = problem.getNRows( );
@@ -359,6 +340,31 @@ namespace bugger {
          }
 
          return SCIP_OKAY;
+      }
+
+      void set_parameters(const SolverSettings &settings) const {
+         for(const auto& pair : settings.getBoolSettings())
+            SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getIntSettings())
+            SCIPsetIntParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getLongSettings())
+            SCIPsetLongintParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getDoubleSettings())
+            SCIPsetRealParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getCharSettings())
+            SCIPsetCharParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getStringSettings())
+            SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
+//         SCIPsetBoolParam(scip, "constraints/setppc/cliquelifting", true);
+//         SCIPsetIntParam(scip, "presolving/boundshift/maxrounds", -1);
+//         SCIPsetIntParam(scip, "presolving/dualagg/maxrounds", -1);
+//         SCIPsetIntParam(scip, "presolving/dualinfer/maxrounds", -1);
+//         SCIPsetIntParam(scip, "presolving/qpkktref/maxrounds", -1);
+//         SCIPsetIntParam(scip, "presolving/redvub/maxrounds", -1);
+//         SCIPsetIntParam(scip, "presolving/tworowbnd/maxrounds", -1);
+//         SCIPsetIntParam(scip, "presolving/stuffing/maxrounds", -1);
+//         SCIPsetIntParam(scip, "propagating/probing/maxuseless", 1500);
+//         SCIPsetIntParam(scip, "propagating/probing/maxtotaluseless", 75);
       }
 
       SCIP_SOL *

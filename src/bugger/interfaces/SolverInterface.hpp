@@ -51,7 +51,7 @@ namespace bugger {
       SolverStatus solve( SolverSettings settings) = 0;
 
       virtual
-      void modify_parameters(int nbatches) { }
+      void writeSettings(std::string filename, SolverSettings solver_settings ) = 0;
 
       virtual
       SolverSettings parseSettings(const std::string& settings) = 0;

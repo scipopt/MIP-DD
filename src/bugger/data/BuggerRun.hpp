@@ -138,6 +138,9 @@ namespace bugger {
             //TODO: Write also parameters
             std::string newfilename = filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round) + ".mps";
             bugger::MpsWriter<double>::writeProb(newfilename, problem, origrow_mapping, origcol_mapping);
+            std::string newsettingsname = filename.substr(0, settings_filename.length( ) - ending) + "_" + std::to_string(round) + ".set";
+            createSolver()->writeSettings(newsettingsname, solver_settings);
+
 
             if( is_time_exceeded(timer) )
                break;
