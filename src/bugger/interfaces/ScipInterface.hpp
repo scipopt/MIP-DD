@@ -69,7 +69,7 @@ namespace bugger {
 
    public:
       explicit ScipInterface( ) {
-         if( SCIPcreate(&scip) != SCIP_OKAY )
+         if( SCIPcreate(&scip) != SCIP_OKAY || SCIPincludeDefaultPlugins(scip) != SCIP_OKAY )
             throw std::runtime_error("could not create SCIP");
       }
 
