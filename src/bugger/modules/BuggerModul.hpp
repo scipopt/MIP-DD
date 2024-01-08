@@ -104,8 +104,8 @@ namespace bugger {
       }
 
       ModulStatus
-      run(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
-          const SolverSettings& settings, const Timer &timer) {
+      run(Problem<double> &problem, const SolverSettings& settings, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
+          const Timer &timer) {
          if( !enabled || delayed )
             return ModulStatus::kDidNotRun;
 

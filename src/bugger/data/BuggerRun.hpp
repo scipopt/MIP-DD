@@ -144,7 +144,7 @@ namespace bugger {
 
             for( int module = 0; module <= stage && stage < options.maxstages; ++module )
             {
-               results[ module ] = modules[ module ]->run(problem, solution, solution_exists, options, solver_settings, timer);
+               results[ module ] = modules[ module ]->run(problem, solver_settings, solution, solution_exists, options, timer);
 
                if( results[ module ] == bugger::ModulStatus::kSuccessful )
                   success = module;
