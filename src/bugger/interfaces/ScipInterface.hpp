@@ -79,20 +79,6 @@ namespace bugger {
          assert(result == SCIP_OKAY);
       }
 
-      static boost::optional<Problem<double>>
-      readProblem(const std::string &filename) {
-         Problem<double> problem;
-         SCIP *scip = NULL;
-
-         SCIPcreate(&scip);
-         //TODO: this can be done easier
-         auto retcode = SCIPreadProb(scip, filename.c_str( ), NULL);
-         if( retcode != SCIP_OKAY )
-            return problem;
-         return buildProblem(scip);
-
-      }
-
       void writeSettings(std::string filename, SolverSettings solver_settings ) {
          set_parameters(solver_settings);
          SCIPwriteParams(scip, filename.c_str(), 0, 1);
