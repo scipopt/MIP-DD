@@ -30,7 +30,7 @@ namespace bugger {
 
    class VarroundModul : public BuggerModul {
    public:
-      VarroundModul(const std::string& _setting, const Message& _msg, const Num<double> &_num) : BuggerModul(_setting) {
+      VarroundModul(const Message& _msg, const Num<double> &_num) : BuggerModul() {
          this->setName("varround");
          this->msg = _msg;
          this->num = _num;

@@ -63,13 +63,12 @@ namespace bugger {
    class ScipInterface : public SolverInterface {
 
    private:
-      const std::string& setting;
       SCIP* scip = nullptr;
       Vec<SCIP_VAR*> vars;
       double reference = std::numeric_limits<double>::signaling_NaN();
 
    public:
-      explicit ScipInterface(const std::string& _setting) : setting(_setting) {
+      explicit ScipInterface( ) {
          if( SCIPcreate(&scip) != SCIP_OKAY )
             throw std::runtime_error("could not create SCIP");
       }
@@ -116,7 +115,7 @@ namespace bugger {
             param = params[ i ];
 
 //            if( ( param->isfixed || !SCIPparamIsDefault(param)) && isSettingAdmissible(param))
-            if( isSettingAdmissible(param) )
+            if( is_setting_relevant(param) )
             {
                param->isfixed = FALSE;
                switch( SCIPparamGetType(param))
@@ -125,7 +124,6 @@ namespace bugger {
                   {
                      bool bool_val = ( param->data.boolparam.valueptr == nullptr ? param->data.boolparam.curvalue
                                                                            : *param->data.boolparam.valueptr );
-//                     *ptrbool = param->data.boolparam.defaultvalue;
                      bool_settings.emplace_back(param->name, bool_val);
                      break;
                   }
@@ -133,7 +131,6 @@ namespace bugger {
                   {
                      int int_value = ( param->data.intparam.valueptr == nullptr ? param->data.intparam.curvalue
                                                                                 : *param->data.intparam.valueptr );
-//                     *ptrint = param->data.intparam.defaultvalue;
                      int_settings.emplace_back( param->name, int_value);
                      break;
                   }
@@ -141,7 +138,6 @@ namespace bugger {
                   {
                      long long_val = ( param->data.longintparam.valueptr == nullptr ? param->data.longintparam.curvalue
                                                                                          : *param->data.longintparam.valueptr );
-//                     *ptrlongint = param->data.longintparam.defaultvalue;
                      long_settings.emplace_back(param->name, long_val);
                      break;
                   }
@@ -149,7 +145,6 @@ namespace bugger {
                   {
                      SCIP_Real real_val = ( param->data.realparam.valueptr == nullptr ? param->data.realparam.curvalue
                                                                            : *param->data.realparam.valueptr );
-//                     *ptrreal = param->data.realparam.defaultvalue;
                      double_settings.emplace_back(param->name, real_val);
                      break;
                   }
@@ -158,7 +153,6 @@ namespace bugger {
 
                      char char_val = ( param->data.charparam.valueptr == nullptr ? param->data.charparam.curvalue
                                                                            : *param->data.charparam.valueptr );
-//                     *ptrchar = param->data.charparam.defaultvalue;
                      char_settings.emplace_back(param->name, char_val);
 
                      break;
@@ -167,10 +161,7 @@ namespace bugger {
                   {
                      std::string string_val = ( param->data.stringparam.valueptr == nullptr ? param->data.stringparam.curvalue
                                                                                : *param->data.stringparam.valueptr );
-//                     (BMSduplicateMemoryArray(ptrstring, param->data.stringparam.defaultvalue,
-//                                              strlen(param->data.stringparam.defaultvalue) + 1));
                      string_settings.emplace_back(param->name, string_val);
-
                      break;
                   }
                   default:
@@ -239,7 +230,7 @@ namespace bugger {
 
    private:
 
-      bool isSettingAdmissible(SCIP_PARAM *param) {
+      bool is_setting_relevant(SCIP_PARAM *param) {
          /* keep reading and writing settings because input and output is not monitored */
          return strncmp("display/", SCIPparamGetName(param), 8) != 0 &&
                 strncmp("limits/", SCIPparamGetName(param), 7) != 0
@@ -251,8 +242,6 @@ namespace bugger {
       setup(const Problem<double> &problem, bool solution_exits, const Solution<double> sol) {
          SCIP_CALL(SCIPincludeDefaultPlugins(scip));
          //TODO: Store problem settings
-         if( !setting.empty( ))
-            SCIP_CALL(SCIPreadParams(scip, setting.c_str( )));
          int ncols = problem.getNCols( );
          int nrows = problem.getNRows( );
          const Vec<String> &varNames = problem.getVariableNames( );

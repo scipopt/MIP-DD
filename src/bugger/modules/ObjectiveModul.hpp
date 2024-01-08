@@ -32,7 +32,7 @@ namespace bugger
    class ObjectiveModul : public BuggerModul
    {
     public:
-      ObjectiveModul(const std::string& _setting, const Message& _msg, const Num<double> &_num) : BuggerModul(_setting)
+      ObjectiveModul( const Message& _msg, const Num<double> &_num) : BuggerModul( )
       {
          this->setName( "objective" );
          this->msg = _msg;

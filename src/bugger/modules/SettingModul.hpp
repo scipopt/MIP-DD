@@ -29,17 +29,30 @@
 
 namespace bugger {
 
+
+
    class SettingModul : public BuggerModul {
+
+//      SolverSettings target_solver_settings;
+
    public:
-      SettingModul(const std::string& _setting, const Message &_msg, const Num<double> &_num) : BuggerModul(_setting) {
+
+      SettingModul( const Message &_msg, const Num<double> &_num) : BuggerModul() {
          this->setName("setting");
          this->msg = _msg;
          this->num = _num;
+//         target_solver_settings = SolverSettings{};
       }
 
       bool
       initialize( ) override {
          return false;
+      }
+
+      void
+      set_target_settings(SolverSettings _target_solver_settings)
+      {
+//         target_solver_settings = _target_solver_settings;
       }
 
       ModulStatus

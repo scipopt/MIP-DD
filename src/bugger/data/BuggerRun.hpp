@@ -89,13 +89,25 @@ namespace bugger {
          SolverSettings solver_settings = parseSettings(settings_filename);
          if( !target_settings_filename.empty( ))
          {
+            auto target_solver_settings = parseSettings(target_settings_filename);
             //TODO: set target settings file to SettingsModule
             //TODO: file warning if settingsmodule is not there
-            auto target_solver_settings = parseSettings(target_settings_filename);
+
+            bool found = false;
+            for( auto &item: modules )
+               if( item->getName( ) == "setting" )
+               {
+                  found = true;
+                  item->set_target_settings(target_solver_settings);
+               }
+            if( !found )
+               msg.error("Settings Module not present but Target Settings File provided!");
          }
          else
          {
-            //TODO: deactivate SettingsModule
+            for( const auto &item: modules )
+               if( item->getName( ) == "setting" )
+                  item->setEnabled(false);
          }
          auto solverstatus = getOriginalSolveStatus( solver_settings );
          for(const auto & module : modules)
@@ -151,15 +163,15 @@ namespace bugger {
 
       void addDefaultModules( const Num<double>& num ) {
          using uptr = std::unique_ptr<bugger::BuggerModul>;
-         addModul(uptr(new SettingModul(settings_filename, msg, num)));
-         addModul(uptr(new ConstraintModul(settings_filename, msg, num)));
-         addModul(uptr(new VariableModul(settings_filename, msg, num)));
-         addModul(uptr(new SideModul(settings_filename, msg, num)));
-         addModul(uptr(new ObjectiveModul(settings_filename, msg, num)));
-         addModul(uptr(new CoefficientModul(settings_filename, msg, num)));
-         addModul(uptr(new FixingModul(settings_filename, msg, num)));
-         addModul(uptr(new VarroundModul(settings_filename, msg, num)));
-         addModul(uptr(new ConsRoundModul(settings_filename, msg, num)));
+         addModul(uptr(new SettingModul( msg, num)));
+         addModul(uptr(new ConstraintModul( msg, num)));
+         addModul(uptr(new VariableModul( msg, num)));
+         addModul(uptr(new SideModul( msg, num)));
+         addModul(uptr(new ObjectiveModul( msg, num)));
+         addModul(uptr(new CoefficientModul( msg, num)));
+         addModul(uptr(new FixingModul( msg, num)));
+         addModul(uptr(new VarroundModul( msg, num)));
+         addModul(uptr(new ConsRoundModul( msg, num)));
       }
 
       void
@@ -193,7 +205,7 @@ namespace bugger {
       std::unique_ptr<SolverInterface>
       createSolver(){
 #ifdef BUGGER_HAVE_SCIP
-         return std::unique_ptr<SolverInterface>(new ScipInterface {settings_filename});
+         return std::unique_ptr<SolverInterface>(new ScipInterface { });
 #else
          msg.error("No solver specified -- aborting ....");
          return nullptr;

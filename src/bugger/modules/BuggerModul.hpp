@@ -55,7 +55,7 @@ namespace bugger {
 
    class BuggerModul {
    public:
-      BuggerModul(const std::string& _setting) : setting(_setting) {
+      BuggerModul( ) {
          ncalls = 0;
          nsuccessCall = 0;
          name = "unnamed";
@@ -76,6 +76,11 @@ namespace bugger {
       virtual bool
       initialize( ) {
          return false;
+      }
+
+      void
+      set_target_settings(SolverSettings _target_solver_settings)
+      {
       }
 
       virtual void
@@ -178,7 +183,7 @@ namespace bugger {
       std::unique_ptr<SolverInterface>
       createSolver(){
 #ifdef BUGGER_HAVE_SCIP
-         return std::unique_ptr<SolverInterface>(new ScipInterface {setting});
+         return std::unique_ptr<SolverInterface>(new ScipInterface { });
 #else
          msg.error("No solver specified -- aborting ....");
          return nullptr;
@@ -234,7 +239,6 @@ namespace bugger {
 
 
    private:
-      const std::string& setting;
       std::string name;
       double execTime;
       bool enabled;
