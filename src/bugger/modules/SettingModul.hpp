@@ -128,7 +128,7 @@ namespace bugger {
             if( !batches.empty() && ( batches.size() >= batchsize ) )
             {
                auto solver = createSolver();
-               solver->doSetUp(problem, solution_exists, solution, copy);
+               solver->doSetUp(problem, copy, solution_exists, solution);
                if( solver->run(msg, originalSolverStatus, copy) == BuggerStatus::kSuccess )
                {
                   copy = SolverSettings(settings);

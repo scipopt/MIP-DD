@@ -191,7 +191,7 @@ namespace bugger {
 
       SolverStatus getOriginalSolveStatus( const SolverSettings& settings) {
          auto solver = createSolver();
-         solver->doSetUp(problem, false, solution, settings);
+         solver->doSetUp(problem, settings, false, solution);
          return solver->solve( settings );
       }
 

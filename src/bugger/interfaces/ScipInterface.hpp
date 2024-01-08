@@ -74,7 +74,7 @@ namespace bugger {
       }
 
       void
-      doSetUp(const Problem<double> &problem, bool solution_exits, const Solution<double> sol, SolverSettings settings) override {
+      doSetUp(const Problem<double> &problem, SolverSettings settings, bool solution_exits, const Solution<double> sol) override {
          auto result = setup(problem, solution_exits, sol, settings);
          assert(result == SCIP_OKAY);
       }
