@@ -67,6 +67,7 @@ namespace bugger {
          nfixedvars = 0;
          nchgsides = 0;
          naggrvars = 0;
+         nchgsettings = 0;
          ndeletedrows = 0;
       }
 

@@ -30,10 +30,14 @@
 namespace bugger {
 
    class SettingModul : public BuggerModul {
+
    private:
+
       SolverSettings target_solver_settings ;
       bool initialized = false;
+
    public:
+
       SettingModul( const Message &_msg, const Num<double> &_num) : BuggerModul() {
          this->setName("setting");
          this->msg = _msg;
@@ -46,16 +50,12 @@ namespace bugger {
          return false;
       }
 
-
-      virtual void
+      void
       set_target_settings(SolverSettings& _target_solver_settings) override
       {
          target_solver_settings = _target_solver_settings;
          initialized = true;
       }
-
-
-
 
       ModulStatus
       execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
@@ -328,6 +328,7 @@ namespace bugger {
       }
 
    private:
+
       SolverSettings
       reset(SolverSettings &settings, const Vec <std::pair<int, bool>>& applied_bool, const Vec <std::pair<int, int>>& applied_int,
             const Vec <std::pair<int, long>>& applied_long, const Vec <std::pair<int, double>>& applied_double,
