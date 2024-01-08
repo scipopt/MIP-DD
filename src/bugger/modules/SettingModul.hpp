@@ -44,12 +44,11 @@ namespace bugger {
 
       ModulStatus
       execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
-              const Timer &timer) override {
+              const SolverSettings& settings, const Timer &timer) override {
 
          ModulStatus result = ModulStatus::kUnsuccesful;
          return result;
          auto solver = createSolver( );
-         solver->parseParameters( );
          //TODO: think of a abortion criteria
          while( true )
          {
@@ -57,7 +56,7 @@ namespace bugger {
             solver->modify_parameters(options.nbatches);
             solver->doSetUp(problem, solution_exists, solution);
             //TODO: add batches for solving
-            if( solver->run(msg,originalSolverStatus) != BuggerStatus::kFail )
+            if( solver->run(msg,originalSolverStatus, settings) != BuggerStatus::kFail )
             {
                //TODO: ignore new parameter file
             }
@@ -71,6 +70,109 @@ namespace bugger {
 
          return result;
       }
+
+//      void modify_parameters(int nbatches) override {
+//         SCIP_PARAM *batch;
+//
+//         int *inds;
+//         int nparams = SCIPgetNParams(scip);
+//         SCIP_PARAM **params = SCIPgetParams(scip);
+//         int batchsize = 1;
+//
+//         if( nbatches > 0 )
+//         {
+//            batchsize = nbatches - 1;
+//
+//            for( int i = 0; i < nparams; ++i )
+//               if( isSettingAdmissible(params[ i ]))
+//                  ++batchsize;
+//
+//            batchsize /= nbatches;
+//         }
+//
+//         (SCIPallocBufferArray(scip, &inds, batchsize));
+//         (SCIPallocBufferArray(scip, &batch, batchsize));
+//         int nbatch = 0;
+//
+//         for( int i = 0; i < nparams; ++i )
+//         {
+//            SCIP_PARAM *param;
+//
+//            param = params[ i ];
+//
+//            if( isSettingAdmissible(param))
+//            {
+//               inds[ nbatch ] = i;
+//               batch[ nbatch ].isfixed = param->isfixed;
+//               param->isfixed = FALSE;
+//
+//               switch( SCIPparamGetType(param))
+//               {
+//                  case SCIP_PARAMTYPE_BOOL:
+//                  {
+//                     SCIP_Bool *ptrbool;
+//                     ptrbool = ( param->data.boolparam.valueptr == nullptr ? &param->data.boolparam.curvalue
+//                                                                           : param->data.boolparam.valueptr );
+//                     batch[ nbatch ].data.boolparam.curvalue = *ptrbool;
+//                     *ptrbool = param->data.boolparam.defaultvalue;
+//                     break;
+//                  }
+//                  case SCIP_PARAMTYPE_INT:
+//                  {
+//                     int *ptrint;
+//                     ptrint = ( param->data.intparam.valueptr == nullptr ? &param->data.intparam.curvalue
+//                                                                         : param->data.intparam.valueptr );
+//                     batch[ nbatch ].data.intparam.curvalue = *ptrint;
+//                     *ptrint = param->data.intparam.defaultvalue;
+//                     break;
+//                  }
+//                  case SCIP_PARAMTYPE_LONGINT:
+//                  {
+//                     SCIP_Longint *ptrlongint;
+//                     ptrlongint = ( param->data.longintparam.valueptr == nullptr ? &param->data.longintparam.curvalue
+//                                                                                 : param->data.longintparam.valueptr );
+//                     batch[ nbatch ].data.longintparam.curvalue = *ptrlongint;
+//                     *ptrlongint = param->data.longintparam.defaultvalue;
+//                     break;
+//                  }
+//                  case SCIP_PARAMTYPE_REAL:
+//                  {
+//                     SCIP_Real *ptrreal;
+//                     ptrreal = ( param->data.realparam.valueptr == nullptr ? &param->data.realparam.curvalue
+//                                                                           : param->data.realparam.valueptr );
+//                     batch[ nbatch ].data.realparam.curvalue = *ptrreal;
+//                     *ptrreal = param->data.realparam.defaultvalue;
+//                     break;
+//                  }
+//                  case SCIP_PARAMTYPE_CHAR:
+//                  {
+//                     char *ptrchar;
+//                     ptrchar = ( param->data.charparam.valueptr == nullptr ? &param->data.charparam.curvalue
+//                                                                           : param->data.charparam.valueptr );
+//                     batch[ nbatch ].data.charparam.curvalue = *ptrchar;
+//                     *ptrchar = param->data.charparam.defaultvalue;
+//                     break;
+//                  }
+//                  case SCIP_PARAMTYPE_STRING:
+//                  {
+//                     char **ptrstring;
+//                     ptrstring = ( param->data.stringparam.valueptr == nullptr ? &param->data.stringparam.curvalue
+//                                                                               : param->data.stringparam.valueptr );
+//                     batch[ nbatch ].data.stringparam.curvalue = *ptrstring;
+//                     (BMSduplicateMemoryArray(ptrstring, param->data.stringparam.defaultvalue,
+//                                              strlen(param->data.stringparam.defaultvalue) + 1));
+//                     break;
+//                  }
+//                  default:
+//                     SCIPerrorMessage("unknown parameter type\n");
+//               }
+//
+//               ++nbatch;
+//            }
+//
+//         }
+//
+//      }
    };
 
 

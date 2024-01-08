@@ -105,7 +105,7 @@ main(int argc, char *argv[]) {
 
    //TODO: why can this not be auto generated in the class?
    Vec<std::unique_ptr<BuggerModul>> list { };
-   BuggerRun bugger { optionsInfo.scip_settings_file, problem, sol, sol_exists, list };
+   BuggerRun bugger { optionsInfo.solver_settings_file, optionsInfo.target_solver_settings_file, problem, sol, sol_exists, list };
 
    if( !optionsInfo.param_settings_file.empty( ) || !optionsInfo.unparsed_options.empty( ))
    {

@@ -31,6 +31,7 @@
 
 #include "bugger/data/Problem.hpp"
 #include "bugger/data/Solution.hpp"
+#include "bugger/data/SolverSettings.hpp"
 
 namespace bugger {
 
@@ -46,17 +47,16 @@ namespace bugger {
 
 
       virtual
-      BuggerStatus run(const Message &msg, SolverStatus originalStatus) = 0;
+      BuggerStatus run(const Message &msg, SolverStatus originalStatus, SolverSettings settings) = 0;
 
       virtual
-      SolverStatus solve( ) = 0;
+      SolverStatus solve( SolverSettings settings) = 0;
 
       virtual
       void modify_parameters(int nbatches) { }
 
-      void parseParameters( ) {
-
-      }
+      virtual
+      SolverSettings parseSettings(const std::string& settings) = 0;
 
       static boost::optional<Problem<double>>
       readProblem(const std::string& filename)
@@ -66,7 +66,7 @@ namespace bugger {
       }
 
 
-      virtual ~SolverInterface(){};
+      virtual ~SolverInterface() = default;
    };
 
 } // namespace bugger

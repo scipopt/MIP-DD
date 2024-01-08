@@ -52,7 +52,8 @@ namespace bugger {
 
    private:
       bugger::BuggerOptions options;
-      const std::string& setting;
+      const std::string& settings_filename;
+      const std::string& target_settings_filename;
       bugger::Problem<double> &problem;
       bugger::Solution<double> &solution;
       bool solution_exists;
@@ -64,9 +65,9 @@ namespace bugger {
 
    public:
 
-      BuggerRun(const std::string& _setting, bugger::Problem<double> &_problem, bugger::Solution<double> &_solution,
+      BuggerRun(const std::string& _settings_filename, const std::string& _target_settings_filename, bugger::Problem<double> &_problem, bugger::Solution<double> &_solution,
                 bool _solution_exists, bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
-            : options({ }), setting(_setting), problem(_problem), solution(_solution),
+            : options({ }), settings_filename(_settings_filename), target_settings_filename(_target_settings_filename), problem(_problem), solution(_solution),
               solution_exists(_solution_exists), modules(_modules) { }
 
       bool
@@ -85,7 +86,18 @@ namespace bugger {
       void apply(bugger::Timer &timer, std::string filename) {
          results.resize(modules.size( ));
 
-         auto solverstatus = getOriginalSolveStatus( );
+         SolverSettings solver_settings = parseSettings(settings_filename);
+         if( !target_settings_filename.empty( ))
+         {
+            //TODO: set target settings file to SettingsModule
+            //TODO: file warning if settingsmodule is not there
+            auto target_solver_settings = parseSettings(target_settings_filename);
+         }
+         else
+         {
+            //TODO: deactivate SettingsModule
+         }
+         auto solverstatus = getOriginalSolveStatus( solver_settings );
          for(const auto & module : modules)
              module->setOriginalSolverStatus(solverstatus);
 
@@ -101,7 +113,7 @@ namespace bugger {
             options.maxrounds = INT_MAX;
 
          if( options.maxstages < 0 || options.maxstages > modules.size( ) )
-            options.maxstages = modules.size( );
+            options.maxstages = (int) modules.size( );
 
          int ending = 4;
          if( filename.substr(filename.length( ) - 3) == ".gz" )
@@ -120,7 +132,7 @@ namespace bugger {
 
             for( int module = 0; module <= stage && stage < options.maxstages; ++module )
             {
-               results[ module ] = modules[ module ]->run(problem, solution, solution_exists, options, timer);
+               results[ module ] = modules[ module ]->run(problem, solution, solution_exists, options, solver_settings, timer);
 
                if( results[ module ] == bugger::ModulStatus::kSuccessful )
                   success = module;
@@ -139,15 +151,15 @@ namespace bugger {
 
       void addDefaultModules( const Num<double>& num ) {
          using uptr = std::unique_ptr<bugger::BuggerModul>;
-         addModul(uptr(new SettingModul(setting, msg, num)));
-         addModul(uptr(new ConstraintModul(setting, msg, num)));
-         addModul(uptr(new VariableModul(setting, msg, num)));
-         addModul(uptr(new SideModul(setting, msg, num)));
-         addModul(uptr(new ObjectiveModul(setting, msg, num)));
-         addModul(uptr(new CoefficientModul(setting, msg, num)));
-         addModul(uptr(new FixingModul(setting, msg, num)));
-         addModul(uptr(new VarroundModul(setting, msg, num)));
-         addModul(uptr(new ConsRoundModul(setting, msg, num)));
+         addModul(uptr(new SettingModul(settings_filename, msg, num)));
+         addModul(uptr(new ConstraintModul(settings_filename, msg, num)));
+         addModul(uptr(new VariableModul(settings_filename, msg, num)));
+         addModul(uptr(new SideModul(settings_filename, msg, num)));
+         addModul(uptr(new ObjectiveModul(settings_filename, msg, num)));
+         addModul(uptr(new CoefficientModul(settings_filename, msg, num)));
+         addModul(uptr(new FixingModul(settings_filename, msg, num)));
+         addModul(uptr(new VarroundModul(settings_filename, msg, num)));
+         addModul(uptr(new ConsRoundModul(settings_filename, msg, num)));
       }
 
       void
@@ -165,17 +177,23 @@ namespace bugger {
 
    private:
 
-      SolverStatus getOriginalSolveStatus( ) {
+      SolverStatus getOriginalSolveStatus( const SolverSettings& settings) {
          auto solver = createSolver();
          solver->doSetUp(problem, false, solution);
-         return solver->solve();
+         return solver->solve( settings );
+      }
+
+      SolverSettings parseSettings( const std::string& filename) {
+         auto solver = createSolver();
+         assert(!filename.empty());
+         return solver->parseSettings(settings_filename);
       }
 
       //TODO: this is duplicates function in BuggerModul -> move this to a function to hand it to BuggerModul so that is has to be declared only once
       std::unique_ptr<SolverInterface>
       createSolver(){
 #ifdef BUGGER_HAVE_SCIP
-         return std::unique_ptr<SolverInterface>(new ScipInterface {setting});
+         return std::unique_ptr<SolverInterface>(new ScipInterface {settings_filename});
 #else
          msg.error("No solver specified -- aborting ....");
          return nullptr;

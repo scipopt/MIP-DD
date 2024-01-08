@@ -61,7 +61,7 @@ namespace bugger {
 
       ModulStatus
       execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
-              const Timer &timer) override {
+              const SolverSettings& settings, const Timer &timer) override {
 
          auto copy = Problem<double>(problem);
          MatrixBuffer<double> applied_entries { };
@@ -137,9 +137,9 @@ namespace bugger {
             {
                copy.getConstraintMatrix( ).changeCoefficients(batches_coeff);
                auto solver = createSolver();
-               solver->parseParameters();
+//               solver->parseParameters();
                solver->doSetUp(copy, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus) == BuggerStatus::kSuccess )
+               if( solver->run(msg, originalSolverStatus, settings) == BuggerStatus::kSuccess )
                {
                   copy = Problem<double>(problem);
                   copy.getConstraintMatrix( ).changeCoefficients(applied_entries);

@@ -206,6 +206,7 @@ install(FILES
         ${PROJECT_SOURCE_DIR}/src/bugger/data/RowFlags.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/data/SingleRow.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/data/Solution.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/data/SolverSettings.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/data/SparseStorage.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/data/VariableDomains.hpp
    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/data)

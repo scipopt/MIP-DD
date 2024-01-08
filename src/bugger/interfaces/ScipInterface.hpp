@@ -29,17 +29,21 @@
 #include "bugger/misc/Vec.hpp"
 #include <cassert>
 #include <stdexcept>
+#include <string>
 
 #include "bugger/data/Problem.hpp"
 #include "bugger/data/ProblemBuilder.hpp"
 #include "scip/cons_linear.h"
 #include "scip/scip.h"
+#include "scip/scip_param.h"
 #include "scip/scipdefplugins.h"
 #include "scip/struct_paramset.h"
 #include "bugger/interfaces/BuggerStatus.hpp"
 #include "bugger/interfaces/SolverStatus.hpp"
 #include "bugger/interfaces/SolverInterface.hpp"
 #include "SolverStatus.hpp"
+#include "bugger/data/SolverSettings.hpp"
+
 
 namespace bugger {
 
@@ -65,7 +69,7 @@ namespace bugger {
       double reference = std::numeric_limits<double>::signaling_NaN();
 
    public:
-      ScipInterface(const std::string& _setting) : setting(_setting) {
+      explicit ScipInterface(const std::string& _setting) : setting(_setting) {
          if( SCIPcreate(&scip) != SCIP_OKAY )
             throw std::runtime_error("could not create SCIP");
       }
@@ -91,28 +95,19 @@ namespace bugger {
 
       }
 
-      void modify_parameters(int nbatches) override {
-         SCIP_PARAM *batch;
+      SolverSettings
+      parseSettings(const std::string& settings) override
+      {
+         Vec<std::pair<std::string, bool>> bool_settings;
+         Vec<std::pair<std::string, int>> int_settings;
+         Vec<std::pair<std::string, long>> long_settings;
+         Vec<std::pair<std::string, double>> double_settings;
+         Vec<std::pair<std::string, char>> char_settings;
+         Vec<std::pair<std::string, std::string>> string_settings;
 
-         int *inds;
+         SCIPreadParams(scip, settings.c_str( ));
          int nparams = SCIPgetNParams(scip);
          SCIP_PARAM **params = SCIPgetParams(scip);
-         int batchsize = 1;
-
-         if( nbatches > 0 )
-         {
-            batchsize = nbatches - 1;
-
-            for( int i = 0; i < nparams; ++i )
-               if( isSettingAdmissible(params[ i ]))
-                  ++batchsize;
-
-            batchsize /= nbatches;
-         }
-
-         (SCIPallocBufferArray(scip, &inds, batchsize));
-         (SCIPallocBufferArray(scip, &batch, batchsize));
-         int nbatch = 0;
 
          for( int i = 0; i < nparams; ++i )
          {
@@ -120,85 +115,92 @@ namespace bugger {
 
             param = params[ i ];
 
-            if( isSettingAdmissible(param))
+//            if( ( param->isfixed || !SCIPparamIsDefault(param)) && isSettingAdmissible(param))
+            if( isSettingAdmissible(param) )
             {
-               inds[ nbatch ] = i;
-               batch[ nbatch ].isfixed = param->isfixed;
                param->isfixed = FALSE;
-
                switch( SCIPparamGetType(param))
                {
                   case SCIP_PARAMTYPE_BOOL:
                   {
-                     SCIP_Bool *ptrbool;
-                     ptrbool = ( param->data.boolparam.valueptr == nullptr ? &param->data.boolparam.curvalue
-                                                                           : param->data.boolparam.valueptr );
-                     batch[ nbatch ].data.boolparam.curvalue = *ptrbool;
-                     *ptrbool = param->data.boolparam.defaultvalue;
+                     bool bool_val = ( param->data.boolparam.valueptr == nullptr ? param->data.boolparam.curvalue
+                                                                           : *param->data.boolparam.valueptr );
+//                     *ptrbool = param->data.boolparam.defaultvalue;
+                     bool_settings.emplace_back(param->name, bool_val);
                      break;
                   }
                   case SCIP_PARAMTYPE_INT:
                   {
-                     int *ptrint;
-                     ptrint = ( param->data.intparam.valueptr == nullptr ? &param->data.intparam.curvalue
-                                                                         : param->data.intparam.valueptr );
-                     batch[ nbatch ].data.intparam.curvalue = *ptrint;
-                     *ptrint = param->data.intparam.defaultvalue;
+                     int int_value = ( param->data.intparam.valueptr == nullptr ? param->data.intparam.curvalue
+                                                                                : *param->data.intparam.valueptr );
+//                     *ptrint = param->data.intparam.defaultvalue;
+                     int_settings.emplace_back( param->name, int_value);
                      break;
                   }
                   case SCIP_PARAMTYPE_LONGINT:
                   {
-                     SCIP_Longint *ptrlongint;
-                     ptrlongint = ( param->data.longintparam.valueptr == nullptr ? &param->data.longintparam.curvalue
-                                                                                 : param->data.longintparam.valueptr );
-                     batch[ nbatch ].data.longintparam.curvalue = *ptrlongint;
-                     *ptrlongint = param->data.longintparam.defaultvalue;
+                     long long_val = ( param->data.longintparam.valueptr == nullptr ? param->data.longintparam.curvalue
+                                                                                         : *param->data.longintparam.valueptr );
+//                     *ptrlongint = param->data.longintparam.defaultvalue;
+                     long_settings.emplace_back(param->name, long_val);
                      break;
                   }
                   case SCIP_PARAMTYPE_REAL:
                   {
-                     SCIP_Real *ptrreal;
-                     ptrreal = ( param->data.realparam.valueptr == nullptr ? &param->data.realparam.curvalue
-                                                                           : param->data.realparam.valueptr );
-                     batch[ nbatch ].data.realparam.curvalue = *ptrreal;
-                     *ptrreal = param->data.realparam.defaultvalue;
+                     SCIP_Real real_val = ( param->data.realparam.valueptr == nullptr ? param->data.realparam.curvalue
+                                                                           : *param->data.realparam.valueptr );
+//                     *ptrreal = param->data.realparam.defaultvalue;
+                     double_settings.emplace_back(param->name, real_val);
                      break;
                   }
                   case SCIP_PARAMTYPE_CHAR:
                   {
-                     char *ptrchar;
-                     ptrchar = ( param->data.charparam.valueptr == nullptr ? &param->data.charparam.curvalue
-                                                                           : param->data.charparam.valueptr );
-                     batch[ nbatch ].data.charparam.curvalue = *ptrchar;
-                     *ptrchar = param->data.charparam.defaultvalue;
+
+                     char char_val = ( param->data.charparam.valueptr == nullptr ? param->data.charparam.curvalue
+                                                                           : *param->data.charparam.valueptr );
+//                     *ptrchar = param->data.charparam.defaultvalue;
+                     char_settings.emplace_back(param->name, char_val);
+
                      break;
                   }
                   case SCIP_PARAMTYPE_STRING:
                   {
-                     char **ptrstring;
-                     ptrstring = ( param->data.stringparam.valueptr == nullptr ? &param->data.stringparam.curvalue
-                                                                               : param->data.stringparam.valueptr );
-                     batch[ nbatch ].data.stringparam.curvalue = *ptrstring;
-                     (BMSduplicateMemoryArray(ptrstring, param->data.stringparam.defaultvalue,
-                                              strlen(param->data.stringparam.defaultvalue) + 1));
+                     std::string string_val = ( param->data.stringparam.valueptr == nullptr ? param->data.stringparam.curvalue
+                                                                               : *param->data.stringparam.valueptr );
+//                     (BMSduplicateMemoryArray(ptrstring, param->data.stringparam.defaultvalue,
+//                                              strlen(param->data.stringparam.defaultvalue) + 1));
+                     string_settings.emplace_back(param->name, string_val);
+
                      break;
                   }
                   default:
                      SCIPerrorMessage("unknown parameter type\n");
                }
 
-               ++nbatch;
             }
 
          }
 
+         return {bool_settings, int_settings, long_settings, double_settings,char_settings, string_settings};
       }
 
+      BuggerStatus run(const Message &msg, SolverStatus originalStatus, SolverSettings settings) override {
 
-      BuggerStatus run(const Message &msg, SolverStatus originalStatus) override {
+         for(const auto& pair : settings.getBoolSettings())
+            SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getIntSettings())
+            SCIPsetIntParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getLongSettings())
+            SCIPsetLongintParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getDoubleSettings())
+            SCIPsetRealParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getCharSettings())
+            SCIPsetCharParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getStringSettings())
+            SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
 
-         //TODO: Expect failing assertion
-         SolverStatus status = solve( );
+         //TODO: Expect failing assertion during solve
+         SolverStatus status = solve( settings );
          BuggerStatus result = BuggerStatus::kSuccess;
          if( status == SolverStatus::kError )
             result = BuggerStatus::kUnexpectedError;
@@ -239,8 +241,7 @@ namespace bugger {
 
       bool isSettingAdmissible(SCIP_PARAM *param) {
          /* keep reading and writing settings because input and output is not monitored */
-         return ( param->isfixed || !SCIPparamIsDefault(param))
-                && strncmp("display/", SCIPparamGetName(param), 8) != 0 &&
+         return strncmp("display/", SCIPparamGetName(param), 8) != 0 &&
                 strncmp("limits/", SCIPparamGetName(param), 7) != 0
                 && strncmp("reading/", SCIPparamGetName(param), 8) != 0 &&
                 strncmp("write/", SCIPparamGetName(param), 6) != 0;
@@ -374,7 +375,7 @@ namespace bugger {
          return s;
       }
 
-      SolverStatus solve( ) override {
+      SolverStatus solve( SolverSettings settings ) override {
 
          SCIPsetMessagehdlrQuiet(scip, true);
 

@@ -49,7 +49,7 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, Solution<double>& solution, bool solution_exists, const BuggerOptions &options, const Timer &timer) override {
+      execute(Problem<double> &problem, Solution<double>& solution, bool solution_exists, const BuggerOptions &options,  const SolverSettings& settings, const Timer &timer) override {
 
          auto copy = Problem<double>(problem);
          Vec<std::pair<int, double>> applied_reductions { };
@@ -109,9 +109,9 @@ namespace bugger {
             if( !batches.empty() && ( batches.size() >= batchsize || var <= 0 ) )
             {
                auto solver = createSolver();
-               solver->parseParameters();
+//               solver->parseParameters();
                solver->doSetUp(copy, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus) == BuggerStatus::kSuccess )
+               if( solver->run(msg, originalSolverStatus, settings) == BuggerStatus::kSuccess )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions )
