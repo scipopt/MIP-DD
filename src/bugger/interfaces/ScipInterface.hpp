@@ -232,8 +232,7 @@ namespace bugger {
 
       bool is_setting_relevant(SCIP_PARAM *param) {
          /* keep reading and writing settings because input and output is not monitored */
-         return strncmp("display/", SCIPparamGetName(param), 8) != 0 &&
-                strncmp("limits/", SCIPparamGetName(param), 7) != 0
+         return strncmp("display/", SCIPparamGetName(param), 8) != 0
                 && strncmp("reading/", SCIPparamGetName(param), 8) != 0 &&
                 strncmp("write/", SCIPparamGetName(param), 6) != 0;
       }
