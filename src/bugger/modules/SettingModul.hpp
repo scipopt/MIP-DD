@@ -67,8 +67,6 @@ namespace bugger {
          SolverSettings copy = SolverSettings(settings);
          SolverSettings fallback = SolverSettings(settings);
 
-         //TODO: use batches
-//         Vec<int> batches { };
          Vec<std::pair<int, bool>> applied_bool { };
          Vec<std::pair<int, int>> applied_int { };
          Vec<std::pair<int, long>> applied_long { };
