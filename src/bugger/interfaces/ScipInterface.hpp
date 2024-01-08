@@ -240,7 +240,6 @@ namespace bugger {
 
       SCIP_RETCODE
       setup(const Problem<double> &problem, bool solution_exits, const Solution<double> sol, SolverSettings settings) {
-         SCIP_CALL(SCIPincludeDefaultPlugins(scip));
 
          for(const auto& pair : settings.getBoolSettings())
             SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);
