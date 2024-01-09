@@ -62,7 +62,7 @@ namespace bugger {
               const BuggerOptions &options, const Timer &timer) override {
 
          if(!initialized)
-            return ModulStatus::kUnsuccesful;
+            return ModulStatus::kDidNotRun;
          ModulStatus result = ModulStatus::kUnsuccesful;
          SolverSettings copy = SolverSettings(settings);
 
