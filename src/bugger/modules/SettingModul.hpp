@@ -187,13 +187,13 @@ namespace bugger {
                batches = 0;
             }
          }
-         for( int i = 0; i < target_solver_settings.getDoubleSettings().size(); i++)
+         for( int i = 0; i < target_solver_settings.getLongSettings().size(); i++)
          {
-            assert(target_solver_settings.getDoubleSettings()[i].first == settings.getDoubleSettings()[i].first);
-            if(target_solver_settings.getDoubleSettings()[i].second != settings.getDoubleSettings()[i].second)
+            assert(target_solver_settings.getLongSettings()[i].first == settings.getLongSettings()[i].first);
+            if(target_solver_settings.getLongSettings()[i].second != settings.getLongSettings()[i].second)
             {
-               copy.setDoubleSettings(i, target_solver_settings.getDoubleSettings( )[ i ].second);
-               batches_double.emplace_back(i, target_solver_settings.getDoubleSettings( )[ i ].second);
+               copy.setLongSettings(i, target_solver_settings.getLongSettings( )[ i ].second);
+               batches_long.emplace_back(i, target_solver_settings.getLongSettings( )[ i ].second);
                batches++;
                admissible = true;
             }
@@ -208,21 +208,21 @@ namespace bugger {
                {
                   applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
                   applied_int.insert(applied_int.end(), batches_int.begin(), batches_int.end());
-                  applied_double.insert(applied_double.end(), batches_double.begin(), batches_double.end());
+                  applied_long.insert(applied_long.end(), batches_long.begin(), batches_long.end());
                }
                batches_bool.clear();
                batches_int.clear();
-               batches_double.clear();
+               batches_long.clear();
                batches = 0;
             }
          }
-         for( int i = 0; i < target_solver_settings.getLongSettings().size(); i++)
+         for( int i = 0; i < target_solver_settings.getDoubleSettings().size(); i++)
          {
-            assert(target_solver_settings.getLongSettings()[i].first == settings.getLongSettings()[i].first);
-            if(target_solver_settings.getLongSettings()[i].second != settings.getLongSettings()[i].second)
+            assert(target_solver_settings.getDoubleSettings()[i].first == settings.getDoubleSettings()[i].first);
+            if(target_solver_settings.getDoubleSettings()[i].second != settings.getDoubleSettings()[i].second)
             {
-               copy.setLongSettings(i, target_solver_settings.getLongSettings( )[ i ].second);
-               batches_long.emplace_back(i, target_solver_settings.getLongSettings( )[ i ].second);
+               copy.setDoubleSettings(i, target_solver_settings.getDoubleSettings( )[ i ].second);
+               batches_double.emplace_back(i, target_solver_settings.getDoubleSettings( )[ i ].second);
                batches++;
                admissible = true;
             }
