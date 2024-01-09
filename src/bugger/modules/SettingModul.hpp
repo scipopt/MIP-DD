@@ -98,16 +98,16 @@ namespace bugger {
                if(target_solver_settings.getIntSettings()[i].second != settings.getIntSettings()[i].second)
                   ++batchsize;
             }
-            for( int i = 0; i < target_solver_settings.getDoubleSettings().size(); i++)
-            {
-               assert(target_solver_settings.getDoubleSettings()[i].first == settings.getDoubleSettings()[i].first);
-               if(target_solver_settings.getDoubleSettings()[i].second != settings.getDoubleSettings()[i].second)
-                  ++batchsize;
-            }
             for( int i = 0; i < target_solver_settings.getLongSettings().size(); i++)
             {
                assert(target_solver_settings.getLongSettings()[i].first == settings.getLongSettings()[i].first);
                if(target_solver_settings.getLongSettings()[i].second != settings.getLongSettings()[i].second)
+                  ++batchsize;
+            }
+            for( int i = 0; i < target_solver_settings.getDoubleSettings().size(); i++)
+            {
+               assert(target_solver_settings.getDoubleSettings()[i].first == settings.getDoubleSettings()[i].first);
+               if(target_solver_settings.getDoubleSettings()[i].second != settings.getDoubleSettings()[i].second)
                   ++batchsize;
             }
             for( int i = 0; i < target_solver_settings.getCharSettings().size(); i++)
