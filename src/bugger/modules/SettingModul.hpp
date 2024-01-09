@@ -291,7 +291,7 @@ namespace bugger {
 
             }
 
-            if( batches != 0 && ( batches >= batchsize ) && (i + 1) == target_solver_settings.getStringSettings().size() )
+            if( batches != 0 && ( batches >= batchsize || i + 1 == target_solver_settings.getStringSettings().size() ) )
             {
                auto solver = createSolver();
                solver->doSetUp(problem, copy, solution_exists, solution);
