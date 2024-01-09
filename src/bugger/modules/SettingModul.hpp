@@ -122,9 +122,9 @@ namespace bugger {
                if(target_solver_settings.getStringSettings()[i].second != settings.getStringSettings()[i].second)
                   ++batchsize;
             }
+            batchsize /= options.nbatches;
             if(batchsize == 0)
                return ModulStatus::kDidNotRun;
-            batchsize /= options.nbatches;
          }
 
          batches_int.reserve(batchsize);
