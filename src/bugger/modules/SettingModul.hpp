@@ -65,7 +65,6 @@ namespace bugger {
             return ModulStatus::kUnsuccesful;
          ModulStatus result = ModulStatus::kUnsuccesful;
          SolverSettings copy = SolverSettings(settings);
-         SolverSettings fallback = SolverSettings(settings);
 
          Vec<std::pair<int, bool>> applied_bool { };
          Vec<std::pair<int, int>> applied_int { };
