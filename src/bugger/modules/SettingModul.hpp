@@ -321,9 +321,8 @@ namespace bugger {
             return ModulStatus::kDidNotRun;
          if(applied_bool.empty() && applied_int.empty() && applied_double.empty() && applied_long.empty() && applied_char.empty() && applied_string.empty())
             return ModulStatus::kUnsuccesful;
-         copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
-         settings = SolverSettings(copy);
-         nchgsettings += applied_bool.size() + applied_int.size() + applied_double.size() + applied_long.size() + applied_char.size() + applied_string.size();
+         settings = copy;
+         nchgsettings += applied_bool.size() + applied_int.size() + applied_long.size() + applied_double.size() + applied_char.size() + applied_string.size();
          return ModulStatus::kSuccessful;
       }
 
