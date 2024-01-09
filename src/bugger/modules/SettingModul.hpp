@@ -144,7 +144,12 @@ namespace bugger {
                admissible = true;
             }
 
-            if( batches != 0 && ( batches >= batchsize ) )
+            if( batches != 0 && ( batches >= batchsize || ( i + 1 == target_solver_settings.getBoolSettings().size()
+                                                           && target_solver_settings.getIntSettings().empty()
+                                                           && target_solver_settings.getLongSettings().empty()
+                                                           && target_solver_settings.getDoubleSettings().empty()
+                                                           && target_solver_settings.getCharSettings().empty()
+                                                           && target_solver_settings.getStringSettings().empty() ) ) )
             {
                auto solver = createSolver();
                solver->doSetUp(problem, copy, solution_exists, solution);
@@ -169,7 +174,11 @@ namespace bugger {
                admissible = true;
             }
 
-            if( batches != 0 && ( batches >= batchsize ) )
+            if( batches != 0 && ( batches >= batchsize || ( i + 1 == target_solver_settings.getIntSettings().size()
+                                                           && target_solver_settings.getLongSettings().empty()
+                                                           && target_solver_settings.getDoubleSettings().empty()
+                                                           && target_solver_settings.getCharSettings().empty()
+                                                           && target_solver_settings.getStringSettings().empty() ) ) )
             {
                auto solver = createSolver();
                solver->doSetUp(problem, copy, solution_exists, solution);
@@ -196,7 +205,10 @@ namespace bugger {
                admissible = true;
             }
 
-            if( batches != 0 && ( batches >= batchsize ) )
+            if( batches != 0 && ( batches >= batchsize || ( i + 1 == target_solver_settings.getLongSettings().size()
+                                                           && target_solver_settings.getDoubleSettings().empty()
+                                                           && target_solver_settings.getCharSettings().empty()
+                                                           && target_solver_settings.getStringSettings().empty() ) ) )
             {
                auto solver = createSolver();
                solver->doSetUp(problem, copy, solution_exists, solution);
@@ -225,7 +237,9 @@ namespace bugger {
                admissible = true;
             }
 
-            if( batches != 0 && ( batches >= batchsize ) )
+            if( batches != 0 && ( batches >= batchsize || ( i + 1 == target_solver_settings.getDoubleSettings().size()
+                                                           && target_solver_settings.getCharSettings().empty()
+                                                           && target_solver_settings.getStringSettings().empty() ) ) )
             {
                auto solver = createSolver();
                solver->doSetUp(problem, copy, solution_exists, solution);
@@ -256,7 +270,8 @@ namespace bugger {
                batches_char.emplace_back(i, target_solver_settings.getCharSettings( )[ i ].second);
             }
 
-            if( batches != 0 && ( batches >= batchsize ) )
+            if( batches != 0 && ( batches >= batchsize || ( i + 1 == target_solver_settings.getCharSettings().size()
+                                                           && target_solver_settings.getStringSettings().empty() ) ) )
             {
                auto solver = createSolver();
                solver->doSetUp(problem, copy, solution_exists, solution);

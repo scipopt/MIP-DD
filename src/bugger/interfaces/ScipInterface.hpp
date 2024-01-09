@@ -79,7 +79,7 @@ namespace bugger {
          assert(result == SCIP_OKAY);
       }
 
-      void writeSettings(std::string filename, SolverSettings solver_settings ) {
+      void writeSettings(std::string filename, SolverSettings solver_settings ) override {
          set_parameters(solver_settings);
          SCIPwriteParams(scip, filename.c_str(), 0, 1);
       };
