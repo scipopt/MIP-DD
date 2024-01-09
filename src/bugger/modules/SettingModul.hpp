@@ -63,7 +63,6 @@ namespace bugger {
 
          if(!initialized)
             return ModulStatus::kDidNotRun;
-         ModulStatus result = ModulStatus::kUnsuccesful;
          SolverSettings copy = SolverSettings(settings);
 
          Vec<std::pair<int, bool>> applied_bool { };
@@ -126,8 +125,8 @@ namespace bugger {
                return ModulStatus::kDidNotRun;
          }
 
-         batches_int.reserve(batchsize);
          batches_bool.reserve(batchsize);
+         batches_int.reserve(batchsize);
          batches_long.reserve(batchsize);
          batches_double.reserve(batchsize);
          batches_char.reserve(batchsize);
