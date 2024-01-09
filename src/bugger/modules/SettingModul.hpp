@@ -318,7 +318,7 @@ namespace bugger {
 
          if(!admissible)
             return ModulStatus::kDidNotRun;
-         if(applied_bool.empty() && applied_int.empty() && applied_double.empty() && applied_long.empty() && applied_char.empty() && applied_string.empty())
+         if(applied_bool.empty() && applied_int.empty() && applied_long.empty() && applied_double.empty() && applied_char.empty() && applied_string.empty())
             return ModulStatus::kUnsuccesful;
          settings = copy;
          nchgsettings += applied_bool.size() + applied_int.size() + applied_long.size() + applied_double.size() + applied_char.size() + applied_string.size();
