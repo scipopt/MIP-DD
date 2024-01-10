@@ -182,7 +182,6 @@ namespace bugger {
 
       SolverSettings parseSettings( const std::string& filename) {
          auto solver = createSolver();
-         assert(!filename.empty());
          return solver->parseSettings(filename);
       }
 

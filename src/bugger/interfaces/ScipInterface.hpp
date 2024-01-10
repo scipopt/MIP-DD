@@ -94,7 +94,8 @@ namespace bugger {
          Vec<std::pair<std::string, char>> char_settings;
          Vec<std::pair<std::string, std::string>> string_settings;
 
-         SCIPreadParams(scip, settings.c_str( ));
+         if(!settings.empty())
+            SCIPreadParams(scip, settings.c_str( ));
          int nparams = SCIPgetNParams(scip);
          SCIP_PARAM **params = SCIPgetParams(scip);
 
