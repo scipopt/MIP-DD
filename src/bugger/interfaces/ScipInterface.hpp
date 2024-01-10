@@ -168,6 +168,7 @@ namespace bugger {
       BuggerStatus run(const Message &msg, SolverStatus originalStatus, SolverSettings settings) override {
 
          //TODO: Expect failing assertion during solve
+         //TODO: move this up to SolverInterface
          SolverStatus status = solve( settings );
          BuggerStatus result = BuggerStatus::kSuccess;
          if( status == SolverStatus::kError )
