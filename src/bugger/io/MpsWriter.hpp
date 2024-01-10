@@ -76,10 +76,37 @@ struct MpsWriter
 
       out.push( file );
 
-      fmt::print( out, "*ROWS:         {}\n", consmatrix.getNRows() );
-      fmt::print( out, "*COLUMNS:      {}\n", consmatrix.getNCols() );
-      fmt::print( out, "*INTEGER:      {}\n", prob.getNumIntegralCols() );
-      fmt::print( out, "*NONZERO:      {}\n*\n*\n", consmatrix.getNnz() );
+      int nrows = 0;
+      int ncols = 0;
+      int nintcols = 0;
+      int nnnz = 0;
+      for(int i =0; i < consmatrix.getNRows(); i++)
+      {
+         if(!row_flags[i].test(RowFlag::kRedundant))
+         {
+            nrows++;
+            nnnz += consmatrix.getRowCoefficients(i).getLength();
+         }
+      }
+      for(int i =0; i < consmatrix.getNCols(); i++)
+      {
+         if(!col_flags[i].test(ColFlag::kFixed))
+         {
+            ncols ++;
+            if(col_flags[i].test(ColFlag::kIntegral))
+               nintcols++;
+         }
+         else
+            nnnz-= consmatrix.getColumnCoefficients(i).getLength();;
+      }
+
+      fmt::print( out, "Instance {} reduced by delta debugging\n", prob.getName());
+      fmt::print( out, "*\tConstraints:         {} of original {}\n", nrows, consmatrix.getNRows() );
+      fmt::print( out, "*\tVariables:           {} of original {}\n", ncols, consmatrix.getNCols() );
+      fmt::print( out, "*\tInteger:             {} of original {}\n", nintcols, prob.getNumIntegralCols());
+      fmt::print( out, "*\tNonzeros:            {} of original {}\n", nnnz, consmatrix.getNnz() );
+
+      fmt::print( out, "*\n*\n");
 
       fmt::print( out, "NAME          {}\n", prob.getName() );
       fmt::print( out, "OBJSENSE\n" );

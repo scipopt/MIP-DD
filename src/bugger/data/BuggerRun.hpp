@@ -127,6 +127,11 @@ namespace bugger {
          for( int round = options.initround, stage = options.initstage, success = 0; round < options.maxrounds && stage < options.maxstages; ++round )
          {
             std::string newfilename = filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round) + ".mps";
+//            TODO delete fixed variables and deleted Rows from matrix
+//            TODO also compress the lb and ub and obj by calling compress()
+//            problem.compress()
+//            problem.getConstraintMatrix().deleteRowsAndCols()
+//
             bugger::MpsWriter<double>::writeProb(newfilename, problem, origrow_mapping, origcol_mapping);
             if( settings_modul_activated )
             {

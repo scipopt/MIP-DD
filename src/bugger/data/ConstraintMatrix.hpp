@@ -358,10 +358,7 @@ class ConstraintMatrix
    compress( bool full = false );
 
    void
-   deleteRowsAndCols( Vec<int>& deletedRows, Vec<int>& deletedCols,
-                      Vec<RowActivity<REAL>>& activities,
-                      Vec<int>& singletonRows, Vec<int>& singletonCols,
-                      Vec<int>& emptyCols );
+   deleteRowsAndCols( Vec<int>& deletedRows, Vec<int>& deletedCols );
 
    const Vec<int>&
    getRowSizes() const
@@ -693,12 +690,7 @@ ConstraintMatrix<REAL>::compress( bool full )
 
 template <typename REAL>
 void
-ConstraintMatrix<REAL>::deleteRowsAndCols( Vec<int>& deletedRows,
-                                           Vec<int>& deletedCols,
-                                           Vec<RowActivity<REAL>>& activities,
-                                           Vec<int>& singletonRows,
-                                           Vec<int>& singletonCols,
-                                           Vec<int>& emptyCols )
+ConstraintMatrix<REAL>::deleteRowsAndCols( Vec<int>& deletedRows, Vec<int>& deletedCols)
 {
    if( deletedRows.empty() && deletedCols.empty() )
       return;
@@ -739,7 +731,7 @@ ConstraintMatrix<REAL>::deleteRowsAndCols( Vec<int>& deletedRows,
    // delete rows from row storage and update column sizes
 #ifdef BUGGER_TBB
    tbb::parallel_invoke(
-       [this, &deletedRows, rowranges, rowcols, &activities]() {
+       [this, &deletedRows, rowranges, rowcols ]() {
 #endif
           for( int row : deletedRows )
           {
@@ -759,10 +751,6 @@ ConstraintMatrix<REAL>::deleteRowsAndCols( Vec<int>& deletedRows,
              rowranges[row].end = rowranges[row + 1].start;
              lhs_values[row] = 0.0;
              rhs_values[row] = 0.0;
-             activities[row].ninfmax = 0;
-             activities[row].ninfmin = 0;
-             activities[row].min = 0;
-             activities[row].max = 0;
           }
 #ifdef BUGGER_TBB
        },
@@ -791,7 +779,7 @@ ConstraintMatrix<REAL>::deleteRowsAndCols( Vec<int>& deletedRows,
 
 #ifdef BUGGER_TBB
    tbb::parallel_invoke(
-       [this, colranges, &singletonCols, &emptyCols, colrows, colvalues]() {
+       [this, colranges, colrows, colvalues]() {
 #endif
           for( int col = 0; col != getNCols(); ++col )
           {
@@ -804,12 +792,9 @@ ConstraintMatrix<REAL>::deleteRowsAndCols( Vec<int>& deletedRows,
              switch( colsize[col] )
              {
              case 0:
-                emptyCols.push_back( col );
                 colranges[col].start = colranges[col + 1].start;
                 colranges[col].end = colranges[col + 1].start;
                 break;
-             case 1:
-                singletonCols.push_back( col );
              }
 
              if( colsize[col] >= 1 )
@@ -839,7 +824,7 @@ ConstraintMatrix<REAL>::deleteRowsAndCols( Vec<int>& deletedRows,
           }
 #ifdef BUGGER_TBB
        },
-       [this, rowranges, &singletonRows, &activities, rowcols, rowvalues]() {
+       [this, rowranges, rowcols, rowvalues]() {
 #endif
           for( int row = 0; row != getNRows(); ++row )
           {
@@ -847,17 +832,6 @@ ConstraintMatrix<REAL>::deleteRowsAndCols( Vec<int>& deletedRows,
              if( rowsize[row] == -1 ||
                  rowsize[row] == rowranges[row].end - rowranges[row].start )
                 continue;
-
-             // if the size is now 1, add to singleton row vector
-             switch( rowsize[row] )
-             {
-             case 0:
-                activities[row].min = 0;
-                activities[row].max = 0;
-                break;
-             case 1:
-                singletonRows.push_back( row );
-             }
 
              // now move contents of row to occupy free spaces
              int j = 0;
