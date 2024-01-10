@@ -67,6 +67,8 @@ namespace bugger {
             for( int row = problem.getNRows( ) - 1; row >= 0; --row )
                if( isSideAdmissable(problem, row) )
                   ++batchsize;
+            if( batchsize == options.nbatches - 1 )
+               return ModulStatus::kNotAdmissible;
             batchsize /= options.nbatches;
          }
 
@@ -140,7 +142,7 @@ namespace bugger {
             }
          }
          if(!admissible)
-            return ModulStatus::kDidNotRun;
+            return ModulStatus::kAdmissible;
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
          else

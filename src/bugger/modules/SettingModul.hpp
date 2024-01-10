@@ -111,9 +111,9 @@ namespace bugger {
                if(target_solver_settings.getStringSettings()[i].second != settings.getStringSettings()[i].second)
                   ++batchsize;
             }
+            if( batchsize == options.nbatches - 1 )
+               return ModulStatus::kNotAdmissible;
             batchsize /= options.nbatches;
-            if(batchsize == 0)
-               return ModulStatus::kDidNotRun;
          }
 
          batches_bool.reserve(batchsize);
@@ -322,7 +322,7 @@ namespace bugger {
          }
 
          if(!admissible)
-            return ModulStatus::kDidNotRun;
+            return ModulStatus::kAdmissible;
          if(applied_bool.empty() && applied_int.empty() && applied_long.empty() && applied_double.empty() && applied_char.empty() && applied_string.empty())
             return ModulStatus::kUnsuccesful;
          settings = copy;

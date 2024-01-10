@@ -69,6 +69,8 @@ namespace bugger
             for( int i = problem.getNCols( ) - 1; i >= 0; --i )
                if( isObjectiveAdmissible(problem, i) )
                   ++batchsize;
+            if( batchsize == options.nbatches - 1 )
+               return ModulStatus::kNotAdmissible;
             batchsize /= options.nbatches;
          }
 
@@ -100,7 +102,7 @@ namespace bugger
             }
          }
          if(!admissible)
-            return ModulStatus::kDidNotRun;
+            return ModulStatus::kAdmissible;
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
          else

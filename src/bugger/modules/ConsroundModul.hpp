@@ -78,6 +78,8 @@ namespace bugger {
             for( int i = 0; i < problem.getNRows( ); ++i )
                if( isConsroundAdmissible(problem, i) )
                   ++batchsize;
+            if( batchsize == options.nbatches - 1 )
+               return ModulStatus::kNotAdmissible;
             batchsize /= options.nbatches;
          }
 
@@ -152,7 +154,7 @@ namespace bugger {
          }
 
          if(!admissible)
-            return ModulStatus::kDidNotRun;
+            return ModulStatus::kNotAdmissible;
          if( applied_reductions_lhs.empty() )
             return ModulStatus::kUnsuccesful;
          else

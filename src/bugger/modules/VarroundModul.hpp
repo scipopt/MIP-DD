@@ -73,6 +73,8 @@ namespace bugger {
             for( int i = 0; i < problem.getNCols( ); ++i )
                if( isVarroundAdmissible(problem, i) )
                   ++batchsize;
+            if( batchsize == options.nbatches - 1 )
+               return ModulStatus::kNotAdmissible;
             batchsize /= options.nbatches;
          }
 
@@ -137,7 +139,7 @@ namespace bugger {
             }
          }
          if(!admissible)
-            return ModulStatus::kDidNotRun;
+            return ModulStatus::kAdmissible;
          if( applied_obj.empty() )
             return ModulStatus::kUnsuccesful;
          else

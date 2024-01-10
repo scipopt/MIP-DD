@@ -72,6 +72,8 @@ namespace bugger {
             for( int i = problem.getNRows( ) - 1; i >= 0; --i )
                if( isConstraintAdmissible(problem, i) )
                   ++batchsize;
+            if( batchsize == options.nbatches - 1 )
+               return ModulStatus::kNotAdmissible;
             batchsize /= options.nbatches;
          }
 
@@ -107,7 +109,7 @@ namespace bugger {
             }
          }
          if(!admissible)
-            return ModulStatus::kDidNotRun;
+            return ModulStatus::kNotAdmissible;
          if( applied_redundant_rows.empty() )
             return ModulStatus::kUnsuccesful;
          else

@@ -51,6 +51,8 @@ namespace bugger {
 
       kSuccessful = 2,
 
+      kNotAdmissible = 3,
+
    };
 
    class BuggerModul {

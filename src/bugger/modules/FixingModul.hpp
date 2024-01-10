@@ -65,6 +65,8 @@ namespace bugger {
             for( int var = problem.getNCols( ) - 1; var >= 0; --var )
                if( isFixingAdmissible(problem, var) )
                   ++batchsize;
+            if( batchsize == options.nbatches - 1 )
+               return ModulStatus::kNotAdmissible;
             batchsize /= options.nbatches;
          }
 
@@ -100,12 +102,11 @@ namespace bugger {
             }
          }
          if(!admissible)
-            return ModulStatus::kDidNotRun;
+            return ModulStatus::kAdmissible;
          if( applied_vars.empty() )
             return ModulStatus::kUnsuccesful;
          else
          {
-            //TODO: remove the variables from the problem might be ideal at least at the end
             problem = copy;
             naggrvars += applied_vars.size();
             return ModulStatus::kSuccessful;
