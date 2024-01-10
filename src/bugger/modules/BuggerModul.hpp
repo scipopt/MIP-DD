@@ -47,11 +47,11 @@ namespace bugger {
    enum class ModulStatus : int {
       kDidNotRun = 0,
 
-      kUnsuccesful = 1,
+      kNotAdmissible = 1,
 
-      kSuccessful = 2,
+      kUnsuccesful = 2,
 
-      kNotAdmissible = 3,
+      kSuccessful = 3,
 
    };
 
