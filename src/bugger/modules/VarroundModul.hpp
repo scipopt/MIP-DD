@@ -139,7 +139,7 @@ namespace bugger {
             }
          }
          if(!admissible)
-            return ModulStatus::kAdmissible;
+            return ModulStatus::kNotAdmissible;
          if( applied_obj.empty() )
             return ModulStatus::kUnsuccesful;
          else

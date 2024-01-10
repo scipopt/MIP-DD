@@ -117,7 +117,7 @@ namespace bugger {
 #ifdef BUGGER_TBB
          if( result == ModulStatus::kSuccessful )
             nsuccessCall++;
-         if (result != ModulStatus::kDidNotRun )
+         if (result != ModulStatus::kDidNotRun || result != ModulStatus::kNotAdmissible )
             ncalls++;
 
          auto end = tbb::tick_count::now( );

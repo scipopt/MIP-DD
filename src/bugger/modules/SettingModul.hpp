@@ -322,7 +322,7 @@ namespace bugger {
          }
 
          if(!admissible)
-            return ModulStatus::kAdmissible;
+            return ModulStatus::kNotAdmissible;
          if(applied_bool.empty() && applied_int.empty() && applied_long.empty() && applied_double.empty() && applied_char.empty() && applied_string.empty())
             return ModulStatus::kUnsuccesful;
          settings = copy;
