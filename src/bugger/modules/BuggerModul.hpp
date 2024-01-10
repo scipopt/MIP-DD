@@ -55,7 +55,7 @@ namespace bugger {
 
    class BuggerModul {
    public:
-      BuggerModul(const std::string& _setting) : setting(_setting) {
+      BuggerModul( ) {
          ncalls = 0;
          nsuccessCall = 0;
          name = "unnamed";
@@ -67,6 +67,7 @@ namespace bugger {
          nfixedvars = 0;
          nchgsides = 0;
          naggrvars = 0;
+         nchgsettings = 0;
          ndeletedrows = 0;
       }
 
@@ -76,6 +77,11 @@ namespace bugger {
       virtual bool
       initialize( ) {
          return false;
+      }
+
+      virtual void
+      set_target_settings(SolverSettings& _target_solver_settings)
+      {
       }
 
       virtual void
@@ -99,7 +105,7 @@ namespace bugger {
       }
 
       ModulStatus
-      run(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
+      run(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
           const Timer &timer) {
          if( !enabled || delayed )
             return ModulStatus::kDidNotRun;
@@ -116,7 +122,7 @@ namespace bugger {
 #else
          auto start = std::chrono::steady_clock::now();
 #endif
-         ModulStatus result = execute(problem, solution, solution_exists, options, timer);
+         ModulStatus result = execute(problem, settings, solution, solution_exists, options, timer);
 #ifdef BUGGER_TBB
          if( result == ModulStatus::kSuccessful )
             nsuccessCall++;
@@ -138,7 +144,7 @@ namespace bugger {
       void
       printStats(const Message &message) {
          double success = ncalls == 0 ? 0.0 : ( double(nsuccessCall) / double(ncalls)) * 100.0;
-         int changes = nchgcoefs + nfixedvars + nchgsides + naggrvars + ndeletedrows;
+         int changes = nchgcoefs + nfixedvars + nchgsides + naggrvars + ndeletedrows + nchgsettings;
          message.info(" {:>18} {:>12} {:>12} {:>18.1f} {:>18.3f}\n", name, ncalls, changes, success, execTime);
       }
 
@@ -178,7 +184,7 @@ namespace bugger {
       std::unique_ptr<SolverInterface>
       createSolver(){
 #ifdef BUGGER_HAVE_SCIP
-         return std::unique_ptr<SolverInterface>(new ScipInterface {setting});
+         return std::unique_ptr<SolverInterface>(new ScipInterface { });
 #else
          msg.error("No solver specified -- aborting ....");
          return nullptr;
@@ -193,8 +199,8 @@ namespace bugger {
       }
 
       virtual ModulStatus
-      execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
-              const Timer &timer) = 0;
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists,
+              const BuggerOptions &options, const Timer &timer) = 0;
 
       void
       setName(const std::string &value) {
@@ -234,7 +240,6 @@ namespace bugger {
 
 
    private:
-      const std::string& setting;
       std::string name;
       double execTime;
       bool enabled;
@@ -248,6 +253,7 @@ namespace bugger {
       int nfixedvars;
       int nchgsides;
       int naggrvars;
+      int nchgsettings;
       int ndeletedrows;
       Num<double> num;
       Message msg;

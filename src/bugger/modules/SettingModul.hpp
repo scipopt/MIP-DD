@@ -30,11 +30,19 @@
 namespace bugger {
 
    class SettingModul : public BuggerModul {
+
+   private:
+
+      SolverSettings target_solver_settings ;
+      bool initialized = false;
+
    public:
-      SettingModul(const std::string& _setting, const Message &_msg, const Num<double> &_num) : BuggerModul(_setting) {
+
+      SettingModul( const Message &_msg, const Num<double> &_num) : BuggerModul() {
          this->setName("setting");
          this->msg = _msg;
          this->num = _num;
+
       }
 
       bool
@@ -42,35 +50,317 @@ namespace bugger {
          return false;
       }
 
+      void
+      set_target_settings(SolverSettings& _target_solver_settings) override
+      {
+         target_solver_settings = _target_solver_settings;
+         initialized = true;
+      }
+
       ModulStatus
-      execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
-              const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists,
+              const BuggerOptions &options, const Timer &timer) override {
 
-         ModulStatus result = ModulStatus::kUnsuccesful;
-         return result;
-         auto solver = createSolver( );
-         solver->parseParameters( );
-         //TODO: think of a abortion criteria
-         while( true )
+         if(!initialized)
+            return ModulStatus::kDidNotRun;
+         SolverSettings copy = SolverSettings(settings);
+
+         Vec<std::pair<int, bool>> applied_bool { };
+         Vec<std::pair<int, int>> applied_int { };
+         Vec<std::pair<int, long>> applied_long { };
+         Vec<std::pair<int, double>> applied_double { };
+         Vec<std::pair<int, char>> applied_char { };
+         Vec<std::pair<int, std::string>> applied_string { };
+
+         Vec<std::pair<int, bool>> batches_bool { };
+         Vec<std::pair<int, int>> batches_int { };
+         Vec<std::pair<int, long>> batches_long { };
+         Vec<std::pair<int, double>> batches_double { };
+         Vec<std::pair<int, char>> batches_char { };
+         Vec<std::pair<int, std::string>> batches_string { };
+         int batches = 0;
+         int batchsize = 1;
+
+         if( options.nbatches > 0 )
          {
-
-            solver->modify_parameters(options.nbatches);
-            solver->doSetUp(problem, solution_exists, solution);
-            //TODO: add batches for solving
-            if( solver->run(msg,originalSolverStatus) != BuggerStatus::kFail )
+            batchsize = options.nbatches - 1;
+            for( int i = 0; i < target_solver_settings.getBoolSettings().size(); i++)
             {
-               //TODO: ignore new parameter file
+               assert(target_solver_settings.getBoolSettings()[i].first == settings.getBoolSettings()[i].first);
+               if(target_solver_settings.getBoolSettings()[i].second != settings.getBoolSettings()[i].second)
+                  ++batchsize;
             }
-            else
+            for( int i = 0; i < target_solver_settings.getIntSettings().size(); i++)
             {
-               //TODO: push back together
-               //store new parameter file
-               result = ModulStatus::kSuccessful;
+               assert(target_solver_settings.getIntSettings()[i].first == settings.getIntSettings()[i].first);
+               if(target_solver_settings.getIntSettings()[i].second != settings.getIntSettings()[i].second)
+                  ++batchsize;
+            }
+            for( int i = 0; i < target_solver_settings.getLongSettings().size(); i++)
+            {
+               assert(target_solver_settings.getLongSettings()[i].first == settings.getLongSettings()[i].first);
+               if(target_solver_settings.getLongSettings()[i].second != settings.getLongSettings()[i].second)
+                  ++batchsize;
+            }
+            for( int i = 0; i < target_solver_settings.getDoubleSettings().size(); i++)
+            {
+               assert(target_solver_settings.getDoubleSettings()[i].first == settings.getDoubleSettings()[i].first);
+               if(target_solver_settings.getDoubleSettings()[i].second != settings.getDoubleSettings()[i].second)
+                  ++batchsize;
+            }
+            for( int i = 0; i < target_solver_settings.getCharSettings().size(); i++)
+            {
+               assert(target_solver_settings.getCharSettings()[i].first == settings.getCharSettings()[i].first);
+               if(target_solver_settings.getCharSettings()[i].second != settings.getCharSettings()[i].second)
+                  ++batchsize;
+            }
+            for( int i = 0; i < target_solver_settings.getStringSettings().size(); i++)
+            {
+               assert(target_solver_settings.getStringSettings()[i].first == settings.getStringSettings()[i].first);
+               if(target_solver_settings.getStringSettings()[i].second != settings.getStringSettings()[i].second)
+                  ++batchsize;
+            }
+            batchsize /= options.nbatches;
+            if(batchsize == 0)
+               return ModulStatus::kDidNotRun;
+         }
+
+         batches_bool.reserve(batchsize);
+         batches_int.reserve(batchsize);
+         batches_long.reserve(batchsize);
+         batches_double.reserve(batchsize);
+         batches_char.reserve(batchsize);
+         batches_string.reserve(batchsize);
+         bool admissible = false;
+
+         for( int i = 0; i < target_solver_settings.getBoolSettings().size(); i++)
+         {
+            assert(target_solver_settings.getBoolSettings()[i].first == settings.getBoolSettings()[i].first);
+            if(target_solver_settings.getBoolSettings()[i].second != copy.getBoolSettings()[i].second)
+            {
+               copy.setBoolSettings(i, target_solver_settings.getBoolSettings( )[ i ].second);
+               batches_bool.emplace_back(i, target_solver_settings.getBoolSettings( )[ i ].second);
+               batches++;
+               admissible = true;
+            }
+
+            if( batches != 0 && ( batches >= batchsize || ( i + 1 == target_solver_settings.getBoolSettings().size()
+                                                           && target_solver_settings.getIntSettings().empty()
+                                                           && target_solver_settings.getLongSettings().empty()
+                                                           && target_solver_settings.getDoubleSettings().empty()
+                                                           && target_solver_settings.getCharSettings().empty()
+                                                           && target_solver_settings.getStringSettings().empty() ) ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(problem, copy, solution_exists, solution);
+               if( solver->run(msg, originalSolverStatus, copy) == BuggerStatus::kSuccess )
+                  copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
+               else
+               {
+                  applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
+               }
+               batches_bool.clear();
+               batches = 0;
+            }
+         }
+         for( int i = 0; i < target_solver_settings.getIntSettings().size(); i++)
+         {
+            assert(target_solver_settings.getIntSettings()[i].first == settings.getIntSettings()[i].first);
+            if(target_solver_settings.getIntSettings()[i].second != settings.getIntSettings()[i].second)
+            {
+               copy.setIntSettings(i, target_solver_settings.getIntSettings( )[ i ].second);
+               batches_int.emplace_back(i, target_solver_settings.getIntSettings( )[ i ].second);
+               batches++;
+               admissible = true;
+            }
+
+            if( batches != 0 && ( batches >= batchsize || ( i + 1 == target_solver_settings.getIntSettings().size()
+                                                           && target_solver_settings.getLongSettings().empty()
+                                                           && target_solver_settings.getDoubleSettings().empty()
+                                                           && target_solver_settings.getCharSettings().empty()
+                                                           && target_solver_settings.getStringSettings().empty() ) ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(problem, copy, solution_exists, solution);
+               if( solver->run(msg, originalSolverStatus, copy) == BuggerStatus::kSuccess )
+                  copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
+               else
+               {
+                  applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
+                  applied_int.insert(applied_int.end(), batches_int.begin(), batches_int.end());
+               }
+               batches_bool.clear();
+               batches_int.clear();
+               batches = 0;
+            }
+         }
+         for( int i = 0; i < target_solver_settings.getLongSettings().size(); i++)
+         {
+            assert(target_solver_settings.getLongSettings()[i].first == settings.getLongSettings()[i].first);
+            if(target_solver_settings.getLongSettings()[i].second != settings.getLongSettings()[i].second)
+            {
+               copy.setLongSettings(i, target_solver_settings.getLongSettings( )[ i ].second);
+               batches_long.emplace_back(i, target_solver_settings.getLongSettings( )[ i ].second);
+               batches++;
+               admissible = true;
+            }
+
+            if( batches != 0 && ( batches >= batchsize || ( i + 1 == target_solver_settings.getLongSettings().size()
+                                                           && target_solver_settings.getDoubleSettings().empty()
+                                                           && target_solver_settings.getCharSettings().empty()
+                                                           && target_solver_settings.getStringSettings().empty() ) ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(problem, copy, solution_exists, solution);
+               if( solver->run(msg, originalSolverStatus, copy) == BuggerStatus::kSuccess )
+                  copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
+               else
+               {
+                  applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
+                  applied_int.insert(applied_int.end(), batches_int.begin(), batches_int.end());
+                  applied_long.insert(applied_long.end(), batches_long.begin(), batches_long.end());
+               }
+               batches_bool.clear();
+               batches_int.clear();
+               batches_long.clear();
+               batches = 0;
+            }
+         }
+         for( int i = 0; i < target_solver_settings.getDoubleSettings().size(); i++)
+         {
+            assert(target_solver_settings.getDoubleSettings()[i].first == settings.getDoubleSettings()[i].first);
+            if(target_solver_settings.getDoubleSettings()[i].second != settings.getDoubleSettings()[i].second)
+            {
+               copy.setDoubleSettings(i, target_solver_settings.getDoubleSettings( )[ i ].second);
+               batches_double.emplace_back(i, target_solver_settings.getDoubleSettings( )[ i ].second);
+               batches++;
+               admissible = true;
+            }
+
+            if( batches != 0 && ( batches >= batchsize || ( i + 1 == target_solver_settings.getDoubleSettings().size()
+                                                           && target_solver_settings.getCharSettings().empty()
+                                                           && target_solver_settings.getStringSettings().empty() ) ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(problem, copy, solution_exists, solution);
+               if( solver->run(msg, originalSolverStatus, copy) == BuggerStatus::kSuccess )
+                  copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
+               else
+               {
+                  applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
+                  applied_int.insert(applied_int.end(), batches_int.begin(), batches_int.end());
+                  applied_long.insert(applied_long.end(), batches_long.begin(), batches_long.end());
+                  applied_double.insert(applied_double.end(), batches_double.begin(), batches_double.end());
+               }
+               batches_bool.clear();
+               batches_int.clear();
+               batches_long.clear();
+               batches_double.clear();
+               batches = 0;
+            }
+         }
+         for( int i = 0; i < target_solver_settings.getCharSettings().size(); i++)
+         {
+            assert(target_solver_settings.getCharSettings()[i].first == settings.getCharSettings()[i].first);
+            if(target_solver_settings.getCharSettings()[i].second != settings.getCharSettings()[i].second)
+            {
+               copy.setCharSettings(i, target_solver_settings.getCharSettings( )[ i ].second);
+               batches++;
+               admissible = true;
+               batches_char.emplace_back(i, target_solver_settings.getCharSettings( )[ i ].second);
+            }
+
+            if( batches != 0 && ( batches >= batchsize || ( i + 1 == target_solver_settings.getCharSettings().size()
+                                                           && target_solver_settings.getStringSettings().empty() ) ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(problem, copy, solution_exists, solution);
+               if( solver->run(msg, originalSolverStatus, copy) == BuggerStatus::kSuccess )
+                  copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
+               else
+               {
+                  applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
+                  applied_int.insert(applied_int.end(), batches_int.begin(), batches_int.end());
+                  applied_long.insert(applied_long.end(), batches_long.begin(), batches_long.end());
+                  applied_double.insert(applied_double.end(), batches_double.begin(), batches_double.end());
+                  applied_char.insert(applied_char.end(), batches_char.begin(), batches_char.end());
+               }
+               batches_bool.clear();
+               batches_int.clear();
+               batches_long.clear();
+               batches_double.clear();
+               batches_char.clear();
+               batches = 0;
+            }
+         }
+         for( int i = 0; i < target_solver_settings.getStringSettings().size(); i++)
+         {
+            assert(target_solver_settings.getStringSettings()[i].first == settings.getStringSettings()[i].first);
+            if(target_solver_settings.getStringSettings()[i].second != settings.getStringSettings()[i].second)
+            {
+               copy.setStringSettings(i, target_solver_settings.getStringSettings( )[ i ].second);
+               batches++;
+               admissible = true;
+               batches_string.emplace_back(i, target_solver_settings.getStringSettings( )[ i ].second);
+
+            }
+
+            if( batches != 0 && ( batches >= batchsize || i + 1 == target_solver_settings.getStringSettings().size() ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(problem, copy, solution_exists, solution);
+               if( solver->run(msg, originalSolverStatus, copy) == BuggerStatus::kSuccess )
+                  copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
+               else
+               {
+                  applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
+                  applied_int.insert(applied_int.end(), batches_int.begin(), batches_int.end());
+                  applied_long.insert(applied_long.end(), batches_long.begin(), batches_long.end());
+                  applied_double.insert(applied_double.end(), batches_double.begin(), batches_double.end());
+                  applied_char.insert(applied_char.end(), batches_char.begin(), batches_char.end());
+                  applied_string.insert(applied_string.end(), batches_string.begin(), batches_string.end());
+               }
+               batches_bool.clear();
+               batches_int.clear();
+               batches_long.clear();
+               batches_double.clear();
+               batches_char.clear();
+               batches_string.clear();
+               batches = 0;
             }
          }
 
-         return result;
+         if(!admissible)
+            return ModulStatus::kDidNotRun;
+         if(applied_bool.empty() && applied_int.empty() && applied_long.empty() && applied_double.empty() && applied_char.empty() && applied_string.empty())
+            return ModulStatus::kUnsuccesful;
+         settings = copy;
+         nchgsettings += applied_bool.size() + applied_int.size() + applied_long.size() + applied_double.size() + applied_char.size() + applied_string.size();
+         return ModulStatus::kSuccessful;
       }
+
+   private:
+
+      SolverSettings
+      reset(SolverSettings &settings, const Vec <std::pair<int, bool>>& applied_bool, const Vec <std::pair<int, int>>& applied_int,
+            const Vec <std::pair<int, long>>& applied_long, const Vec <std::pair<int, double>>& applied_double,
+            const Vec <std::pair<int, char>>& applied_char, const Vec <std::pair<int, std::string>>& applied_string) {
+         auto reset = SolverSettings(settings);
+         for( const auto &item: applied_bool )
+            reset.setBoolSettings(item.first, item.second);
+         for( const auto &item: applied_int )
+            reset.setIntSettings(item.first, item.second);
+         for( const auto &item: applied_long )
+            reset.setLongSettings(item.first, item.second);
+         for( const auto &item: applied_double )
+            reset.setDoubleSettings(item.first, item.second);
+         for( const auto &item: applied_char )
+            reset.setCharSettings(item.first, item.second);
+         for( const auto &item: applied_string)
+            reset.setStringSettings(item.first, item.second);
+         return reset;
+      }
+
    };
 
 

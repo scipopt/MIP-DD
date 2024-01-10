@@ -39,7 +39,7 @@ namespace bugger {
 
    class ConstraintModul : public BuggerModul {
    public:
-      explicit ConstraintModul(const std::string& _setting, const Message &_msg, const Num<double> &_num) : BuggerModul(_setting) {
+      explicit ConstraintModul( const Message &_msg, const Num<double> &_num) : BuggerModul( ) {
          this->setName("constraint");
          this->msg = _msg;
          this->num = _num;
@@ -57,8 +57,8 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
-              const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists,
+              const BuggerOptions &options, const Timer &timer) override {
 
          auto copy = Problem<double>(problem);
          Vec<int> applied_redundant_rows { };
@@ -90,9 +90,8 @@ namespace bugger {
             if( !batches.empty() && ( batches.size() >= batchsize || row <= 0 ) )
             {
                auto solver = createSolver();
-               solver->parseParameters();
-               solver->doSetUp(copy, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus) == BuggerStatus::kSuccess )
+               solver->doSetUp(copy,  settings, solution_exists, solution);
+               if( solver->run(msg, originalSolverStatus, settings) == BuggerStatus::kSuccess )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_redundant_rows )

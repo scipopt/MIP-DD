@@ -31,7 +31,7 @@ namespace bugger {
 
    class FixingModul : public BuggerModul {
    public:
-      FixingModul(const std::string& _setting, const Message &_msg, const Num<double> &_num) : BuggerModul(_setting) {
+      FixingModul( const Message &_msg, const Num<double> &_num) : BuggerModul( ) {
          this->setName("fixing");
          this->msg = _msg;
          this->num = _num;
@@ -50,8 +50,8 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
-              const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists,
+              const BuggerOptions &options, const Timer &timer) override {
 
          auto copy = Problem<double>(problem);
          Vec<int> applied_vars { };
@@ -83,9 +83,8 @@ namespace bugger {
             if( !batches.empty() && ( batches.size() >= batchsize || var <= 0 ) )
             {
                auto solver = createSolver();
-               solver->parseParameters();
-               solver->doSetUp(copy, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus) == BuggerStatus::kSuccess )
+               solver->doSetUp(copy,  settings, solution_exists, solution);
+               if( solver->run(msg, originalSolverStatus, settings) == BuggerStatus::kSuccess )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_vars )

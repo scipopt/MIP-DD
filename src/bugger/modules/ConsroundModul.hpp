@@ -31,7 +31,7 @@ namespace bugger {
 
    class ConsRoundModul : public BuggerModul {
    public:
-      explicit ConsRoundModul(const std::string& _setting, const Message &_msg, const Num<double> &_num) : BuggerModul(_setting) {
+      explicit ConsRoundModul( const Message &_msg, const Num<double> &_num) : BuggerModul() {
          this->setName("consround");
          this->msg = _msg;
          this->num = _num;
@@ -59,7 +59,7 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
               const Timer &timer) override {
 
          auto copy = Problem<double>(problem);
@@ -120,9 +120,8 @@ namespace bugger {
             if( !batches_lhs.empty() && ( batches_lhs.size() >= batchsize || row >= copy.getNRows( ) - 1 ) )
             {
                auto solver = createSolver( );
-               solver->parseParameters( );
-               solver->doSetUp(copy, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus) == BuggerStatus::kSuccess )
+               solver->doSetUp(copy,  settings, solution_exists, solution);
+               if( solver->run(msg, originalSolverStatus, settings) == BuggerStatus::kSuccess )
                {
                   copy = Problem<double>(problem);
                   copy.getConstraintMatrix( ).changeCoefficients(applied_entries);
