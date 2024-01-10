@@ -49,8 +49,7 @@ template <typename REAL>
 struct MpsWriter
 {
    static void
-   writeProb( const std::string& filename, const Problem<REAL>& prob,
-              const Vec<int>& row_mapping, const Vec<int>& col_mapping )
+   writeProb( const std::string& filename, const Problem<REAL>& prob )
    {
       const ConstraintMatrix<REAL>& consmatrix = prob.getConstraintMatrix();
       const Vec<std::string>& consnames = prob.getConstraintNames();
@@ -135,7 +134,7 @@ struct MpsWriter
             type = 'E';
          }
 
-         fmt::print( out, " {}  {}\n", type, consnames[row_mapping[i]] );
+         fmt::print( out, " {}  {}\n", type, consnames[i] );
       }
 
       fmt::print( out, "COLUMNS\n" );
@@ -163,7 +162,7 @@ struct MpsWriter
             if( obj.coefficients[i] != 0.0 )
             {
                fmt::print( out, "    {: <9} OBJ       {:.15}\n",
-                           varnames[col_mapping[i]],
+                           varnames[i],
                            double( obj.coefficients[i] ) );
             }
 
@@ -184,7 +183,7 @@ struct MpsWriter
 
                // normal row
                fmt::print( out, "    {: <9} {: <9} {:.15}\n",
-                           varnames[col_mapping[i]], consnames[row_mapping[r]],
+                           varnames[i], consnames[r],
                            double( colvals[j] ) );
             }
          }
@@ -220,13 +219,13 @@ struct MpsWriter
          {
             if( rhs[i] != REAL{ 0.0 } )
                fmt::print( out, "    B         {: <9} {:.15}\n",
-                           consnames[row_mapping[i]], double( rhs[i] ) );
+                           consnames[i], double( rhs[i] ) );
          }
          else
          {
             if( lhs[i] != REAL{ 0.0 } )
                fmt::print( out, "    B         {: <9} {:.15}\n",
-                           consnames[row_mapping[i]], double( lhs[i] ) );
+                           consnames[i], double( lhs[i] ) );
          }
       }
 
@@ -244,7 +243,7 @@ struct MpsWriter
             if( rangeval != 0 )
             {
                fmt::print( out, "    B         {: <9} {:.15}\n",
-                           consnames[row_mapping[i]], rangeval );
+                           consnames[i], rangeval );
             }
          }
       }
@@ -261,7 +260,7 @@ struct MpsWriter
              lower_bounds[i] == upper_bounds[i] )
          {
             fmt::print( out, " FX BND       {: <9} {:.15}\n",
-                        varnames[col_mapping[i]], double( lower_bounds[i] ) );
+                        varnames[i], double( lower_bounds[i] ) );
          }
          else
          {
@@ -269,20 +268,20 @@ struct MpsWriter
             {
                if( col_flags[i].test( ColFlag::kLbInf ) )
                   fmt::print( out, " MI BND       {}\n",
-                              varnames[col_mapping[i]] );
+                              varnames[i] );
                else
                   fmt::print( out, " LO BND       {: <9} {:.15}\n",
-                              varnames[col_mapping[i]],
+                              varnames[i],
                               double( lower_bounds[i] ) );
             }
 
             if( !col_flags[i].test( ColFlag::kUbInf ) )
                fmt::print( out, " UP BND       {: <9} {:.15}\n",
-                           varnames[col_mapping[i]],
+                           varnames[i],
                            double( upper_bounds[i] ) );
             else
                fmt::print( out, " PL BND       {: <9}\n",
-                           varnames[col_mapping[i]] );
+                           varnames[i] );
          }
       }
       fmt::print( out, "ENDATA\n" );

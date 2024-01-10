@@ -59,8 +59,6 @@ namespace bugger {
       bool solution_exists;
       bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &modules;
       bugger::Vec<bugger::ModulStatus> results;
-      bugger::Vec<int> origcol_mapping;
-      bugger::Vec<int> origrow_mapping;
       bugger::Message msg { };
 
    public:
@@ -104,12 +102,6 @@ namespace bugger {
          addModul(uptr(new VarroundModul( msg, num, solverstatus)));
          addModul(uptr(new ConsRoundModul( msg, num, solverstatus)));
 
-         for( unsigned int i = 0; i < problem.getNRows( ); ++i )
-            origrow_mapping.push_back(( int ) i);
-
-         for( unsigned int i = 0; i < problem.getNCols( ); ++i )
-            origcol_mapping.push_back(( int ) i);
-
          if( options.maxrounds < 0 )
             options.maxrounds = INT_MAX;
 
@@ -127,12 +119,8 @@ namespace bugger {
          for( int round = options.initround, stage = options.initstage, success = 0; round < options.maxrounds && stage < options.maxstages; ++round )
          {
             std::string newfilename = filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round) + ".mps";
-//            TODO delete fixed variables and deleted Rows from matrix
-//            TODO also compress the lb and ub and obj by calling compress()
-//            problem.compress()
-//            problem.getConstraintMatrix().deleteRowsAndCols()
-//
-            bugger::MpsWriter<double>::writeProb(newfilename, problem, origrow_mapping, origcol_mapping);
+            //TODO: one can think about shrinking the matrix but I think we are fine with just ignoring deactivated columns and rows
+            bugger::MpsWriter<double>::writeProb( newfilename, problem );
             if( settings_modul_activated )
             {
                std::string newsettingsname =
