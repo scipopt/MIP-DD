@@ -80,18 +80,7 @@ namespace bugger {
       }
 
       virtual void
-      set_target_settings(SolverSettings& _target_solver_settings)
-      {
-      }
-
-      virtual void
       addModuleParameters(ParameterSet &paramSet) {
-      }
-
-      void
-      setOriginalSolverStatus( SolverStatus status)
-      {
-         originalSolverStatus = status;
       }
 
       void

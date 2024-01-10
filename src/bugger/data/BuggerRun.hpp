@@ -77,40 +77,32 @@ namespace bugger {
                 timer.getTime() >= options.tlim;
       }
 
-      bugger::BuggerOptions
-      getOptions()
-      {
-         return options;
-      }
-
       void apply(bugger::Timer &timer, std::string filename) {
-         results.resize(modules.size( ));
 
          SolverSettings solver_settings = parseSettings(settings_filename);
-         if( !target_settings_filename.empty( ))
-         {
-            auto target_solver_settings = parseSettings(target_settings_filename);
-            bool found = false;
-            for( auto &item: modules )
-               if( item->getName( ) == "setting" )
-               {
-                  found = true;
-                  item->set_target_settings(target_solver_settings);
-               }
-            if( !found )
-               msg.error("Settings Module not present but Target Settings File provided!");
-         }
-         else
-         {
-            for( const auto &item: modules )
-               if( item->getName( ) == "setting" )
-                  item->setEnabled(false);
-         }
+
          auto solverstatus = getOriginalSolveStatus( solver_settings );
-         for(const auto & module : modules)
-             module->setOriginalSolverStatus(solverstatus);
 
          msg.info("original instance solve-status {}\n", solverstatus);
+
+         using uptr = std::unique_ptr<bugger::BuggerModul>;
+
+         Num<double> num{};
+         num.setFeasTol( options.feastol );
+         num.setEpsilon( options.epsilon );
+
+         num.setZeta( options.zeta );
+         bool settings_modul_activated = !target_settings_filename.empty( );
+         if( settings_modul_activated )
+            addModul(uptr(new SettingModul( msg, num, solverstatus, parseSettings(target_settings_filename))));
+         addModul(uptr(new ConstraintModul( msg, num, solverstatus)));
+         addModul(uptr(new VariableModul( msg, num, solverstatus)));
+         addModul(uptr(new SideModul( msg, num, solverstatus)));
+         addModul(uptr(new ObjectiveModul( msg, num, solverstatus)));
+         addModul(uptr(new CoefficientModul( msg, num, solverstatus)));
+         addModul(uptr(new FixingModul( msg, num, solverstatus)));
+         addModul(uptr(new VarroundModul( msg, num, solverstatus)));
+         addModul(uptr(new ConsRoundModul( msg, num, solverstatus)));
 
          for( unsigned int i = 0; i < problem.getNRows( ); ++i )
             origrow_mapping.push_back(( int ) i);
@@ -120,6 +112,8 @@ namespace bugger {
 
          if( options.maxrounds < 0 )
             options.maxrounds = INT_MAX;
+
+         results.resize(modules.size( ));
 
          if( options.maxstages < 0 || options.maxstages > modules.size( ) )
             options.maxstages = (int) modules.size( );
@@ -134,7 +128,7 @@ namespace bugger {
          {
             std::string newfilename = filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round) + ".mps";
             bugger::MpsWriter<double>::writeProb(newfilename, problem, origrow_mapping, origcol_mapping);
-            if(!target_settings_filename.empty( ))
+            if( settings_modul_activated )
             {
                std::string newsettingsname =
                      filename.substr(0, settings_filename.length( ) - ending) + "_" + std::to_string(round) + ".set";
@@ -164,20 +158,7 @@ namespace bugger {
          assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModulStatus::kSuccessful );
          printStats( );
       }
-
-      void addDefaultModules( const Num<double>& num ) {
-         using uptr = std::unique_ptr<bugger::BuggerModul>;
-         addModul(uptr(new SettingModul( msg, num)));
-         addModul(uptr(new ConstraintModul( msg, num)));
-         addModul(uptr(new VariableModul( msg, num)));
-         addModul(uptr(new SideModul( msg, num)));
-         addModul(uptr(new ObjectiveModul( msg, num)));
-         addModul(uptr(new CoefficientModul( msg, num)));
-         addModul(uptr(new FixingModul( msg, num)));
-         addModul(uptr(new VarroundModul( msg, num)));
-         addModul(uptr(new ConsRoundModul( msg, num)));
-      }
-
+      
       void
       addModul(std::unique_ptr<bugger::BuggerModul> module) {
          modules.emplace_back(std::move(module));

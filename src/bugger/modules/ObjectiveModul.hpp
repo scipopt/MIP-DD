@@ -32,11 +32,12 @@ namespace bugger
    class ObjectiveModul : public BuggerModul
    {
     public:
-      ObjectiveModul( const Message& _msg, const Num<double> &_num) : BuggerModul( )
+      ObjectiveModul( const Message &_msg, const Num<double> &_num, const SolverStatus& _status) : BuggerModul( )
       {
          this->setName( "objective" );
          this->msg = _msg;
          this->num = _num;
+         this->originalSolverStatus = _status;
       }
 
       bool

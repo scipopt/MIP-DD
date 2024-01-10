@@ -39,10 +39,11 @@ namespace bugger {
 
    class ConstraintModul : public BuggerModul {
    public:
-      explicit ConstraintModul( const Message &_msg, const Num<double> &_num) : BuggerModul( ) {
+      explicit ConstraintModul( const Message &_msg, const Num<double> &_num, const SolverStatus& _status) : BuggerModul( ) {
          this->setName("constraint");
          this->msg = _msg;
          this->num = _num;
+         this->originalSolverStatus = _status;
       }
 
       bool

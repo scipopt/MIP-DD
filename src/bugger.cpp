@@ -182,13 +182,6 @@ main(int argc, char *argv[]) {
       }
    }
 
-
-   Num<double> num{};
-   num.setFeasTol( bugger.getOptions().feastol );
-   num.setEpsilon( bugger.getOptions().epsilon );
-   num.setZeta( bugger.getOptions().zeta );
-   bugger.addDefaultModules( num );
-
    double time = 0;
    Timer timer(time);
 

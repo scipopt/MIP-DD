@@ -31,10 +31,11 @@ namespace bugger {
 
    class ConsRoundModul : public BuggerModul {
    public:
-      explicit ConsRoundModul( const Message &_msg, const Num<double> &_num) : BuggerModul() {
+      explicit ConsRoundModul( const Message &_msg, const Num<double> &_num, const SolverStatus& _status) : BuggerModul() {
          this->setName("consround");
          this->msg = _msg;
          this->num = _num;
+         this->originalSolverStatus = _status;
       }
 
       bool

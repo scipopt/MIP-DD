@@ -34,15 +34,15 @@ namespace bugger {
    private:
 
       SolverSettings target_solver_settings ;
-      bool initialized = false;
 
    public:
 
-      SettingModul( const Message &_msg, const Num<double> &_num) : BuggerModul() {
+      SettingModul( const Message &_msg, const Num<double> &_num, const SolverStatus& _status, const SolverSettings& _target_solver_settings) : BuggerModul() {
          this->setName("setting");
          this->msg = _msg;
          this->num = _num;
-
+         this->originalSolverStatus = _status;
+         target_solver_settings = _target_solver_settings;
       }
 
       bool
@@ -50,19 +50,10 @@ namespace bugger {
          return false;
       }
 
-      void
-      set_target_settings(SolverSettings& _target_solver_settings) override
-      {
-         target_solver_settings = _target_solver_settings;
-         initialized = true;
-      }
-
       ModulStatus
       execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists,
               const BuggerOptions &options, const Timer &timer) override {
 
-         if(!initialized)
-            return ModulStatus::kDidNotRun;
          SolverSettings copy = SolverSettings(settings);
 
          Vec<std::pair<int, bool>> applied_bool { };

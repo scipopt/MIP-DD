@@ -31,10 +31,11 @@ namespace bugger {
 
    class FixingModul : public BuggerModul {
    public:
-      FixingModul( const Message &_msg, const Num<double> &_num) : BuggerModul( ) {
+      FixingModul( const Message &_msg, const Num<double> &_num, const SolverStatus& _status) : BuggerModul( ) {
          this->setName("fixing");
          this->msg = _msg;
          this->num = _num;
+         this->originalSolverStatus = _status;
       }
 
       bool

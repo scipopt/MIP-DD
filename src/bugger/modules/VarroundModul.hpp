@@ -30,10 +30,11 @@ namespace bugger {
 
    class VarroundModul : public BuggerModul {
    public:
-      VarroundModul(const Message& _msg, const Num<double> &_num) : BuggerModul() {
+      VarroundModul( const Message &_msg, const Num<double> &_num, const SolverStatus& _status) : BuggerModul() {
          this->setName("varround");
          this->msg = _msg;
          this->num = _num;
+         this->originalSolverStatus = _status;
       }
 
       bool

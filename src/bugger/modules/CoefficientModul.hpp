@@ -31,10 +31,11 @@ namespace bugger {
 
    class CoefficientModul : public BuggerModul {
    public:
-      CoefficientModul( const Message &_msg, const Num<double> &_num) : BuggerModul() {
+      CoefficientModul( const Message &_msg, const Num<double> &_num, const SolverStatus& _status) : BuggerModul() {
          this->setName("coefficient");
          this->msg = _msg;
          this->num = _num;
+         this->originalSolverStatus = _status;
       }
 
       bool
