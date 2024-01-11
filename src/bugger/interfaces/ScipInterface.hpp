@@ -58,7 +58,7 @@ namespace bugger {
       if( (_restat_ = (x)) != SCIP_OKAY )                             \
       {                                                               \
          SCIPerrorMessage("Error <%d> in function call\n", _restat_); \
-         return SolverStatus::kError;                                 \
+         return _restat_ == SCIP_ERROR ? 1 : _restat_;;               \
       }                                                               \
    }                                                                  \
    while( FALSE )
@@ -175,24 +175,24 @@ namespace bugger {
          //TODO: Expect failing assertion during solve
          //TODO: move this up to SolverInterface
          SolverStatus status = solve( settings, originalStatus == SolverStatus::kAssertion );
-         BuggerStatus result = BuggerStatus::kSuccess;
+         BuggerStatus result = BuggerStatus::kNotReproduced;
          if( status == SolverStatus::kError ||
              ( status == SolverStatus::kAssertion || originalStatus != SolverStatus::kAssertion ))
             result = BuggerStatus::kUnexpectedError;
          else if( originalStatus == SolverStatus::kAssertion)
          {
             if( status != SolverStatus::kAssertion)
-               result = BuggerStatus::kFail;
+               result = BuggerStatus::kReproduced;
          }
          else if( SCIPisSumNegative(scip, SCIPgetObjsense(scip) * (reference - SCIPgetDualbound(scip))) )
-            result = BuggerStatus::kFail;
+            result = BuggerStatus::kReproduced;
 
          switch( result )
          {
-            case BuggerStatus::kSuccess:
+            case BuggerStatus::kNotReproduced:
                msg.info("\tError could not be reproduced\n");
                break;
-            case BuggerStatus::kFail:
+            case BuggerStatus::kReproduced:
                msg.info("\tError could be reproduced\n");
                break;
             case BuggerStatus::kUnexpectedError:
@@ -439,40 +439,50 @@ namespace bugger {
          return builder.build( );
       }
 
-      SolverStatus solve( const SolverSettings& settings, bool expect_assertion )  {
+      SolverStatus solve( const SolverSettings& settings, bool expect_assertion ) {
 
          SCIPsetMessagehdlrQuiet(scip, true);
+         SolverStatus solverStatus = SolverStatus::kUnknown;
          //TODO: Support initial solutions
 
-         //TODO: add define to being able to deactivate and run it only if first solve threw an assert
-         #ifdef CATCH_ASSERTIONS
-         if(expect_assertion)
+#ifdef CATCH_ASSERTIONS
+         int status;
+         if( expect_assertion )
          {
             if( fork( ) == 0 )
             {
-               exit(( SCIPsolve(scip)));
+               exit(( pure_solve(settings) ));
             }
             else
             {
-               int status;
                wait(&status);
 
-               if( !WIFEXITED(status) || WEXITSTATUS(status) == 0 )
+               if( !WIFEXITED(status))
                {
-                  fmt::print("assertion");
                   return SolverStatus::kAssertion;
+               }
+               else if( WIFSIGNALED(status) )
+               {
+                  int retcode = WTERMSIG(status);
+
+                  if( retcode == SIGINT )
+                     return SolverStatus::kError;
                }
             }
          }
          else
-         #endif
-            SCIP_CALL_RETURN(SCIPsolve(scip));
+#endif
+            status = pure_solve(settings);
+         //TODO:
+         return SolverStatus::kInfeasible;
+      }
 
-
+      int pure_solve( const SolverSettings& settings ) {
+         SCIP_CALL_RETURN( SCIPsolve(scip) );
          switch( SCIPgetStatus(scip))
          {
             case SCIP_STATUS_UNKNOWN:
-               return SolverStatus::kError;
+               return (int) SolverStatus::kError;
             case SCIP_STATUS_USERINTERRUPT:
             case SCIP_STATUS_NODELIMIT:
             case SCIP_STATUS_TOTALNODELIMIT:
@@ -486,18 +496,18 @@ namespace bugger {
 #if SCIP_VERSION_MAJOR >= 6
             case SCIP_STATUS_TERMINATE:
 #endif
-               return SolverStatus::kLimit;
+               return (int) SolverStatus::kLimit;
             case SCIP_STATUS_INFORUNBD:
-               return SolverStatus::kInfeasibleOrUnbounded;
+               return (int) SolverStatus::kInfeasibleOrUnbounded;
             case SCIP_STATUS_INFEASIBLE:
-               return SolverStatus::kInfeasible;
+               return (int) SolverStatus::kInfeasible;
             case SCIP_STATUS_UNBOUNDED:
-               return SolverStatus::kUnbounded;
+               return (int) SolverStatus::kUnbounded;
             case SCIP_STATUS_OPTIMAL:
-               return SolverStatus::kOptimal;
+               return (int) SolverStatus::kOptimal;
          }
 
-         return SolverStatus::kError;
+         return (int) SolverStatus::kError;
       }
 
    };

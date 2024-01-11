@@ -26,9 +26,9 @@
 
 
 enum class BuggerStatus : int {
-   kFail = 0,
+   kReproduced = 0,
 
-   kSuccess = 1,
+   kNotReproduced = 1,
 
    kUnexpectedError = 2,
 
