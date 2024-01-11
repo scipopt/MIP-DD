@@ -26,6 +26,7 @@
 
 
 enum class SolverStatus : int {
+
    kOptimal = 0,
 
    kInfeasible = 1,
@@ -36,7 +37,11 @@ enum class SolverStatus : int {
 
    kLimit = 4,
 
-   kError = 5,
+   kAssertion = 5,
+
+   kError = 6,
+
+   kUnknown = 7
 
 };
 #endif //BUGGER_STATUS_HPP

@@ -81,7 +81,33 @@ namespace bugger {
 
          auto solverstatus = getOriginalSolveStatus( solver_settings );
 
-         msg.info("original instance solve-status {}\n", solverstatus);
+         msg.info("original instance solve-status is ");
+         switch( solverstatus )
+         {
+            case SolverStatus::kOptimal:
+               msg.info(" OPTIMAL.\n");
+               break;
+            case SolverStatus::kUnbounded:
+               msg.info(" UNBOUNDED.\n");
+               break;
+            case SolverStatus::kInfeasible:
+               msg.info(" INFEASIBLE.\n");
+               break;
+            case SolverStatus::kInfeasibleOrUnbounded:
+               msg.info(" INFEASIBLE or UNBOUNDED.\n");
+               break;
+            case SolverStatus::kAssertion:
+               msg.info(" FAILED ASSERTION.\n");
+               break;
+            case SolverStatus::kError:
+               msg.info(" ERROR.\n");
+               break;
+            case SolverStatus::kUnknown:
+               msg.info(" UNKNOWN.\n");
+               break;
+            default:
+               assert(false);
+         }
 
          using uptr = std::unique_ptr<bugger::BuggerModul>;
 

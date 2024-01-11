@@ -87,7 +87,7 @@ namespace bugger {
             {
                auto solver = createSolver();
                solver->doSetUp(copy,  settings, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus, settings) == BuggerStatus::kSuccess )
+               if( solver->run(msg, originalSolverStatus, settings) != BuggerStatus::kFail)
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_vars )

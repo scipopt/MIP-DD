@@ -48,10 +48,10 @@ namespace bugger {
       BuggerStatus run(const Message &msg, SolverStatus originalStatus, SolverSettings settings) = 0;
 
       virtual
-      SolverStatus solve( SolverSettings settings) = 0;
+      SolverStatus solve( const SolverSettings& settings) = 0;
 
       virtual
-      void writeSettings(std::string filename, SolverSettings solver_settings ) = 0;
+      void writeSettings(std::string filename, const SolverSettings& solver_settings ) = 0;
 
       virtual
       SolverSettings parseSettings(const std::string& settings) = 0;

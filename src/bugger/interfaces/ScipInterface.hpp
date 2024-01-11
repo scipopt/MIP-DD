@@ -25,11 +25,13 @@
 #define BUGGER_INTERFACES_SCIP_INTERFACE_HPP_
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
+#define CATCH_ASSERTIONS
 
 #include "bugger/misc/Vec.hpp"
 #include <cassert>
 #include <stdexcept>
 #include <string>
+#include <sys/wait.h>
 
 #include "bugger/data/Problem.hpp"
 #include "bugger/data/ProblemBuilder.hpp"
@@ -43,6 +45,8 @@
 #include "bugger/interfaces/SolverInterface.hpp"
 #include "SolverStatus.hpp"
 #include "bugger/data/SolverSettings.hpp"
+#include<unistd.h>
+
 
 
 namespace bugger {
@@ -79,7 +83,7 @@ namespace bugger {
          assert(result == SCIP_OKAY);
       }
 
-      void writeSettings(std::string filename, SolverSettings solver_settings ) override {
+      void writeSettings(std::string filename, const SolverSettings& solver_settings ) override {
          set_parameters(solver_settings);
          SCIPwriteParams(scip, filename.c_str(), 0, 1);
       };
@@ -170,10 +174,16 @@ namespace bugger {
 
          //TODO: Expect failing assertion during solve
          //TODO: move this up to SolverInterface
-         SolverStatus status = solve( settings );
+         SolverStatus status = solve( settings, originalStatus == SolverStatus::kAssertion );
          BuggerStatus result = BuggerStatus::kSuccess;
-         if( status == SolverStatus::kError )
+         if( status == SolverStatus::kError ||
+             ( status == SolverStatus::kAssertion || originalStatus != SolverStatus::kAssertion ))
             result = BuggerStatus::kUnexpectedError;
+         else if( originalStatus == SolverStatus::kAssertion)
+         {
+            if( status != SolverStatus::kAssertion)
+               result = BuggerStatus::kFail;
+         }
          else if( SCIPisSumNegative(scip, SCIPgetObjsense(scip) * (reference - SCIPgetDualbound(scip))) )
             result = BuggerStatus::kFail;
 
@@ -368,63 +378,12 @@ namespace bugger {
          return s;
       }
 
-      SolverStatus solve( SolverSettings settings ) override {
-
-         SCIPsetMessagehdlrQuiet(scip, true);
-//         //TODO: Support initial solutions
-//         for( int i = 0; i < nsols; ++i )
-//         {
-//            SCIP_SOL *sol;
-//            sol = sols[ i ];
-//            if( sol == solution )
-//            {
-//               reference = SCIPgetSolOrigObj(scip, sol);
-//            }
-//            else
-//            {
-//               SCIP_SOL *initsol = NULL;
-//
-//               SCIP_CALL_RETURN(SCIPtranslateSubSol(*test, scip, sol, NULL, SCIPgetOrigVars(scip), &initsol));
-//
-//               if( initsol == NULL )
-//                  SCIP_CALL_ABORT(SCIP_INVALIDCALL);
-//
-//               SCIP_CALL_RETURN(SCIPaddSolFree(*test, &initsol, &valid));
-//            }
-//         }
-
-         SCIP_CALL_RETURN(SCIPsolve(scip));
-
-         switch( SCIPgetStatus(scip))
-         {
-            case SCIP_STATUS_UNKNOWN:
-               return SolverStatus::kError;
-            case SCIP_STATUS_USERINTERRUPT:
-            case SCIP_STATUS_NODELIMIT:
-            case SCIP_STATUS_TOTALNODELIMIT:
-            case SCIP_STATUS_STALLNODELIMIT:
-            case SCIP_STATUS_TIMELIMIT:
-            case SCIP_STATUS_MEMLIMIT:
-            case SCIP_STATUS_GAPLIMIT:
-            case SCIP_STATUS_SOLLIMIT:
-            case SCIP_STATUS_BESTSOLLIMIT:
-            case SCIP_STATUS_RESTARTLIMIT:
-#if SCIP_VERSION_MAJOR >= 6
-            case SCIP_STATUS_TERMINATE:
-#endif
-               return SolverStatus::kLimit;
-            case SCIP_STATUS_INFORUNBD:
-               return SolverStatus::kInfeasibleOrUnbounded;
-            case SCIP_STATUS_INFEASIBLE:
-               return SolverStatus::kInfeasible;
-            case SCIP_STATUS_UNBOUNDED:
-               return SolverStatus::kUnbounded;
-            case SCIP_STATUS_OPTIMAL:
-               return SolverStatus::kOptimal;
-         }
-
-         return SolverStatus::kError;
+      SolverStatus solve( const SolverSettings& settings ) override
+      {
+         return solve(settings, true);
       }
+
+   private:
 
       static
       Problem<SCIP_Real> buildProblem(
@@ -479,6 +438,68 @@ namespace bugger {
 
          return builder.build( );
       }
+
+      SolverStatus solve( const SolverSettings& settings, bool expect_assertion )  {
+
+         SCIPsetMessagehdlrQuiet(scip, true);
+         //TODO: Support initial solutions
+
+         //TODO: add define to being able to deactivate and run it only if first solve threw an assert
+         #ifdef CATCH_ASSERTIONS
+         if(expect_assertion)
+         {
+            if( fork( ) == 0 )
+            {
+               exit(( SCIPsolve(scip)));
+            }
+            else
+            {
+               int status;
+               wait(&status);
+
+               if( !WIFEXITED(status) || WEXITSTATUS(status) == 0 )
+               {
+                  fmt::print("assertion");
+                  return SolverStatus::kAssertion;
+               }
+            }
+         }
+         else
+         #endif
+            SCIP_CALL_RETURN(SCIPsolve(scip));
+
+
+         switch( SCIPgetStatus(scip))
+         {
+            case SCIP_STATUS_UNKNOWN:
+               return SolverStatus::kError;
+            case SCIP_STATUS_USERINTERRUPT:
+            case SCIP_STATUS_NODELIMIT:
+            case SCIP_STATUS_TOTALNODELIMIT:
+            case SCIP_STATUS_STALLNODELIMIT:
+            case SCIP_STATUS_TIMELIMIT:
+            case SCIP_STATUS_MEMLIMIT:
+            case SCIP_STATUS_GAPLIMIT:
+            case SCIP_STATUS_SOLLIMIT:
+            case SCIP_STATUS_BESTSOLLIMIT:
+            case SCIP_STATUS_RESTARTLIMIT:
+#if SCIP_VERSION_MAJOR >= 6
+            case SCIP_STATUS_TERMINATE:
+#endif
+               return SolverStatus::kLimit;
+            case SCIP_STATUS_INFORUNBD:
+               return SolverStatus::kInfeasibleOrUnbounded;
+            case SCIP_STATUS_INFEASIBLE:
+               return SolverStatus::kInfeasible;
+            case SCIP_STATUS_UNBOUNDED:
+               return SolverStatus::kUnbounded;
+            case SCIP_STATUS_OPTIMAL:
+               return SolverStatus::kOptimal;
+         }
+
+         return SolverStatus::kError;
+      }
+
    };
 
 } // namespace bugger
