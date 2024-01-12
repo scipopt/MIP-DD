@@ -472,8 +472,8 @@ namespace bugger {
          }
          else
 #endif
-            status = pure_solve(settings);
-         //TODO:
+            retcode = pure_solve(settings);
+         //TODO: Translate retcode into solstat with respect to passcodes
          return SolverStatus::kInfeasible;
       }
 
