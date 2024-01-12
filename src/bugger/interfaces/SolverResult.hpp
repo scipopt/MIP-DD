@@ -21,29 +21,24 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef BUGGER_STATUS_HPP
-#define BUGGER_STATUS_HPP
+#ifndef _BUGGER_SOLVER_RESULT_OBJECTIVE_HPP_
+#define _BUGGER_SOLVER_RESULT_OBJECTIVE_HPP_
 
+#include "bugger/interfaces/SolverStatus.hpp"
 
-enum class SolverStatus : int {
+namespace bugger
+{
 
-   kUndefinedError = 1,
+   struct SolverResult
+   {
+      SolverStatus solver_status;
 
-   kUnknown = 0,
+      char solver_retcode;
 
-   kOptimal = -1,
+      int signal_retcode;
 
-   kFalselyClaimingOptimal = -2,
+   };
 
-   kInfeasible = -3,
+} // namespace bugger
 
-   kInfeasibleOrUnbounded = -4,
-
-   kUnbounded = -5,
-
-   kLimit = -6,
-
-   kAssertion = -7,
-
-};
-#endif //BUGGER_STATUS_HPP
+#endif

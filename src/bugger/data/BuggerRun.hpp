@@ -99,7 +99,7 @@ namespace bugger {
             case SolverStatus::kAssertion:
                msg.info(" FAILED ASSERTION.\n");
                break;
-            case SolverStatus::kError:
+            case SolverStatus::kUndefinedError:
                msg.info(" ERROR.\n");
                break;
             case SolverStatus::kUnknown:

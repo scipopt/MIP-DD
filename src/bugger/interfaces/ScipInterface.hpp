@@ -32,6 +32,7 @@
 #include <stdexcept>
 #include <string>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include "bugger/data/Problem.hpp"
 #include "bugger/data/ProblemBuilder.hpp"
@@ -43,25 +44,30 @@
 #include "bugger/interfaces/BuggerStatus.hpp"
 #include "bugger/interfaces/SolverStatus.hpp"
 #include "bugger/interfaces/SolverInterface.hpp"
-#include "SolverStatus.hpp"
+#include "bugger/interfaces/SolverResult.hpp"
 #include "bugger/data/SolverSettings.hpp"
-#include<unistd.h>
+#include "SolverResult.hpp"
 
 
 
 namespace bugger {
 
-   #define SCIP_CALL_RETURN(x)                                        \
-   do                                                                 \
-   {                                                                  \
-      SCIP_RETCODE _restat_;                                          \
-      if( (_restat_ = (x)) != SCIP_OKAY )                             \
-      {                                                               \
-         SCIPerrorMessage("Error <%d> in function call\n", _restat_); \
-         return _restat_ == SCIP_ERROR ? 1 : _restat_;;               \
-      }                                                               \
-   }                                                                  \
-   while( FALSE )
+//   #define SCIP_CALL_RETURN(x)                                        \
+//   do                                                                 \
+//   {                                                                  \
+//      SCIP_RETCODE _restat_;                                          \
+//      if( (_restat_ = (x)) != SCIP_OKAY )                             \
+//      {                                                               \
+//         SCIPerrorMessage("Error <%d> in function call\n", _restat_); \
+//         return _restat_ == SCIP_ERROR ? 1 : _restat_;;               \
+//      }                                                               \
+//      else if( (_restat_ = (x)) == SCIP_OKAY )                        \
+//      {                                                               \
+//         SCIPerrorMessage("Error <%d> in function call\n", _restat_); \
+//         return  0 ;                                                  \
+//      }                                                               \
+//      }                                                               \
+//   while( FALSE )
 
 
    class ScipInterface : public SolverInterface {
@@ -172,22 +178,23 @@ namespace bugger {
 
       BuggerStatus run(const Message &msg, SolverStatus originalStatus, SolverSettings settings) override {
 
-         //TODO: Expect failing assertion during solve
-         //TODO: move this up to SolverInterface
-         SolverStatus status = solve( settings, originalStatus == SolverStatus::kAssertion );
-         BuggerStatus result = BuggerStatus::kNotReproduced;
-         if( status == SolverStatus::kError ||
-             ( status == SolverStatus::kAssertion || originalStatus != SolverStatus::kAssertion ))
-            result = BuggerStatus::kUnexpectedError;
+
+         SolverResult result = solve(settings, originalStatus == SolverStatus::kAssertion );
+         BuggerStatus status = BuggerStatus::kNotReproduced;
+         if( result.solver_status == SolverStatus::kUndefinedError ||
+             ( result.solver_status == SolverStatus::kAssertion || originalStatus != SolverStatus::kAssertion ))
+            status = BuggerStatus::kUnexpectedError;
          else if( originalStatus == SolverStatus::kAssertion)
          {
-            if( status != SolverStatus::kAssertion)
-               result = BuggerStatus::kReproduced;
+            if( result.solver_status != SolverStatus::kAssertion)
+               status = BuggerStatus::kReproduced;
          }
-         else if( SCIPisSumNegative(scip, SCIPgetObjsense(scip) * (reference - SCIPgetDualbound(scip))) )
-            result = BuggerStatus::kReproduced;
+         else if( result.solver_status != originalStatus )
+            status = BuggerStatus::kReproduced;
+         else
+            status = BuggerStatus::kReproduced;
 
-         switch( result )
+         switch( status )
          {
             case BuggerStatus::kNotReproduced:
                msg.info("\tError could not be reproduced\n");
@@ -205,7 +212,7 @@ namespace bugger {
 //            if( retcode == presoldata->passcodes[i] )
 //               return 0;
 
-         return result;
+         return status;
       }
 
       ~ScipInterface( ) override {
@@ -351,16 +358,6 @@ namespace bugger {
             SCIPsetCharParam(scip, pair.first.c_str(), pair.second);
          for(const auto& pair : settings.getStringSettings())
             SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
-//         SCIPsetBoolParam(scip, "constraints/setppc/cliquelifting", true);
-//         SCIPsetIntParam(scip, "presolving/boundshift/maxrounds", -1);
-//         SCIPsetIntParam(scip, "presolving/dualagg/maxrounds", -1);
-//         SCIPsetIntParam(scip, "presolving/dualinfer/maxrounds", -1);
-//         SCIPsetIntParam(scip, "presolving/qpkktref/maxrounds", -1);
-//         SCIPsetIntParam(scip, "presolving/redvub/maxrounds", -1);
-//         SCIPsetIntParam(scip, "presolving/tworowbnd/maxrounds", -1);
-//         SCIPsetIntParam(scip, "presolving/stuffing/maxrounds", -1);
-//         SCIPsetIntParam(scip, "propagating/probing/maxuseless", 1500);
-//         SCIPsetIntParam(scip, "propagating/probing/maxtotaluseless", 75);
       }
 
       SCIP_SOL *
@@ -380,7 +377,8 @@ namespace bugger {
 
       SolverStatus solve( const SolverSettings& settings ) override
       {
-         return solve(settings, true);
+         SolverResult result = solve(settings, true);
+         return result.solver_status;
       }
 
    private:
@@ -439,19 +437,18 @@ namespace bugger {
          return builder.build( );
       }
 
-      SolverStatus solve( const SolverSettings& settings, bool expect_assertion ) {
-
-         SCIPsetMessagehdlrQuiet(scip, true);
-         SolverStatus solverStatus = SolverStatus::kUnknown;
-         //TODO: Support initial solutions
+      SolverResult solve( const SolverSettings& settings, bool expect_assertion ) {
 
 #ifdef CATCH_ASSERTIONS
-         char retcode = 1;
+         SolverStatus solverStatus = SolverStatus::kUnknown;
+         char solver_retcode = 1;
+         char signal_retcode = 1;
+         double dual_bound = 0;
          if( expect_assertion )
          {
             if( fork( ) == 0 )
             {
-               exit( pure_solve(settings) );
+               exit( pure_solve(settings, &solverStatus) );
             }
             else
             {
@@ -461,34 +458,39 @@ namespace bugger {
 
                // Solver run complete
                if( WIFEXITED(status) )
+               {
                   // Get exit code
-                  retcode = WEXITSTATUS(status);
+                  auto s = SCIPgetStatus(scip);
+                  solver_retcode = WEXITSTATUS(status);
+                  }
                // Solver run broken
                else if( WIFSIGNALED(status) )
                {
+                  solverStatus = SolverStatus::kAssertion;
                   // Get signal code
-                  retcode = WTERMSIG(status);
-
-                  // Solver run interrupted
-                  if( retcode == SIGINT )
-                     // Interpret as success
-                     retcode = 0;
+                  signal_retcode = WTERMSIG(status);
                }
             }
          }
          else
 #endif
-            retcode = pure_solve(settings);
+            solver_retcode = pure_solve(settings, &solverStatus);
          //TODO: Translate retcode into solstat with respect to passcodes
-         return SolverStatus::kInfeasible;
+         auto s = SCIPgetStatus(scip);
+         return {solverStatus, solver_retcode, signal_retcode};
       }
 
-      char pure_solve( const SolverSettings& settings ) {
-         SCIP_CALL_RETURN( SCIPsolve(scip) );
+      char pure_solve( const SolverSettings& settings , SolverStatus* solverstatus ) {
+         //TODO: Support initial solutions
+//         SCIPsetMessagehdlrQuiet(scip, true);
+         SCIP_RETCODE retcode = SCIPsolve(scip);
+         fmt::print("here\n");
          switch( SCIPgetStatus(scip))
          {
             case SCIP_STATUS_UNKNOWN:
-               return (int) SolverStatus::kError;
+               fmt::print("unknown\n");
+               *solverstatus = SolverStatus::kUndefinedError;
+               break;
             case SCIP_STATUS_USERINTERRUPT:
             case SCIP_STATUS_NODELIMIT:
             case SCIP_STATUS_TOTALNODELIMIT:
@@ -502,18 +504,24 @@ namespace bugger {
 #if SCIP_VERSION_MAJOR >= 6
             case SCIP_STATUS_TERMINATE:
 #endif
-               return (int) SolverStatus::kLimit;
+               *solverstatus = SolverStatus::kLimit;
+               break;
             case SCIP_STATUS_INFORUNBD:
-               return (int) SolverStatus::kInfeasibleOrUnbounded;
+               *solverstatus = SolverStatus::kInfeasibleOrUnbounded;
+               break;
             case SCIP_STATUS_INFEASIBLE:
-               return (int) SolverStatus::kInfeasible;
+               fmt::print("infeasible\n");
+               *solverstatus = SolverStatus::kInfeasible;
+               break;
             case SCIP_STATUS_UNBOUNDED:
-               return (int) SolverStatus::kUnbounded;
+               *solverstatus = SolverStatus::kUnbounded;
+               break;
             case SCIP_STATUS_OPTIMAL:
-               return (int) SolverStatus::kOptimal;
+               //TODO:
+               *solverstatus =  SolverStatus::kOptimal;
+               break;
          }
-
-         return (int) SolverStatus::kError;
+         return retcode;
       }
 
    };
