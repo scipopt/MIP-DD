@@ -144,7 +144,7 @@ namespace bugger {
             {
                auto solver = createSolver();
                solver->doSetUp(problem, copy, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus, copy) != BuggerStatus::kReproduced)
+               if( call_solver(solver.get(), msg, originalSolverStatus, settings)!= BuggerStatus::kReproduced)
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -173,7 +173,7 @@ namespace bugger {
             {
                auto solver = createSolver();
                solver->doSetUp(problem, copy, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus, copy) != BuggerStatus::kReproduced)
+               if( call_solver(solver.get(), msg, originalSolverStatus, settings)!= BuggerStatus::kReproduced)
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -203,7 +203,7 @@ namespace bugger {
             {
                auto solver = createSolver();
                solver->doSetUp(problem, copy, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus, copy) != BuggerStatus::kReproduced)
+               if( call_solver(solver.get(), msg, originalSolverStatus, settings)!= BuggerStatus::kReproduced)
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -234,7 +234,7 @@ namespace bugger {
             {
                auto solver = createSolver();
                solver->doSetUp(problem, copy, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus, copy) != BuggerStatus::kReproduced)
+               if( call_solver(solver.get(), msg, originalSolverStatus, settings)!= BuggerStatus::kReproduced)
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -266,7 +266,7 @@ namespace bugger {
             {
                auto solver = createSolver();
                solver->doSetUp(problem, copy, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus, copy) != BuggerStatus::kReproduced)
+               if( call_solver(solver.get(), msg, originalSolverStatus, settings)!= BuggerStatus::kReproduced)
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -300,7 +300,7 @@ namespace bugger {
             {
                auto solver = createSolver();
                solver->doSetUp(problem, copy, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus, copy) != BuggerStatus::kReproduced)
+               if( call_solver(solver.get(), msg, originalSolverStatus, settings)!= BuggerStatus::kReproduced)
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {

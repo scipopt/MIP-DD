@@ -32,6 +32,7 @@
 #include "bugger/data/Problem.hpp"
 #include "bugger/data/Solution.hpp"
 #include "bugger/data/SolverSettings.hpp"
+#include "bugger/interfaces/SolverResult.hpp"
 
 namespace bugger {
 
@@ -44,11 +45,12 @@ namespace bugger {
       virtual void
       doSetUp(const Problem<double> &problem, SolverSettings settings, bool solution_exists, const Solution<double> sol ) = 0;
 
-      virtual
-      BuggerStatus run(const Message &msg, SolverStatus originalStatus, SolverSettings settings) = 0;
-
+      //TODO: this can probably moved one up
       virtual
       SolverStatus solve( const SolverSettings& settings) = 0;
+
+      virtual
+      SolverResult solve( const SolverSettings& settings, bool expect_assertion ) = 0;
 
       virtual
       void writeSettings(std::string filename, const SolverSettings& solver_settings ) = 0;

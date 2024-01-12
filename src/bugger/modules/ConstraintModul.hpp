@@ -94,7 +94,7 @@ namespace bugger {
             {
                auto solver = createSolver();
                solver->doSetUp(copy,  settings, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus, settings) != BuggerStatus::kReproduced)
+               if( call_solver(solver.get(), msg, originalSolverStatus, settings)!= BuggerStatus::kReproduced)
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_redundant_rows )
