@@ -115,7 +115,6 @@ namespace bugger {
 
             param = params[ i ];
 
-//            if( ( param->isfixed || !SCIPparamIsDefault(param)) && isSettingAdmissible(param))
             if( is_setting_relevant(param) )
             {
                param->isfixed = FALSE;
@@ -182,7 +181,7 @@ namespace bugger {
          SolverResult result = solve(settings, originalStatus == SolverStatus::kAssertion );
          BuggerStatus status = BuggerStatus::kNotReproduced;
          if( result.solver_status == SolverStatus::kUndefinedError ||
-             ( result.solver_status == SolverStatus::kAssertion || originalStatus != SolverStatus::kAssertion ))
+             ( result.solver_status == SolverStatus::kAssertion && originalStatus != SolverStatus::kAssertion ))
             status = BuggerStatus::kUnexpectedError;
          else if( originalStatus == SolverStatus::kAssertion)
          {
@@ -192,7 +191,7 @@ namespace bugger {
          else if( result.solver_status != originalStatus )
             status = BuggerStatus::kReproduced;
          else
-            status = BuggerStatus::kReproduced;
+            status = BuggerStatus::kNotReproduced;
 
          switch( status )
          {
@@ -448,7 +447,7 @@ namespace bugger {
          {
             if( fork( ) == 0 )
             {
-               exit( pure_solve(settings, &solverStatus) );
+               exit( pure_solve(settings, solverStatus) );
             }
             else
             {
@@ -461,7 +460,21 @@ namespace bugger {
                {
                   // Get exit code
                   auto s = SCIPgetStatus(scip);
+                  //TODO SCIP status is always unknown, also handing over a parameter does not work but in the call below it did work. overwriting the retcode (since it should be SCIP_OKAY may be a suboptimal solution)
                   solver_retcode = WEXITSTATUS(status);
+                  assert( solver_retcode > 1);
+                  if(solver_retcode - 1 == (int) SolverStatus::kOptimal)
+                     solverStatus = SolverStatus::kOptimal;
+                  if(solver_retcode - 1 == (int) SolverStatus::kUnbounded)
+                     solverStatus = SolverStatus::kUnbounded;
+                  if(solver_retcode - 1 == (int) SolverStatus::kInfeasible)
+                     solverStatus = SolverStatus::kInfeasible;
+                  if(solver_retcode - 1 == (int) SolverStatus::kInfeasibleOrUnbounded)
+                     solverStatus = SolverStatus::kInfeasibleOrUnbounded;
+                  if(solver_retcode - 1 == (int) SolverStatus::kFalselyClaimingOptimal)
+                     solverStatus = SolverStatus::kFalselyClaimingOptimal;
+                  solver_retcode = 1;
+                  signal_retcode = 0;
                   }
                // Solver run broken
                else if( WIFSIGNALED(status) )
@@ -474,22 +487,22 @@ namespace bugger {
          }
          else
 #endif
-            solver_retcode = pure_solve(settings, &solverStatus);
+         {
+            solver_retcode = pure_solve(settings, solverStatus);
+         }
          //TODO: Translate retcode into solstat with respect to passcodes
-         auto s = SCIPgetStatus(scip);
          return {solverStatus, solver_retcode, signal_retcode};
       }
 
-      char pure_solve( const SolverSettings& settings , SolverStatus* solverstatus ) {
+      char pure_solve( const SolverSettings& settings , SolverStatus& solverstatus ) {
          //TODO: Support initial solutions
-//         SCIPsetMessagehdlrQuiet(scip, true);
-         SCIP_RETCODE retcode = SCIPsolve(scip);
-         fmt::print("here\n");
+         SCIPsetMessagehdlrQuiet(scip, true);
+         char retcode = SCIPsolve(scip);
          switch( SCIPgetStatus(scip))
          {
             case SCIP_STATUS_UNKNOWN:
                fmt::print("unknown\n");
-               *solverstatus = SolverStatus::kUndefinedError;
+               solverstatus = SolverStatus::kUndefinedError;
                break;
             case SCIP_STATUS_USERINTERRUPT:
             case SCIP_STATUS_NODELIMIT:
@@ -504,23 +517,26 @@ namespace bugger {
 #if SCIP_VERSION_MAJOR >= 6
             case SCIP_STATUS_TERMINATE:
 #endif
-               *solverstatus = SolverStatus::kLimit;
+               solverstatus = SolverStatus::kLimit ;
                break;
             case SCIP_STATUS_INFORUNBD:
-               *solverstatus = SolverStatus::kInfeasibleOrUnbounded;
+               solverstatus =  SolverStatus::kInfeasibleOrUnbounded ;
                break;
             case SCIP_STATUS_INFEASIBLE:
                fmt::print("infeasible\n");
-               *solverstatus = SolverStatus::kInfeasible;
+               solverstatus = SolverStatus::kInfeasible ;
                break;
             case SCIP_STATUS_UNBOUNDED:
-               *solverstatus = SolverStatus::kUnbounded;
+               solverstatus = SolverStatus::kUnbounded ;
                break;
             case SCIP_STATUS_OPTIMAL:
-               //TODO:
-               *solverstatus =  SolverStatus::kOptimal;
+               if( SCIPisSumNegative(scip, SCIPgetObjsense(scip) * (reference - SCIPgetDualbound(scip))) )
+                  solverstatus = SolverStatus::kFalselyClaimingOptimal;
+               else
+                  solverstatus =  SolverStatus::kOptimal ;
                break;
          }
+         retcode = (int) solverstatus + 1;
          return retcode;
       }
 
