@@ -477,7 +477,7 @@ namespace bugger {
          return SolverStatus::kInfeasible;
       }
 
-      int pure_solve( const SolverSettings& settings ) {
+      char pure_solve( const SolverSettings& settings ) {
          SCIP_CALL_RETURN( SCIPsolve(scip) );
          switch( SCIPgetStatus(scip))
          {
