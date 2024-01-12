@@ -446,27 +446,33 @@ namespace bugger {
          //TODO: Support initial solutions
 
 #ifdef CATCH_ASSERTIONS
-         int status;
+         char retcode = 1;
          if( expect_assertion )
          {
             if( fork( ) == 0 )
             {
-               exit(( pure_solve(settings) ));
+               exit( pure_solve(settings) );
             }
             else
             {
+               int status;
+
                wait(&status);
 
-               if( !WIFEXITED(status))
-               {
-                  return SolverStatus::kAssertion;
-               }
+               // Solver run complete
+               if( WIFEXITED(status) )
+                  // Get exit code
+                  retcode = WEXITSTATUS(status);
+               // Solver run broken
                else if( WIFSIGNALED(status) )
                {
-                  int retcode = WTERMSIG(status);
+                  // Get signal code
+                  retcode = WTERMSIG(status);
 
+                  // Solver run interrupted
                   if( retcode == SIGINT )
-                     return SolverStatus::kError;
+                     // Interpret as success
+                     retcode = 0;
                }
             }
          }
