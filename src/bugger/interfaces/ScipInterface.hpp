@@ -434,8 +434,6 @@ namespace bugger {
                      solverStatus = SolverStatus::kInfeasibleOrUnbounded;
                   if(solver_retcode - 1 == (int) SolverStatus::kFalselyClaimingOptimal)
                      solverStatus = SolverStatus::kFalselyClaimingOptimal;
-                  solver_retcode = 1;
-                  signal_retcode = 0;
                   }
                // Solver run broken
                else if( WIFSIGNALED(status) )
