@@ -215,10 +215,10 @@ namespace bugger {
             status = BuggerStatus::kUnexpectedError;
          else if( originalStatus == SolverStatus::kAssertion)
          {
-            if( result.solver_status != SolverStatus::kAssertion)
+            if( result.solver_status == SolverStatus::kAssertion)
                status = BuggerStatus::kReproduced;
          }
-         else if( result.solver_status != originalStatus )
+         else if( result.solver_status == originalStatus )
             status = BuggerStatus::kReproduced;
          else
             status = BuggerStatus::kNotReproduced;
