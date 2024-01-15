@@ -104,63 +104,56 @@ namespace bugger {
             SCIP_PARAM *param;
 
             param = params[ i ];
-
-//            if( ( param->isfixed || !SCIPparamIsDefault(param)) && isSettingAdmissible(param))
-            if( is_setting_relevant(param) )
+            param->isfixed = FALSE;
+            switch( SCIPparamGetType(param))
             {
-               param->isfixed = FALSE;
-               switch( SCIPparamGetType(param))
+               case SCIP_PARAMTYPE_BOOL:
                {
-                  case SCIP_PARAMTYPE_BOOL:
-                  {
-                     bool bool_val = ( param->data.boolparam.valueptr == nullptr ? param->data.boolparam.curvalue
-                                                                           : *param->data.boolparam.valueptr );
-                     bool_settings.emplace_back(param->name, bool_val);
-                     break;
-                  }
-                  case SCIP_PARAMTYPE_INT:
-                  {
-                     int int_value = ( param->data.intparam.valueptr == nullptr ? param->data.intparam.curvalue
-                                                                                : *param->data.intparam.valueptr );
-                     int_settings.emplace_back( param->name, int_value);
-                     break;
-                  }
-                  case SCIP_PARAMTYPE_LONGINT:
-                  {
-                     long long_val = ( param->data.longintparam.valueptr == nullptr ? param->data.longintparam.curvalue
-                                                                                         : *param->data.longintparam.valueptr );
-                     long_settings.emplace_back(param->name, long_val);
-                     break;
-                  }
-                  case SCIP_PARAMTYPE_REAL:
-                  {
-                     double real_val = ( param->data.realparam.valueptr == nullptr ? param->data.realparam.curvalue
-                                                                           : *param->data.realparam.valueptr );
-                     double_settings.emplace_back(param->name, real_val);
-                     break;
-                  }
-                  case SCIP_PARAMTYPE_CHAR:
-                  {
-
-                     char char_val = ( param->data.charparam.valueptr == nullptr ? param->data.charparam.curvalue
-                                                                           : *param->data.charparam.valueptr );
-                     char_settings.emplace_back(param->name, char_val);
-
-                     break;
-                  }
-                  case SCIP_PARAMTYPE_STRING:
-                  {
-                     std::string string_val = ( param->data.stringparam.valueptr == nullptr ? param->data.stringparam.curvalue
-                                                                               : *param->data.stringparam.valueptr );
-                     string_settings.emplace_back(param->name, string_val);
-                     break;
-                  }
-                  default:
-                     SCIPerrorMessage("unknown parameter type\n");
+                  bool bool_val = ( param->data.boolparam.valueptr == nullptr ? param->data.boolparam.curvalue
+                                                                              : *param->data.boolparam.valueptr );
+                  bool_settings.emplace_back(param->name, bool_val);
+                  break;
                }
+               case SCIP_PARAMTYPE_INT:
+               {
+                  int int_value = ( param->data.intparam.valueptr == nullptr ? param->data.intparam.curvalue
+                                                                             : *param->data.intparam.valueptr );
+                  int_settings.emplace_back( param->name, int_value);
+                  break;
+               }
+               case SCIP_PARAMTYPE_LONGINT:
+               {
+                  long long_val = ( param->data.longintparam.valueptr == nullptr ? param->data.longintparam.curvalue
+                                                                                 : *param->data.longintparam.valueptr );
+                  long_settings.emplace_back(param->name, long_val);
+                  break;
+               }
+               case SCIP_PARAMTYPE_REAL:
+               {
+                  double real_val = ( param->data.realparam.valueptr == nullptr ? param->data.realparam.curvalue
+                                                                                : *param->data.realparam.valueptr );
+                  double_settings.emplace_back(param->name, real_val);
+                  break;
+               }
+               case SCIP_PARAMTYPE_CHAR:
+               {
 
+                  char char_val = ( param->data.charparam.valueptr == nullptr ? param->data.charparam.curvalue
+                                                                              : *param->data.charparam.valueptr );
+                  char_settings.emplace_back(param->name, char_val);
+
+                  break;
+               }
+               case SCIP_PARAMTYPE_STRING:
+               {
+                  std::string string_val = ( param->data.stringparam.valueptr == nullptr ? param->data.stringparam.curvalue
+                                                                                         : *param->data.stringparam.valueptr );
+                  string_settings.emplace_back(param->name, string_val);
+                  break;
+               }
+               default:
+                  SCIPerrorMessage("unknown parameter type\n");
             }
-
          }
 
          return {bool_settings, int_settings, long_settings, double_settings,char_settings, string_settings};
@@ -208,13 +201,6 @@ namespace bugger {
       }
 
    private:
-
-      bool is_setting_relevant(SCIP_PARAM *param) {
-         /* keep reading and writing settings because input and output is not monitored */
-         return strncmp("display/", SCIPparamGetName(param), 8) != 0
-                && strncmp("reading/", SCIPparamGetName(param), 8) != 0 &&
-                strncmp("write/", SCIPparamGetName(param), 6) != 0;
-      }
 
       SCIP_RETCODE
       setup(const Problem<double> &problem, bool solution_exits, const Solution<double> sol, SolverSettings settings) {
