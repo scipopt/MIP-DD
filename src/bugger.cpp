@@ -98,8 +98,6 @@ main(int argc, char *argv[]) {
       sol_exists = true;
    }
 
-
-   //TODO: why can this not be auto generated in the class?
    Vec<std::unique_ptr<BuggerModul>> list { };
    BuggerRun bugger { optionsInfo.solver_settings_file, optionsInfo.target_solver_settings_file, problem, sol, sol_exists, list };
 

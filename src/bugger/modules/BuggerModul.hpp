@@ -211,25 +211,6 @@ namespace bugger {
          this->skip += nrounds;
       }
 
-      template<typename LOOP>
-      void
-      loop(int start, int end, LOOP &&loop_instruction) {
-#ifdef BUGGER_TBB
-         tbb::parallel_for(tbb::blocked_range<int>(start, end),
-                           [ & ](const tbb::blocked_range<int> &r) {
-                              for( int i = r.begin( ); i != r.end( ); ++i )
-                                 loop_instruction(i);
-                           });
-#else
-         for( int i = 0; i < end; i++ )
-         {
-            loop_instruction( i );
-         }
-#endif
-      }
-
-
-
    private:
       std::string name;
       double execTime;
