@@ -28,15 +28,13 @@
 
 namespace bugger
 {
-
    struct SolverResult
    {
-      SolverStatus solver_status;
-
       char solver_retcode;
 
       int signal_retcode;
 
+      SolverStatus solver_status;
    };
 
 } // namespace bugger

@@ -208,40 +208,24 @@ namespace bugger {
 
       BuggerStatus call_solver(SolverInterface* solver, const Message &msg, SolverStatus originalStatus, SolverSettings settings) {
 
-         SolverResult result = solver->solve(settings, originalStatus == SolverStatus::kAssertion );
-         BuggerStatus status = BuggerStatus::kNotReproduced;
-         if( result.solver_status == SolverStatus::kUndefinedError ||
-             ( result.solver_status == SolverStatus::kAssertion && originalStatus != SolverStatus::kAssertion ))
-            status = BuggerStatus::kUnexpectedError;
-         else if( originalStatus == SolverStatus::kAssertion)
+         //TODO: Check optimized mode
+         SolverResult result = solver->solve(settings, true);
+         if( result.solver_retcode == 0 )
          {
-            if( result.solver_status == SolverStatus::kAssertion)
-               status = BuggerStatus::kReproduced;
+            msg.info("\tError could not be reproduced\n");
+            return BuggerStatus::kNotReproduced;
          }
+         //TODO: Use original retcode
          else if( result.solver_status == originalStatus )
-            status = BuggerStatus::kReproduced;
-         else
-            status = BuggerStatus::kNotReproduced;
-
-         switch( status )
          {
-            case BuggerStatus::kNotReproduced:
-               msg.info("\tError could not be reproduced\n");
-               break;
-            case BuggerStatus::kReproduced:
-               msg.info("\tError could be reproduced\n");
-               break;
-            case BuggerStatus::kUnexpectedError:
-               msg.info("\tAn error was returned\n");
-               break;
+            msg.info("\tError could be reproduced\n");
+            return BuggerStatus::kReproduced;
          }
-
-         // TODO: Support passing returncodes
-//         for( int i = 0; i < presoldata->npasscodes; ++i )
-//            if( retcode == presoldata->passcodes[i] )
-//               return 0;
-
-         return status;
+         else
+         {
+            msg.info("\tAn error was returned\n");
+            return BuggerStatus::kUnexpectedError;
+         }
       }
 
       void

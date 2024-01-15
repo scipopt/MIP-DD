@@ -196,7 +196,7 @@ namespace bugger {
       SolverStatus getOriginalSolveStatus( const SolverSettings& settings) {
          auto solver = createSolver();
          solver->doSetUp(problem, settings, false, solution);
-         return solver->solve( settings );
+         return solver->solve( settings, true ).solver_status;
       }
 
       SolverSettings parseSettings( const std::string& filename) {

@@ -338,7 +338,7 @@ namespace bugger {
       SolverStatus solve( const SolverSettings& settings ) override
       {
          SolverResult result = solve(settings, true);
-         return result.solver_status;
+         return result.solver_retcode == 0 ? result.solver_status : SolverStatus::kUndefinedError;
       }
 
    private:
@@ -399,11 +399,11 @@ namespace bugger {
 
       SolverResult solve( const SolverSettings& settings, bool expect_assertion ) override {
 
-#ifdef CATCH_ASSERTIONS
-         SolverStatus solverStatus = SolverStatus::kUnknown;
          char solver_retcode = 1;
-         char signal_retcode = 1;
-         double dual_bound = 0;
+         int signal_retcode = 1;
+         //TODO: Use shmget to share status memory
+         SolverStatus solverStatus = SolverStatus::kUnknown;
+#ifdef CATCH_ASSERTIONS
          if( expect_assertion )
          {
             if( fork( ) == 0 )
@@ -420,27 +420,16 @@ namespace bugger {
                if( WIFEXITED(status) )
                {
                   // Get exit code
-                  auto s = SCIPgetStatus(scip);
-                  //TODO SCIP status is always unknown, also handing over a parameter does not work but in the call below it did work. overwriting the retcode (since it should be SCIP_OKAY may be a suboptimal solution)
                   solver_retcode = WEXITSTATUS(status);
-                  assert( solver_retcode > 1);
-                  if(solver_retcode - 1 == (int) SolverStatus::kOptimal)
-                     solverStatus = SolverStatus::kOptimal;
-                  if(solver_retcode - 1 == (int) SolverStatus::kUnbounded)
-                     solverStatus = SolverStatus::kUnbounded;
-                  if(solver_retcode - 1 == (int) SolverStatus::kInfeasible)
-                     solverStatus = SolverStatus::kInfeasible;
-                  if(solver_retcode - 1 == (int) SolverStatus::kInfeasibleOrUnbounded)
-                     solverStatus = SolverStatus::kInfeasibleOrUnbounded;
-                  if(solver_retcode - 1 == (int) SolverStatus::kFalselyClaimingOptimal)
-                     solverStatus = SolverStatus::kFalselyClaimingOptimal;
-                  }
+                  signal_retcode = 0;
+               }
                // Solver run broken
                else if( WIFSIGNALED(status) )
                {
-                  solverStatus = SolverStatus::kAssertion;
                   // Get signal code
                   signal_retcode = WTERMSIG(status);
+                  solver_retcode = signal_retcode == SIGINT ? 0 : 1;
+                  solverStatus = SolverStatus::kAssertion;
                }
             }
          }
@@ -448,19 +437,26 @@ namespace bugger {
 #endif
          {
             solver_retcode = pure_solve(settings, solverStatus);
+            signal_retcode = 0;
          }
-         //TODO: Translate retcode into solstat with respect to passcodes
-         return {solverStatus, solver_retcode, signal_retcode};
+
+         //TODO: Support passing returncodes
+         //for( int i = 0; i < presoldata->npasscodes; ++i )
+         //   if( retcode == presoldata->passcodes[i] )
+         //      return 0;
+
+         return {solver_retcode, signal_retcode, solverStatus};
       }
 
-      char pure_solve( const SolverSettings& settings , SolverStatus& solverstatus ) {
+      char pure_solve( const SolverSettings& settings, SolverStatus& solverstatus ) {
          //TODO: Support initial solutions
          SCIPsetMessagehdlrQuiet(scip, true);
          char retcode = SCIPsolve(scip);
-         switch( SCIPgetStatus(scip))
+         if( retcode == SCIP_OKAY && SCIPisSumNegative(scip, SCIPgetObjsense(scip) * (reference - SCIPgetDualbound(scip))) )
+            retcode = SCIP_INVALIDRESULT;
+         switch( SCIPgetStatus(scip) )
          {
             case SCIP_STATUS_UNKNOWN:
-               fmt::print("unknown\n");
                solverstatus = SolverStatus::kUndefinedError;
                break;
             case SCIP_STATUS_USERINTERRUPT:
@@ -482,21 +478,16 @@ namespace bugger {
                solverstatus =  SolverStatus::kInfeasibleOrUnbounded ;
                break;
             case SCIP_STATUS_INFEASIBLE:
-               fmt::print("infeasible\n");
                solverstatus = SolverStatus::kInfeasible ;
                break;
             case SCIP_STATUS_UNBOUNDED:
                solverstatus = SolverStatus::kUnbounded ;
                break;
             case SCIP_STATUS_OPTIMAL:
-               if( SCIPisSumNegative(scip, SCIPgetObjsense(scip) * (reference - SCIPgetDualbound(scip))) )
-                  solverstatus = SolverStatus::kFalselyClaimingOptimal;
-               else
-                  solverstatus =  SolverStatus::kOptimal ;
+               solverstatus = SolverStatus::kOptimal ;
                break;
          }
-         retcode = (int) solverstatus + 1;
-         return retcode;
+         return retcode-1;
       }
 
    };
