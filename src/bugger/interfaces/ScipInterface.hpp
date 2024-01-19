@@ -407,12 +407,11 @@ namespace bugger {
             solverstatus = SolverStatus::kUndefinedError;
             // shift retcodes so that all errors have negative values
             retcode--;
-            // progess certain passcodes as OKAY based on the user preferences
-            for(char passcode: passcodes)
-               if( passcode == retcode )
-                  return {0, solverstatus};
-
          }
+         // progess certain passcodes as OKAY based on the user preferences
+         for(char passcode: passcodes)
+            if( passcode == retcode )
+               return {0, solverstatus};
          return { retcode, solverstatus };
       }
 
