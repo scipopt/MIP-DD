@@ -81,6 +81,7 @@ namespace bugger {
          const Vec<double>& ub = problem.getUpperBounds();
          const Vec<double>& lb = problem.getLowerBounds();
          bool failure= false;
+         double max = 0;
 
          msg.info("\nTesting solution:\n");
          for( int col = 0; col < problem.getNCols(); col++ )
@@ -90,14 +91,17 @@ namespace bugger {
 
             if ( ! problem.getColFlags()[col].test( ColFlag::kLbInf ) && solution.primal[col] < lb[col] )
             {
-               msg.info( "\tColumn {} violates lower column bound () ({} ! >= {}).\n", problem.getVariableNames()[col], (double) solution.primal[col], (double) lb[col]  );
+               msg.detailed( "\tColumn {} violates lower column bound () ({} ! >= {}).\n", problem.getVariableNames()[col], (double) solution.primal[col], (double) lb[col]  );
                failure = true;
+               max = MAX(max, abs(lb[col]- solution.primal[col]));
             }
 
             if ( ! problem.getColFlags()[col].test( ColFlag::kUbInf ) && solution.primal[col] > ub[col]  )
             {
-               msg.info( "\tColumn {} violates upper column bound ({} ! <= {}).\n", problem.getVariableNames()[col], (double) solution.primal[col], (double) ub[col]  );
+               msg.detailed( "\tColumn {} violates upper column bound ({} ! <= {}).\n", problem.getVariableNames()[col], (double) solution.primal[col], (double) ub[col]  );
                failure = true;
+               max = MAX(max, abs(ub[col]- solution.primal[col]));
+
             }
          }
 
@@ -124,21 +128,23 @@ namespace bugger {
             bool lhs_inf = problem.getRowFlags()[row].test( RowFlag::kLhsInf );
             if( ( ! lhs_inf ) &&  rowValue < lhs[row]  )
             {
-               msg.info( "\tRow {:<3} violates row bounds ({:<3} < {:<3}).\n",
+               msg.detailed( "\tRow {:<3} violates row bounds ({:<3} < {:<3}).\n",
                              problem.getConstraintNames()[row], (double) lhs[row], (double) rowValue );
                failure = true;
+               max = MAX(max, abs(lhs[row]- rowValue));
             }
             bool rhs_inf = problem.getRowFlags()[row].test( RowFlag::kRhsInf );
             if( ( ! rhs_inf ) &&  rowValue > rhs[row] )
             {
-               msg.info( "\tRow {:<3} violates row bounds ({:<3} < {:<3}).\n",
+               msg.detailed( "\tRow {:<3} violates row bounds ({:<3} < {:<3}).\n",
                          problem.getConstraintNames()[row], (double) rowValue, (double) rhs[row] );
                failure = true;
+               max = MAX(max, abs(rhs[row]- rowValue));
             }
          }
 
          if(failure)
-            msg.info("Solution is not exactly feasible using floating point arithmetic. Consider polishing the solution!\n");
+            msg.info("Solution is not exactly feasible (max violation: {}) using floating point arithmetic. Consider polishing the solution!\n", max);
          else
             msg.info("Solution is feasible\n");
          msg.info("\n");
