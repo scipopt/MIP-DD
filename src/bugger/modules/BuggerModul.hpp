@@ -189,23 +189,23 @@ namespace bugger {
 
 
       BuggerStatus
-      call_solver(SolverInterface *solver, const Message &msg, SolverSettings settings, const BuggerOptions &options) {
+      call_solver(SolverInterface *solver, const Message &msg, const BuggerOptions &options) {
 
          Vec<char> passcodes(options.passcodes.begin(), options.passcodes.end());
          std::pair<char, SolverStatus> result = solver->solve(passcodes);
-         if( result.first == OKAY )
+         if( result.first == 0 )
          {
             msg.info("\tStatus {}\n", to_string(result.second));
             return BuggerStatus::kNotReproduced;
          }
-         else if( result.first > OKAY )
+         else if( result.first > 0 )
          {
-            msg.info("\tBug {} - Status {}\n", result.first, to_string(result.second));
+            msg.info("\tBug {} - Status {}\n", (int) result.first, to_string(result.second));
             return BuggerStatus::kReproduced;
          }
          else
          {
-            msg.info("\tError {}\n", result.first);
+            msg.info("\tError {}\n", (int) result.first);
             return BuggerStatus::kUnexpectedError;
          }
       }
