@@ -184,9 +184,9 @@ namespace bugger {
          if( solution_exists )
             reference = obj.offset;
          if( sol.status == SolutionStatus::kUnbounded)
-            reference = SCIPinfinity(scip);
+            reference = -SCIPgetObjsense(scip) * SCIPinfinity(scip);
          if( sol.status == SolutionStatus::kInfeasible)
-            reference = -SCIPinfinity(scip);
+            reference = SCIPgetObjsense(scip) * SCIPinfinity(scip);
          for( int col = 0; col < ncols; ++col )
          {
             if( domains.flags[ col ].test(ColFlag::kFixed) )
