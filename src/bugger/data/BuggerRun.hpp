@@ -193,7 +193,8 @@ namespace bugger {
       SolverStatus getOriginalSolveStatus( const SolverSettings& settings) {
          auto solver = createSolver();
          solver->doSetUp(problem, settings, false, solution);
-         const std::pair<char, SolverStatus> &pair = solver->solve( );
+         Vec<char> empty_passcodes{};
+         const std::pair<char, SolverStatus> &pair = solver->solve(empty_passcodes);
          assert(pair.first == 0);
          return pair.second;
       }

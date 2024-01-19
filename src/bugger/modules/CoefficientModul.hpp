@@ -141,7 +141,7 @@ namespace bugger {
                copy.getConstraintMatrix( ).changeCoefficients(batches_coeff);
                auto solver = createSolver();
                solver->doSetUp(copy,  settings, solution_exists, solution );
-               if( call_solver(solver.get( ), msg, settings) == BuggerStatus::kNotReproduced)
+               if( call_solver(solver.get( ), msg, settings, options) == BuggerStatus::kNotReproduced)
                {
                   copy = Problem<double>(problem);
                   copy.getConstraintMatrix( ).changeCoefficients(applied_entries);

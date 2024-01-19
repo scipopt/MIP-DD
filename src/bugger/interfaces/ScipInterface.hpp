@@ -44,9 +44,7 @@
 #include "bugger/interfaces/BuggerStatus.hpp"
 #include "bugger/interfaces/SolverStatus.hpp"
 #include "bugger/interfaces/SolverInterface.hpp"
-#include "bugger/interfaces/SolverResult.hpp"
 #include "bugger/data/SolverSettings.hpp"
-#include "SolverResult.hpp"
 
 
 
@@ -307,9 +305,7 @@ namespace bugger {
    private:
 
       static
-      Problem<SCIP_Real> buildProblem(
-            SCIP *scip               /**< SCIP data structure */
-      ) {
+      Problem<SCIP_Real> buildProblem( SCIP *scip) {
          SCIP_MATRIX* matrix;
          ProblemBuilder<SCIP_Real> builder;
 
@@ -360,7 +356,7 @@ namespace bugger {
          return builder.build( );
       }
 
-      std::pair<char, SolverStatus> solve( ) override {
+      std::pair<char, SolverStatus> solve( Vec<char>& passcodes) override {
 
          SolverStatus solverstatus = SolverStatus::kUnknown;
          SCIPsetMessagehdlrQuiet(scip, true);
@@ -409,13 +405,13 @@ namespace bugger {
          else
          {
             solverstatus = SolverStatus::kUndefinedError;
-            Vec<char> passcodes{};
+            // shift retcodes so that all errors have negative values
+            retcode--;
             // progess certain passcodes as OKAY based on the user preferences
             for(char passcode: passcodes)
                if( passcode == retcode )
                   return {0, solverstatus};
-            // shift retcodes so that all errors have negative values
-            retcode--;
+
          }
          return { retcode, solverstatus };
       }

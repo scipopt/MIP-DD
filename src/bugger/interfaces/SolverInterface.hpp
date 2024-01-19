@@ -32,7 +32,6 @@
 #include "bugger/data/Problem.hpp"
 #include "bugger/data/Solution.hpp"
 #include "bugger/data/SolverSettings.hpp"
-#include "bugger/interfaces/SolverResult.hpp"
 
 namespace bugger {
 
@@ -55,12 +54,9 @@ namespace bugger {
       virtual void
       doSetUp(const Problem<double> &problem, SolverSettings settings, bool solution_exists, const Solution<double> sol ) = 0;
 
-      /**
-       * solves problem loaded in doSetUp
-       * @return pair of solver retcode (0=Instances solved correctly discard changes, 1=Bug still present,  ) and status of the instance (Infeasible, Optimal, Unbounded)
-       */
+
       virtual
-      std::pair<char, SolverStatus> solve( ) = 0;
+      std::pair<char, SolverStatus> solve(Vec<char>& passcodes) = 0;
 
       /**
        * write settings to file

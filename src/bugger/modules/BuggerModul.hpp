@@ -188,9 +188,11 @@ namespace bugger {
       }
 
 
-      BuggerStatus call_solver(SolverInterface *solver, const Message &msg, SolverSettings settings) {
+      BuggerStatus
+      call_solver(SolverInterface *solver, const Message &msg, SolverSettings settings, const BuggerOptions &options) {
 
-         std::pair<char, SolverStatus> result = solver->solve( );
+         Vec<char> passcodes(options.passcodes.begin(), options.passcodes.end());
+         std::pair<char, SolverStatus> result = solver->solve(passcodes);
          if( result.first == 0 )
          {
             msg.info("\tNot Reproduced - Solver State: {}\n", to_string(result.second));
