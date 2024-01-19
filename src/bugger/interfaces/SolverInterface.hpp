@@ -41,7 +41,7 @@ namespace bugger {
    public:
 
       const static char OKAY = 0;
-      const static char NOT_REPRODUCED = 1;
+      const static char BUG_REPRODUCED = 1;
 
       SolverInterface( ) = default;
 

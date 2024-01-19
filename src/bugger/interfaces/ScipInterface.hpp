@@ -368,7 +368,7 @@ namespace bugger {
          if( retcode == SCIP_OKAY )
          {
             if( SCIPisSumNegative(scip, SCIPgetObjsense(scip) * ( reference - SCIPgetDualbound(scip))))
-               retcode = NOT_REPRODUCED;
+               retcode = BUG_REPRODUCED;
             else
                retcode = OKAY;
 
