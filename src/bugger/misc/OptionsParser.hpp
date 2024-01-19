@@ -118,7 +118,7 @@ struct OptionsInfo
 
       desc.add_options( )("solution-file,o",
                           value(&solution_file),
-                          "filename for solution settings");
+                          "filename for solution settings or infeasible/unbounded if infeasible or unbounded");
 
       desc.add_options( )("threads", value(&nthreads)->default_value(0));
 

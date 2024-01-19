@@ -88,7 +88,6 @@ struct MpsWriter
             for( int j = 0; j < data.getLength(); j++)
                if(!col_flags[data.getIndices()[j]].test(ColFlag::kFixed))
                   nnnz++;
-            nnnz += consmatrix.getRowCoefficients(i).getLength();
          }
       }
       for(int i =0; i < consmatrix.getNCols(); i++)
