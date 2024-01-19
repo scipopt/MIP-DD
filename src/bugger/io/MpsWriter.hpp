@@ -101,7 +101,7 @@ struct MpsWriter
          }
       }
 
-      fmt::print( out, "Instance {} reduced by delta debugging\n", prob.getName());
+      fmt::print( out, "*Instance {} reduced by delta debugging\n", prob.getName());
       fmt::print( out, "*\tConstraints:         {} of original {}\n", nrows, consmatrix.getNRows() );
       fmt::print( out, "*\tVariables:           {} of original {}\n", ncols, consmatrix.getNCols() );
       fmt::print( out, "*\tInteger:             {} of original {}\n", nintcols, prob.getNumIntegralCols());
