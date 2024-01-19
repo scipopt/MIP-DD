@@ -38,32 +38,45 @@ namespace bugger {
 
    class SolverInterface {
 
-
    public:
+
+      const static char OKAY = 0;
+      const static char NOT_REPRODUCED = 1;
+
       SolverInterface( ) = default;
 
+      /**
+       * loads problem and settings
+       * @param problem
+       * @param settings
+       * @param solution_exists
+       * @param sol
+       */
       virtual void
       doSetUp(const Problem<double> &problem, SolverSettings settings, bool solution_exists, const Solution<double> sol ) = 0;
 
-      //TODO: this can probably moved one up
+      /**
+       * solves problem loaded in doSetUp
+       * @return pair of solver retcode (0=Instances solved correctly discard changes, 1=Bug still present,  ) and status of the instance (Infeasible, Optimal, Unbounded)
+       */
       virtual
-      SolverStatus solve( const SolverSettings& settings) = 0;
+      std::pair<char, SolverStatus> solve( ) = 0;
 
-      virtual
-      SolverResult solve( const SolverSettings& settings, bool expect_assertion ) = 0;
-
+      /**
+       * write settings to file
+       * @param filename
+       * @param solver_settings
+       */
       virtual
       void writeSettings(std::string filename, const SolverSettings& solver_settings ) = 0;
 
+      /**
+       * parse Settings
+       * @param settings
+       * @return
+       */
       virtual
       SolverSettings parseSettings(const std::string& settings) = 0;
-
-      static boost::optional<Problem<double>>
-      readProblem(const std::string& filename)
-      {
-         Problem<double > prob;
-         return prob;
-      }
 
 
       virtual ~SolverInterface() = default;

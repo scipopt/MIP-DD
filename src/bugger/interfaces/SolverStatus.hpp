@@ -41,7 +41,5 @@ enum class SolverStatus : int {
 
    kLimit = 5,
 
-   kAssertion = 6,
-
 };
 #endif //BUGGER_STATUS_HPP

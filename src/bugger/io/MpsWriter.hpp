@@ -84,6 +84,10 @@ struct MpsWriter
          if(!row_flags[i].test(RowFlag::kRedundant))
          {
             nrows++;
+            auto data = consmatrix.getRowCoefficients(i);
+            for( int j = 0; j < data.getLength(); j++)
+               if(!col_flags[data.getIndices()[j]].test(ColFlag::kFixed))
+                  nnnz++;
             nnnz += consmatrix.getRowCoefficients(i).getLength();
          }
       }
@@ -95,8 +99,6 @@ struct MpsWriter
             if(col_flags[i].test(ColFlag::kIntegral))
                nintcols++;
          }
-         else
-            nnnz-= consmatrix.getColumnCoefficients(i).getLength();;
       }
 
       fmt::print( out, "Instance {} reduced by delta debugging\n", prob.getName());

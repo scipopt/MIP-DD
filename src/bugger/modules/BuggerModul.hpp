@@ -63,8 +63,6 @@ namespace bugger {
          name = "unnamed";
          execTime = 0.0;
          enabled = true;
-         delayed = false;
-         skip = 0;
          nchgcoefs = 0;
          nfixedvars = 0;
          nchgsides = 0;
@@ -98,14 +96,8 @@ namespace bugger {
       ModulStatus
       run(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
           const Timer &timer) {
-         if( !enabled || delayed )
+         if( !enabled )
             return ModulStatus::kDidNotRun;
-
-         if( skip != 0 )
-         {
-            --skip;
-            return ModulStatus::kDidNotRun;
-         }
 
          msg.info("module {} running\n", name);
 #ifdef BUGGER_TBB
@@ -145,11 +137,6 @@ namespace bugger {
          return this->enabled;
       }
 
-      bool
-      isDelayed( ) const {
-         return this->delayed;
-      }
-
       const std::string &
       getName( ) const {
          return this->name;
@@ -158,11 +145,6 @@ namespace bugger {
       unsigned int
       getNCalls( ) const {
          return ncalls;
-      }
-
-      void
-      setDelayed(bool value) {
-         this->delayed = value;
       }
 
       void
@@ -206,60 +188,50 @@ namespace bugger {
       }
 
 
-      BuggerStatus call_solver(SolverInterface* solver, const Message &msg, SolverStatus originalStatus, SolverSettings settings) {
+      BuggerStatus call_solver(SolverInterface *solver, const Message &msg, SolverSettings settings) {
 
-         //TODO: Check optimized mode
-         SolverResult result = solver->solve(settings, true);
-         if( result.solver_retcode == 0 )
+         std::pair<char, SolverStatus> result = solver->solve( );
+         if( result.first == 0 )
          {
-            msg.info("\tError could not be reproduced\n");
+            msg.info("\tNot Reproduced - Solver State: {}\n", to_string(result.second));
             return BuggerStatus::kNotReproduced;
          }
-         //TODO: Use original retcode
-         else if( result.solver_status == originalStatus )
+         else if( result.first == 1 )
          {
-            msg.info("\tError could be reproduced\n");
+            msg.info("\tReproduced - Solver State: {}\n", to_string(result.second));
             return BuggerStatus::kReproduced;
          }
          else
          {
-            msg.info("\tAn error was returned\n");
+            msg.info("\tError code: {}\n", result.first);
             return BuggerStatus::kUnexpectedError;
          }
       }
 
-      void
-      skipRounds(unsigned int nrounds) {
-         this->skip += nrounds;
-      }
-
-      template<typename LOOP>
-      void
-      loop(int start, int end, LOOP &&loop_instruction) {
-#ifdef BUGGER_TBB
-         tbb::parallel_for(tbb::blocked_range<int>(start, end),
-                           [ & ](const tbb::blocked_range<int> &r) {
-                              for( int i = r.begin( ); i != r.end( ); ++i )
-                                 loop_instruction(i);
-                           });
-#else
-         for( int i = 0; i < end; i++ )
+   private:
+      std::string to_string(SolverStatus status) {
+         switch( status )
          {
-            loop_instruction( i );
+            case SolverStatus::kInfeasible:
+               return "infeasible";
+            case SolverStatus::kInfeasibleOrUnbounded:
+               return "infeasible or unbounded";
+            case SolverStatus::kOptimal:
+               return "optimal";
+            case SolverStatus::kLimit:
+               return "limit";
+            default:
+               return "unknown";
          }
-#endif
       }
-
 
 
    private:
       std::string name;
       double execTime;
       bool enabled;
-      bool delayed { };
       unsigned int ncalls;
       unsigned int nsuccessCall;
-      unsigned int skip;
    protected:
       SolverStatus originalSolverStatus;
       int nchgcoefs;

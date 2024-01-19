@@ -85,25 +85,22 @@ namespace bugger {
          switch( solverstatus )
          {
             case SolverStatus::kOptimal:
-               msg.info(" OPTIMAL.\n");
+               msg.info("OPTIMAL.\n");
                break;
             case SolverStatus::kUnbounded:
-               msg.info(" UNBOUNDED.\n");
+               msg.info("UNBOUNDED.\n");
                break;
             case SolverStatus::kInfeasible:
-               msg.info(" INFEASIBLE.\n");
+               msg.info("INFEASIBLE.\n");
                break;
             case SolverStatus::kInfeasibleOrUnbounded:
-               msg.info(" INFEASIBLE or UNBOUNDED.\n");
-               break;
-            case SolverStatus::kAssertion:
-               msg.info(" FAILED ASSERTION.\n");
+               msg.info("INFEASIBLE or UNBOUNDED.\n");
                break;
             case SolverStatus::kUndefinedError:
-               msg.info(" ERROR.\n");
+               msg.info("ERROR.\n");
                break;
             case SolverStatus::kUnknown:
-               msg.info(" UNKNOWN.\n");
+               msg.info("UNKNOWN.\n");
                break;
             default:
                assert(false);
@@ -196,7 +193,9 @@ namespace bugger {
       SolverStatus getOriginalSolveStatus( const SolverSettings& settings) {
          auto solver = createSolver();
          solver->doSetUp(problem, settings, false, solution);
-         return solver->solve( settings, true ).solver_status;
+         const std::pair<char, SolverStatus> &pair = solver->solve( );
+         assert(pair.first == 0);
+         return pair.second;
       }
 
       SolverSettings parseSettings( const std::string& filename) {

@@ -114,7 +114,7 @@ namespace bugger {
             {
                auto solver = createSolver();
                solver->doSetUp(copy,  settings, solution_exists, solution);
-               if( call_solver(solver.get(), msg, originalSolverStatus, settings) == BuggerStatus::kNotReproduced)
+               if( call_solver(solver.get( ), msg, settings) == BuggerStatus::kNotReproduced)
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions )

@@ -52,24 +52,6 @@
 
 namespace bugger {
 
-//   #define SCIP_CALL_RETURN(x)                                        \
-//   do                                                                 \
-//   {                                                                  \
-//      SCIP_RETCODE _restat_;                                          \
-//      if( (_restat_ = (x)) != SCIP_OKAY )                             \
-//      {                                                               \
-//         SCIPerrorMessage("Error <%d> in function call\n", _restat_); \
-//         return _restat_ == SCIP_ERROR ? 1 : _restat_;;               \
-//      }                                                               \
-//      else if( (_restat_ = (x)) == SCIP_OKAY )                        \
-//      {                                                               \
-//         SCIPerrorMessage("Error <%d> in function call\n", _restat_); \
-//         return  0 ;                                                  \
-//      }                                                               \
-//      }                                                               \
-//   while( FALSE )
-
-
    class ScipInterface : public SolverInterface {
 
    private:
@@ -322,12 +304,6 @@ namespace bugger {
          return s;
       }
 
-      SolverStatus solve( const SolverSettings& settings ) override
-      {
-         SolverResult result = solve(settings, true);
-         return result.solver_retcode == 0 ? result.solver_status : SolverStatus::kUndefinedError;
-      }
-
    private:
 
       static
@@ -384,97 +360,64 @@ namespace bugger {
          return builder.build( );
       }
 
-      SolverResult solve( const SolverSettings& settings, bool expect_assertion ) override {
+      std::pair<char, SolverStatus> solve( ) override {
 
-         char solver_retcode = 1;
-         int signal_retcode = 1;
-         //TODO: Use shmget to share status memory
-         SolverStatus solverStatus = SolverStatus::kUnknown;
-#ifdef CATCH_ASSERTIONS
-         if( expect_assertion )
+         SolverStatus solverstatus = SolverStatus::kUnknown;
+         SCIPsetMessagehdlrQuiet(scip, true);
+         char retcode = SCIPsolve(scip);
+         if( retcode == SCIP_OKAY )
          {
-            if( fork( ) == 0 )
-            {
-               exit( pure_solve(settings, solverStatus) );
-            }
+            if( SCIPisSumNegative(scip, SCIPgetObjsense(scip) * ( reference - SCIPgetDualbound(scip))))
+               retcode = NOT_REPRODUCED;
             else
+               retcode = OKAY;
+
+            switch( SCIPgetStatus(scip))
             {
-               int status;
-
-               wait(&status);
-
-               // Solver run complete
-               if( WIFEXITED(status) )
-               {
-                  // Get exit code
-                  solver_retcode = WEXITSTATUS(status);
-                  signal_retcode = 0;
-               }
-               // Solver run broken
-               else if( WIFSIGNALED(status) )
-               {
-                  // Get signal code
-                  signal_retcode = WTERMSIG(status);
-                  solver_retcode = signal_retcode == SIGINT ? 0 : 1;
-                  solverStatus = SolverStatus::kAssertion;
-               }
+               case SCIP_STATUS_UNKNOWN:
+                  solverstatus = SolverStatus::kUnknown;
+                  break;
+               case SCIP_STATUS_USERINTERRUPT:
+               case SCIP_STATUS_NODELIMIT:
+               case SCIP_STATUS_TOTALNODELIMIT:
+               case SCIP_STATUS_STALLNODELIMIT:
+               case SCIP_STATUS_TIMELIMIT:
+               case SCIP_STATUS_MEMLIMIT:
+               case SCIP_STATUS_GAPLIMIT:
+               case SCIP_STATUS_SOLLIMIT:
+               case SCIP_STATUS_BESTSOLLIMIT:
+               case SCIP_STATUS_RESTARTLIMIT:
+#if SCIP_VERSION_MAJOR >= 6
+               case SCIP_STATUS_TERMINATE:
+#endif
+                  solverstatus = SolverStatus::kLimit;
+                  break;
+               case SCIP_STATUS_INFORUNBD:
+                  solverstatus = SolverStatus::kInfeasibleOrUnbounded;
+                  break;
+               case SCIP_STATUS_INFEASIBLE:
+                  solverstatus = SolverStatus::kInfeasible;
+                  break;
+               case SCIP_STATUS_UNBOUNDED:
+                  solverstatus = SolverStatus::kUnbounded;
+                  break;
+               case SCIP_STATUS_OPTIMAL:
+                  solverstatus = SolverStatus::kOptimal;
+                  break;
             }
          }
          else
-#endif
          {
-            solver_retcode = pure_solve(settings, solverStatus);
-            signal_retcode = 0;
+            solverstatus = SolverStatus::kUndefinedError;
+            Vec<char> passcodes{};
+            // progess certain passcodes as OKAY based on the user preferences
+            for(char passcode: passcodes)
+               if( passcode == retcode )
+                  return {0, solverstatus};
+            // shift retcodes so that all errors have negative values
+            retcode--;
          }
-
-         //TODO: Support passing returncodes
-         //for( int i = 0; i < presoldata->npasscodes; ++i )
-         //   if( retcode == presoldata->passcodes[i] )
-         //      return 0;
-
-         return {solver_retcode, signal_retcode, solverStatus};
-      }
-
-      char pure_solve( const SolverSettings& settings, SolverStatus& solverstatus ) {
-         //TODO: Support initial solutions
-         SCIPsetMessagehdlrQuiet(scip, true);
-         char retcode = SCIPsolve(scip);
-         if( retcode == SCIP_OKAY && SCIPisSumNegative(scip, SCIPgetObjsense(scip) * (reference - SCIPgetDualbound(scip))) )
-            retcode = SCIP_INVALIDRESULT;
-         switch( SCIPgetStatus(scip) )
-         {
-            case SCIP_STATUS_UNKNOWN:
-               solverstatus = SolverStatus::kUndefinedError;
-               break;
-            case SCIP_STATUS_USERINTERRUPT:
-            case SCIP_STATUS_NODELIMIT:
-            case SCIP_STATUS_TOTALNODELIMIT:
-            case SCIP_STATUS_STALLNODELIMIT:
-            case SCIP_STATUS_TIMELIMIT:
-            case SCIP_STATUS_MEMLIMIT:
-            case SCIP_STATUS_GAPLIMIT:
-            case SCIP_STATUS_SOLLIMIT:
-            case SCIP_STATUS_BESTSOLLIMIT:
-            case SCIP_STATUS_RESTARTLIMIT:
-#if SCIP_VERSION_MAJOR >= 6
-            case SCIP_STATUS_TERMINATE:
-#endif
-               solverstatus = SolverStatus::kLimit ;
-               break;
-            case SCIP_STATUS_INFORUNBD:
-               solverstatus =  SolverStatus::kInfeasibleOrUnbounded ;
-               break;
-            case SCIP_STATUS_INFEASIBLE:
-               solverstatus = SolverStatus::kInfeasible ;
-               break;
-            case SCIP_STATUS_UNBOUNDED:
-               solverstatus = SolverStatus::kUnbounded ;
-               break;
-            case SCIP_STATUS_OPTIMAL:
-               solverstatus = SolverStatus::kOptimal ;
-               break;
-         }
-         return retcode-1;
+         return { retcode, solverstatus };
       }
 
    };
