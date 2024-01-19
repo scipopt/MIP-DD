@@ -52,7 +52,7 @@ namespace bugger {
        * @param sol
        */
       virtual void
-      doSetUp(const Problem<double> &problem, SolverSettings settings, bool solution_exists, const Solution<double> sol ) = 0;
+      doSetUp(const Problem<double> &problem, SolverSettings settings, const Solution<double> sol ) = 0;
 
 
       virtual

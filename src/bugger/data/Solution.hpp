@@ -29,68 +29,32 @@
 namespace bugger
 {
 
-enum class SolutionType
+enum class SolutionStatus
 {
-   kPrimal,
-   kPrimalDual
+   kInfeasible,
+   kUnbounded,
+   kFeasible,
+   kUnknown,
 };
 
-enum class VarBasisStatus : int
-{
-   ON_UPPER = 0,
-   ON_LOWER = 1,
-   FIXED = 2,
-   ZERO = 3,
-   BASIC = 4,
-   UNDEFINED = 5
-};
 
 template <typename REAL>
 class Solution
 {
  public:
-   SolutionType type;
+   SolutionStatus status;
    Vec<REAL> primal;
-   Vec<REAL> dual;
-   Vec<REAL> reducedCosts;
-   Vec<REAL> slack;
-   bool basisAvailabe;
-   Vec<VarBasisStatus> varBasisStatus;
-   Vec<VarBasisStatus> rowBasisStatus;
+
+   explicit Solution() : status( SolutionStatus::kUnknown ){}
 
    // Default type primal only.
-   Solution() : type( SolutionType::kPrimal ), basisAvailabe( false ) {}
+   Solution(SolutionStatus _status) : status( _status ) {}
 
-   explicit Solution( SolutionType type_ ) : type( type_ ), basisAvailabe( false ) {}
-
-   Solution( SolutionType type_, Vec<REAL> values )
-       : type( type_ ), primal( std::move( values ) ), basisAvailabe( false )
+    Solution( Vec<REAL> values )
+       : status(  SolutionStatus::kFeasible ), primal( std::move( values ) )
    {
    }
 
-   explicit Solution( Vec<REAL> values )
-       : type( SolutionType::kPrimal ), primal( std::move( values ) ),
-         basisAvailabe( false )
-   {
-   }
-
-   Solution( Vec<REAL> primal_values, Vec<REAL> dual_values,
-             Vec<REAL> reduced_values, Vec<REAL> slack_values,
-             bool basisAvailabe_value,
-             Vec<VarBasisStatus> var_basis_status,
-             Vec<VarBasisStatus> row_basis_status
-)
-       : type( SolutionType::kPrimalDual ),
-         primal( std::move( primal_values ) ),
-         dual( std::move( dual_values ),
-         reducedCosts( std::move( reduced_values ) ),
-         slack( std::move( slack_values ) ) ),
-         basisAvailabe( basisAvailabe_value ),
-         varBasisStatus( std::move( var_basis_status )),
-         rowBasisStatus( std::move( row_basis_status ))
-
-   {
-   }
 };
 
 } // namespace bugger

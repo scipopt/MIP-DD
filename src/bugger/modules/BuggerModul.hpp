@@ -94,7 +94,7 @@ namespace bugger {
       }
 
       ModulStatus
-      run(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
+      run(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const BuggerOptions &options,
           const Timer &timer) {
          if( !enabled )
             return ModulStatus::kDidNotRun;
@@ -105,7 +105,7 @@ namespace bugger {
 #else
          auto start = std::chrono::steady_clock::now();
 #endif
-         ModulStatus result = execute(problem, settings, solution, solution_exists, options, timer);
+         ModulStatus result = execute(problem, settings, solution, options, timer);
 #ifdef BUGGER_TBB
          if( result == ModulStatus::kSuccessful )
             nsuccessCall++;
@@ -172,7 +172,7 @@ namespace bugger {
       }
 
       virtual ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists,
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
               const BuggerOptions &options, const Timer &timer) = 0;
 
       void

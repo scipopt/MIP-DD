@@ -56,7 +56,6 @@ namespace bugger {
       const std::string& target_settings_filename;
       bugger::Problem<double> &problem;
       bugger::Solution<double> &solution;
-      bool solution_exists;
       bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &modules;
       bugger::Vec<bugger::ModulStatus> results;
       bugger::Message msg { };
@@ -64,9 +63,9 @@ namespace bugger {
    public:
 
       BuggerRun(const std::string& _settings_filename, const std::string& _target_settings_filename, bugger::Problem<double> &_problem, bugger::Solution<double> &_solution,
-                bool _solution_exists, bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
+                bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
             : options({ }), settings_filename(_settings_filename), target_settings_filename(_target_settings_filename), problem(_problem), solution(_solution),
-              solution_exists(_solution_exists), modules(_modules) { }
+              modules(_modules) { }
 
       bool
       is_time_exceeded( const Timer& timer ) const
@@ -75,81 +74,6 @@ namespace bugger {
                 timer.getTime() >= options.tlim;
       }
 
-      void check_feasibility_of_solution( ) {
-         if(!solution_exists)
-            return;
-         const Vec<double>& ub = problem.getUpperBounds();
-         const Vec<double>& lb = problem.getLowerBounds();
-         bool failure= false;
-         double max = 0;
-
-         msg.info("\nTesting solution:\n");
-         for( int col = 0; col < problem.getNCols(); col++ )
-         {
-            if( problem.getColFlags()[col].test( ColFlag::kInactive ) )
-               continue;
-
-            if ( ! problem.getColFlags()[col].test( ColFlag::kLbInf ) && solution.primal[col] < lb[col] )
-            {
-               msg.detailed( "\tColumn {} violates lower column bound () ({} ! >= {}).\n", problem.getVariableNames()[col], (double) solution.primal[col], (double) lb[col]  );
-               failure = true;
-               max = MAX(max, abs(lb[col]- solution.primal[col]));
-            }
-
-            if ( ! problem.getColFlags()[col].test( ColFlag::kUbInf ) && solution.primal[col] > ub[col]  )
-            {
-               msg.detailed( "\tColumn {} violates upper column bound ({} ! <= {}).\n", problem.getVariableNames()[col], (double) solution.primal[col], (double) ub[col]  );
-               failure = true;
-               max = MAX(max, abs(ub[col]- solution.primal[col]));
-
-            }
-         }
-
-         const Vec<double>& rhs = problem.getConstraintMatrix().getRightHandSides();
-         const Vec<double>& lhs = problem.getConstraintMatrix().getLeftHandSides();
-
-         for( int row = 0; row < problem.getNRows(); row++ )
-         {
-            if( problem.getRowFlags()[row].test( RowFlag::kRedundant ) )
-               continue;
-
-            double rowValue = 0;
-            auto entries = problem.getConstraintMatrix().getRowCoefficients( row );
-            for( int j = 0; j < entries.getLength(); j++ )
-            {
-               int col = entries.getIndices()[j];
-               if( problem.getColFlags()[col].test( ColFlag::kInactive ) )
-                  continue;
-               double x = entries.getValues()[j];
-               double primal = solution.primal[col];
-               rowValue += x * primal;
-            }
-
-            bool lhs_inf = problem.getRowFlags()[row].test( RowFlag::kLhsInf );
-            if( ( ! lhs_inf ) &&  rowValue < lhs[row]  )
-            {
-               msg.detailed( "\tRow {:<3} violates row bounds ({:<3} < {:<3}).\n",
-                             problem.getConstraintNames()[row], (double) lhs[row], (double) rowValue );
-               failure = true;
-               max = MAX(max, abs(lhs[row]- rowValue));
-            }
-            bool rhs_inf = problem.getRowFlags()[row].test( RowFlag::kRhsInf );
-            if( ( ! rhs_inf ) &&  rowValue > rhs[row] )
-            {
-               msg.detailed( "\tRow {:<3} violates row bounds ({:<3} < {:<3}).\n",
-                         problem.getConstraintNames()[row], (double) rowValue, (double) rhs[row] );
-               failure = true;
-               max = MAX(max, abs(rhs[row]- rowValue));
-            }
-         }
-
-         if(failure)
-            msg.info("Solution is not exactly feasible (max violation: {}) using floating point arithmetic. Consider polishing the solution!\n", max);
-         else
-            msg.info("Solution is feasible\n");
-         msg.info("\n");
-
-      }
 
       void apply(bugger::Timer &timer, std::string filename) {
 
@@ -236,7 +160,7 @@ namespace bugger {
 
             for( int module = 0; module <= stage && stage < options.maxstages; ++module )
             {
-               results[ module ] = modules[ module ]->run(problem, solver_settings, solution, solution_exists, options, timer);
+               results[ module ] = modules[ module ]->run(problem, solver_settings, solution, options, timer);
 
                if( results[ module ] == bugger::ModulStatus::kSuccessful )
                   success = module;
@@ -268,9 +192,86 @@ namespace bugger {
 
    private:
 
+      void check_feasibility_of_solution( ) {
+         if(solution.status == SolutionStatus::kFeasible)
+            return;
+         const Vec<double>& ub = problem.getUpperBounds();
+         const Vec<double>& lb = problem.getLowerBounds();
+         bool failure= false;
+         double max = 0;
+
+         msg.info("\nTesting solution:\n");
+         for( int col = 0; col < problem.getNCols(); col++ )
+         {
+            if( problem.getColFlags()[col].test( ColFlag::kInactive ) )
+               continue;
+
+            if ( ! problem.getColFlags()[col].test( ColFlag::kLbInf ) && solution.primal[col] < lb[col] )
+            {
+               msg.detailed( "\tColumn {} violates lower column bound () ({} ! >= {}).\n", problem.getVariableNames()[col], (double) solution.primal[col], (double) lb[col]  );
+               failure = true;
+               max = MAX(max, abs(lb[col]- solution.primal[col]));
+            }
+
+            if ( ! problem.getColFlags()[col].test( ColFlag::kUbInf ) && solution.primal[col] > ub[col]  )
+            {
+               msg.detailed( "\tColumn {} violates upper column bound ({} ! <= {}).\n", problem.getVariableNames()[col], (double) solution.primal[col], (double) ub[col]  );
+               failure = true;
+               max = MAX(max, abs(ub[col]- solution.primal[col]));
+
+            }
+         }
+
+         const Vec<double>& rhs = problem.getConstraintMatrix().getRightHandSides();
+         const Vec<double>& lhs = problem.getConstraintMatrix().getLeftHandSides();
+
+         for( int row = 0; row < problem.getNRows(); row++ )
+         {
+            if( problem.getRowFlags()[row].test( RowFlag::kRedundant ) )
+               continue;
+
+            double rowValue = 0;
+            auto entries = problem.getConstraintMatrix().getRowCoefficients( row );
+            for( int j = 0; j < entries.getLength(); j++ )
+            {
+               int col = entries.getIndices()[j];
+               if( problem.getColFlags()[col].test( ColFlag::kInactive ) )
+                  continue;
+               double x = entries.getValues()[j];
+               double primal = solution.primal[col];
+               rowValue += x * primal;
+            }
+
+            bool lhs_inf = problem.getRowFlags()[row].test( RowFlag::kLhsInf );
+            if( ( ! lhs_inf ) &&  rowValue < lhs[row]  )
+            {
+               msg.detailed( "\tRow {:<3} violates row bounds ({:<3} < {:<3}).\n",
+                             problem.getConstraintNames()[row], (double) lhs[row], (double) rowValue );
+               failure = true;
+               max = MAX(max, abs(lhs[row]- rowValue));
+            }
+            bool rhs_inf = problem.getRowFlags()[row].test( RowFlag::kRhsInf );
+            if( ( ! rhs_inf ) &&  rowValue > rhs[row] )
+            {
+               msg.detailed( "\tRow {:<3} violates row bounds ({:<3} < {:<3}).\n",
+                             problem.getConstraintNames()[row], (double) rowValue, (double) rhs[row] );
+               failure = true;
+               max = MAX(max, abs(rhs[row]- rowValue));
+            }
+         }
+
+         if(failure)
+            msg.info("Solution is not exactly feasible (max violation: {}) using floating point arithmetic. Consider polishing the solution!\n", max);
+         else
+            msg.info("Solution is feasible\n");
+         msg.info("\n");
+
+      }
+
+
       SolverStatus getOriginalSolveStatus( const SolverSettings& settings) {
          auto solver = createSolver();
-         solver->doSetUp(problem, settings, false, solution);
+         solver->doSetUp(problem, settings, solution);
          Vec<char> empty_passcodes{};
          const std::pair<char, SolverStatus> &pair = solver->solve(empty_passcodes);
          return pair.second;

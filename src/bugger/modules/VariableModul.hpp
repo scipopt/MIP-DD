@@ -50,7 +50,7 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double>& solution, bool solution_exists,
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double>& solution,
               const BuggerOptions &options,  const Timer &timer) override {
 
          auto copy = Problem<double>(problem);
@@ -78,7 +78,7 @@ namespace bugger {
             {
                double fixedval;
                admissible = true;
-               if( solution_exists )
+               if( solution.status == SolutionStatus::kFeasible )
                {
                   fixedval = solution.primal[ var ];
                   if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
@@ -113,7 +113,7 @@ namespace bugger {
             if( !batches.empty() && ( batches.size() >= batchsize || var <= 0 ) )
             {
                auto solver = createSolver();
-               solver->doSetUp(copy,  settings, solution_exists, solution);
+               solver->doSetUp(copy, settings, solution);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kNotReproduced)
                {
                   copy = Problem<double>(problem);

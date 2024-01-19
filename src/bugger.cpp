@@ -37,6 +37,10 @@
 
 #include "bugger/misc/VersionLogger.hpp"
 
+#include "bugger/io/MpsParser.hpp"
+#include "bugger/io/MpsWriter.hpp"
+#include "bugger/io/SolParser.hpp"
+
 #include "bugger/interfaces/ScipInterface.hpp"
 #include "bugger/modules/BuggerModul.hpp"
 #include "bugger/modules/CoefficientModul.hpp"
@@ -86,20 +90,25 @@ main(int argc, char *argv[]) {
    }
    auto problem = prob.get( );
    Solution<double> sol;
-   bool sol_exists = false;
    if( !optionsInfo.solution_file.empty( ))
    {
-      bool success = SolParser<double>::read(optionsInfo.solution_file, problem.getVariableNames( ), sol);
-      if( !success )
+      if(boost::iequals(optionsInfo.solution_file, "infeasible"))
+         sol = Solution<double>(bugger::SolutionStatus::kInfeasible);
+      else if(boost::iequals(optionsInfo.solution_file, "unbounded"))
+         sol = Solution<double>(bugger::SolutionStatus::kUnbounded);
+      else
       {
-         fmt::print("error loading problem {}\n", optionsInfo.instance_file);
-         return -1;
+         bool success = SolParser<double>::read(optionsInfo.solution_file, problem.getVariableNames( ), sol);
+         if( !success )
+         {
+            fmt::print("error loading problem {}\n", optionsInfo.instance_file);
+            return -1;
+         }
       }
-      sol_exists = true;
    }
 
    Vec<std::unique_ptr<BuggerModul>> list { };
-   BuggerRun bugger { optionsInfo.solver_settings_file, optionsInfo.target_solver_settings_file, problem, sol, sol_exists, list };
+   BuggerRun bugger { optionsInfo.solver_settings_file, optionsInfo.target_solver_settings_file, problem, sol, list };
 
    if( !optionsInfo.param_settings_file.empty( ) || !optionsInfo.unparsed_options.empty( ))
    {

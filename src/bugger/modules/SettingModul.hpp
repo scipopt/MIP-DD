@@ -51,7 +51,7 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists,
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
               const BuggerOptions &options, const Timer &timer) override {
 
          SolverSettings copy = SolverSettings(settings);
@@ -143,7 +143,7 @@ namespace bugger {
                                                            && target_solver_settings.getStringSettings().empty() ) ) )
             {
                auto solver = createSolver();
-               solver->doSetUp(problem, copy, solution_exists, solution);
+               solver->doSetUp(problem, copy, solution);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kNotReproduced)
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
@@ -172,7 +172,7 @@ namespace bugger {
                                                            && target_solver_settings.getStringSettings().empty() ) ) )
             {
                auto solver = createSolver();
-               solver->doSetUp(problem, copy, solution_exists, solution);
+               solver->doSetUp(problem, copy, solution);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kNotReproduced)
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
@@ -202,7 +202,7 @@ namespace bugger {
                                                            && target_solver_settings.getStringSettings().empty() ) ) )
             {
                auto solver = createSolver();
-               solver->doSetUp(problem, copy, solution_exists, solution);
+               solver->doSetUp(problem, copy, solution);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kNotReproduced)
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
@@ -233,7 +233,7 @@ namespace bugger {
                                                            && target_solver_settings.getStringSettings().empty() ) ) )
             {
                auto solver = createSolver();
-               solver->doSetUp(problem, copy, solution_exists, solution);
+               solver->doSetUp(problem, copy, solution);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kNotReproduced)
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
@@ -265,7 +265,7 @@ namespace bugger {
                                                            && target_solver_settings.getStringSettings().empty() ) ) )
             {
                auto solver = createSolver();
-               solver->doSetUp(problem, copy, solution_exists, solution);
+               solver->doSetUp(problem, copy, solution);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kNotReproduced)
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
@@ -299,7 +299,7 @@ namespace bugger {
             if( batches != 0 && ( batches >= batchsize || i + 1 == target_solver_settings.getStringSettings().size() ) )
             {
                auto solver = createSolver();
-               solver->doSetUp(problem, copy, solution_exists, solution);
+               solver->doSetUp(problem, copy, solution);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kNotReproduced)
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else

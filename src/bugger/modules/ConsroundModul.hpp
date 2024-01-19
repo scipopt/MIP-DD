@@ -60,7 +60,7 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const BuggerOptions &options,
               const Timer &timer) override {
 
          auto copy = Problem<double>(problem);
@@ -103,7 +103,7 @@ namespace bugger {
                //TODO: Change row only
                copy.getConstraintMatrix( ).changeCoefficients(batches_coeff);
 
-               if( solution_exists )
+               if( solution.status == SolutionStatus::kFeasible )
                {
                   data = copy.getConstraintMatrix( ).getRowCoefficients(row);
                   double activity = get_linear_activity(data, solution);
@@ -123,7 +123,7 @@ namespace bugger {
             if( !batches_lhs.empty() && ( batches_lhs.size() >= batchsize || row >= copy.getNRows( ) - 1 ) )
             {
                auto solver = createSolver( );
-               solver->doSetUp(copy,  settings, solution_exists, solution);
+               solver->doSetUp(copy,  settings, solution);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kNotReproduced)
                {
                   copy = Problem<double>(problem);

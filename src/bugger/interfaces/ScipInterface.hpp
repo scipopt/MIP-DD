@@ -25,7 +25,6 @@
 #define BUGGER_INTERFACES_SCIP_INTERFACE_HPP_
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
-#define CATCH_ASSERTIONS
 
 #include "bugger/misc/Vec.hpp"
 #include <cassert>
@@ -64,8 +63,8 @@ namespace bugger {
       }
 
       void
-      doSetUp(const Problem<double> &problem, SolverSettings settings, bool solution_exits, const Solution<double> sol) override {
-         auto result = setup(problem, solution_exits, sol, settings);
+      doSetUp(const Problem<double> &problem, SolverSettings settings, const Solution<double> sol) override {
+         auto result = setup(problem, sol, settings);
          assert(result == SCIP_OKAY);
       }
 
@@ -161,9 +160,10 @@ namespace bugger {
    private:
 
       SCIP_RETCODE
-      setup(const Problem<double> &problem, bool solution_exits, const Solution<double> sol, SolverSettings settings) {
+      setup(const Problem<double> &problem, const Solution<double> sol, SolverSettings settings) {
 
          set_parameters(settings);
+         bool solution_exists = sol.status == SolutionStatus::kFeasible;
 
          int ncols = problem.getNCols( );
          int nrows = problem.getNRows( );
@@ -181,8 +181,12 @@ namespace bugger {
          SCIP_CALL(SCIPsetObjsense(scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
          vars.resize(problem.getNCols( ));
 
-         if( solution_exits )
+         if( solution_exists )
             reference = obj.offset;
+         if( sol.status == SolutionStatus::kUnbounded)
+            reference = SCIPinfinity(scip);
+         if( sol.status == SolutionStatus::kInfeasible)
+            reference = -SCIPinfinity(scip);
          for( int col = 0; col < ncols; ++col )
          {
             if( domains.flags[ col ].test(ColFlag::kFixed) )
@@ -212,7 +216,7 @@ namespace bugger {
                SCIP_CALL(SCIPcreateVarBasic(
                      scip, &var, varNames[ col ].c_str( ), lb, ub,
                      SCIP_Real(obj.coefficients[ col ]), type));
-               if( solution_exits )
+               if( solution_exists )
                   reference += obj.coefficients[ col ] * sol.primal[ col ];
                SCIP_CALL(SCIPaddVar(scip, var));
                vars[ col ] = var;
@@ -287,74 +291,7 @@ namespace bugger {
             SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
       }
 
-      SCIP_SOL *
-      add_solution(Solution<double> sol) {
-         SCIP_SOL *s;
-         SCIP_RETCODE retcode;
-         retcode = SCIPcreateSol(scip, &s, nullptr);
-         assert(retcode == SCIP_OKAY);
-
-         for( int i = 0; i < sol.primal.size( ); i++ )
-         {
-            retcode = SCIPsetSolVal(scip, s, vars[ i ], sol.primal[ i ]);
-            assert(retcode == SCIP_OKAY);
-         }
-         return s;
-      }
-
    private:
-
-      static
-      Problem<SCIP_Real> buildProblem( SCIP *scip) {
-         SCIP_MATRIX* matrix;
-         ProblemBuilder<SCIP_Real> builder;
-
-         /* build problem from matrix */
-         int nnz = SCIPgetNNZs(scip);
-         int nvars = SCIPgetNVars(scip);
-         int nrows = SCIPgetNConss(scip);
-         builder.reserve(nnz, nrows, nvars);
-         builder.setProblemName(SCIPgetProbName(scip));
-         builder.setObjOffset(SCIPgetOrigObjoffset(scip));
-         builder.setObjSense(SCIPgetObjsense(scip) == SCIP_OBJSENSE_MINIMIZE);
-
-         /* set up columns */
-         builder.setNumCols(nvars);
-         auto vars = SCIPgetVars(scip);
-         for( int i = 0; i != nvars; ++i )
-         {
-            SCIP_VAR *var = vars[ i ];
-            SCIP_Real lb = SCIPvarGetLbGlobal(var);
-            SCIP_Real ub = SCIPvarGetUbGlobal(var);
-            builder.setColLb(i, lb);
-            builder.setColUb(i, ub);
-            builder.setColLbInf(i, SCIPisInfinity(scip, -lb));
-            builder.setColUbInf(i, SCIPisInfinity(scip, ub));
-            builder.setColIntegral(i, SCIPvarIsIntegral(var));
-            builder.setObj(i, SCIPvarGetObj(var));
-         }
-
-         /* set up rows */
-         (void)SCIPmatrixCreate(scip, &matrix, FALSE, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
-         nrows = SCIPmatrixGetNRows(matrix);
-         builder.setNumRows(nrows);
-         for( int i = 0; i != nrows; ++i )
-         {
-            int *rowcols = SCIPmatrixGetRowIdxPtr(matrix, i);
-            SCIP_Real *rowvals = SCIPmatrixGetRowValPtr(matrix, i);
-            int rowlen = SCIPmatrixGetRowNNonzs(matrix, i);
-            builder.addRowEntries(i, rowlen, rowcols, rowvals);
-            SCIP_Real lhs = SCIPmatrixGetRowLhs(matrix, i);
-            SCIP_Real rhs = SCIPmatrixGetRowRhs(matrix, i);
-            builder.setRowLhs(i, lhs);
-            builder.setRowRhs(i, rhs);
-            builder.setRowLhsInf(i, SCIPisInfinity(scip, -lhs));
-            builder.setRowRhsInf(i, SCIPisInfinity(scip, rhs));
-         }
-         SCIPmatrixFree(scip, &matrix);
-
-         return builder.build( );
-      }
 
       std::pair<char, SolverStatus> solve( Vec<char>& passcodes) override {
 

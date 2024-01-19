@@ -24,10 +24,6 @@
 #ifndef _BUGGER_MISC_VERSION_LOGGER_HPP_
 #define _BUGGER_MISC_VERSION_LOGGER_HPP_
 
-#include "bugger/io/MpsParser.hpp"
-#include "bugger/io/MpsWriter.hpp"
-#include "bugger/io/SolParser.hpp"
-#include "bugger/io/SolWriter.hpp"
 #include "bugger/misc/NumericalStatistics.hpp"
 #include "bugger/misc/OptionsParser.hpp"
 #include "bugger/misc/tbb.hpp"
@@ -41,20 +37,6 @@
 
 namespace bugger
 {
-
-void
-join( const Vec<std::string>& v, char c, std::string& s )
-{
-
-   s.clear();
-
-   for( auto p = v.begin(); p != v.end(); ++p )
-   {
-      s += *p;
-      if( p != v.end() - 1 )
-         s += c;
-   }
-}
 
 void
 print_header()
