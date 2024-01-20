@@ -53,9 +53,9 @@ namespace bugger {
       execute(Problem<double> &problem, SolverSettings& settings, Solution<double>& solution,
               const BuggerOptions &options,  const Timer &timer) override {
 
-         auto copy = Problem<double>(problem);
-         Vec<std::pair<int, double>> applied_reductions { };
-         Vec<std::pair<int, double>> batches { };
+         if( solution.status == SolutionStatus::kUnbounded )
+            return ModulStatus::kNotAdmissible;
+
          int batchsize = 1;
 
          if( options.nbatches > 0 )
@@ -69,8 +69,11 @@ namespace bugger {
             batchsize /= options.nbatches;
          }
 
-         batches.reserve(batchsize);
          bool admissible = false;
+         auto copy = Problem<double>(problem);
+         Vec<std::pair<int, double>> applied_reductions { };
+         Vec<std::pair<int, double>> batches { };
+         batches.reserve(batchsize);
 
          for( int var = copy.getNCols() - 1; var >= 0; --var )
          {

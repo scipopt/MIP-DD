@@ -54,9 +54,6 @@ namespace bugger {
       execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
               const BuggerOptions &options, const Timer &timer) override {
 
-         auto copy = Problem<double>(problem);
-         Vec<int> applied_vars { };
-         Vec<int> batches { };
          int batchsize = 1;
 
          if( options.nbatches > 0 )
@@ -70,8 +67,11 @@ namespace bugger {
             batchsize /= options.nbatches;
          }
 
-         batches.reserve(batchsize);
          bool admissible = false;
+         auto copy = Problem<double>(problem);
+         Vec<int> applied_vars { };
+         Vec<int> batches { };
+         batches.reserve(batchsize);
 
          for( int var = copy.getNCols( ) - 1; var >= 0; --var )
          {

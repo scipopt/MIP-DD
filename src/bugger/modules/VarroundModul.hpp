@@ -58,13 +58,9 @@ namespace bugger {
       execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
               const BuggerOptions &options, const Timer &timer) override {
 
-         auto copy = Problem<double>(problem);
-         Vec<std::pair<int, double>> applied_lb { };
-         Vec<std::pair<int, double>> applied_ub { };
-         Vec<std::pair<int, double>> applied_obj { };
-         Vec<std::pair<int, double>> batches_lb { };
-         Vec<std::pair<int, double>> batches_ub { };
-         Vec<std::pair<int, double>> batches_obj { };
+         if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded )
+            return ModulStatus::kNotAdmissible;
+
          int batchsize = 1;
 
          if( options.nbatches > 0 )
@@ -78,10 +74,17 @@ namespace bugger {
             batchsize /= options.nbatches;
          }
 
+         bool admissible = false;
+         auto copy = Problem<double>(problem);
+         Vec<std::pair<int, double>> applied_lb { };
+         Vec<std::pair<int, double>> applied_ub { };
+         Vec<std::pair<int, double>> applied_obj { };
+         Vec<std::pair<int, double>> batches_lb { };
+         Vec<std::pair<int, double>> batches_ub { };
+         Vec<std::pair<int, double>> batches_obj { };
          batches_lb.reserve(batchsize);
          batches_ub.reserve(batchsize);
          batches_obj.reserve(batchsize);
-         bool admissible = false;
 
          for( int var = 0; var < copy.getNCols( ); ++var )
          {

@@ -64,12 +64,8 @@ namespace bugger {
       execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
               const BuggerOptions &options, const Timer &timer) override {
 
-         auto copy = Problem<double>(problem);
-         MatrixBuffer<double> applied_entries { };
-         Vec<std::pair<int, double>> applied_reductions { };
-         MatrixBuffer<double> batches_coeff { };
-         Vec<std::pair<int, double>> batches_offset { };
          int batchsize = 1;
+
          if( options.nbatches > 0 )
          {
             batchsize = options.nbatches - 1;
@@ -81,8 +77,13 @@ namespace bugger {
             batchsize /= options.nbatches;
          }
 
-         batches_offset.reserve(batchsize);
          bool admissible = false;
+         auto copy = Problem<double>(problem);
+         MatrixBuffer<double> applied_entries { };
+         Vec<std::pair<int, double>> applied_reductions { };
+         MatrixBuffer<double> batches_coeff { };
+         Vec<std::pair<int, double>> batches_offset { };
+         batches_offset.reserve(batchsize);
 
          for( int row = copy.getNRows( ) - 1; row >= 0; --row )
          {

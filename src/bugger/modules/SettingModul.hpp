@@ -54,22 +54,6 @@ namespace bugger {
       execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
               const BuggerOptions &options, const Timer &timer) override {
 
-         SolverSettings copy = SolverSettings(settings);
-
-         Vec<std::pair<int, bool>> applied_bool { };
-         Vec<std::pair<int, int>> applied_int { };
-         Vec<std::pair<int, long>> applied_long { };
-         Vec<std::pair<int, double>> applied_double { };
-         Vec<std::pair<int, char>> applied_char { };
-         Vec<std::pair<int, std::string>> applied_string { };
-
-         Vec<std::pair<int, bool>> batches_bool { };
-         Vec<std::pair<int, int>> batches_int { };
-         Vec<std::pair<int, long>> batches_long { };
-         Vec<std::pair<int, double>> batches_double { };
-         Vec<std::pair<int, char>> batches_char { };
-         Vec<std::pair<int, std::string>> batches_string { };
-         int batches = 0;
          int batchsize = 1;
 
          if( options.nbatches > 0 )
@@ -116,13 +100,27 @@ namespace bugger {
             batchsize /= options.nbatches;
          }
 
+         bool admissible = false;
+         SolverSettings copy = SolverSettings(settings);
+         Vec<std::pair<int, bool>> applied_bool { };
+         Vec<std::pair<int, int>> applied_int { };
+         Vec<std::pair<int, long>> applied_long { };
+         Vec<std::pair<int, double>> applied_double { };
+         Vec<std::pair<int, char>> applied_char { };
+         Vec<std::pair<int, std::string>> applied_string { };
+         Vec<std::pair<int, bool>> batches_bool { };
+         Vec<std::pair<int, int>> batches_int { };
+         Vec<std::pair<int, long>> batches_long { };
+         Vec<std::pair<int, double>> batches_double { };
+         Vec<std::pair<int, char>> batches_char { };
+         Vec<std::pair<int, std::string>> batches_string { };
+         int batches = 0;
          batches_bool.reserve(batchsize);
          batches_int.reserve(batchsize);
          batches_long.reserve(batchsize);
          batches_double.reserve(batchsize);
          batches_char.reserve(batchsize);
          batches_string.reserve(batchsize);
-         bool admissible = false;
 
          for( int i = 0; i < target_solver_settings.getBoolSettings().size(); i++)
          {

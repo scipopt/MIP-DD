@@ -63,13 +63,9 @@ namespace bugger {
       execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const BuggerOptions &options,
               const Timer &timer) override {
 
-         auto copy = Problem<double>(problem);
-         MatrixBuffer<double> applied_entries { };
-         Vec<std::pair<int, double>> applied_reductions_lhs { };
-         Vec<std::pair<int, double>> applied_reductions_rhs { };
-         MatrixBuffer<double> batches_coeff { };
-         Vec<std::pair<int, double>> batches_lhs { };
-         Vec<std::pair<int, double>> batches_rhs { };
+         if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded )
+            return ModulStatus::kNotAdmissible;
+
          int batchsize = 1;
 
          if( options.nbatches > 0 )
@@ -83,9 +79,16 @@ namespace bugger {
             batchsize /= options.nbatches;
          }
 
+         bool admissible = false;
+         auto copy = Problem<double>(problem);
+         MatrixBuffer<double> applied_entries { };
+         Vec<std::pair<int, double>> applied_reductions_lhs { };
+         Vec<std::pair<int, double>> applied_reductions_rhs { };
+         MatrixBuffer<double> batches_coeff { };
+         Vec<std::pair<int, double>> batches_lhs { };
+         Vec<std::pair<int, double>> batches_rhs { };
          batches_lhs.reserve(batchsize);
          batches_rhs.reserve(batchsize);
-         bool admissible = false;
 
          for( int row = 0; row < copy.getNRows( ); ++row )
          {
