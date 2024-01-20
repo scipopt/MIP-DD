@@ -210,7 +210,7 @@ namespace bugger {
 
             if ( !problem.getColFlags()[col].test( ColFlag::kLbInf ) && solution.primal[col] < lb[col] )
             {
-               msg.detailed( "\tColumn {:<3} violates lower bound ({:<3} < {:<3}).\n", problem.getVariableNames()[col], (double) solution.primal[col], (double) lb[col] );
+               msg.detailed( "\tColumn {:<3} violates lower bound ({:<3} < {:<3}).\n", problem.getVariableNames()[col], solution.primal[col], lb[col] );
                viol = lb[col] - solution.primal[col];
                if( viol > maxviol )
                {
@@ -223,7 +223,7 @@ namespace bugger {
 
             if ( !problem.getColFlags()[col].test( ColFlag::kUbInf ) && solution.primal[col] > ub[col] )
             {
-               msg.detailed( "\tColumn {:<3} violates upper bound ({:<3} > {:<3}).\n", problem.getVariableNames()[col], (double) solution.primal[col], (double) ub[col] );
+               msg.detailed( "\tColumn {:<3} violates upper bound ({:<3} > {:<3}).\n", problem.getVariableNames()[col], solution.primal[col], ub[col] );
                viol = solution.primal[col] - ub[col];
                if( viol > maxviol )
                {
@@ -257,7 +257,7 @@ namespace bugger {
 
             if( !problem.getRowFlags()[row].test( RowFlag::kLhsInf ) && rowValue < lhs[row] )
             {
-               msg.detailed( "\tRow {:<3} violates left side ({:<3} < {:<3}).\n", problem.getConstraintNames()[row], (double) rowValue, (double) lhs[row] );
+               msg.detailed( "\tRow {:<3} violates left side ({:<3} < {:<3}).\n", problem.getConstraintNames()[row], rowValue, lhs[row] );
                viol = lhs[row] - rowValue;
                if( viol > maxviol )
                {
@@ -270,7 +270,7 @@ namespace bugger {
 
             if( !problem.getRowFlags()[row].test( RowFlag::kRhsInf ) && rowValue > rhs[row] )
             {
-               msg.detailed( "\tRow {:<3} violates right side ({:<3} > {:<3}).\n", problem.getConstraintNames()[row], (double) rowValue, (double) rhs[row] );
+               msg.detailed( "\tRow {:<3} violates right side ({:<3} > {:<3}).\n", problem.getConstraintNames()[row], rowValue, rhs[row] );
                viol = rowValue - rhs[row];
                if( viol > maxviol )
                {

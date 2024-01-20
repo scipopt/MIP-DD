@@ -301,7 +301,7 @@ namespace bugger {
          if( retcode == SCIP_OKAY )
          {
             if( SCIPisSumNegative(scip, SCIPgetObjsense(scip) * ( reference - SCIPgetDualbound(scip))))
-               retcode = BUG_REPRODUCED;
+               retcode = DUALFAIL;
             else
                retcode = OKAY;
 
@@ -343,15 +343,19 @@ namespace bugger {
          {
             solverstatus = SolverStatus::kUndefinedError;
             // shift retcodes so that all errors have negative values
-            retcode--;
+            --retcode;
          }
          // progess certain passcodes as OKAY based on the user preferences
-         for(char passcode: passcodes)
+         for( char passcode: passcodes )
+         {
             if( passcode == retcode )
-               return {0, solverstatus};
+            {
+               retcode = OKAY;
+               break;
+            }
+         }
          return { retcode, solverstatus };
       }
-
    };
 
 } // namespace bugger

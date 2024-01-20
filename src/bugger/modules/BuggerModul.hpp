@@ -193,20 +193,20 @@ namespace bugger {
 
          Vec<char> passcodes(options.passcodes.begin(), options.passcodes.end());
          std::pair<char, SolverStatus> result = solver->solve(passcodes);
-         if( result.first == 0 )
+         if( result.first == SolverInterface::OKAY )
          {
             msg.info("\tStatus {}\n", to_string(result.second));
-            return BuggerStatus::kNotReproduced;
+            return BuggerStatus::kOkay;
          }
-         else if( result.first > 0 )
+         else if( result.first > SolverInterface::OKAY )
          {
             msg.info("\tBug {} - Status {}\n", (int) result.first, to_string(result.second));
-            return BuggerStatus::kReproduced;
+            return BuggerStatus::kBug;
          }
          else
          {
             msg.info("\tError {}\n", (int) result.first);
-            return BuggerStatus::kUnexpectedError;
+            return BuggerStatus::kError;
          }
       }
 
