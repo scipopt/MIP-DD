@@ -80,7 +80,6 @@ main(int argc, char *argv[]) {
    if( !optionsInfo.is_complete )
       return 0;
 
-   //TODO: think how to implement this. and handle more cases
    auto prob = MpsParser<double>::loadProblem(optionsInfo.instance_file);
 
    if( !prob )
@@ -90,13 +89,13 @@ main(int argc, char *argv[]) {
    }
    auto problem = prob.get( );
    Solution<double> sol;
-   if( !optionsInfo.solution_file.empty( ))
+   if( !optionsInfo.solution_file.empty( ) )
    {
-      if(boost::iequals(optionsInfo.solution_file, "infeasible"))
-         sol = Solution<double>(bugger::SolutionStatus::kInfeasible);
-      else if(boost::iequals(optionsInfo.solution_file, "unbounded"))
-         sol = Solution<double>(bugger::SolutionStatus::kUnbounded);
-      else
+      if( boost::iequals(optionsInfo.solution_file, "infeasible") )
+         sol.status = SolutionStatus::kInfeasible;
+      else if( boost::iequals(optionsInfo.solution_file, "unbounded") )
+         sol.status = SolutionStatus::kUnbounded;
+      else if( !boost::iequals(optionsInfo.solution_file, "unknown") )
       {
          bool success = SolParser<double>::read(optionsInfo.solution_file, problem.getVariableNames( ), sol);
          if( !success )
