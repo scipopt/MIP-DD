@@ -26,25 +26,18 @@
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
 
-#include "bugger/misc/Vec.hpp"
-#include <cassert>
-#include <stdexcept>
-#include <string>
-#include <sys/wait.h>
-#include <unistd.h>
-
-#include "bugger/data/Problem.hpp"
-#include "bugger/data/ProblemBuilder.hpp"
 #include "scip/cons_linear.h"
 #include "scip/scip.h"
 #include "scip/scip_param.h"
 #include "scip/scipdefplugins.h"
 #include "scip/struct_paramset.h"
+#include "bugger/misc/Vec.hpp"
+#include "bugger/data/Problem.hpp"
+#include "bugger/data/ProblemBuilder.hpp"
+#include "bugger/data/SolverSettings.hpp"
 #include "bugger/interfaces/BuggerStatus.hpp"
 #include "bugger/interfaces/SolverStatus.hpp"
 #include "bugger/interfaces/SolverInterface.hpp"
-#include "bugger/data/SolverSettings.hpp"
-
 
 
 namespace bugger {
@@ -295,7 +288,7 @@ namespace bugger {
 
       std::pair<char, SolverStatus> solve( Vec<char>& passcodes) override {
 
-         SolverStatus solverstatus = SolverStatus::kUnknown;
+         SolverStatus solverstatus = SolverStatus::kUndefinedError;
          SCIPsetMessagehdlrQuiet(scip, true);
          char retcode = SCIPsolve(scip);
          if( retcode == SCIP_OKAY )
@@ -341,7 +334,6 @@ namespace bugger {
          }
          else
          {
-            solverstatus = SolverStatus::kUndefinedError;
             // shift retcodes so that all errors have negative values
             --retcode;
          }
