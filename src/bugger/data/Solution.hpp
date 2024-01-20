@@ -43,18 +43,14 @@ class Solution
 {
  public:
    SolutionStatus status;
+   REAL value = std::numeric_limits<REAL>::signaling_NaN();
    Vec<REAL> primal;
 
-   explicit Solution() : status( SolutionStatus::kUnknown ){}
+   explicit Solution() : status( SolutionStatus::kUnknown ) {}
 
-   // Default type primal only.
    Solution(SolutionStatus _status) : status( _status ) {}
 
-    Solution( Vec<REAL> values )
-       : status(  SolutionStatus::kFeasible ), primal( std::move( values ) )
-   {
-   }
-
+   Solution( Vec<REAL> values ) : status( SolutionStatus::kFeasible ), primal( std::move( values ) ) {}
 };
 
 } // namespace bugger

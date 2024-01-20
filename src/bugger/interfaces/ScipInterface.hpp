@@ -47,7 +47,7 @@ namespace bugger {
    private:
       SCIP* scip = nullptr;
       Vec<SCIP_VAR*> vars;
-      double reference = std::numeric_limits<double>::signaling_NaN();
+      Solution<double>* reference = nullptr;
 
    public:
       explicit ScipInterface( ) {
@@ -56,7 +56,7 @@ namespace bugger {
       }
 
       void
-      doSetUp(const Problem<double> &problem, SolverSettings settings, const Solution<double> sol) override {
+      doSetUp(const Problem<double> &problem, const SolverSettings &settings, Solution<double>& sol) override {
          auto result = setup(problem, sol, settings);
          assert(result == SCIP_OKAY);
       }
@@ -153,11 +153,10 @@ namespace bugger {
    private:
 
       SCIP_RETCODE
-      setup(const Problem<double> &problem, const Solution<double> sol, SolverSettings settings) {
+      setup(const Problem<double> &problem, Solution<double> &sol, const SolverSettings &settings) {
 
-         set_parameters(settings);
-         bool solution_exists = sol.status == SolutionStatus::kFeasible;
-
+         reference = &sol;
+         bool solution_exists = reference->status == SolutionStatus::kFeasible;
          int ncols = problem.getNCols( );
          int nrows = problem.getNRows( );
          const Vec<String> &varNames = problem.getVariableNames( );
@@ -169,17 +168,18 @@ namespace bugger {
          const auto &rhs_values = consMatrix.getRightHandSides( );
          const auto &rflags = problem.getRowFlags( );
 
+         set_parameters(settings);
          SCIP_CALL(SCIPcreateProbBasic(scip, problem.getName( ).c_str( )));
          SCIP_CALL(SCIPaddOrigObjoffset(scip, SCIP_Real(obj.offset)));
          SCIP_CALL(SCIPsetObjsense(scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
          vars.resize(problem.getNCols( ));
 
          if( solution_exists )
-            reference = obj.offset;
-         if( sol.status == SolutionStatus::kUnbounded)
-            reference = -SCIPgetObjsense(scip) * SCIPinfinity(scip);
-         if( sol.status == SolutionStatus::kInfeasible)
-            reference = SCIPgetObjsense(scip) * SCIPinfinity(scip);
+            reference->value = obj.offset;
+         if( reference->status == SolutionStatus::kUnbounded )
+            reference->value = -SCIPgetObjsense(scip) * SCIPinfinity(scip);
+         if( reference->status == SolutionStatus::kInfeasible )
+            reference->value = SCIPgetObjsense(scip) * SCIPinfinity(scip);
          for( int col = 0; col < ncols; ++col )
          {
             if( domains.flags[ col ].test(ColFlag::kFixed) )
@@ -210,7 +210,7 @@ namespace bugger {
                      scip, &var, varNames[ col ].c_str( ), lb, ub,
                      SCIP_Real(obj.coefficients[ col ]), type));
                if( solution_exists )
-                  reference += obj.coefficients[ col ] * sol.primal[ col ];
+                  reference->value += obj.coefficients[ col ] * reference->primal[ col ];
                SCIP_CALL(SCIPaddVar(scip, var));
                vars[ col ] = var;
                SCIP_CALL(SCIPreleaseVar(scip, &var));
@@ -293,7 +293,7 @@ namespace bugger {
          char retcode = SCIPsolve(scip);
          if( retcode == SCIP_OKAY )
          {
-            if( SCIPisSumNegative(scip, SCIPgetObjsense(scip) * ( reference - SCIPgetDualbound(scip))))
+            if( reference->status != SolutionStatus::kUnknown && SCIPisSumNegative(scip, SCIPgetObjsense(scip) * (reference->value - SCIPgetDualbound(scip))) )
                retcode = DUALFAIL;
             else
                retcode = OKAY;
