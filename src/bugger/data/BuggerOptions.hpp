@@ -68,7 +68,7 @@ struct BuggerOptions
       paramSet.addParameter( "numerics.feastol", "the feasibility tolerance", feastol, 0.0, 1e-1 );
       paramSet.addParameter( "numerics.epsilon", "epsilon tolerance to consider two values numerically equal", epsilon, 0.0, 1e-1 );
       paramSet.addParameter( "numerics.zeta", "zeta tolerance to consider two values exactly equal", zeta, 0.0, 1e-1 );
-      paramSet.addParameter( "passcodes", "advanced error handling", passcodes );
+      paramSet.addParameter( "passcodes", "ignored return codes", passcodes );
    }
 
    bool

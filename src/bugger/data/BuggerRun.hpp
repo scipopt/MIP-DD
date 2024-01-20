@@ -74,8 +74,9 @@ namespace bugger {
                 timer.getTime() >= options.tlim;
       }
 
-
       void apply(bugger::Timer &timer, std::string filename) {
+
+         check_feasibility_of_solution();
 
          SolverSettings solver_settings = parseSettings(settings_filename);
 
@@ -111,8 +112,8 @@ namespace bugger {
          Num<double> num{};
          num.setFeasTol( options.feastol );
          num.setEpsilon( options.epsilon );
-
          num.setZeta( options.zeta );
+
          bool settings_modul_activated = !target_settings_filename.empty( );
          if( settings_modul_activated )
             addModul(uptr(new SettingModul( msg, num, solverstatus, parseSettings(target_settings_filename))));
@@ -139,12 +140,10 @@ namespace bugger {
          if( filename.substr(filename.length( ) - 3) == ".bz2" )
             ending = 7;
 
-         check_feasibility_of_solution();
-
          for( int round = options.initround, stage = options.initstage, success = 0; round < options.maxrounds && stage < options.maxstages; ++round )
          {
             std::string newfilename = filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round) + ".mps";
-            //TODO: one can think about shrinking the matrix but I think we are fine with just ignoring deactivated columns and rows
+            //TODO: one can think about shrinking the matrix in each round
             bugger::MpsWriter<double>::writeProb( newfilename, problem );
             if( settings_modul_activated )
             {
@@ -193,32 +192,46 @@ namespace bugger {
    private:
 
       void check_feasibility_of_solution( ) {
-         if(solution.status == SolutionStatus::kFeasible)
+         if( solution.status != SolutionStatus::kFeasible )
             return;
          const Vec<double>& ub = problem.getUpperBounds();
          const Vec<double>& lb = problem.getLowerBounds();
-         bool failure= false;
-         double max = 0;
+         double maxviol = 0.0;
+         int maxindex = -1;
+         bool maxrow = false;
+         bool maxupper = false;
+         double viol;
 
-         msg.info("\nTesting solution:\n");
+         msg.info("\nCheck:\n");
          for( int col = 0; col < problem.getNCols(); col++ )
          {
             if( problem.getColFlags()[col].test( ColFlag::kInactive ) )
                continue;
 
-            if ( ! problem.getColFlags()[col].test( ColFlag::kLbInf ) && solution.primal[col] < lb[col] )
+            if ( !problem.getColFlags()[col].test( ColFlag::kLbInf ) && solution.primal[col] < lb[col] )
             {
-               msg.detailed( "\tColumn {} violates lower column bound () ({} ! >= {}).\n", problem.getVariableNames()[col], (double) solution.primal[col], (double) lb[col]  );
-               failure = true;
-               max = MAX(max, abs(lb[col]- solution.primal[col]));
+               msg.detailed( "\tColumn {:<3} violates lower bound ({:<3} < {:<3}).\n", problem.getVariableNames()[col], (double) solution.primal[col], (double) lb[col] );
+               viol = lb[col] - solution.primal[col];
+               if( viol > maxviol )
+               {
+                  maxviol = viol;
+                  maxindex = col;
+                  maxrow = false;
+                  maxupper = false;
+               }
             }
 
-            if ( ! problem.getColFlags()[col].test( ColFlag::kUbInf ) && solution.primal[col] > ub[col]  )
+            if ( !problem.getColFlags()[col].test( ColFlag::kUbInf ) && solution.primal[col] > ub[col] )
             {
-               msg.detailed( "\tColumn {} violates upper column bound ({} ! <= {}).\n", problem.getVariableNames()[col], (double) solution.primal[col], (double) ub[col]  );
-               failure = true;
-               max = MAX(max, abs(ub[col]- solution.primal[col]));
-
+               msg.detailed( "\tColumn {:<3} violates upper bound ({:<3} > {:<3}).\n", problem.getVariableNames()[col], (double) solution.primal[col], (double) ub[col] );
+               viol = solution.primal[col] - ub[col];
+               if( viol > maxviol )
+               {
+                  maxviol = viol;
+                  maxindex = col;
+                  maxrow = false;
+                  maxupper = true;
+               }
             }
          }
 
@@ -242,32 +255,39 @@ namespace bugger {
                rowValue += x * primal;
             }
 
-            bool lhs_inf = problem.getRowFlags()[row].test( RowFlag::kLhsInf );
-            if( ( ! lhs_inf ) &&  rowValue < lhs[row]  )
+            if( !problem.getRowFlags()[row].test( RowFlag::kLhsInf ) && rowValue < lhs[row] )
             {
-               msg.detailed( "\tRow {:<3} violates row bounds ({:<3} < {:<3}).\n",
-                             problem.getConstraintNames()[row], (double) lhs[row], (double) rowValue );
-               failure = true;
-               max = MAX(max, abs(lhs[row]- rowValue));
+               msg.detailed( "\tRow {:<3} violates left side ({:<3} < {:<3}).\n", problem.getConstraintNames()[row], (double) rowValue, (double) lhs[row] );
+               viol = lhs[row] - rowValue;
+               if( viol > maxviol )
+               {
+                  maxviol = viol;
+                  maxindex = row;
+                  maxrow = true;
+                  maxupper = false;
+               }
             }
-            bool rhs_inf = problem.getRowFlags()[row].test( RowFlag::kRhsInf );
-            if( ( ! rhs_inf ) &&  rowValue > rhs[row] )
+
+            if( !problem.getRowFlags()[row].test( RowFlag::kRhsInf ) && rowValue > rhs[row] )
             {
-               msg.detailed( "\tRow {:<3} violates row bounds ({:<3} < {:<3}).\n",
-                             problem.getConstraintNames()[row], (double) rowValue, (double) rhs[row] );
-               failure = true;
-               max = MAX(max, abs(rhs[row]- rowValue));
+               msg.detailed( "\tRow {:<3} violates right side ({:<3} > {:<3}).\n", problem.getConstraintNames()[row], (double) rowValue, (double) rhs[row] );
+               viol = rowValue - rhs[row];
+               if( viol > maxviol )
+               {
+                  maxviol = viol;
+                  maxindex = row;
+                  maxrow = true;
+                  maxupper = true;
+               }
             }
          }
 
-         if(failure)
-            msg.info("Solution is not exactly feasible (max violation: {}) using floating point arithmetic. Consider polishing the solution!\n", max);
+         if( maxindex >= 0 )
+            msg.info("Solution is infeasible.\nMaximum violation {:<3} of {} {:<3} {}\n", maxviol, maxrow ? "row" : "column", (maxrow ? problem.getConstraintNames() : problem.getVariableNames())[maxindex], maxrow ? (maxupper ? "right" : "left") : (maxupper ? "upper" : "lower"));
          else
-            msg.info("Solution is feasible\n");
+            msg.info("Solution is feasible.\nNo violations detected");
          msg.info("\n");
-
       }
-
 
       SolverStatus getOriginalSolveStatus( const SolverSettings& settings) {
          auto solver = createSolver();
