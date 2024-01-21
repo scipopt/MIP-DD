@@ -48,23 +48,24 @@ namespace bugger {
        * loads problem and settings
        * @param problem
        * @param settings
-       * @param solution_exists
        * @param sol
        */
       virtual void
-      doSetUp(const Problem<double> &problem, const SolverSettings &settings, Solution<double> &sol ) = 0;
+      doSetUp(const Problem<double> &problem, const SolverSettings &settings, Solution<double> &sol) = 0;
 
 
       virtual
       std::pair<char, SolverStatus> solve(Vec<char>& passcodes) = 0;
 
       /**
-       * write settings to file
+       * write setting-problem pair to files
        * @param filename
-       * @param solver_settings
+       * @param settings
+       * @param problem
+       * @param writesettings
        */
       virtual
-      void writeSettings(std::string filename, const SolverSettings& solver_settings ) = 0;
+      void writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings) = 0;
 
       /**
        * parse Settings

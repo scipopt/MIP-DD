@@ -142,15 +142,8 @@ namespace bugger {
 
          for( int round = options.initround, stage = options.initstage, success = 0; round < options.maxrounds && stage < options.maxstages; ++round )
          {
-            std::string newfilename = filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round) + ".mps";
             //TODO: one can think about shrinking the matrix in each round
-            bugger::MpsWriter<double>::writeProb( newfilename, problem );
-            if( settings_modul_activated )
-            {
-               std::string newsettingsname =
-                     filename.substr(0, settings_filename.length( ) - ending) + "_" + std::to_string(round) + ".set";
-               createSolver( )->writeSettings(newsettingsname, solver_settings);
-            }
+            createSolver( )->writeInstance(filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round), solver_settings, problem, settings_modul_activated);
 
             if( is_time_exceeded(timer) )
                break;

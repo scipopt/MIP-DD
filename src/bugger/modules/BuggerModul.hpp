@@ -195,7 +195,7 @@ namespace bugger {
          std::pair<char, SolverStatus> result = solver->solve(passcodes);
          if( result.first == SolverInterface::OKAY )
          {
-            msg.info("\tStatus {}\n", to_string(result.second));
+            msg.info("\tOkay  - Status {}\n", to_string(result.second));
             return BuggerStatus::kOkay;
          }
          else if( result.first > SolverInterface::OKAY )

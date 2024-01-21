@@ -60,9 +60,13 @@ namespace bugger {
          assert(result == SCIP_OKAY);
       }
 
-      void writeSettings(std::string filename, const SolverSettings& solver_settings ) override {
-         set_parameters(solver_settings);
-         SCIPwriteParams(scip, filename.c_str(), 0, 1);
+      void
+      writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings = true) override {
+         Solution<double> solution;
+         setup(problem, solution, settings);
+         if( writesettings )
+            SCIPwriteParams(scip, (filename + ".set").c_str(), 0, 1);
+         SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, 0);
       };
 
       SolverSettings
