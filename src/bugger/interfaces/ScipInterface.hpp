@@ -39,7 +39,6 @@
 #include "bugger/interfaces/SolverStatus.hpp"
 #include "bugger/interfaces/SolverInterface.hpp"
 
-
 namespace bugger {
 
    class ScipInterface : public SolverInterface {
@@ -224,35 +223,22 @@ namespace bugger {
 
          for( int row = 0; row < nrows; ++row )
          {
-            if( problem.getRowFlags( )[ row ].test(RowFlag::kRedundant))
+            if( problem.getRowFlags( )[ row ].test(RowFlag::kRedundant) )
                continue;
             assert(!rflags[ row ].test(RowFlag::kLhsInf) || !rflags[ row ].test(RowFlag::kRhsInf));
-            SCIP_CONS *cons;
 
             auto rowvec = consMatrix.getRowCoefficients(row);
             const double *vals = rowvec.getValues( );
             const int *inds = rowvec.getIndices( );
-            SCIP_Real lhs = rflags[ row ].test(RowFlag::kLhsInf)
-                            ? -SCIPinfinity(scip)
-                            : SCIP_Real(lhs_values[ row ]);
-            SCIP_Real rhs = rflags[ row ].test(RowFlag::kRhsInf)
-                            ? SCIPinfinity(scip)
-                            : SCIP_Real(rhs_values[ row ]);
+            SCIP_CONS *cons;
 
             // the first length entries of consvars/-vals are the entries of the current constraint
             int length = 0;
             for( int k = 0; k != rowvec.getLength( ); ++k )
             {
-               // update lhs and rhs if fixed variable is present
-               if( problem.getColFlags( )[ inds[ k ] ].test(ColFlag::kFixed) )
+               if( vals[ k ] != 0.0 )
                {
-                  if( !rflags[ row ].test(RowFlag::kLhsInf) )
-                     lhs -= vals[ k ] * problem.getLowerBounds( )[ inds[ k ] ];
-                  if( !rflags[ row ].test(RowFlag::kRhsInf) )
-                     rhs -= vals[ k ] * problem.getLowerBounds( )[ inds[ k ] ];
-               }
-               else
-               {
+                  assert(!problem.getColFlags( )[ inds[ k ] ].test(ColFlag::kFixed));
                   consvars[ length ] = vars[ inds[ k ] ];
                   consvals[ length ] = SCIP_Real(vals[ k ]);
                   ++length;
@@ -261,7 +247,9 @@ namespace bugger {
 
             SCIP_CALL(SCIPcreateConsBasicLinear(
                   scip, &cons, consNames[ row ].c_str( ), length,
-                  consvars.data( ), consvals.data( ), lhs, rhs));
+                  consvars.data( ), consvals.data( ),
+                  rflags[ row ].test(RowFlag::kLhsInf) ? -SCIPinfinity(scip) : SCIP_Real(lhs_values[ row ]),
+                  rflags[ row ].test(RowFlag::kRhsInf) ? SCIPinfinity(scip) : SCIP_Real(rhs_values[ row ])));
             SCIP_CALL(SCIPaddCons(scip, cons));
             SCIP_CALL(SCIPreleaseCons(scip, &cons));
          }

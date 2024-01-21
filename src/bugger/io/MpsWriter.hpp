@@ -79,24 +79,29 @@ struct MpsWriter
       int ncols = 0;
       int nintcols = 0;
       int nnnz = 0;
-      for(int i =0; i < consmatrix.getNRows(); i++)
+      for( int i = 0; i < consmatrix.getNRows(); ++i )
       {
-         if(!row_flags[i].test(RowFlag::kRedundant))
+         if( !row_flags[i].test(RowFlag::kRedundant) )
          {
-            nrows++;
+            ++nrows;
             auto data = consmatrix.getRowCoefficients(i);
-            for( int j = 0; j < data.getLength(); j++)
-               if(!col_flags[data.getIndices()[j]].test(ColFlag::kFixed))
-                  nnnz++;
+            for( int j = 0; j < data.getLength(); ++j )
+            {
+               if( data.getValues()[j] != 0.0 )
+               {
+                  assert(!col_flags[data.getIndices()[j]].test(ColFlag::kFixed));
+                  ++nnnz;
+               }
+            }
          }
       }
-      for(int i =0; i < consmatrix.getNCols(); i++)
+      for( int i = 0; i < consmatrix.getNCols(); ++i )
       {
-         if(!col_flags[i].test(ColFlag::kFixed))
+         if( !col_flags[i].test(ColFlag::kFixed) )
          {
-            ncols ++;
-            if(col_flags[i].test(ColFlag::kIntegral))
-               nintcols++;
+            ++ncols;
+            if( col_flags[i].test(ColFlag::kIntegral) )
+               ++nintcols;
          }
       }
 
