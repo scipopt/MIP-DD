@@ -119,8 +119,8 @@ namespace bugger {
                   copy.getConstraintMatrix( ).modifyLeftHandSide( row, num, lhs );
                if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
                   copy.getConstraintMatrix( ).modifyRightHandSide( row, num, rhs );
-               batches_lhs.push_back({ row, lhs });
-               batches_rhs.push_back({ row, rhs });
+               batches_lhs.emplace_back(row, lhs);
+               batches_rhs.emplace_back(row, rhs);
             }
 
             if( !batches_lhs.empty() && ( batches_lhs.size() >= batchsize || row >= copy.getNRows( ) - 1 ) )

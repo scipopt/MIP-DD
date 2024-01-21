@@ -122,7 +122,7 @@ namespace bugger {
                         copy.getConstraintMatrix( ).modifyLeftHandSide( row, num, copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] + offset );
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
                         copy.getConstraintMatrix( ).modifyRightHandSide( row, num, copy.getConstraintMatrix( ).getRightHandSides( )[ row ] + offset );
-                     batches_offset.push_back({ row, offset });
+                     batches_offset.emplace_back(row, offset);
                   }
                }
 

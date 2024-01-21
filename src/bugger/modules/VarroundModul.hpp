@@ -105,15 +105,15 @@ namespace bugger {
                if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
                {
                   copy.getLowerBounds( )[ var ] = lb;
-                  batches_lb.push_back({ var, lb });
+                  batches_lb.emplace_back(var, lb);
                }
                if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
                {
                   copy.getUpperBounds( )[ var ] = ub;
-                  batches_ub.push_back({ var, ub });
+                  batches_ub.emplace_back(var, ub);
                }
                copy.getObjective( ).coefficients[ var ] = num.round(copy.getObjective( ).coefficients[ var ]);
-               batches_obj.push_back({ var, copy.getObjective( ).coefficients[ var ] });
+               batches_obj.emplace_back(var, copy.getObjective( ).coefficients[ var ]);
             }
 
             if( !batches_obj.empty() && ( batches_obj.size() >= batchsize || var >= copy.getNCols( ) - 1 ) )

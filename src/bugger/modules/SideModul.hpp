@@ -123,7 +123,7 @@ namespace bugger {
 
                matrix.modifyLeftHandSide( row, num, fixedval );
                matrix.modifyRightHandSide( row, num, fixedval );
-               batches.push_back({ row, fixedval });
+               batches.emplace_back(row, fixedval);
             }
 
             if( !batches.empty() && ( batches.size() >= batchsize || row <= 0 ) )

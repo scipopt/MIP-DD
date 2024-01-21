@@ -110,7 +110,7 @@ namespace bugger {
                copy.getColFlags( )[ var ].unset(ColFlag::kUbInf);
                copy.getLowerBounds( )[ var ] = fixedval;
                copy.getUpperBounds( )[ var ] = fixedval;
-               batches.push_back({ var, fixedval });
+               batches.emplace_back(var, fixedval);
             }
 
             if( !batches.empty() && ( batches.size() >= batchsize || var <= 0 ) )
