@@ -74,7 +74,7 @@ namespace bugger {
                 timer.getTime() >= options.tlim;
       }
 
-      void apply(bugger::Timer &timer, std::string filename) {
+      void apply(bugger::Timer &timer, const std::string& filename) {
 
          check_feasibility_of_solution();
 
