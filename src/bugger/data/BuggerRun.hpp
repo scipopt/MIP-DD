@@ -74,38 +74,16 @@ namespace bugger {
                 timer.getTime() >= options.tlim;
       }
 
-      void apply(bugger::Timer &timer, std::string filename) {
+      void apply(bugger::Timer &timer, const std::string& filename) {
 
          check_feasibility_of_solution();
 
-         SolverSettings solver_settings = parseSettings(settings_filename);
+         auto solver_factory = load_solver_factory();
 
-         auto solverstatus = getOriginalSolveStatus( solver_settings );
+         SolverSettings solver_settings = parseSettings(settings_filename, solver_factory);
 
-         msg.info("original instance solve-status is ");
-         switch( solverstatus )
-         {
-            case SolverStatus::kOptimal:
-               msg.info("OPTIMAL.\n");
-               break;
-            case SolverStatus::kUnbounded:
-               msg.info("UNBOUNDED.\n");
-               break;
-            case SolverStatus::kInfeasible:
-               msg.info("INFEASIBLE.\n");
-               break;
-            case SolverStatus::kInfeasibleOrUnbounded:
-               msg.info("INFEASIBLE or UNBOUNDED.\n");
-               break;
-            case SolverStatus::kUndefinedError:
-               msg.info("ERROR.\n");
-               break;
-            case SolverStatus::kUnknown:
-               msg.info("UNKNOWN.\n");
-               break;
-            default:
-               assert(false);
-         }
+         printOriginalSolveStatus(solver_settings, solver_factory);
+
 
          using uptr = std::unique_ptr<bugger::BuggerModul>;
 
@@ -116,15 +94,15 @@ namespace bugger {
 
          bool settings_modul_activated = !target_settings_filename.empty( );
          if( settings_modul_activated )
-            addModul(uptr(new SettingModul( msg, num, solverstatus, parseSettings(target_settings_filename))));
-         addModul(uptr(new ConstraintModul( msg, num, solverstatus)));
-         addModul(uptr(new VariableModul( msg, num, solverstatus)));
-         addModul(uptr(new SideModul( msg, num, solverstatus)));
-         addModul(uptr(new ObjectiveModul( msg, num, solverstatus)));
-         addModul(uptr(new CoefficientModul( msg, num, solverstatus)));
-         addModul(uptr(new FixingModul( msg, num, solverstatus)));
-         addModul(uptr(new VarroundModul( msg, num, solverstatus)));
-         addModul(uptr(new ConsRoundModul( msg, num, solverstatus)));
+            addModul(uptr(new SettingModul( msg, num,parseSettings(target_settings_filename, solver_factory), solver_factory)));
+         addModul(uptr(new ConstraintModul( msg, num, solver_factory)));
+         addModul(uptr(new VariableModul( msg, num, solver_factory)));
+         addModul(uptr(new SideModul( msg, num, solver_factory)));
+         addModul(uptr(new ObjectiveModul( msg, num, solver_factory)));
+         addModul(uptr(new CoefficientModul( msg, num, solver_factory)));
+         addModul(uptr(new FixingModul( msg, num, solver_factory)));
+         addModul(uptr(new VarroundModul( msg, num, solver_factory)));
+         addModul(uptr(new ConsRoundModul( msg, num, solver_factory)));
 
          if( options.maxrounds < 0 )
             options.maxrounds = INT_MAX;
@@ -143,7 +121,7 @@ namespace bugger {
          for( int round = options.initround, stage = options.initstage, success = 0; round < options.maxrounds && stage < options.maxstages; ++round )
          {
             //TODO: one can think about shrinking the matrix in each round
-            createSolver( )->writeInstance(filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round), solver_settings, problem, settings_modul_activated);
+            solver_factory->create_solver( )->writeInstance(filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round), solver_settings, problem, settings_modul_activated);
 
             if( is_time_exceeded(timer) )
                break;
@@ -282,24 +260,23 @@ namespace bugger {
          msg.info("\n");
       }
 
-      SolverStatus getOriginalSolveStatus( const SolverSettings& settings) {
-         auto solver = createSolver();
+      void printOriginalSolveStatus(const SolverSettings &settings, const std::shared_ptr<SolverFactory>& factory) {
+         auto solver = factory->create_solver();
          solver->doSetUp(problem, settings, solution);
          Vec<int> empty_passcodes{};
          const std::pair<char, SolverStatus> &pair = solver->solve(empty_passcodes);
-         return pair.second;
+         msg.info("original solve returned code {} with status {}\n", (int) pair.first, pair.second);
       }
 
-      SolverSettings parseSettings( const std::string& filename) {
-         auto solver = createSolver();
+      SolverSettings parseSettings( const std::string& filename, const std::shared_ptr<SolverFactory>& factory) {
+         auto solver = factory->create_solver();
          return solver->parseSettings(filename);
       }
 
-      //TODO: this is duplicates function in BuggerModul -> move this to a function to hand it to BuggerModul so that is has to be declared only once
-      std::unique_ptr<SolverInterface>
-      createSolver(){
+      std::shared_ptr<SolverFactory>
+      load_solver_factory(){
 #ifdef BUGGER_HAVE_SCIP
-         return std::unique_ptr<SolverInterface>(new ScipInterface { });
+         return std::shared_ptr<SolverFactory>(new ScipFactory( ) );
 #else
          msg.error("No solver specified -- aborting ....");
          return nullptr;

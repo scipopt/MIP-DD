@@ -31,11 +31,11 @@ namespace bugger {
 
    class VariableModul : public BuggerModul {
    public:
-      VariableModul( const Message &_msg, const Num<double> &_num, const SolverStatus& _status) : BuggerModul() {
+      VariableModul( const Message &_msg, const Num<double> &_num, std::shared_ptr<SolverFactory>& factory) : BuggerModul(factory) {
          this->setName("variable");
          this->msg = _msg;
          this->num = _num;
-         this->originalSolverStatus = _status;
+
       }
 
       bool

@@ -79,6 +79,17 @@ namespace bugger {
       virtual ~SolverInterface() = default;
    };
 
+   class SolverFactory
+   {
+   public:
+
+      virtual std::unique_ptr<SolverInterface>
+      create_solver( ) const = 0;
+
+      virtual ~SolverFactory() {}
+   };
+
+
 } // namespace bugger
 
 #endif

@@ -342,6 +342,19 @@ namespace bugger {
       }
    };
 
+   class ScipFactory : public SolverFactory
+   {
+
+   public:
+      virtual std::unique_ptr<SolverInterface>
+      create_solver(  ) const
+      {
+         auto scip = std::unique_ptr<SolverInterface>( new ScipInterface() );
+         return scip;
+      }
+
+   };
+
 } // namespace bugger
 
 #endif
