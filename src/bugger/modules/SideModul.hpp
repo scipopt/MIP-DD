@@ -52,13 +52,12 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings,  Solution<double> &solution, bool solution_exists,
-              const BuggerOptions &options, const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings,  Solution<double> &solution,
+              BuggerOptions &options, const Timer &timer) override {
 
-         auto copy = Problem<double>(problem);
-         ConstraintMatrix<double>& matrix = copy.getConstraintMatrix( );
-         Vec<std::pair<int, double>> applied_reductions { };
-         Vec<std::pair<int, double>> batches { };
+         if( solution.status == SolutionStatus::kUnbounded )
+            return ModulStatus::kNotAdmissible;
+
          int batchsize = 1;
 
          if( options.nbatches > 0 )
@@ -72,8 +71,12 @@ namespace bugger {
             batchsize /= options.nbatches;
          }
 
-         batches.reserve(batchsize);
          bool admissible = false;
+         auto copy = Problem<double>(problem);
+         ConstraintMatrix<double>& matrix = copy.getConstraintMatrix( );
+         Vec<std::pair<int, double>> applied_reductions { };
+         Vec<std::pair<int, double>> batches { };
+         batches.reserve(batchsize);
 
          for( int row = copy.getNRows( ) - 1; row >= 0; --row )
          {
@@ -93,7 +96,7 @@ namespace bugger {
                   }
                }
 
-               if( solution_exists )
+               if( solution.status == SolutionStatus::kFeasible )
                {
                   fixedval = get_linear_activity(data, solution);
                   if( integral )
@@ -120,14 +123,14 @@ namespace bugger {
 
                matrix.modifyLeftHandSide( row, num, fixedval );
                matrix.modifyRightHandSide( row, num, fixedval );
-               batches.push_back({ row, fixedval });
+               batches.emplace_back(row, fixedval);
             }
 
             if( !batches.empty() && ( batches.size() >= batchsize || row <= 0 ) )
             {
                auto solver = createSolver();
-               solver->doSetUp(copy,  settings, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus, settings) == BuggerStatus::kSuccess )
+               solver->doSetUp(copy, settings, solution);
+               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions )

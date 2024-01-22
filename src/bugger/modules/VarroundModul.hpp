@@ -55,16 +55,12 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists,
-              const BuggerOptions &options, const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
+              BuggerOptions &options, const Timer &timer) override {
 
-         auto copy = Problem<double>(problem);
-         Vec<std::pair<int, double>> applied_lb { };
-         Vec<std::pair<int, double>> applied_ub { };
-         Vec<std::pair<int, double>> applied_obj { };
-         Vec<std::pair<int, double>> batches_lb { };
-         Vec<std::pair<int, double>> batches_ub { };
-         Vec<std::pair<int, double>> batches_obj { };
+         if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded )
+            return ModulStatus::kNotAdmissible;
+
          int batchsize = 1;
 
          if( options.nbatches > 0 )
@@ -78,10 +74,17 @@ namespace bugger {
             batchsize /= options.nbatches;
          }
 
+         bool admissible = false;
+         auto copy = Problem<double>(problem);
+         Vec<std::pair<int, double>> applied_lb { };
+         Vec<std::pair<int, double>> applied_ub { };
+         Vec<std::pair<int, double>> applied_obj { };
+         Vec<std::pair<int, double>> batches_lb { };
+         Vec<std::pair<int, double>> batches_ub { };
+         Vec<std::pair<int, double>> batches_obj { };
          batches_lb.reserve(batchsize);
          batches_ub.reserve(batchsize);
          batches_obj.reserve(batchsize);
-         bool admissible = false;
 
          for( int var = 0; var < copy.getNCols( ); ++var )
          {
@@ -91,7 +94,7 @@ namespace bugger {
                double lb = num.round(copy.getLowerBounds( )[ var ]);
                double ub = num.round(copy.getUpperBounds( )[ var ]);
 
-               if( solution_exists )
+               if( solution.status == SolutionStatus::kFeasible )
                {
                   double value = solution.primal[ var ];
 
@@ -102,22 +105,22 @@ namespace bugger {
                if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
                {
                   copy.getLowerBounds( )[ var ] = lb;
-                  batches_lb.push_back({ var, lb });
+                  batches_lb.emplace_back(var, lb);
                }
                if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
                {
                   copy.getUpperBounds( )[ var ] = ub;
-                  batches_ub.push_back({ var, ub });
+                  batches_ub.emplace_back(var, ub);
                }
                copy.getObjective( ).coefficients[ var ] = num.round(copy.getObjective( ).coefficients[ var ]);
-               batches_obj.push_back({ var, copy.getObjective( ).coefficients[ var ] });
+               batches_obj.emplace_back(var, copy.getObjective( ).coefficients[ var ]);
             }
 
             if( !batches_obj.empty() && ( batches_obj.size() >= batchsize || var >= copy.getNCols( ) - 1 ) )
             {
                auto solver = createSolver();
-               solver->doSetUp(copy,  settings, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus, settings) == BuggerStatus::kSuccess )
+               solver->doSetUp(copy, settings, solution);
+               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_lb )

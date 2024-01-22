@@ -26,11 +26,11 @@
 
 
 enum class BuggerStatus : int {
-   kFail = 0,
+   kOkay = 0,
 
-   kSuccess = 1,
+   kBug = 1,
 
-   kUnexpectedError = 2,
+   kError = 2,
 
 };
 #endif //BUGGER_BUGGERSTATUS_HPP

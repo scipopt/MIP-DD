@@ -52,6 +52,7 @@ struct SolParser
 
       if( !file )
          return false;
+      sol = Solution<REAL>(SolutionStatus::kFeasible);
 
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
       if( boost::algorithm::ends_with( filename, ".gz" ) )

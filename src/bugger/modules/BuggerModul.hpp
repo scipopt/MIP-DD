@@ -63,8 +63,6 @@ namespace bugger {
          name = "unnamed";
          execTime = 0.0;
          enabled = true;
-         delayed = false;
-         skip = 0;
          nchgcoefs = 0;
          nfixedvars = 0;
          nchgsides = 0;
@@ -96,16 +94,10 @@ namespace bugger {
       }
 
       ModulStatus
-      run(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
+      run(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, BuggerOptions &options,
           const Timer &timer) {
-         if( !enabled || delayed )
+         if( !enabled )
             return ModulStatus::kDidNotRun;
-
-         if( skip != 0 )
-         {
-            --skip;
-            return ModulStatus::kDidNotRun;
-         }
 
          msg.info("module {} running\n", name);
 #ifdef BUGGER_TBB
@@ -113,7 +105,7 @@ namespace bugger {
 #else
          auto start = std::chrono::steady_clock::now();
 #endif
-         ModulStatus result = execute(problem, settings, solution, solution_exists, options, timer);
+         ModulStatus result = execute(problem, settings, solution, options, timer);
 #ifdef BUGGER_TBB
          if( result == ModulStatus::kSuccessful )
             nsuccessCall++;
@@ -145,11 +137,6 @@ namespace bugger {
          return this->enabled;
       }
 
-      bool
-      isDelayed( ) const {
-         return this->delayed;
-      }
-
       const std::string &
       getName( ) const {
          return this->name;
@@ -158,11 +145,6 @@ namespace bugger {
       unsigned int
       getNCalls( ) const {
          return ncalls;
-      }
-
-      void
-      setDelayed(bool value) {
-         this->delayed = value;
       }
 
       void
@@ -190,8 +172,8 @@ namespace bugger {
       }
 
       virtual ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists,
-              const BuggerOptions &options, const Timer &timer) = 0;
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
+              BuggerOptions &options, const Timer &timer) = 0;
 
       void
       setName(const std::string &value) {
@@ -206,19 +188,51 @@ namespace bugger {
       }
 
 
-      void
-      skipRounds(unsigned int nrounds) {
-         this->skip += nrounds;
+      BuggerStatus
+      call_solver(SolverInterface *solver, const Message &msg, BuggerOptions &options) {
+
+         std::pair<char, SolverStatus> result = solver->solve(options.getPasscodes());
+         if( result.first == SolverInterface::OKAY )
+         {
+            msg.info("\tOkay  - Status {}\n", to_string(result.second));
+            return BuggerStatus::kOkay;
+         }
+         else if( result.first > SolverInterface::OKAY )
+         {
+            msg.info("\tBug {} - Status {}\n", (int) result.first, to_string(result.second));
+            return BuggerStatus::kBug;
+         }
+         else
+         {
+            msg.info("\tError {}\n", (int) result.first);
+            return BuggerStatus::kError;
+         }
       }
+
+   private:
+      std::string to_string(SolverStatus status) {
+         switch( status )
+         {
+            case SolverStatus::kInfeasible:
+               return "infeasible";
+            case SolverStatus::kInfeasibleOrUnbounded:
+               return "infeasible or unbounded";
+            case SolverStatus::kOptimal:
+               return "optimal";
+            case SolverStatus::kLimit:
+               return "limit";
+            default:
+               return "unknown";
+         }
+      }
+
 
    private:
       std::string name;
       double execTime;
       bool enabled;
-      bool delayed { };
       unsigned int ncalls;
       unsigned int nsuccessCall;
-      unsigned int skip;
    protected:
       SolverStatus originalSolverStatus;
       int nchgcoefs;

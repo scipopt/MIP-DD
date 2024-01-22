@@ -55,12 +55,12 @@ namespace bugger
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double>& solution, bool solution_exists,
-              const BuggerOptions &options,  const Timer &timer) override
-      {
-         auto copy = Problem<double>(problem);
-         Vec<int> applied_reductions { };
-         Vec<int> batches { };
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double>& solution,
+              BuggerOptions &options, const Timer &timer) override {
+
+         if( solution.status == SolutionStatus::kUnbounded )
+            return ModulStatus::kNotAdmissible;
+
          int batchsize = 1;
 
          if( options.nbatches > 0 )
@@ -74,8 +74,11 @@ namespace bugger
             batchsize /= options.nbatches;
          }
 
-         batches.reserve(batchsize);
          bool admissible = false;
+         auto copy = Problem<double>(problem);
+         Vec<int> applied_reductions { };
+         Vec<int> batches { };
+         batches.reserve(batchsize);
 
          for( int var = copy.getNCols( ) - 1; var >= 0; --var )
          {
@@ -89,8 +92,8 @@ namespace bugger
             if( !batches.empty() && ( batches.size() >= batchsize || var <= 0 ) )
             {
                auto solver = createSolver();
-               solver->doSetUp(copy,  settings, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus, settings) == BuggerStatus::kSuccess )
+               solver->doSetUp(copy, settings, solution);
+               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions )

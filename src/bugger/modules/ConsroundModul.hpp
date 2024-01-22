@@ -60,16 +60,12 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists, const BuggerOptions &options,
-              const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
+              BuggerOptions &options, const Timer &timer) override {
 
-         auto copy = Problem<double>(problem);
-         MatrixBuffer<double> applied_entries { };
-         Vec<std::pair<int, double>> applied_reductions_lhs { };
-         Vec<std::pair<int, double>> applied_reductions_rhs { };
-         MatrixBuffer<double> batches_coeff { };
-         Vec<std::pair<int, double>> batches_lhs { };
-         Vec<std::pair<int, double>> batches_rhs { };
+         if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded )
+            return ModulStatus::kNotAdmissible;
+
          int batchsize = 1;
 
          if( options.nbatches > 0 )
@@ -83,9 +79,16 @@ namespace bugger {
             batchsize /= options.nbatches;
          }
 
+         bool admissible = false;
+         auto copy = Problem<double>(problem);
+         MatrixBuffer<double> applied_entries { };
+         Vec<std::pair<int, double>> applied_reductions_lhs { };
+         Vec<std::pair<int, double>> applied_reductions_rhs { };
+         MatrixBuffer<double> batches_coeff { };
+         Vec<std::pair<int, double>> batches_lhs { };
+         Vec<std::pair<int, double>> batches_rhs { };
          batches_lhs.reserve(batchsize);
          batches_rhs.reserve(batchsize);
-         bool admissible = false;
 
          for( int row = 0; row < copy.getNRows( ); ++row )
          {
@@ -103,7 +106,7 @@ namespace bugger {
                //TODO: Change row only
                copy.getConstraintMatrix( ).changeCoefficients(batches_coeff);
 
-               if( solution_exists )
+               if( solution.status == SolutionStatus::kFeasible )
                {
                   data = copy.getConstraintMatrix( ).getRowCoefficients(row);
                   double activity = get_linear_activity(data, solution);
@@ -116,15 +119,15 @@ namespace bugger {
                   copy.getConstraintMatrix( ).modifyLeftHandSide( row, num, lhs );
                if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
                   copy.getConstraintMatrix( ).modifyRightHandSide( row, num, rhs );
-               batches_lhs.push_back({ row, lhs });
-               batches_rhs.push_back({ row, rhs });
+               batches_lhs.emplace_back(row, lhs);
+               batches_rhs.emplace_back(row, rhs);
             }
 
             if( !batches_lhs.empty() && ( batches_lhs.size() >= batchsize || row >= copy.getNRows( ) - 1 ) )
             {
                auto solver = createSolver( );
-               solver->doSetUp(copy,  settings, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus, settings) == BuggerStatus::kSuccess )
+               solver->doSetUp(copy,  settings, solution);
+               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
                   copy.getConstraintMatrix( ).changeCoefficients(applied_entries);

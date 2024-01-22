@@ -51,12 +51,9 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists,
-              const BuggerOptions &options, const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
+              BuggerOptions &options, const Timer &timer) override {
 
-         auto copy = Problem<double>(problem);
-         Vec<int> applied_vars { };
-         Vec<int> batches { };
          int batchsize = 1;
 
          if( options.nbatches > 0 )
@@ -70,26 +67,86 @@ namespace bugger {
             batchsize /= options.nbatches;
          }
 
-         batches.reserve(batchsize);
          bool admissible = false;
+         auto copy = Problem<double>(problem);
+         Vec<int> applied_vars { };
+         MatrixBuffer<double> applied_entries { };
+         Vec<std::pair<int, double>> applied_reductions { };
+         Vec<int> batches_vars { };
+         MatrixBuffer<double> batches_coeff { };
+         Vec<std::pair<int, double>> batches_offset { };
+         batches_vars.reserve(batchsize);
 
          for( int var = copy.getNCols( ) - 1; var >= 0; --var )
          {
             if( isFixingAdmissible(copy, var) )
             {
                admissible = true;
+               auto data = copy.getConstraintMatrix( ).getColumnCoefficients(var);
+               double fixedval;
+
+               if( solution.status == SolutionStatus::kFeasible )
+               {
+                  fixedval = solution.primal[ var ];
+                  if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
+                     fixedval = num.round(fixedval);
+               }
+               else
+               {
+                  fixedval = 0.0;
+                  if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
+                  {
+                     if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
+                        fixedval = num.min(fixedval, num.epsFloor(copy.getUpperBounds( )[ var ]));
+                     if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
+                        fixedval = num.max(fixedval, num.epsCeil(copy.getLowerBounds( )[ var ]));
+                  }
+                  else
+                  {
+                     if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
+                        fixedval = num.min(fixedval, copy.getUpperBounds( )[ var ]);
+                     if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
+                        fixedval = num.max(fixedval, copy.getLowerBounds( )[ var ]);
+                  }
+               }
+
+               for( int index = data.getLength( ) - 1; index >= 0; --index )
+               {
+                  int row = data.getIndices( )[ index ];
+                  if( !num.isZetaZero(data.getValues( )[ index ]) && !copy.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant) )
+                  {
+                     double offset = -data.getValues( )[ index ] * fixedval;
+
+                     batches_coeff.addEntry(row, var, 0.0);
+                     if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
+                        copy.getConstraintMatrix( ).modifyLeftHandSide( row, num, copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] + offset );
+                     if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
+                        copy.getConstraintMatrix( ).modifyRightHandSide( row, num, copy.getConstraintMatrix( ).getRightHandSides( )[ row ] + offset );
+                     batches_offset.emplace_back(row, offset);
+                  }
+               }
+
                assert(!copy.getColFlags( )[ var ].test(ColFlag::kFixed));
                copy.getColFlags( )[ var ].set(ColFlag::kFixed);
-               batches.push_back(var);
+               batches_vars.push_back(var);
             }
 
-            if( !batches.empty() && ( batches.size() >= batchsize || var <= 0 ) )
+            if( !batches_vars.empty() && ( batches_vars.size() >= batchsize || var <= 0 ) )
             {
+               copy.getConstraintMatrix( ).changeCoefficients(batches_coeff);
                auto solver = createSolver();
-               solver->doSetUp(copy,  settings, solution_exists, solution);
-               if( solver->run(msg, originalSolverStatus, settings) == BuggerStatus::kSuccess )
+               solver->doSetUp(copy, settings, solution);
+               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
+                  copy.getConstraintMatrix( ).changeCoefficients(applied_entries);
+                  for( const auto &item: applied_reductions )
+                  {
+                     if( !copy.getRowFlags( )[ item.first ].test(RowFlag::kLhsInf) )
+                        copy.getConstraintMatrix( ).modifyLeftHandSide( item.first, num, copy.getConstraintMatrix( ).getLeftHandSides( )[ item.first ] + item.second );
+                     if( !copy.getRowFlags( )[ item.first ].test(RowFlag::kRhsInf) )
+                        copy.getConstraintMatrix( ).modifyRightHandSide( item.first, num, copy.getConstraintMatrix( ).getRightHandSides( )[ item.first ] + item.second );
+                  }
                   for( const auto &item: applied_vars )
                   {
                      assert(!copy.getColFlags( )[ item ].test(ColFlag::kFixed));
@@ -97,10 +154,23 @@ namespace bugger {
                   }
                }
                else
-                  applied_vars.insert(applied_vars.end(), batches.begin(), batches.end());
-               batches.clear();
+               {
+                  SmallVec<int, 32> buffer;
+                  const MatrixEntry<double> *iter = batches_coeff.template begin<true>(buffer);
+                  while( iter != batches_coeff.end( ) )
+                  {
+                     applied_entries.addEntry(iter->row, iter->col, iter->val);
+                     iter = batches_coeff.template next<true>( buffer );
+                  }
+                  applied_reductions.insert(applied_reductions.end(), batches_offset.begin(), batches_offset.end());
+                  applied_vars.insert(applied_vars.end(), batches_vars.begin(), batches_vars.end());
+               }
+               batches_coeff.clear();
+               batches_offset.clear();
+               batches_vars.clear();
             }
          }
+
          if(!admissible)
             return ModulStatus::kNotAdmissible;
          if( applied_vars.empty() )

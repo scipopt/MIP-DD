@@ -25,6 +25,9 @@ epsilon = 1e-6;
 # zeta tolerance to consider two values exactly equal [Numerical: [0,1e-1]]
 zeta = 0;
 
+# list of ignored return codes (string separated by blanks) example: [passcodes = -1 -2]
+passcodes = ""
+
 # is the Module Coefficient enabled? [Boolean]
 coefficient.enabled = true
 

@@ -56,7 +56,6 @@ namespace bugger {
       const std::string& target_settings_filename;
       bugger::Problem<double> &problem;
       bugger::Solution<double> &solution;
-      bool solution_exists;
       bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &modules;
       bugger::Vec<bugger::ModulStatus> results;
       bugger::Message msg { };
@@ -64,9 +63,9 @@ namespace bugger {
    public:
 
       BuggerRun(const std::string& _settings_filename, const std::string& _target_settings_filename, bugger::Problem<double> &_problem, bugger::Solution<double> &_solution,
-                bool _solution_exists, bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
+                bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
             : options({ }), settings_filename(_settings_filename), target_settings_filename(_target_settings_filename), problem(_problem), solution(_solution),
-              solution_exists(_solution_exists), modules(_modules) { }
+              modules(_modules) { }
 
       bool
       is_time_exceeded( const Timer& timer ) const
@@ -77,19 +76,44 @@ namespace bugger {
 
       void apply(bugger::Timer &timer, std::string filename) {
 
+         check_feasibility_of_solution();
+
          SolverSettings solver_settings = parseSettings(settings_filename);
 
          auto solverstatus = getOriginalSolveStatus( solver_settings );
 
-         msg.info("original instance solve-status {}\n", solverstatus);
+         msg.info("original instance solve-status is ");
+         switch( solverstatus )
+         {
+            case SolverStatus::kOptimal:
+               msg.info("OPTIMAL.\n");
+               break;
+            case SolverStatus::kUnbounded:
+               msg.info("UNBOUNDED.\n");
+               break;
+            case SolverStatus::kInfeasible:
+               msg.info("INFEASIBLE.\n");
+               break;
+            case SolverStatus::kInfeasibleOrUnbounded:
+               msg.info("INFEASIBLE or UNBOUNDED.\n");
+               break;
+            case SolverStatus::kUndefinedError:
+               msg.info("ERROR.\n");
+               break;
+            case SolverStatus::kUnknown:
+               msg.info("UNKNOWN.\n");
+               break;
+            default:
+               assert(false);
+         }
 
          using uptr = std::unique_ptr<bugger::BuggerModul>;
 
          Num<double> num{};
          num.setFeasTol( options.feastol );
          num.setEpsilon( options.epsilon );
-
          num.setZeta( options.zeta );
+
          bool settings_modul_activated = !target_settings_filename.empty( );
          if( settings_modul_activated )
             addModul(uptr(new SettingModul( msg, num, solverstatus, parseSettings(target_settings_filename))));
@@ -118,15 +142,8 @@ namespace bugger {
 
          for( int round = options.initround, stage = options.initstage, success = 0; round < options.maxrounds && stage < options.maxstages; ++round )
          {
-            std::string newfilename = filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round) + ".mps";
-            //TODO: one can think about shrinking the matrix but I think we are fine with just ignoring deactivated columns and rows
-            bugger::MpsWriter<double>::writeProb( newfilename, problem );
-            if( settings_modul_activated )
-            {
-               std::string newsettingsname =
-                     filename.substr(0, settings_filename.length( ) - ending) + "_" + std::to_string(round) + ".set";
-               createSolver( )->writeSettings(newsettingsname, solver_settings);
-            }
+            //TODO: one can think about shrinking the matrix in each round
+            createSolver( )->writeInstance(filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round), solver_settings, problem, settings_modul_activated);
 
             if( is_time_exceeded(timer) )
                break;
@@ -135,7 +152,7 @@ namespace bugger {
 
             for( int module = 0; module <= stage && stage < options.maxstages; ++module )
             {
-               results[ module ] = modules[ module ]->run(problem, solver_settings, solution, solution_exists, options, timer);
+               results[ module ] = modules[ module ]->run(problem, solver_settings, solution, options, timer);
 
                if( results[ module ] == bugger::ModulStatus::kSuccessful )
                   success = module;
@@ -167,10 +184,110 @@ namespace bugger {
 
    private:
 
+      void check_feasibility_of_solution( ) {
+         if( solution.status != SolutionStatus::kFeasible )
+            return;
+         const Vec<double>& ub = problem.getUpperBounds();
+         const Vec<double>& lb = problem.getLowerBounds();
+         double maxviol = 0.0;
+         int maxindex = -1;
+         bool maxrow = false;
+         bool maxupper = false;
+         double viol;
+
+         msg.info("\nCheck:\n");
+         for( int col = 0; col < problem.getNCols(); col++ )
+         {
+            if( problem.getColFlags()[col].test( ColFlag::kInactive ) )
+               continue;
+
+            if ( !problem.getColFlags()[col].test( ColFlag::kLbInf ) && solution.primal[col] < lb[col] )
+            {
+               msg.detailed( "\tColumn {:<3} violates lower bound ({:<3} < {:<3}).\n", problem.getVariableNames()[col], solution.primal[col], lb[col] );
+               viol = lb[col] - solution.primal[col];
+               if( viol > maxviol )
+               {
+                  maxviol = viol;
+                  maxindex = col;
+                  maxrow = false;
+                  maxupper = false;
+               }
+            }
+
+            if ( !problem.getColFlags()[col].test( ColFlag::kUbInf ) && solution.primal[col] > ub[col] )
+            {
+               msg.detailed( "\tColumn {:<3} violates upper bound ({:<3} > {:<3}).\n", problem.getVariableNames()[col], solution.primal[col], ub[col] );
+               viol = solution.primal[col] - ub[col];
+               if( viol > maxviol )
+               {
+                  maxviol = viol;
+                  maxindex = col;
+                  maxrow = false;
+                  maxupper = true;
+               }
+            }
+         }
+
+         const Vec<double>& rhs = problem.getConstraintMatrix().getRightHandSides();
+         const Vec<double>& lhs = problem.getConstraintMatrix().getLeftHandSides();
+
+         for( int row = 0; row < problem.getNRows(); row++ )
+         {
+            if( problem.getRowFlags()[row].test( RowFlag::kRedundant ) )
+               continue;
+
+            double rowValue = 0;
+            auto entries = problem.getConstraintMatrix().getRowCoefficients( row );
+            for( int j = 0; j < entries.getLength(); j++ )
+            {
+               int col = entries.getIndices()[j];
+               if( problem.getColFlags()[col].test( ColFlag::kInactive ) )
+                  continue;
+               double x = entries.getValues()[j];
+               double primal = solution.primal[col];
+               rowValue += x * primal;
+            }
+
+            if( !problem.getRowFlags()[row].test( RowFlag::kLhsInf ) && rowValue < lhs[row] )
+            {
+               msg.detailed( "\tRow {:<3} violates left side ({:<3} < {:<3}).\n", problem.getConstraintNames()[row], rowValue, lhs[row] );
+               viol = lhs[row] - rowValue;
+               if( viol > maxviol )
+               {
+                  maxviol = viol;
+                  maxindex = row;
+                  maxrow = true;
+                  maxupper = false;
+               }
+            }
+
+            if( !problem.getRowFlags()[row].test( RowFlag::kRhsInf ) && rowValue > rhs[row] )
+            {
+               msg.detailed( "\tRow {:<3} violates right side ({:<3} > {:<3}).\n", problem.getConstraintNames()[row], rowValue, rhs[row] );
+               viol = rowValue - rhs[row];
+               if( viol > maxviol )
+               {
+                  maxviol = viol;
+                  maxindex = row;
+                  maxrow = true;
+                  maxupper = true;
+               }
+            }
+         }
+
+         if( maxindex >= 0 )
+            msg.info("Solution is infeasible.\nMaximum violation {:<3} of {} {:<3} {}\n", maxviol, maxrow ? "row" : "column", (maxrow ? problem.getConstraintNames() : problem.getVariableNames())[maxindex], maxrow ? (maxupper ? "right" : "left") : (maxupper ? "upper" : "lower"));
+         else
+            msg.info("Solution is feasible.\nNo violations detected");
+         msg.info("\n");
+      }
+
       SolverStatus getOriginalSolveStatus( const SolverSettings& settings) {
          auto solver = createSolver();
-         solver->doSetUp(problem, settings, false, solution);
-         return solver->solve( settings );
+         solver->doSetUp(problem, settings, solution);
+         Vec<int> empty_passcodes{};
+         const std::pair<char, SolverStatus> &pair = solver->solve(empty_passcodes);
+         return pair.second;
       }
 
       SolverSettings parseSettings( const std::string& filename) {

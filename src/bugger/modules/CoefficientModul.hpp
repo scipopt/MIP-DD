@@ -61,15 +61,11 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, bool solution_exists,
-              const BuggerOptions &options, const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
+              BuggerOptions &options, const Timer &timer) override {
 
-         auto copy = Problem<double>(problem);
-         MatrixBuffer<double> applied_entries { };
-         Vec<std::pair<int, double>> applied_reductions { };
-         MatrixBuffer<double> batches_coeff { };
-         Vec<std::pair<int, double>> batches_offset { };
          int batchsize = 1;
+
          if( options.nbatches > 0 )
          {
             batchsize = options.nbatches - 1;
@@ -81,8 +77,13 @@ namespace bugger {
             batchsize /= options.nbatches;
          }
 
-         batches_offset.reserve(batchsize);
          bool admissible = false;
+         auto copy = Problem<double>(problem);
+         MatrixBuffer<double> applied_entries { };
+         Vec<std::pair<int, double>> applied_reductions { };
+         MatrixBuffer<double> batches_coeff { };
+         Vec<std::pair<int, double>> batches_offset { };
+         batches_offset.reserve(batchsize);
 
          for( int row = copy.getNRows( ) - 1; row >= 0; --row )
          {
@@ -99,7 +100,7 @@ namespace bugger {
                   {
                      double fixedval;
 
-                     if( solution_exists )
+                     if( solution.status == SolutionStatus::kFeasible )
                      {
                         fixedval = solution.primal[ var ];
                         if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
@@ -133,15 +134,15 @@ namespace bugger {
                   copy.getConstraintMatrix( ).modifyLeftHandSide( row, num, copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] + offset );
                if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
                   copy.getConstraintMatrix( ).modifyRightHandSide( row, num, copy.getConstraintMatrix( ).getRightHandSides( )[ row ] + offset );
-               batches_offset.push_back({ row, offset });
+               batches_offset.emplace_back(row, offset);
             }
 
             if( !batches_offset.empty() && ( batches_offset.size() >= batchsize || row <= 0 ) )
             {
                copy.getConstraintMatrix( ).changeCoefficients(batches_coeff);
                auto solver = createSolver();
-               solver->doSetUp(copy,  settings, solution_exists, solution );
-               if( solver->run(msg, originalSolverStatus, settings) == BuggerStatus::kSuccess )
+               solver->doSetUp(copy,  settings, solution );
+               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
                   copy.getConstraintMatrix( ).changeCoefficients(applied_entries);
