@@ -82,9 +82,8 @@ namespace bugger {
 
          SolverSettings solver_settings = parseSettings(settings_filename, solver_factory);
 
-         auto solverstatus = getOriginalSolveStatus(solver_settings, solver_factory);
+         printOriginalSolveStatus(solver_settings, solver_factory);
 
-         msg.info("original instance solve-status is {}\n", solverstatus);
 
          using uptr = std::unique_ptr<bugger::BuggerModul>;
 
@@ -261,12 +260,12 @@ namespace bugger {
          msg.info("\n");
       }
 
-      SolverStatus getOriginalSolveStatus(const SolverSettings &settings, const std::shared_ptr<SolverFactory>& factory) {
+      void printOriginalSolveStatus(const SolverSettings &settings, const std::shared_ptr<SolverFactory>& factory) {
          auto solver = factory->create_solver();
          solver->doSetUp(problem, settings, solution);
          Vec<int> empty_passcodes{};
          const std::pair<char, SolverStatus> &pair = solver->solve(empty_passcodes);
-         return pair.second;
+         msg.info("original instance solve-status is {} (return code {})\n", pair.second, pair.first);
       }
 
       SolverSettings parseSettings( const std::string& filename, const std::shared_ptr<SolverFactory>& factory) {
