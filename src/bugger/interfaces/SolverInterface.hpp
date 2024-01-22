@@ -55,7 +55,7 @@ namespace bugger {
 
 
       virtual
-      std::pair<char, SolverStatus> solve(Vec<char>& passcodes) = 0;
+      std::pair<char, SolverStatus> solve( const Vec<int>& passcodes) = 0;
 
       /**
        * write setting-problem pair to files

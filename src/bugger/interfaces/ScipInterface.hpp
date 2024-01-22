@@ -278,7 +278,7 @@ namespace bugger {
 
    private:
 
-      std::pair<char, SolverStatus> solve( Vec<char>& passcodes) override {
+      std::pair<char, SolverStatus> solve( const Vec<int>& passcodes) override {
 
          SolverStatus solverstatus = SolverStatus::kUndefinedError;
          SCIPsetMessagehdlrQuiet(scip, true);
@@ -330,7 +330,7 @@ namespace bugger {
             --retcode;
          }
          // progess certain passcodes as OKAY based on the user preferences
-         for( char passcode: passcodes )
+         for( int passcode: passcodes )
          {
             if( passcode == retcode )
             {

@@ -285,7 +285,7 @@ namespace bugger {
       SolverStatus getOriginalSolveStatus( const SolverSettings& settings) {
          auto solver = createSolver();
          solver->doSetUp(problem, settings, solution);
-         Vec<char> empty_passcodes{};
+         Vec<int> empty_passcodes{};
          const std::pair<char, SolverStatus> &pair = solver->solve(empty_passcodes);
          return pair.second;
       }

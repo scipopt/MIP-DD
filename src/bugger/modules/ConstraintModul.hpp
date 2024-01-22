@@ -59,7 +59,7 @@ namespace bugger {
 
       ModulStatus
       execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
-              const BuggerOptions &options, const Timer &timer) override {
+              BuggerOptions &options, const Timer &timer) override {
 
          if( solution.status == SolutionStatus::kInfeasible )
             return ModulStatus::kNotAdmissible;
