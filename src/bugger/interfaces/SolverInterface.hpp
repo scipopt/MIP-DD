@@ -82,25 +82,9 @@ namespace bugger {
    class SolverFactory
    {
    public:
+
       virtual std::unique_ptr<SolverInterface>
       create_solver( ) const = 0;
-
-      // TODO move this to enum (mapping enum to string)
-      std::string to_string(SolverStatus status) {
-         switch( status )
-         {
-            case SolverStatus::kInfeasible:
-               return "infeasible";
-            case SolverStatus::kInfeasibleOrUnbounded:
-               return "infeasible or unbounded";
-            case SolverStatus::kOptimal:
-               return "optimal";
-            case SolverStatus::kLimit:
-               return "limit";
-            default:
-               return "unknown";
-         }
-      }
 
       virtual ~SolverFactory() {}
    };
