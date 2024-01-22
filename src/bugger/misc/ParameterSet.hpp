@@ -228,13 +228,66 @@ class ParameterSet
       }
    };
 
+   struct IntVectorOption
+   {
+      Vec<int>* storage;
+
+      void
+      set( Vec<int> val )
+      {
+         *storage = val;
+      }
+
+      template <typename ValType>
+      void
+      set( const ValType& )
+      {
+         throw std::domain_error(
+               "tried to set invalid value for integer vector option" );
+      }
+
+      void
+      parse( const char* val )
+      {
+         Vec<int> parsedval;
+         std::string string_representation(val);
+         try
+         {
+            Vec<std::string> s = split(string_representation);
+            for(const auto& item: s)
+               parsedval.push_back(std::stoi(item));
+         }
+         catch( ... )
+         {
+            throw std::invalid_argument( "could not parse given option" );
+         }
+         set( parsedval );
+      }
+
+      std::vector<std::string> split(std::string const &input) {
+         std::istringstream buffer(input);
+         Vec<std::string> ret((std::istream_iterator<std::string>(buffer)),
+                              std::istream_iterator<std::string>());
+         return ret;
+      }
+
+
+      template <typename OutputIt>
+      void
+      print( OutputIt out, const String& key, const String& desc ) const
+      {
+         std::string str(storage->begin(), storage->end());
+         fmt::format_to( out, "# {}  [String of integers separated by blanks]\n{} = {}\n", desc, key, str );
+      }
+   };
+
    struct Parameter
    {
       String description;
       boost::variant<StringOption, BoolOption, NumericalOption<int>,
                      NumericalOption<unsigned int>,
                      NumericalOption<std::int64_t>, NumericalOption<double>,
-                     CategoricalOption>
+                     IntVectorOption, CategoricalOption>
           value;
    };
 
@@ -314,6 +367,16 @@ class ParameterSet
              "tried to add parameter that already exists" );
 
       parameters.emplace( key, Parameter{ description, BoolOption{ &val } } );
+   }
+
+   void
+   addParameter( const char* key, const char* description, Vec<int>& val )
+   {
+      if( parameters.count( key ) != 0 )
+         throw std::invalid_argument(
+               "tried to add parameter that already exists" );
+
+      parameters.emplace( key, Parameter{ description, IntVectorOption{ &val } } );
    }
 
    void

@@ -52,7 +52,7 @@ namespace bugger {
 
       ModulStatus
       execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
-              BuggerOptions &options, const Timer &timer) override {
+              const BuggerOptions &options, const Timer &timer) override {
 
          int batchsize = 1;
 

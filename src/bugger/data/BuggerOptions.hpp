@@ -53,9 +53,7 @@ struct BuggerOptions
 
    double tlim = std::numeric_limits<double>::max();
 
-private:
-   // use getter to access the already seperated passcodes
-   std::string passcodes = "";
+   Vec<int> passcodes = {};
 
 public:
 
@@ -74,30 +72,6 @@ public:
       paramSet.addParameter( "numerics.zeta", "zeta tolerance to consider two values exactly equal", zeta, 0.0, 1e-1 );
       paramSet.addParameter( "passcodes", "list of ignored return codes (string separated by blanks) example: [passcodes = -1 -2]", passcodes );
    }
-
-   Vec<int> getPasscodes()
-   {
-      if(!passcodes.empty() && passcode.empty())
-      {
-         Vec<std::string> s = split(passcodes);
-         for(const auto& item: s)
-            passcode.push_back(std::stoi(item));
-      }
-      return passcode;
-   }
-
-
-private:
-
-   Vec<int> passcode{};
-
-   std::vector<std::string> split(std::string const &input) {
-      std::istringstream buffer(input);
-      Vec<std::string> ret((std::istream_iterator<std::string>(buffer)),
-                                   std::istream_iterator<std::string>());
-      return ret;
-   }
-
 
 };
 
