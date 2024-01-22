@@ -265,7 +265,7 @@ namespace bugger {
          solver->doSetUp(problem, settings, solution);
          Vec<int> empty_passcodes{};
          const std::pair<char, SolverStatus> &pair = solver->solve(empty_passcodes);
-         msg.info("original instance solve-status is {} (return code {})\n", pair.second, pair.first);
+         msg.info("original instance solve-status is {} (return code {})\n", pair.second, (int) pair.first);
       }
 
       SolverSettings parseSettings( const std::string& filename, const std::shared_ptr<SolverFactory>& factory) {
