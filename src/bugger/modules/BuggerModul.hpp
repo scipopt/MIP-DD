@@ -94,7 +94,7 @@ namespace bugger {
       }
 
       ModulStatus
-      run(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, BuggerOptions &options,
+      run(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const BuggerOptions &options,
           const Timer &timer) {
          if( !enabled )
             return ModulStatus::kDidNotRun;
@@ -173,7 +173,7 @@ namespace bugger {
 
       virtual ModulStatus
       execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
-              BuggerOptions &options, const Timer &timer) = 0;
+              const BuggerOptions &options, const Timer &timer) = 0;
 
       void
       setName(const std::string &value) {
@@ -189,9 +189,9 @@ namespace bugger {
 
 
       BuggerStatus
-      call_solver(SolverInterface *solver, const Message &msg, BuggerOptions &options) {
+      call_solver(SolverInterface *solver, const Message &msg, const BuggerOptions &options) {
 
-         std::pair<char, SolverStatus> result = solver->solve(options.getPasscodes());
+         std::pair<char, SolverStatus> result = solver->solve(options.passcodes);
          if( result.first == SolverInterface::OKAY )
          {
             msg.info("\tOkay  - Status {}\n", to_string(result.second));
