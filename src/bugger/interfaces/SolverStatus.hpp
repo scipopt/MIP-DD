@@ -42,4 +42,36 @@ enum class SolverStatus : int {
    kLimit = 5,
 
 };
+
+std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
+   std::string val;
+   switch( status )
+   {
+      case SolverStatus::kInfeasible:
+         val = "infeasible";
+         break;
+      case SolverStatus::kInfeasibleOrUnbounded:
+         val = "infeasible or unbounded";
+         break;
+      case SolverStatus::kOptimal:
+         val = "optimal";
+         break;
+      case SolverStatus::kUnbounded:
+         val = "optimal";
+         break;
+      case SolverStatus::kLimit:
+         val = "limit";
+         break;
+      case SolverStatus::kUndefinedError:
+         val = "ERROR";
+         break;
+      case SolverStatus::kUnknown:
+      default:
+         val = "ERROR";
+         break;
+   }
+   return out << val;
+}
+
+
 #endif //BUGGER_STATUS_HPP

@@ -190,12 +190,12 @@ namespace bugger {
          std::pair<char, SolverStatus> result = solver->solve(options.getPasscodes());
          if( result.first == SolverInterface::OKAY )
          {
-            msg.info("\tOkay  - Status {}\n", solver_factory->to_string(result.second));
+            msg.info("\tOkay  - Status {}\n", result.second);
             return BuggerStatus::kOkay;
          }
          else if( result.first > SolverInterface::OKAY )
          {
-            msg.info("\tBug {} - Status {}\n", (int) result.first, solver_factory->to_string(result.second));
+            msg.info("\tBug {} - Status {}\n", (int) result.first, result.second);
             return BuggerStatus::kBug;
          }
          else
