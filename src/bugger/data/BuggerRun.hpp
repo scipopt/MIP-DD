@@ -85,6 +85,7 @@ namespace bugger {
          auto solverstatus = getOriginalSolveStatus(solver_settings, solver_factory);
 
          msg.info("original instance solve-status is ");
+
          switch( solverstatus )
          {
             case SolverStatus::kOptimal:
@@ -118,15 +119,15 @@ namespace bugger {
 
          bool settings_modul_activated = !target_settings_filename.empty( );
          if( settings_modul_activated )
-            addModul(uptr(new SettingModul( msg, num, solverstatus, parseSettings(target_settings_filename, solver_factory))));
-         addModul(uptr(new ConstraintModul( msg, num, solverstatus)));
-         addModul(uptr(new VariableModul( msg, num, solverstatus)));
-         addModul(uptr(new SideModul( msg, num, solverstatus)));
-         addModul(uptr(new ObjectiveModul( msg, num, solverstatus)));
-         addModul(uptr(new CoefficientModul( msg, num, solverstatus)));
-         addModul(uptr(new FixingModul( msg, num, solverstatus)));
-         addModul(uptr(new VarroundModul( msg, num, solverstatus)));
-         addModul(uptr(new ConsRoundModul( msg, num, solverstatus)));
+            addModul(uptr(new SettingModul( msg, num,parseSettings(target_settings_filename, solver_factory), solver_factory)));
+         addModul(uptr(new ConstraintModul( msg, num, solver_factory)));
+         addModul(uptr(new VariableModul( msg, num, solver_factory)));
+         addModul(uptr(new SideModul( msg, num, solver_factory)));
+         addModul(uptr(new ObjectiveModul( msg, num, solver_factory)));
+         addModul(uptr(new CoefficientModul( msg, num, solver_factory)));
+         addModul(uptr(new FixingModul( msg, num, solver_factory)));
+         addModul(uptr(new VarroundModul( msg, num, solver_factory)));
+         addModul(uptr(new ConsRoundModul( msg, num, solver_factory)));
 
          if( options.maxrounds < 0 )
             options.maxrounds = INT_MAX;
@@ -284,7 +285,7 @@ namespace bugger {
          msg.info("\n");
       }
 
-      SolverStatus getOriginalSolveStatus(const SolverSettings &settings, const std::unique_ptr<SolverFactory>& factory) {
+      SolverStatus getOriginalSolveStatus(const SolverSettings &settings, const std::shared_ptr<SolverFactory>& factory) {
          auto solver = factory->create_solver();
          solver->doSetUp(problem, settings, solution);
          Vec<int> empty_passcodes{};
@@ -292,15 +293,15 @@ namespace bugger {
          return pair.second;
       }
 
-      SolverSettings parseSettings( const std::string& filename, const std::unique_ptr<SolverFactory>& factory) {
+      SolverSettings parseSettings( const std::string& filename, const std::shared_ptr<SolverFactory>& factory) {
          auto solver = factory->create_solver();
          return solver->parseSettings(filename);
       }
 
-      std::unique_ptr<SolverFactory>
+      std::shared_ptr<SolverFactory>
       load_solver_factory(){
 #ifdef BUGGER_HAVE_SCIP
-         return std::unique_ptr<SolverFactory>(new ScipFactory( ) );
+         return std::shared_ptr<SolverFactory>(new ScipFactory( ) );
 #else
          msg.error("No solver specified -- aborting ....");
          return nullptr;

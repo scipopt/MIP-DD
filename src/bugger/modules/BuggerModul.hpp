@@ -57,7 +57,7 @@ namespace bugger {
 
    class BuggerModul {
    public:
-      BuggerModul( ) {
+      BuggerModul( std::shared_ptr<SolverFactory>& _factory) {
          ncalls = 0;
          nsuccessCall = 0;
          name = "unnamed";
@@ -69,6 +69,7 @@ namespace bugger {
          naggrvars = 0;
          nchgsettings = 0;
          ndeletedrows = 0;
+         solver_factory = _factory;
       }
 
       virtual ~BuggerModul( ) = default;
@@ -156,12 +157,7 @@ namespace bugger {
 
       std::unique_ptr<SolverInterface>
       createSolver(){
-#ifdef BUGGER_HAVE_SCIP
-         return std::unique_ptr<SolverInterface>(new ScipInterface { });
-#else
-         msg.error("No solver specified -- aborting ....");
-         return nullptr;
-#endif
+         return solver_factory->create_solver();
       }
 
       double get_linear_activity(SparseVectorView<double> &data, Solution<double> &solution) {
@@ -194,12 +190,12 @@ namespace bugger {
          std::pair<char, SolverStatus> result = solver->solve(options.getPasscodes());
          if( result.first == SolverInterface::OKAY )
          {
-            msg.info("\tOkay  - Status {}\n", to_string(result.second));
+            msg.info("\tOkay  - Status {}\n", solver_factory->to_string(result.second));
             return BuggerStatus::kOkay;
          }
          else if( result.first > SolverInterface::OKAY )
          {
-            msg.info("\tBug {} - Status {}\n", (int) result.first, to_string(result.second));
+            msg.info("\tBug {} - Status {}\n", (int) result.first, solver_factory->to_string(result.second));
             return BuggerStatus::kBug;
          }
          else
@@ -210,31 +206,12 @@ namespace bugger {
       }
 
    private:
-      std::string to_string(SolverStatus status) {
-         switch( status )
-         {
-            case SolverStatus::kInfeasible:
-               return "infeasible";
-            case SolverStatus::kInfeasibleOrUnbounded:
-               return "infeasible or unbounded";
-            case SolverStatus::kOptimal:
-               return "optimal";
-            case SolverStatus::kLimit:
-               return "limit";
-            default:
-               return "unknown";
-         }
-      }
-
-
-   private:
       std::string name;
       double execTime;
       bool enabled;
       unsigned int ncalls;
       unsigned int nsuccessCall;
    protected:
-      SolverStatus originalSolverStatus;
       int nchgcoefs;
       int nfixedvars;
       int nchgsides;
@@ -243,6 +220,7 @@ namespace bugger {
       int ndeletedrows;
       Num<double> num;
       Message msg;
+      std::shared_ptr<SolverFactory> solver_factory;
    };
 
 } // namespace bugger
