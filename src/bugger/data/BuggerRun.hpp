@@ -93,14 +93,14 @@ namespace bugger {
          num.setZeta( options.zeta );
 
          bool settings_modul_activated = !target_settings_filename.empty( );
-         if( settings_modul_activated )
-            addModul(uptr(new SettingModul( msg, num,parseSettings(target_settings_filename, solver_factory), solver_factory)));
          addModul(uptr(new ConstraintModul( msg, num, solver_factory)));
          addModul(uptr(new VariableModul( msg, num, solver_factory)));
-         addModul(uptr(new SideModul( msg, num, solver_factory)));
-         addModul(uptr(new ObjectiveModul( msg, num, solver_factory)));
          addModul(uptr(new CoefficientModul( msg, num, solver_factory)));
          addModul(uptr(new FixingModul( msg, num, solver_factory)));
+         if( settings_modul_activated )
+            addModul(uptr(new SettingModul( msg, num,parseSettings(target_settings_filename, solver_factory), solver_factory)));
+         addModul(uptr(new SideModul( msg, num, solver_factory)));
+         addModul(uptr(new ObjectiveModul( msg, num, solver_factory)));
          addModul(uptr(new VarroundModul( msg, num, solver_factory)));
          addModul(uptr(new ConsRoundModul( msg, num, solver_factory)));
 
