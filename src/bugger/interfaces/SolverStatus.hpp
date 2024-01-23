@@ -21,60 +21,57 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef _BUGGER_CORE_PRESOLVE_OPTIONS_HPP_
-#define _BUGGER_CORE_PRESOLVE_OPTIONS_HPP_
+#ifndef BUGGER_STATUS_HPP
+#define BUGGER_STATUS_HPP
 
-#include "bugger/misc/ParameterSet.hpp"
-#include <type_traits>
 
-namespace bugger
-{
+enum class SolverStatus : int {
 
-struct BuggerOptions
-{
+   kUndefinedError = -1,
 
-   int threads = 0;
+   kUnknown = 0,
 
-   int initround = 0;
+   kOptimal = 1,
 
-   int initstage = 0;
+   kInfeasible = 2,
 
-   int maxrounds = -1;
+   kInfeasibleOrUnbounded = 3,
 
-   int maxstages = -1;
+   kUnbounded = 4,
 
-   int nbatches = 0;
-
-   double epsilon = 1e-9;
-
-   double zeta = 0;
-
-   double feastol = 1e-6;
-
-   double tlim = std::numeric_limits<double>::max();
-
-   Vec<int> passcodes = {};
-
-public:
-
-   void
-   addParameters( ParameterSet& paramSet )
-   {
-      paramSet.addParameter( "tlim", "bugger time limit", tlim, 0.0 );
-      paramSet.addParameter( "initround", "initial bugger round", initround, 0 );
-      paramSet.addParameter( "initstage", "initial bugger stage", initstage, 0 );
-      paramSet.addParameter( "maxrounds", "the maximum number of bugger rounds or -1 for no limit", maxrounds, -1 );
-      paramSet.addParameter( "maxstages", " maximum number of bugger stages or -1 for number of included bugger modules", maxstages, -1 );
-      paramSet.addParameter( "nbatches", "the maximum number of batches or 0 for singleton batches", nbatches, 0 );
-      paramSet.addParameter( "threads", "maximal number of threads to use (0: automatic)", threads, 0 );
-      paramSet.addParameter( "numerics.feastol", "the feasibility tolerance", feastol, 0.0, 1e-1 );
-      paramSet.addParameter( "numerics.epsilon", "epsilon tolerance to consider two values numerically equal", epsilon, 0.0, 1e-1 );
-      paramSet.addParameter( "numerics.zeta", "zeta tolerance to consider two values exactly equal", zeta, 0.0, 1e-1 );
-      paramSet.addParameter( "passcodes", "list of ignored return codes (string separated by blanks) example: [passcodes = -1 -2]", passcodes );
-   }
+   kLimit = 5,
 
 };
 
-} // namespace bugger
+std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
+   std::string val;
+   switch( status )
+   {
+      case SolverStatus::kInfeasible:
+         val = "infeasible";
+         break;
+      case SolverStatus::kInfeasibleOrUnbounded:
+         val = "infeasible or unbounded";
+         break;
+      case SolverStatus::kOptimal:
+         val = "optimal";
+         break;
+      case SolverStatus::kUnbounded:
+         val = "optimal";
+         break;
+      case SolverStatus::kLimit:
+         val = "limit";
+         break;
+      case SolverStatus::kUndefinedError:
+         val = "ERROR";
+         break;
+      case SolverStatus::kUnknown:
+      default:
+         val = "ERROR";
+         break;
+   }
+   return out << val;
+}
 
-#endif
+
+#endif //BUGGER_STATUS_HPP

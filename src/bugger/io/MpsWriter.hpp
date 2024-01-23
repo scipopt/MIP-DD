@@ -49,8 +49,7 @@ template <typename REAL>
 struct MpsWriter
 {
    static void
-   writeProb( const std::string& filename, const Problem<REAL>& prob,
-              const Vec<int>& row_mapping, const Vec<int>& col_mapping )
+   writeProb( const std::string& filename, const Problem<REAL>& prob )
    {
       const ConstraintMatrix<REAL>& consmatrix = prob.getConstraintMatrix();
       const Vec<std::string>& consnames = prob.getConstraintNames();
@@ -76,18 +75,55 @@ struct MpsWriter
 
       out.push( file );
 
-      fmt::print( out, "*ROWS:         {}\n", consmatrix.getNRows() );
-      fmt::print( out, "*COLUMNS:      {}\n", consmatrix.getNCols() );
-      fmt::print( out, "*INTEGER:      {}\n", prob.getNumIntegralCols() );
-      fmt::print( out, "*NONZERO:      {}\n*\n*\n", consmatrix.getNnz() );
+      int nrows = 0;
+      int ncols = 0;
+      int nintcols = 0;
+      int nnnz = 0;
+      for( int i = 0; i < consmatrix.getNRows(); ++i )
+      {
+         if( !row_flags[i].test(RowFlag::kRedundant) )
+         {
+            ++nrows;
+            auto data = consmatrix.getRowCoefficients(i);
+            for( int j = 0; j < data.getLength(); ++j )
+            {
+               if( data.getValues()[j] != 0.0 )
+               {
+                  assert(!col_flags[data.getIndices()[j]].test(ColFlag::kFixed));
+                  ++nnnz;
+               }
+            }
+         }
+      }
+      for( int i = 0; i < consmatrix.getNCols(); ++i )
+      {
+         if( !col_flags[i].test(ColFlag::kFixed) )
+         {
+            ++ncols;
+            if( col_flags[i].test(ColFlag::kIntegral) )
+               ++nintcols;
+         }
+      }
+
+      fmt::print( out, "*Instance {} reduced by delta debugging\n", prob.getName());
+      fmt::print( out, "*\tConstraints:         {} of original {}\n", nrows, consmatrix.getNRows() );
+      fmt::print( out, "*\tVariables:           {} of original {}\n", ncols, consmatrix.getNCols() );
+      fmt::print( out, "*\tInteger:             {} of original {}\n", nintcols, prob.getNumIntegralCols());
+      fmt::print( out, "*\tNonzeros:            {} of original {}\n", nnnz, consmatrix.getNnz() );
+
+      fmt::print( out, "*\n*\n");
 
       fmt::print( out, "NAME          {}\n", prob.getName() );
+      fmt::print( out, "OBJSENSE\n" );
+      fmt::print( out, obj.sense ? " MIN\n" : " MAX\n" );
       fmt::print( out, "ROWS\n" );
       fmt::print( out, " N  OBJ\n" );
       bool hasRangedRow = false;
       for( int i = 0; i < consmatrix.getNRows(); ++i )
       {
-         assert( !consmatrix.isRowRedundant( i ) );
+         //TODO this was original an assert so the nnz ana the ncols might not be correct anymore
+         if( consmatrix.isRowRedundant( i ) )
+            continue;
          char type;
 
          if( row_flags[i].test( RowFlag::kLhsInf ) &&
@@ -104,7 +140,7 @@ struct MpsWriter
             type = 'E';
          }
 
-         fmt::print( out, " {}  {}\n", type, consnames[row_mapping[i]] );
+         fmt::print( out, " {}  {}\n", type, consnames[i] );
       }
 
       fmt::print( out, "COLUMNS\n" );
@@ -132,7 +168,7 @@ struct MpsWriter
             if( obj.coefficients[i] != 0.0 )
             {
                fmt::print( out, "    {: <9} OBJ       {:.15}\n",
-                           varnames[col_mapping[i]],
+                           varnames[i],
                            double( obj.coefficients[i] ) );
             }
 
@@ -153,7 +189,7 @@ struct MpsWriter
 
                // normal row
                fmt::print( out, "    {: <9} {: <9} {:.15}\n",
-                           varnames[col_mapping[i]], consnames[row_mapping[r]],
+                           varnames[i], consnames[r],
                            double( colvals[j] ) );
             }
          }
@@ -189,13 +225,13 @@ struct MpsWriter
          {
             if( rhs[i] != REAL{ 0.0 } )
                fmt::print( out, "    B         {: <9} {:.15}\n",
-                           consnames[row_mapping[i]], double( rhs[i] ) );
+                           consnames[i], double( rhs[i] ) );
          }
          else
          {
             if( lhs[i] != REAL{ 0.0 } )
                fmt::print( out, "    B         {: <9} {:.15}\n",
-                           consnames[row_mapping[i]], double( lhs[i] ) );
+                           consnames[i], double( lhs[i] ) );
          }
       }
 
@@ -213,7 +249,7 @@ struct MpsWriter
             if( rangeval != 0 )
             {
                fmt::print( out, "    B         {: <9} {:.15}\n",
-                           consnames[row_mapping[i]], rangeval );
+                           consnames[i], rangeval );
             }
          }
       }
@@ -230,7 +266,7 @@ struct MpsWriter
              lower_bounds[i] == upper_bounds[i] )
          {
             fmt::print( out, " FX BND       {: <9} {:.15}\n",
-                        varnames[col_mapping[i]], double( lower_bounds[i] ) );
+                        varnames[i], double( lower_bounds[i] ) );
          }
          else
          {
@@ -238,20 +274,20 @@ struct MpsWriter
             {
                if( col_flags[i].test( ColFlag::kLbInf ) )
                   fmt::print( out, " MI BND       {}\n",
-                              varnames[col_mapping[i]] );
+                              varnames[i] );
                else
                   fmt::print( out, " LO BND       {: <9} {:.15}\n",
-                              varnames[col_mapping[i]],
+                              varnames[i],
                               double( lower_bounds[i] ) );
             }
 
             if( !col_flags[i].test( ColFlag::kUbInf ) )
                fmt::print( out, " UP BND       {: <9} {:.15}\n",
-                           varnames[col_mapping[i]],
+                           varnames[i],
                            double( upper_bounds[i] ) );
             else
                fmt::print( out, " PL BND       {: <9}\n",
-                           varnames[col_mapping[i]] );
+                           varnames[i] );
          }
       }
       fmt::print( out, "ENDATA\n" );

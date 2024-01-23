@@ -65,9 +65,9 @@ class Problem
  public:
    /// set objective function
    void
-   setObjective( Vec<REAL> coefficients, REAL offset = 0.0 )
+   setObjective( Vec<REAL> coefficients, REAL offset = 0.0, bool minimize = true )
    {
-      objective = Objective<REAL>{ std::move( coefficients ), offset };
+      objective = Objective<REAL>{ std::move( coefficients ), offset, minimize };
    }
 
    /// set objective function
@@ -764,7 +764,7 @@ Problem<REAL>::substituteVarInObj( const Num<REAL>& num, int col, int row )
          continue;
 
       REAL newobjcoeff = objcoefficients[indices[j]] + values[j] * substscale;
-      if( num.isZero( newobjcoeff ) )
+      if( num.isEpsZero(newobjcoeff) )
          newobjcoeff = 0;
 
       objcoefficients[indices[j]] = newobjcoeff;

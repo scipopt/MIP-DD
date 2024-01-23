@@ -39,12 +39,16 @@ struct Objective
    /// offset of objective function
    REAL offset;
 
+   /// sense of objective function
+   bool sense;
+
    template <typename Archive>
    void
    serialize( Archive& ar, const unsigned int version )
    {
       ar& coefficients;
       ar& offset;
+      ar& sense;
    }
 };
 

@@ -34,6 +34,7 @@
 #include "bugger/misc/Num.hpp"
 #include "bugger/external/pdqsort/pdqsort.h"
 #include <algorithm>
+#include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/dynamic_bitset.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
@@ -96,7 +97,7 @@ class MpsParser
       for( auto i : parser.coeffobj )
          obj_vec[i.first] = i.second;
 
-      problem.setObjective( std::move( obj_vec ), parser.objoffset );
+      problem.setObjective( std::move( obj_vec ), parser.objoffset, parser.objsense );
       problem.setConstraintMatrix(
           SparseStorage<REAL>{ std::move( parser.entries ), parser.nCols,
                                parser.nRows, true },
@@ -106,7 +107,7 @@ class MpsParser
                                   std::move( parser.ub4cols ),
                                   std::move( parser.col_flags ) );
       problem.setVariableNames( std::move( parser.colnames ) );
-      problem.setName( std::move( filename ) );
+      problem.setName( std::move( parser.probname ) );
       problem.setConstraintNames( std::move( parser.rownames ) );
 
       problem.setInputTolerance(
@@ -135,6 +136,7 @@ class MpsParser
 
    enum class parsekey
    {
+      kObjsense,
       kRows,
       kCols,
       kRhs,
@@ -151,23 +153,26 @@ class MpsParser
    {
       switch( keyword )
       {
+      case parsekey::kObjsense:
+         std::cerr << "read error in section OBJSENSE" << std::endl;
+         break;
       case parsekey::kRows:
-         std::cerr << "read error in section ROWS " << std::endl;
+         std::cerr << "read error in section ROWS" << std::endl;
          break;
       case parsekey::kCols:
-         std::cerr << "read error in section COLUMNS " << std::endl;
+         std::cerr << "read error in section COLUMNS" << std::endl;
          break;
       case parsekey::kRhs:
-         std::cerr << "read error in section RHS " << std::endl;
+         std::cerr << "read error in section RHS" << std::endl;
          break;
       case parsekey::kBounds:
-         std::cerr << "read error in section BOUNDS " << std::endl;
+         std::cerr << "read error in section BOUNDS" << std::endl;
          break;
       case parsekey::kRanges:
-         std::cerr << "read error in section RANGES " << std::endl;
+         std::cerr << "read error in section RANGES" << std::endl;
          break;
       default:
-         std::cerr << "undefined read error " << std::endl;
+         std::cerr << "undefined read error" << std::endl;
          break;
       }
    };
@@ -176,6 +181,7 @@ class MpsParser
     * data for mps problem
     */
 
+   std::string probname { };
    Vec<Triplet<REAL>> entries;
    Vec<std::pair<int, REAL>> coeffobj;
    Vec<REAL> rowlhs;
@@ -191,6 +197,7 @@ class MpsParser
    Vec<RowFlags> row_flags;
    Vec<ColFlags> col_flags;
    REAL objoffset = 0;
+   bool objsense = true;
 
    int nCols = 0;
    int nRows = 0;
@@ -199,10 +206,13 @@ class MpsParser
    /// checks first word of strline and wraps it by it_begin and it_end
    parsekey
    checkFirstWord( std::string& strline, std::string::iterator& it,
-                   boost::string_ref& word_ref ) const;
+                   boost::string_ref& word_ref );
 
    parsekey
-   parseDefault( boost::iostreams::filtering_istream& file ) const;
+   parseDefault( boost::iostreams::filtering_istream& file );
+
+   parsekey
+   parseObjsense( boost::iostreams::filtering_istream& file );
 
    parsekey
    parseRows( boost::iostreams::filtering_istream& file,
@@ -228,7 +238,7 @@ template <typename REAL>
 typename MpsParser<REAL>::parsekey
 MpsParser<REAL>::checkFirstWord( std::string& strline,
                                  std::string::iterator& it,
-                                 boost::string_ref& word_ref ) const
+                                 boost::string_ref& word_ref )
 {
    using namespace boost::spirit;
 
@@ -255,6 +265,13 @@ MpsParser<REAL>::checkFirstWord( std::string& strline,
       else
          return MpsParser<REAL>::parsekey::kNone;
    }
+   else if( word == "NAME" )
+   {
+      probname = boost::trim_copy( std::string( it_start+4, strline.end() ) );
+      return MpsParser<REAL>::parsekey::kNone;
+   }
+   else if( word == "OBJSENSE" )
+      return MpsParser<REAL>::parsekey::kObjsense;
    else if( word == "COLUMNS" )
       return MpsParser<REAL>::parsekey::kCols;
    else if( word == "BOUNDS" )
@@ -267,7 +284,7 @@ MpsParser<REAL>::checkFirstWord( std::string& strline,
 
 template <typename REAL>
 typename MpsParser<REAL>::parsekey
-MpsParser<REAL>::parseDefault( boost::iostreams::filtering_istream& file ) const
+MpsParser<REAL>::parseDefault( boost::iostreams::filtering_istream& file )
 {
    std::string strline;
    getline( file, strline );
@@ -275,6 +292,30 @@ MpsParser<REAL>::parseDefault( boost::iostreams::filtering_istream& file ) const
    std::string::iterator it;
    boost::string_ref word_ref;
    return checkFirstWord( strline, it, word_ref );
+}
+
+template <typename REAL>
+typename MpsParser<REAL>::parsekey
+MpsParser<REAL>::parseObjsense( boost::iostreams::filtering_istream& file )
+{
+   std::string strline;
+
+   while( getline( file, strline ) )
+   {
+      std::string::iterator it;
+      boost::string_ref word_ref;
+      MpsParser<REAL>::parsekey key = checkFirstWord( strline, it, word_ref );
+
+      if( key != parsekey::kNone )
+         return key;
+
+      if( word_ref.starts_with("MIN") )
+         objsense = true;
+      else if( word_ref.starts_with("MAX") )
+         objsense = false;
+   }
+
+   return parsekey::kFail;
 }
 
 template <typename REAL>
@@ -868,6 +909,9 @@ MpsParser<REAL>::parse( boost::iostreams::filtering_istream& file )
       keyword_old = keyword;
       switch( keyword )
       {
+      case parsekey::kObjsense:
+         keyword = parseObjsense( file );
+         break;
       case parsekey::kRows:
          keyword = parseRows( file, row_type );
          break;
@@ -905,35 +949,11 @@ MpsParser<REAL>::parse( boost::iostreams::filtering_istream& file )
    return true;
 }
 
-   template<typename REAL>
-   REAL
-   MpsParser<REAL>::read_number(const std::string &s) {
-      //TODO: extend for E and consider errors
-      REAL answer = 0;
-      int behind_comma = 0;
-      bool negative = false;
-      for( char c: s )
-      {
-         if( '0' <= c && c <= '9' )
-         {
-            if(behind_comma > 0)
-            {
-               answer += REAL{c - '0'}/REAL{ pow(10, behind_comma)};
-            }
-            else
-            {
-               answer *= REAL{10};
-               answer += REAL{c - '0'};
-            }
-         }
-         else if( c == '.' )
-            behind_comma = 1;
-         else if( c == '-' )
-            negative = true;
-      }
-      return negative ? -answer : answer;
-   }
-
+template<>
+double
+MpsParser<double>::read_number(const std::string &s) {
+   return std::stod(s);
+}
 
 } // namespace bugger
 

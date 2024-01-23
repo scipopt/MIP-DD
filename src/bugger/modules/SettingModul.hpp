@@ -25,211 +25,331 @@
 #define BUGGER_MODUL_SETTING_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
-#include "bugger/interfaces/Status.hpp"
-#if BUGGER_HAVE_SCIP
-#include "scip/var.h"
-#include "scip/scip_sol.h"
-#include "scip/scip.h"
-#include "scip/scip_numerics.h"
-#include "scip/def.h"
-#endif
-namespace bugger
-{
+#include "bugger/interfaces/BuggerStatus.hpp"
 
-class SettingModul : public BuggerModul
-{
- public:
-   SettingModul() : BuggerModul()
-   {
-      this->setName( "setting" );
-   }
+namespace bugger {
 
-   bool
-   initialize( ) override
-   {
-      return false;
-   }
+   class SettingModul : public BuggerModul {
 
-   SCIP_Bool SCIPisSettingAdmissible( SCIP_PARAM* param )
-   {
-      /* keep reading and writing settings because input and output is not monitored */
-      return ( param->isfixed || !SCIPparamIsDefault(param) )
-             && strncmp("display/", SCIPparamGetName(param), 8) != 0 && strncmp("limits/", SCIPparamGetName(param), 7) != 0
-             && strncmp("reading/", SCIPparamGetName(param), 8) != 0 && strncmp("write/", SCIPparamGetName(param), 6) != 0;
-   }
+   private:
 
-   ModulStatus
-   execute( ScipInterface& iscip, const BuggerOptions& options, const Timer& timer ) override
-   {
+      SolverSettings target_solver_settings ;
 
-      SCIP* scip = iscip.getSCIP();
-      SCIP_PARAM* batch;
-      ModulStatus result = ModulStatus::kUnsuccesful;
+   public:
 
-      int* inds;
-      int nparams = SCIPgetNParams(scip);
-      SCIP_PARAM** params= SCIPgetParams(scip);
-      int batchsize = 1;
-
-      if( options.nbatches > 0 )
-      {
-         batchsize = options.nbatches - 1;
-
-         for( int i = 0; i < nparams; ++i )
-            if( SCIPisSettingAdmissible(params[i]) )
-               ++batchsize;
-
-         batchsize /= options.nbatches;
+      SettingModul( const Message &_msg, const Num<double> &_num, const SolverSettings& _target_solver_settings, std::shared_ptr<SolverFactory>& factory) : BuggerModul(factory) {
+         this->setName("setting");
+         this->msg = _msg;
+         this->num = _num;
+         target_solver_settings = _target_solver_settings;
       }
 
-      ( SCIPallocBufferArray(scip, &inds, batchsize) );
-      ( SCIPallocBufferArray(scip, &batch, batchsize) );
-      int nbatch = 0;
-
-      for( int  i = 0; i < nparams; ++i )
-      {
-         SCIP_PARAM* param;
-
-         param = params[i];
-
-         if( SCIPisSettingAdmissible(param) )
-         {
-            inds[nbatch] = i;
-            batch[nbatch].isfixed = param->isfixed;
-            param->isfixed = FALSE;
-
-            switch( SCIPparamGetType(param) )
-            {
-               case SCIP_PARAMTYPE_BOOL:
-               {
-                  SCIP_Bool* ptrbool;
-                  ptrbool = (param->data.boolparam.valueptr == nullptr ? &param->data.boolparam.curvalue : param->data.boolparam.valueptr);
-                  batch[nbatch].data.boolparam.curvalue = *ptrbool;
-                  *ptrbool = param->data.boolparam.defaultvalue;
-                  break;
-               }
-               case SCIP_PARAMTYPE_INT:
-               {
-                  int* ptrint;
-                  ptrint = (param->data.intparam.valueptr == nullptr ? &param->data.intparam.curvalue : param->data.intparam.valueptr);
-                  batch[nbatch].data.intparam.curvalue = *ptrint;
-                  *ptrint = param->data.intparam.defaultvalue;
-                  break;
-               }
-               case SCIP_PARAMTYPE_LONGINT:
-               {
-                  SCIP_Longint* ptrlongint;
-                  ptrlongint = (param->data.longintparam.valueptr == nullptr ? &param->data.longintparam.curvalue : param->data.longintparam.valueptr);
-                  batch[nbatch].data.longintparam.curvalue = *ptrlongint;
-                  *ptrlongint = param->data.longintparam.defaultvalue;
-                  break;
-               }
-               case SCIP_PARAMTYPE_REAL:
-               {
-                  SCIP_Real* ptrreal;
-                  ptrreal = (param->data.realparam.valueptr == nullptr ? &param->data.realparam.curvalue : param->data.realparam.valueptr);
-                  batch[nbatch].data.realparam.curvalue = *ptrreal;
-                  *ptrreal = param->data.realparam.defaultvalue;
-                  break;
-               }
-               case SCIP_PARAMTYPE_CHAR:
-               {
-                  char* ptrchar;
-                  ptrchar = (param->data.charparam.valueptr == nullptr ? &param->data.charparam.curvalue : param->data.charparam.valueptr);
-                  batch[nbatch].data.charparam.curvalue = *ptrchar;
-                  *ptrchar = param->data.charparam.defaultvalue;
-                  break;
-               }
-               case SCIP_PARAMTYPE_STRING:
-               {
-                  char** ptrstring;
-                  ptrstring = (param->data.stringparam.valueptr == nullptr ? &param->data.stringparam.curvalue : param->data.stringparam.valueptr);
-                  batch[nbatch].data.stringparam.curvalue = *ptrstring;
-                  ( BMSduplicateMemoryArray(ptrstring, param->data.stringparam.defaultvalue, strlen(param->data.stringparam.defaultvalue)+1) );
-                  break;
-               }
-               default:
-                  SCIPerrorMessage("unknown parameter type\n");
-                  return ModulStatus::kUnsuccesful;
-            }
-
-            ++nbatch;
-         }
-
-         if( nbatch >= 1 && ( nbatch >= batchsize || i >= nparams - 1 ) )
-         {
-            int j;
-
-            if( iscip.runSCIP( ) != Status::kSuccess )
-            {
-               for( j = nbatch - 1; j >= 0; --j )
-               {
-                  param = params[inds[j]];
-                  param->isfixed = batch[j].isfixed;
-
-                  switch( SCIPparamGetType(param) )
-                  {
-                     case SCIP_PARAMTYPE_BOOL:
-                        *(param->data.boolparam.valueptr == nullptr ? &param->data.boolparam.curvalue : param->data.boolparam.valueptr) = batch[j].data.boolparam.curvalue;
-                        break;
-                     case SCIP_PARAMTYPE_INT:
-                        *(param->data.intparam.valueptr == nullptr ? &param->data.intparam.curvalue : param->data.intparam.valueptr) = batch[j].data.intparam.curvalue;
-                        break;
-                     case SCIP_PARAMTYPE_LONGINT:
-                        *(param->data.longintparam.valueptr == nullptr ? &param->data.longintparam.curvalue : param->data.longintparam.valueptr) = batch[j].data.longintparam.curvalue;
-                        break;
-                     case SCIP_PARAMTYPE_REAL:
-                        *(param->data.realparam.valueptr == nullptr ? &param->data.realparam.curvalue : param->data.realparam.valueptr) = batch[j].data.realparam.curvalue;
-                        break;
-                     case SCIP_PARAMTYPE_CHAR:
-                        *(param->data.charparam.valueptr == nullptr ? &param->data.charparam.curvalue : param->data.charparam.valueptr) = batch[j].data.charparam.curvalue;
-                        break;
-                     case SCIP_PARAMTYPE_STRING:
-                     {
-                        char** ptrstring;
-                        ptrstring = (param->data.stringparam.valueptr == nullptr ? &param->data.stringparam.curvalue : param->data.stringparam.valueptr);
-                        BMSfreeMemoryArrayNull(ptrstring);
-                        *ptrstring = batch[j].data.stringparam.curvalue;
-                        break;
-                     }
-                     default:
-                        SCIPerrorMessage("unknown parameter type\n");
-                        return ModulStatus::kUnsuccesful;
-                  }
-               }
-            }
-            else
-            {
-               for( j = nbatch - 1; j >= 0; --j )
-               {
-                  switch( SCIPparamGetType(params[inds[j]]) )
-                  {
-                     case SCIP_PARAMTYPE_BOOL:
-                     case SCIP_PARAMTYPE_INT:
-                     case SCIP_PARAMTYPE_LONGINT:
-                     case SCIP_PARAMTYPE_REAL:
-                     case SCIP_PARAMTYPE_CHAR:
-                     case SCIP_PARAMTYPE_STRING:
-                        BMSfreeMemoryArrayNull(&batch[j].data.stringparam.curvalue);
-                        break;
-                     default:
-                        SCIPerrorMessage("unknown parameter type\n");
-                        return ModulStatus::kUnsuccesful;
-                  }
-               }
-
-               result = ModulStatus::kSuccessful;
-            }
-
-            nbatch = 0;
-         }
+      bool
+      initialize( ) override {
+         return false;
       }
 
-      SCIPfreeBufferArray(scip, &batch);
-      SCIPfreeBufferArray(scip, &inds);
-      return result;
-   }
-};
+      ModulStatus
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
+              const BuggerOptions &options, const Timer &timer) override {
+
+         int batchsize = 1;
+
+         if( options.nbatches > 0 )
+         {
+            batchsize = options.nbatches - 1;
+            for( int i = 0; i < target_solver_settings.getBoolSettings().size(); i++)
+            {
+               assert(target_solver_settings.getBoolSettings()[i].first == settings.getBoolSettings()[i].first);
+               if(target_solver_settings.getBoolSettings()[i].second != settings.getBoolSettings()[i].second)
+                  ++batchsize;
+            }
+            for( int i = 0; i < target_solver_settings.getIntSettings().size(); i++)
+            {
+               assert(target_solver_settings.getIntSettings()[i].first == settings.getIntSettings()[i].first);
+               if(target_solver_settings.getIntSettings()[i].second != settings.getIntSettings()[i].second)
+                  ++batchsize;
+            }
+            for( int i = 0; i < target_solver_settings.getLongSettings().size(); i++)
+            {
+               assert(target_solver_settings.getLongSettings()[i].first == settings.getLongSettings()[i].first);
+               if(target_solver_settings.getLongSettings()[i].second != settings.getLongSettings()[i].second)
+                  ++batchsize;
+            }
+            for( int i = 0; i < target_solver_settings.getDoubleSettings().size(); i++)
+            {
+               assert(target_solver_settings.getDoubleSettings()[i].first == settings.getDoubleSettings()[i].first);
+               if(target_solver_settings.getDoubleSettings()[i].second != settings.getDoubleSettings()[i].second)
+                  ++batchsize;
+            }
+            for( int i = 0; i < target_solver_settings.getCharSettings().size(); i++)
+            {
+               assert(target_solver_settings.getCharSettings()[i].first == settings.getCharSettings()[i].first);
+               if(target_solver_settings.getCharSettings()[i].second != settings.getCharSettings()[i].second)
+                  ++batchsize;
+            }
+            for( int i = 0; i < target_solver_settings.getStringSettings().size(); i++)
+            {
+               assert(target_solver_settings.getStringSettings()[i].first == settings.getStringSettings()[i].first);
+               if(target_solver_settings.getStringSettings()[i].second != settings.getStringSettings()[i].second)
+                  ++batchsize;
+            }
+            if( batchsize == options.nbatches - 1 )
+               return ModulStatus::kNotAdmissible;
+            batchsize /= options.nbatches;
+         }
+
+         bool admissible = false;
+         SolverSettings copy = SolverSettings(settings);
+         Vec<std::pair<int, bool>> applied_bool { };
+         Vec<std::pair<int, int>> applied_int { };
+         Vec<std::pair<int, long>> applied_long { };
+         Vec<std::pair<int, double>> applied_double { };
+         Vec<std::pair<int, char>> applied_char { };
+         Vec<std::pair<int, std::string>> applied_string { };
+         Vec<std::pair<int, bool>> batches_bool { };
+         Vec<std::pair<int, int>> batches_int { };
+         Vec<std::pair<int, long>> batches_long { };
+         Vec<std::pair<int, double>> batches_double { };
+         Vec<std::pair<int, char>> batches_char { };
+         Vec<std::pair<int, std::string>> batches_string { };
+         int batches = 0;
+         batches_bool.reserve(batchsize);
+         batches_int.reserve(batchsize);
+         batches_long.reserve(batchsize);
+         batches_double.reserve(batchsize);
+         batches_char.reserve(batchsize);
+         batches_string.reserve(batchsize);
+
+         for( int i = 0; i < target_solver_settings.getBoolSettings().size(); i++)
+         {
+            assert(target_solver_settings.getBoolSettings()[i].first == settings.getBoolSettings()[i].first);
+            if(target_solver_settings.getBoolSettings()[i].second != copy.getBoolSettings()[i].second)
+            {
+               copy.setBoolSettings(i, target_solver_settings.getBoolSettings( )[ i ].second);
+               batches_bool.emplace_back(i, target_solver_settings.getBoolSettings( )[ i ].second);
+               batches++;
+               admissible = true;
+            }
+
+            if( batches != 0 && ( batches >= batchsize || ( i + 1 == target_solver_settings.getBoolSettings().size()
+                                                           && target_solver_settings.getIntSettings().empty()
+                                                           && target_solver_settings.getLongSettings().empty()
+                                                           && target_solver_settings.getDoubleSettings().empty()
+                                                           && target_solver_settings.getCharSettings().empty()
+                                                           && target_solver_settings.getStringSettings().empty() ) ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(problem, copy, solution);
+               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+                  copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
+               else
+               {
+                  applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
+               }
+               batches_bool.clear();
+               batches = 0;
+            }
+         }
+         for( int i = 0; i < target_solver_settings.getIntSettings().size(); i++)
+         {
+            assert(target_solver_settings.getIntSettings()[i].first == settings.getIntSettings()[i].first);
+            if(target_solver_settings.getIntSettings()[i].second != settings.getIntSettings()[i].second)
+            {
+               copy.setIntSettings(i, target_solver_settings.getIntSettings( )[ i ].second);
+               batches_int.emplace_back(i, target_solver_settings.getIntSettings( )[ i ].second);
+               batches++;
+               admissible = true;
+            }
+
+            if( batches != 0 && ( batches >= batchsize || ( i + 1 == target_solver_settings.getIntSettings().size()
+                                                           && target_solver_settings.getLongSettings().empty()
+                                                           && target_solver_settings.getDoubleSettings().empty()
+                                                           && target_solver_settings.getCharSettings().empty()
+                                                           && target_solver_settings.getStringSettings().empty() ) ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(problem, copy, solution);
+               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+                  copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
+               else
+               {
+                  applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
+                  applied_int.insert(applied_int.end(), batches_int.begin(), batches_int.end());
+               }
+               batches_bool.clear();
+               batches_int.clear();
+               batches = 0;
+            }
+         }
+         for( int i = 0; i < target_solver_settings.getLongSettings().size(); i++)
+         {
+            assert(target_solver_settings.getLongSettings()[i].first == settings.getLongSettings()[i].first);
+            if(target_solver_settings.getLongSettings()[i].second != settings.getLongSettings()[i].second)
+            {
+               copy.setLongSettings(i, target_solver_settings.getLongSettings( )[ i ].second);
+               batches_long.emplace_back(i, target_solver_settings.getLongSettings( )[ i ].second);
+               batches++;
+               admissible = true;
+            }
+
+            if( batches != 0 && ( batches >= batchsize || ( i + 1 == target_solver_settings.getLongSettings().size()
+                                                           && target_solver_settings.getDoubleSettings().empty()
+                                                           && target_solver_settings.getCharSettings().empty()
+                                                           && target_solver_settings.getStringSettings().empty() ) ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(problem, copy, solution);
+               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+                  copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
+               else
+               {
+                  applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
+                  applied_int.insert(applied_int.end(), batches_int.begin(), batches_int.end());
+                  applied_long.insert(applied_long.end(), batches_long.begin(), batches_long.end());
+               }
+               batches_bool.clear();
+               batches_int.clear();
+               batches_long.clear();
+               batches = 0;
+            }
+         }
+         for( int i = 0; i < target_solver_settings.getDoubleSettings().size(); i++)
+         {
+            assert(target_solver_settings.getDoubleSettings()[i].first == settings.getDoubleSettings()[i].first);
+            if(target_solver_settings.getDoubleSettings()[i].second != settings.getDoubleSettings()[i].second)
+            {
+               copy.setDoubleSettings(i, target_solver_settings.getDoubleSettings( )[ i ].second);
+               batches_double.emplace_back(i, target_solver_settings.getDoubleSettings( )[ i ].second);
+               batches++;
+               admissible = true;
+            }
+
+            if( batches != 0 && ( batches >= batchsize || ( i + 1 == target_solver_settings.getDoubleSettings().size()
+                                                           && target_solver_settings.getCharSettings().empty()
+                                                           && target_solver_settings.getStringSettings().empty() ) ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(problem, copy, solution);
+               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+                  copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
+               else
+               {
+                  applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
+                  applied_int.insert(applied_int.end(), batches_int.begin(), batches_int.end());
+                  applied_long.insert(applied_long.end(), batches_long.begin(), batches_long.end());
+                  applied_double.insert(applied_double.end(), batches_double.begin(), batches_double.end());
+               }
+               batches_bool.clear();
+               batches_int.clear();
+               batches_long.clear();
+               batches_double.clear();
+               batches = 0;
+            }
+         }
+         for( int i = 0; i < target_solver_settings.getCharSettings().size(); i++)
+         {
+            assert(target_solver_settings.getCharSettings()[i].first == settings.getCharSettings()[i].first);
+            if(target_solver_settings.getCharSettings()[i].second != settings.getCharSettings()[i].second)
+            {
+               copy.setCharSettings(i, target_solver_settings.getCharSettings( )[ i ].second);
+               batches++;
+               admissible = true;
+               batches_char.emplace_back(i, target_solver_settings.getCharSettings( )[ i ].second);
+            }
+
+            if( batches != 0 && ( batches >= batchsize || ( i + 1 == target_solver_settings.getCharSettings().size()
+                                                           && target_solver_settings.getStringSettings().empty() ) ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(problem, copy, solution);
+               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+                  copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
+               else
+               {
+                  applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
+                  applied_int.insert(applied_int.end(), batches_int.begin(), batches_int.end());
+                  applied_long.insert(applied_long.end(), batches_long.begin(), batches_long.end());
+                  applied_double.insert(applied_double.end(), batches_double.begin(), batches_double.end());
+                  applied_char.insert(applied_char.end(), batches_char.begin(), batches_char.end());
+               }
+               batches_bool.clear();
+               batches_int.clear();
+               batches_long.clear();
+               batches_double.clear();
+               batches_char.clear();
+               batches = 0;
+            }
+         }
+         for( int i = 0; i < target_solver_settings.getStringSettings().size(); i++)
+         {
+            assert(target_solver_settings.getStringSettings()[i].first == settings.getStringSettings()[i].first);
+            if(target_solver_settings.getStringSettings()[i].second != settings.getStringSettings()[i].second)
+            {
+               copy.setStringSettings(i, target_solver_settings.getStringSettings( )[ i ].second);
+               batches++;
+               admissible = true;
+               batches_string.emplace_back(i, target_solver_settings.getStringSettings( )[ i ].second);
+
+            }
+
+            if( batches != 0 && ( batches >= batchsize || i + 1 == target_solver_settings.getStringSettings().size() ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(problem, copy, solution);
+               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+                  copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
+               else
+               {
+                  applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
+                  applied_int.insert(applied_int.end(), batches_int.begin(), batches_int.end());
+                  applied_long.insert(applied_long.end(), batches_long.begin(), batches_long.end());
+                  applied_double.insert(applied_double.end(), batches_double.begin(), batches_double.end());
+                  applied_char.insert(applied_char.end(), batches_char.begin(), batches_char.end());
+                  applied_string.insert(applied_string.end(), batches_string.begin(), batches_string.end());
+               }
+               batches_bool.clear();
+               batches_int.clear();
+               batches_long.clear();
+               batches_double.clear();
+               batches_char.clear();
+               batches_string.clear();
+               batches = 0;
+            }
+         }
+
+         if(!admissible)
+            return ModulStatus::kNotAdmissible;
+         if(applied_bool.empty() && applied_int.empty() && applied_long.empty() && applied_double.empty() && applied_char.empty() && applied_string.empty())
+            return ModulStatus::kUnsuccesful;
+         settings = copy;
+         nchgsettings += applied_bool.size() + applied_int.size() + applied_long.size() + applied_double.size() + applied_char.size() + applied_string.size();
+         return ModulStatus::kSuccessful;
+      }
+
+   private:
+
+      SolverSettings
+      reset(SolverSettings &settings, const Vec <std::pair<int, bool>>& applied_bool, const Vec <std::pair<int, int>>& applied_int,
+            const Vec <std::pair<int, long>>& applied_long, const Vec <std::pair<int, double>>& applied_double,
+            const Vec <std::pair<int, char>>& applied_char, const Vec <std::pair<int, std::string>>& applied_string) {
+         auto reset = SolverSettings(settings);
+         for( const auto &item: applied_bool )
+            reset.setBoolSettings(item.first, item.second);
+         for( const auto &item: applied_int )
+            reset.setIntSettings(item.first, item.second);
+         for( const auto &item: applied_long )
+            reset.setLongSettings(item.first, item.second);
+         for( const auto &item: applied_double )
+            reset.setDoubleSettings(item.first, item.second);
+         for( const auto &item: applied_char )
+            reset.setCharSettings(item.first, item.second);
+         for( const auto &item: applied_string)
+            reset.setStringSettings(item.first, item.second);
+         return reset;
+      }
+
+   };
 
 
 } // namespace bugger

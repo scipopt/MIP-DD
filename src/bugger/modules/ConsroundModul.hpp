@@ -21,20 +21,21 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef BUGGER_MODUL_COEFFICIENT_HPP_
-#define BUGGER_MODUL_COEFFICIENT_HPP_
+#ifndef BUGGER_MODUL_CONSROUND_HPP_
+#define BUGGER_MODUL_CONSROUND_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
 #include "bugger/interfaces/BuggerStatus.hpp"
 
 namespace bugger {
 
-   class CoefficientModul : public BuggerModul {
+   class ConsRoundModul : public BuggerModul {
    public:
-      CoefficientModul( const Message &_msg, const Num<double> &_num, std::shared_ptr<SolverFactory>& factory) : BuggerModul(factory) {
-         this->setName("coefficient");
+      explicit ConsRoundModul( const Message &_msg, const Num<double> &_num, std::shared_ptr<SolverFactory>& factory) : BuggerModul(factory) {
+         this->setName("consround");
          this->msg = _msg;
          this->num = _num;
+
       }
 
       bool
@@ -42,19 +43,18 @@ namespace bugger {
          return false;
       }
 
-      bool isFixingAdmissible(const Problem<double>& problem, int var) {
-         return !problem.getColFlags( )[ var ].test(ColFlag::kFixed)
-             && !problem.getColFlags( )[ var ].test(ColFlag::kLbInf)
-             && !problem.getColFlags( )[ var ].test(ColFlag::kUbInf)
-             && num.isZetaEq(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
-      }
-
-      bool isCoefficientAdmissible(const Problem<double>& problem, int row) {
+      bool isConsroundAdmissible(const Problem<double>& problem, int row) {
          if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant) )
             return false;
+         bool lhsinf = problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf);
+         bool rhsinf = problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf);
+         double lhs = problem.getConstraintMatrix( ).getLeftHandSides( )[ row ];
+         double rhs = problem.getConstraintMatrix( ).getRightHandSides( )[ row ];
+         if( ( lhsinf || rhsinf || !num.isZetaEq(lhs, rhs) ) && ( ( !lhsinf && !num.isZetaIntegral(lhs) ) || ( !rhsinf && !num.isZetaIntegral(rhs) ) ) )
+            return true;
          auto data = problem.getConstraintMatrix( ).getRowCoefficients(row);
          for( int index = 0; index < data.getLength( ); ++index )
-            if( !num.isZetaZero(data.getValues( )[ index ]) && isFixingAdmissible(problem, data.getIndices( )[ index ]) )
+            if( !num.isZetaIntegral(data.getValues( )[ index ]) )
                return true;
          return false;
       }
@@ -63,13 +63,16 @@ namespace bugger {
       execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
               const BuggerOptions &options, const Timer &timer) override {
 
+         if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded )
+            return ModulStatus::kNotAdmissible;
+
          int batchsize = 1;
 
          if( options.nbatches > 0 )
          {
             batchsize = options.nbatches - 1;
-            for( int i = problem.getNRows( ) - 1; i >= 0; --i )
-               if( isCoefficientAdmissible(problem, i) )
+            for( int i = 0; i < problem.getNRows( ); ++i )
+               if( isConsroundAdmissible(problem, i) )
                   ++batchsize;
             if( batchsize == options.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
@@ -79,79 +82,61 @@ namespace bugger {
          bool admissible = false;
          auto copy = Problem<double>(problem);
          MatrixBuffer<double> applied_entries { };
-         Vec<std::pair<int, double>> applied_reductions { };
+         Vec<std::pair<int, double>> applied_reductions_lhs { };
+         Vec<std::pair<int, double>> applied_reductions_rhs { };
          MatrixBuffer<double> batches_coeff { };
-         Vec<std::pair<int, double>> batches_offset { };
-         batches_offset.reserve(batchsize);
+         Vec<std::pair<int, double>> batches_lhs { };
+         Vec<std::pair<int, double>> batches_rhs { };
+         batches_lhs.reserve(batchsize);
+         batches_rhs.reserve(batchsize);
 
-         for( int row = copy.getNRows( ) - 1; row >= 0; --row )
+         for( int row = 0; row < copy.getNRows( ); ++row )
          {
-            if( isCoefficientAdmissible(copy, row) )
+            if( isConsroundAdmissible(copy, row) )
             {
                admissible = true;
                auto data = copy.getConstraintMatrix( ).getRowCoefficients(row);
-               double offset = 0.0;
+               double lhs = num.round(copy.getConstraintMatrix( ).getLeftHandSides( )[ row ]);
+               double rhs = num.round(copy.getConstraintMatrix( ).getRightHandSides( )[ row ]);
 
-               for( int index = data.getLength( ) - 1; index >= 0; --index )
+               for( int index = 0; index < data.getLength( ); ++index )
+                  if( !num.isZetaIntegral(data.getValues( )[ index ]) )
+                     batches_coeff.addEntry(row, data.getIndices( )[ index ], num.round(data.getValues( )[ index ]));
+
+               //TODO: Change row only
+               copy.getConstraintMatrix( ).changeCoefficients(batches_coeff);
+
+               if( solution.status == SolutionStatus::kFeasible )
                {
-                  int var = data.getIndices( )[ index ];
-                  if( !num.isZetaZero(data.getValues( )[ index ]) && isFixingAdmissible(copy, var) )
-                  {
-                     double fixedval;
+                  data = copy.getConstraintMatrix( ).getRowCoefficients(row);
+                  double activity = get_linear_activity(data, solution);
 
-                     if( solution.status == SolutionStatus::kFeasible )
-                     {
-                        fixedval = solution.primal[ var ];
-                        if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
-                           fixedval = num.round(fixedval);
-                     }
-                     else
-                     {
-                        fixedval = 0.0;
-                        if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
-                        {
-                           if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
-                              fixedval = num.min(fixedval, num.epsFloor(copy.getUpperBounds( )[ var ]));
-                           if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
-                              fixedval = num.max(fixedval, num.epsCeil(copy.getLowerBounds( )[ var ]));
-                        }
-                        else
-                        {
-                           if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
-                              fixedval = num.min(fixedval, copy.getUpperBounds( )[ var ]);
-                           if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
-                              fixedval = num.max(fixedval, copy.getLowerBounds( )[ var ]);
-                        }
-                     }
-
-                     offset -= data.getValues( )[ index ] * fixedval;
-                     batches_coeff.addEntry(row, var, 0.0);
-                  }
+                  lhs = num.min(lhs, num.epsFloor(activity));
+                  rhs = num.max(rhs, num.epsCeil(activity));
                }
 
                if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
-                  copy.getConstraintMatrix( ).modifyLeftHandSide( row, num, copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] + offset );
+                  copy.getConstraintMatrix( ).modifyLeftHandSide( row, num, lhs );
                if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
-                  copy.getConstraintMatrix( ).modifyRightHandSide( row, num, copy.getConstraintMatrix( ).getRightHandSides( )[ row ] + offset );
-               batches_offset.emplace_back(row, offset);
+                  copy.getConstraintMatrix( ).modifyRightHandSide( row, num, rhs );
+               batches_lhs.emplace_back(row, lhs);
+               batches_rhs.emplace_back(row, rhs);
             }
 
-            if( !batches_offset.empty() && ( batches_offset.size() >= batchsize || row <= 0 ) )
+            if( !batches_lhs.empty() && ( batches_lhs.size() >= batchsize || row >= copy.getNRows( ) - 1 ) )
             {
-               copy.getConstraintMatrix( ).changeCoefficients(batches_coeff);
-               auto solver = createSolver();
-               solver->doSetUp(copy,  settings, solution );
+               auto solver = createSolver( );
+               solver->doSetUp(copy,  settings, solution);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
                   copy.getConstraintMatrix( ).changeCoefficients(applied_entries);
-                  for( const auto &item: applied_reductions )
-                  {
+                  for( const auto &item: applied_reductions_lhs )
                      if( !copy.getRowFlags( )[ item.first ].test(RowFlag::kLhsInf) )
-                        copy.getConstraintMatrix( ).modifyLeftHandSide( item.first, num, copy.getConstraintMatrix( ).getLeftHandSides( )[ item.first ] + item.second );
+                        copy.getConstraintMatrix( ).modifyLeftHandSide( item.first, num, item.second );
+                  for( const auto &item: applied_reductions_rhs )
                      if( !copy.getRowFlags( )[ item.first ].test(RowFlag::kRhsInf) )
-                        copy.getConstraintMatrix( ).modifyRightHandSide( item.first, num, copy.getConstraintMatrix( ).getRightHandSides( )[ item.first ] + item.second );
-                  }
+                        copy.getConstraintMatrix( ).modifyRightHandSide( item.first, num, item.second );
                }
                else
                {
@@ -162,22 +147,24 @@ namespace bugger {
                      applied_entries.addEntry(iter->row, iter->col, iter->val);
                      iter = batches_coeff.template next<true>( buffer );
                   }
-                  applied_reductions.insert(applied_reductions.end(), batches_offset.begin(), batches_offset.end());
+                  applied_reductions_lhs.insert(applied_reductions_lhs.end(), batches_lhs.begin(), batches_lhs.end());
+                  applied_reductions_rhs.insert(applied_reductions_rhs.end(), batches_rhs.begin(), batches_rhs.end());
                }
                batches_coeff.clear();
-               batches_offset.clear();
+               batches_lhs.clear();
+               batches_rhs.clear();
             }
          }
 
          if(!admissible)
             return ModulStatus::kNotAdmissible;
-         if( applied_reductions.empty() )
+         if( applied_reductions_lhs.empty() )
             return ModulStatus::kUnsuccesful;
          else
          {
             problem = copy;
             nchgcoefs += applied_entries.getNnz();
-            nchgsides += 2 * applied_reductions.size();
+            nchgsides += applied_reductions_lhs.size() + applied_reductions_rhs.size();
             return ModulStatus::kSuccessful;
          }
       }

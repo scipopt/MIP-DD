@@ -21,16 +21,75 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef BUGGER_STATUS_HPP
-#define BUGGER_STATUS_HPP
+#ifndef _BUGGER_INTERFACES_SOLVER_INTERFACE_HPP_
+#define _BUGGER_INTERFACES_SOLVER_INTERFACE_HPP_
 
 
-enum class Status : int {
-   kFail = 0,
+#include "bugger/misc/Vec.hpp"
+#include <cassert>
+#include <stdexcept>
 
-   kSuccess = 1,
+#include "bugger/data/Problem.hpp"
+#include "bugger/data/Solution.hpp"
+#include "bugger/data/SolverSettings.hpp"
 
-   kErrorDuringSCIP = 2,
+namespace bugger {
 
-};
-#endif //BUGGER_STATUS_HPP
+   class SolverInterface {
+
+   public:
+
+      const static char OKAY = 0;
+      const static char DUALFAIL = 1;
+
+      SolverInterface( ) = default;
+
+      /**
+       * loads problem and settings
+       * @param problem
+       * @param settings
+       * @param sol
+       */
+      virtual void
+      doSetUp(const Problem<double> &problem, const SolverSettings &settings, Solution<double> &sol) = 0;
+
+
+      virtual
+      std::pair<char, SolverStatus> solve( const Vec<int>& passcodes) = 0;
+
+      /**
+       * write setting-problem pair to files
+       * @param filename
+       * @param settings
+       * @param problem
+       * @param writesettings
+       */
+      virtual
+      void writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings) = 0;
+
+      /**
+       * parse Settings
+       * @param settings
+       * @return
+       */
+      virtual
+      SolverSettings parseSettings(const std::string& settings) = 0;
+
+
+      virtual ~SolverInterface() = default;
+   };
+
+   class SolverFactory
+   {
+   public:
+
+      virtual std::unique_ptr<SolverInterface>
+      create_solver( ) const = 0;
+
+      virtual ~SolverFactory() {}
+   };
+
+
+} // namespace bugger
+
+#endif

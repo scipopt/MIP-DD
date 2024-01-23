@@ -21,197 +21,336 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef _BUGGER_INTERFACES_SCIP_INTERFACE_HPP_
-#define _BUGGER_INTERFACES_SCIP_INTERFACE_HPP_
+#ifndef BUGGER_INTERFACES_SCIP_INTERFACE_HPP_
+#define BUGGER_INTERFACES_SCIP_INTERFACE_HPP_
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
 
-#include "bugger/misc/Vec.hpp"
-#include <cassert>
-#include <stdexcept>
-
-#include "bugger/data/Problem.hpp"
 #include "scip/cons_linear.h"
 #include "scip/scip.h"
+#include "scip/scip_param.h"
 #include "scip/scipdefplugins.h"
 #include "scip/struct_paramset.h"
-#include "Status.hpp"
+#include "bugger/misc/Vec.hpp"
+#include "bugger/data/Problem.hpp"
+#include "bugger/data/ProblemBuilder.hpp"
+#include "bugger/data/SolverSettings.hpp"
+#include "bugger/interfaces/BuggerStatus.hpp"
+#include "bugger/interfaces/SolverStatus.hpp"
+#include "bugger/interfaces/SolverInterface.hpp"
 
 namespace bugger {
 
-   #define SCIP_CALL_RETURN(x)                                        \
-   do                                                                 \
-   {                                                                  \
-      SCIP_RETCODE _restat_;                                          \
-      if( (_restat_ = (x)) != SCIP_OKAY )                             \
-      {                                                               \
-         SCIPerrorMessage("Error <%d> in function call\n", _restat_); \
-         return Status::kErrorDuringSCIP;                             \
-      }                                                               \
-   }                                                                  \
-   while( FALSE )
+   class ScipInterface : public SolverInterface {
 
-
-   class ScipInterface {
    private:
-      SCIP *scip;
-      bool exists_sol;
-      SCIP_Sol* solution;
+      SCIP* scip = nullptr;
+      Vec<SCIP_VAR*> vars;
+      Solution<double>* reference = nullptr;
 
    public:
-      ScipInterface( ) : scip(nullptr) {
-         if( SCIPcreate(&scip) != SCIP_OKAY )
+      explicit ScipInterface( ) {
+         if( SCIPcreate(&scip) != SCIP_OKAY || SCIPincludeDefaultPlugins(scip) != SCIP_OKAY )
             throw std::runtime_error("could not create SCIP");
       }
 
-      SCIP* getSCIP(){ return scip; }
-      SCIP_Sol* get_solution(){return solution;}
-      bool exists_solution() const {return exists_sol;}
-
-
-      SCIP_RETCODE
-      parse(const std::string& filename)
-      {
-         assert(!filename.empty());
-         SCIP_CALL_ABORT(SCIPincludeDefaultPlugins(scip));
-         SCIP_CALL_ABORT(SCIPreadProb(scip, filename.c_str(), nullptr));
-         return SCIP_OKAY;
+      void
+      doSetUp(const Problem<double> &problem, const SolverSettings &settings, Solution<double>& sol) override {
+         auto result = setup(problem, sol, settings);
+         assert(result == SCIP_OKAY);
       }
 
       void
-      read_parameters(const std::string& scip_settings_file)
-      {
-         if(!scip_settings_file.empty())
-            SCIP_CALL_ABORT( SCIPreadParams( scip, scip_settings_file.c_str() ) );
-      }
+      writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings = true) override {
+         Solution<double> solution;
+         setup(problem, solution, settings);
+         if( writesettings )
+            SCIPwriteParams(scip, (filename + ".set").c_str(), 0, 1);
+         SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, 0);
+      };
 
-      void
-      read_solution(const std::string& solution_file)
+      SolverSettings
+      parseSettings(const std::string& settings) override
       {
-         if(!solution_file.empty())
+         Vec<std::pair<std::string, bool>> bool_settings;
+         Vec<std::pair<std::string, int>> int_settings;
+         Vec<std::pair<std::string, long>> long_settings;
+         Vec<std::pair<std::string, double>> double_settings;
+         Vec<std::pair<std::string, char>> char_settings;
+         Vec<std::pair<std::string, std::string>> string_settings;
+
+         if(!settings.empty())
+            SCIPreadParams(scip, settings.c_str( ));
+         int nparams = SCIPgetNParams(scip);
+         SCIP_PARAM **params = SCIPgetParams(scip);
+
+         for( int i = 0; i < nparams; ++i )
          {
-            SCIP_CALL_ABORT(SCIPreadSol(scip, solution_file.c_str( )));
-            exists_sol = true;
-            solution = SCIPgetBestSol(scip);
-         }
-      }
+            SCIP_PARAM *param;
 
-   /** tests the given SCIP instance in a copy and reports detected bug; if a primal bug solution is provided, the
-    *  resulting dual bound is also checked; on UNIX platforms aborts are caught, hence assertions can be enabled here
-    */
-      Status runSCIP() {
-         SCIP *test = nullptr;
-         SCIP_HASHMAP *varmap = nullptr;
-         SCIP_HASHMAP *consmap = nullptr;
-         int i;
-
-         //TODO: overload with command line paramter
-#ifdef CATCH_ASSERT_BUG
-         if( fork() == 0 )
-      exit(trySCIP(iscip.getSCIP(), iscip.get_solution(), &test, &varmap, &consmap));
-   else
-   {
-      int status;
-
-      wait(&status);
-
-      if( WIFEXITED(status) )
-         retcode = WEXITSTATUS(status);
-      else if( WIFSIGNALED(status) )
-      {
-         retcode = WTERMSIG(status);
-
-         if( retcode == SIGINT )
-            retcode = 0;
-      }
-   }
-#else
-         Status retcode = trySCIP( &test, &varmap, &consmap);
-#endif
-
-         if( test != nullptr )
-            SCIPfree(&test);
-         if( consmap != nullptr )
-            SCIPhashmapFree(&consmap);
-         if( varmap != nullptr )
-            SCIPhashmapFree(&varmap);
-         SCIPinfoMessage(scip, nullptr, "\n");
-
-         // TODO: what are passcodes doing?
-//         for( i = 0; i < presoldata->npasscodes; ++i )
-//            if( retcode == presoldata->passcodes[i] )
-//               return 0;
-
-         return retcode;
-      }
-
-      /** creates a SCIP instance test, variable map varmap, and constraint map consmap, copies setting, problem, and
-       *  solutions apart from the primal bug solution, tries to solve, and reports detected bug
-       */
-      Status trySCIP(SCIP **test, SCIP_HASHMAP **varmap, SCIP_HASHMAP **consmap) {
-         SCIP_Real reference = SCIPgetObjsense(scip) * SCIPinfinity(scip);
-         SCIP_Bool valid = FALSE;
-         SCIP_SOL **sols;
-         int nsols;
-         int i;
-
-         sols = SCIPgetSols(scip);
-         nsols = SCIPgetNSols(scip);
-         SCIP_CALL_RETURN(SCIPhashmapCreate(varmap, SCIPblkmem(scip), SCIPgetNVars(scip)));
-         SCIP_CALL_RETURN(SCIPhashmapCreate(consmap, SCIPblkmem(scip), SCIPgetNConss(scip)));
-         SCIP_CALL_RETURN(SCIPcreate(test));
-#ifndef SCIP_DEBUG
-         SCIPsetMessagehdlrQuiet(*test, TRUE);
-#endif
-         SCIP_CALL_RETURN(SCIPincludeDefaultPlugins(*test));
-         SCIP_CALL_RETURN(SCIPcopyParamSettings(scip, *test));
-         SCIP_CALL_RETURN(SCIPcopyOrigProb(scip, *test, *varmap, *consmap, SCIPgetProbName(scip)));
-         SCIP_CALL_RETURN(SCIPcopyOrigVars(scip, *test, *varmap, *consmap, NULL, NULL, 0));
-         SCIP_CALL_RETURN(SCIPcopyOrigConss(scip, *test, *varmap, *consmap, FALSE, &valid));
-         //TODO: fix this
-//         (*test)->stat->subscipdepth = 0;
-
-         if( !valid )
-            SCIP_CALL_ABORT(SCIP_INVALIDDATA);
-
-         for( i = 0; i < nsols; ++i )
-         {
-            SCIP_SOL *sol;
-
-            sol = sols[ i ];
-
-            if( sol == solution )
-               reference = SCIPgetSolOrigObj(scip, sol);
-            else
+            param = params[ i ];
+            param->isfixed = FALSE;
+            switch( SCIPparamGetType(param))
             {
-               SCIP_SOL *initsol = NULL;
+               case SCIP_PARAMTYPE_BOOL:
+               {
+                  bool bool_val = ( param->data.boolparam.valueptr == nullptr ? param->data.boolparam.curvalue
+                                                                              : *param->data.boolparam.valueptr );
+                  bool_settings.emplace_back(param->name, bool_val);
+                  break;
+               }
+               case SCIP_PARAMTYPE_INT:
+               {
+                  int int_value = ( param->data.intparam.valueptr == nullptr ? param->data.intparam.curvalue
+                                                                             : *param->data.intparam.valueptr );
+                  int_settings.emplace_back( param->name, int_value);
+                  break;
+               }
+               case SCIP_PARAMTYPE_LONGINT:
+               {
+                  long long_val = ( param->data.longintparam.valueptr == nullptr ? param->data.longintparam.curvalue
+                                                                                 : *param->data.longintparam.valueptr );
+                  long_settings.emplace_back(param->name, long_val);
+                  break;
+               }
+               case SCIP_PARAMTYPE_REAL:
+               {
+                  double real_val = ( param->data.realparam.valueptr == nullptr ? param->data.realparam.curvalue
+                                                                                : *param->data.realparam.valueptr );
+                  double_settings.emplace_back(param->name, real_val);
+                  break;
+               }
+               case SCIP_PARAMTYPE_CHAR:
+               {
 
-               SCIP_CALL_RETURN(SCIPtranslateSubSol(*test, scip, sol, NULL, SCIPgetOrigVars(scip), &initsol));
+                  char char_val = ( param->data.charparam.valueptr == nullptr ? param->data.charparam.curvalue
+                                                                              : *param->data.charparam.valueptr );
+                  char_settings.emplace_back(param->name, char_val);
 
-               if( initsol == NULL )
-                  SCIP_CALL_ABORT(SCIP_INVALIDCALL);
-
-               SCIP_CALL_RETURN(SCIPaddSolFree(*test, &initsol, &valid));
+                  break;
+               }
+               case SCIP_PARAMTYPE_STRING:
+               {
+                  std::string string_val = ( param->data.stringparam.valueptr == nullptr ? param->data.stringparam.curvalue
+                                                                                         : *param->data.stringparam.valueptr );
+                  string_settings.emplace_back(param->name, string_val);
+                  break;
+               }
+               default:
+                  SCIPerrorMessage("unknown parameter type\n");
             }
          }
 
-         SCIP_CALL_RETURN(SCIPsolve(*test));
-
-         if( SCIPisSumNegative(scip, SCIPgetObjsense(*test) * ( reference - SCIPgetDualbound(*test))))
-            return Status::kFail;
-
-         return Status::kSuccess;
+         return {bool_settings, int_settings, long_settings, double_settings,char_settings, string_settings};
       }
 
-
-
-      ~ScipInterface( ) {
+      ~ScipInterface( ) override {
          if( scip != nullptr )
          {
-            SCIP_RETCODE retcode = SCIPfree(&scip);
+            auto retcode = SCIPfree(&scip);
             UNUSED(retcode);
             assert(retcode == SCIP_OKAY);
          }
+      }
+
+   private:
+
+      SCIP_RETCODE
+      setup(const Problem<double> &problem, Solution<double> &sol, const SolverSettings &settings) {
+
+         reference = &sol;
+         bool solution_exists = reference->status == SolutionStatus::kFeasible;
+         int ncols = problem.getNCols( );
+         int nrows = problem.getNRows( );
+         const Vec<String> &varNames = problem.getVariableNames( );
+         const Vec<String> &consNames = problem.getConstraintNames( );
+         const VariableDomains<double> &domains = problem.getVariableDomains( );
+         const Objective<double> &obj = problem.getObjective( );
+         const auto &consMatrix = problem.getConstraintMatrix( );
+         const auto &lhs_values = consMatrix.getLeftHandSides( );
+         const auto &rhs_values = consMatrix.getRightHandSides( );
+         const auto &rflags = problem.getRowFlags( );
+
+         set_parameters(settings);
+         SCIP_CALL(SCIPcreateProbBasic(scip, problem.getName( ).c_str( )));
+         SCIP_CALL(SCIPaddOrigObjoffset(scip, SCIP_Real(obj.offset)));
+         SCIP_CALL(SCIPsetObjsense(scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
+         vars.resize(problem.getNCols( ));
+
+         if( solution_exists )
+            reference->value = obj.offset;
+         if( reference->status == SolutionStatus::kUnbounded )
+            reference->value = -SCIPgetObjsense(scip) * SCIPinfinity(scip);
+         if( reference->status == SolutionStatus::kInfeasible )
+            reference->value = SCIPgetObjsense(scip) * SCIPinfinity(scip);
+         for( int col = 0; col < ncols; ++col )
+         {
+            if( domains.flags[ col ].test(ColFlag::kFixed) )
+               vars[ col ] = nullptr;
+            else
+            {
+               SCIP_VAR *var;
+               SCIP_Real lb = domains.flags[ col ].test(ColFlag::kLbInf)
+                              ? -SCIPinfinity(scip)
+                              : SCIP_Real(domains.lower_bounds[ col ]);
+               SCIP_Real ub = domains.flags[ col ].test(ColFlag::kUbInf)
+                              ? SCIPinfinity(scip)
+                              : SCIP_Real(domains.upper_bounds[ col ]);
+               assert(!domains.flags[ col ].test(ColFlag::kInactive) || ( lb == ub ));
+               SCIP_VARTYPE type;
+               if( domains.flags[ col ].test(ColFlag::kIntegral))
+               {
+                  if( lb == 0 && ub == 1 )
+                     type = SCIP_VARTYPE_BINARY;
+                  else
+                     type = SCIP_VARTYPE_INTEGER;
+               }
+               else if( domains.flags[ col ].test(ColFlag::kImplInt))
+                  type = SCIP_VARTYPE_IMPLINT;
+               else
+                  type = SCIP_VARTYPE_CONTINUOUS;
+               SCIP_CALL(SCIPcreateVarBasic(
+                     scip, &var, varNames[ col ].c_str( ), lb, ub,
+                     SCIP_Real(obj.coefficients[ col ]), type));
+               if( solution_exists )
+                  reference->value += obj.coefficients[ col ] * reference->primal[ col ];
+               SCIP_CALL(SCIPaddVar(scip, var));
+               vars[ col ] = var;
+               SCIP_CALL(SCIPreleaseVar(scip, &var));
+            }
+         }
+
+         Vec<SCIP_VAR *> consvars;
+         Vec<SCIP_Real> consvals;
+         consvars.resize(problem.getNCols( ));
+         consvals.resize(problem.getNCols( ));
+
+         for( int row = 0; row < nrows; ++row )
+         {
+            if( problem.getRowFlags( )[ row ].test(RowFlag::kRedundant) )
+               continue;
+            assert(!rflags[ row ].test(RowFlag::kLhsInf) || !rflags[ row ].test(RowFlag::kRhsInf));
+
+            auto rowvec = consMatrix.getRowCoefficients(row);
+            const double *vals = rowvec.getValues( );
+            const int *inds = rowvec.getIndices( );
+            SCIP_CONS *cons;
+
+            // the first length entries of consvars/-vals are the entries of the current constraint
+            int length = 0;
+            for( int k = 0; k != rowvec.getLength( ); ++k )
+            {
+               if( vals[ k ] != 0.0 )
+               {
+                  assert(!problem.getColFlags( )[ inds[ k ] ].test(ColFlag::kFixed));
+                  consvars[ length ] = vars[ inds[ k ] ];
+                  consvals[ length ] = SCIP_Real(vals[ k ]);
+                  ++length;
+               }
+            }
+
+            SCIP_CALL(SCIPcreateConsBasicLinear(
+                  scip, &cons, consNames[ row ].c_str( ), length,
+                  consvars.data( ), consvals.data( ),
+                  rflags[ row ].test(RowFlag::kLhsInf) ? -SCIPinfinity(scip) : SCIP_Real(lhs_values[ row ]),
+                  rflags[ row ].test(RowFlag::kRhsInf) ? SCIPinfinity(scip) : SCIP_Real(rhs_values[ row ])));
+            SCIP_CALL(SCIPaddCons(scip, cons));
+            SCIP_CALL(SCIPreleaseCons(scip, &cons));
+         }
+
+         return SCIP_OKAY;
+      }
+
+      void set_parameters(const SolverSettings &settings) const {
+         for(const auto& pair : settings.getBoolSettings())
+            SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getIntSettings())
+            SCIPsetIntParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getLongSettings())
+            SCIPsetLongintParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getDoubleSettings())
+            SCIPsetRealParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getCharSettings())
+            SCIPsetCharParam(scip, pair.first.c_str(), pair.second);
+         for(const auto& pair : settings.getStringSettings())
+            SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
+      }
+
+   private:
+
+      std::pair<char, SolverStatus> solve( const Vec<int>& passcodes) override {
+
+         SolverStatus solverstatus = SolverStatus::kUndefinedError;
+         SCIPsetMessagehdlrQuiet(scip, true);
+         char retcode = SCIPsolve(scip);
+         if( retcode == SCIP_OKAY )
+         {
+            if( reference->status != SolutionStatus::kUnknown && SCIPisSumNegative(scip, SCIPgetObjsense(scip) * (reference->value - SCIPgetDualbound(scip))) )
+               retcode = DUALFAIL;
+            else
+               retcode = OKAY;
+
+            switch( SCIPgetStatus(scip))
+            {
+               case SCIP_STATUS_UNKNOWN:
+                  solverstatus = SolverStatus::kUnknown;
+                  break;
+               case SCIP_STATUS_USERINTERRUPT:
+               case SCIP_STATUS_NODELIMIT:
+               case SCIP_STATUS_TOTALNODELIMIT:
+               case SCIP_STATUS_STALLNODELIMIT:
+               case SCIP_STATUS_TIMELIMIT:
+               case SCIP_STATUS_MEMLIMIT:
+               case SCIP_STATUS_GAPLIMIT:
+               case SCIP_STATUS_SOLLIMIT:
+               case SCIP_STATUS_BESTSOLLIMIT:
+               case SCIP_STATUS_RESTARTLIMIT:
+#if SCIP_VERSION_MAJOR >= 6
+               case SCIP_STATUS_TERMINATE:
+#endif
+                  solverstatus = SolverStatus::kLimit;
+                  break;
+               case SCIP_STATUS_INFORUNBD:
+                  solverstatus = SolverStatus::kInfeasibleOrUnbounded;
+                  break;
+               case SCIP_STATUS_INFEASIBLE:
+                  solverstatus = SolverStatus::kInfeasible;
+                  break;
+               case SCIP_STATUS_UNBOUNDED:
+                  solverstatus = SolverStatus::kUnbounded;
+                  break;
+               case SCIP_STATUS_OPTIMAL:
+                  solverstatus = SolverStatus::kOptimal;
+                  break;
+            }
+         }
+         else
+         {
+            // shift retcodes so that all errors have negative values
+            --retcode;
+         }
+         // progess certain passcodes as OKAY based on the user preferences
+         for( int passcode: passcodes )
+         {
+            if( passcode == retcode )
+            {
+               retcode = OKAY;
+               break;
+            }
+         }
+         return { retcode, solverstatus };
+      }
+   };
+
+   class ScipFactory : public SolverFactory
+   {
+
+   public:
+      virtual std::unique_ptr<SolverInterface>
+      create_solver(  ) const
+      {
+         auto scip = std::unique_ptr<SolverInterface>( new ScipInterface() );
+         return scip;
       }
 
    };

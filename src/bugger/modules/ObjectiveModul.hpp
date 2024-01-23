@@ -25,127 +25,96 @@
 #define BUGGER_COEFFICIENT_VARIABLE_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
-#include "bugger/interfaces/Status.hpp"
+#include "bugger/interfaces/BuggerStatus.hpp"
 
-#if BUGGER_HAVE_SCIP
-#include "scip/var.h"
-#include "scip/scip_sol.h"
-#include "scip/scip.h"
-#include "scip/sol.h"
-#include "scip/scip_numerics.h"
-#include "scip/def.h"
-#endif
 namespace bugger
 {
-
-class ObjectiveModul : public BuggerModul
-{
- public:
-   ObjectiveModul() : BuggerModul()
+   class ObjectiveModul : public BuggerModul
    {
-      this->setName( "objective" );
-   }
-
-   bool
-   initialize( ) override
-   {
-      return false;
-   }
-
-   SCIP_Bool SCIPisObjectiveAdmissible(
-         SCIP*                      scip,          /**< SCIP data structure */
-         SCIP_VAR*                  var            /**< SCIP variable pointer */
-   )
-   {
-      /* preserve restricted variables because they might be deleted anyway */
-      return !SCIPisZero(scip, var->obj) && SCIPisLT(scip, var->data.original.origdom.lb, var->data.original.origdom.ub);
-   }
-
-
-
-   ModulStatus
-   execute( ScipInterface& iscip, const BuggerOptions& options, const Timer& timer ) override
-   {
-
-      SCIP* scip = iscip.getSCIP();
-      SCIP_VAR* batch;
-      ModulStatus result = ModulStatus::kUnsuccesful;
-
-      int* inds;
-      int batchsize = 1;
-
-      SCIP_VAR **vars;
-      int nvars;
-      SCIPgetOrigVarsData(scip, &vars, &nvars, nullptr, nullptr, nullptr, nullptr);
-
-      if( options.nbatches > 0 )
+    public:
+      ObjectiveModul( const Message &_msg, const Num<double> &_num, std::shared_ptr<SolverFactory>& factory) : BuggerModul( factory )
       {
-         batchsize = options.nbatches - 1;
-
-         for( int i = nvars - 1; i >= 0; --i )
-            if( SCIPisObjectiveAdmissible(scip, vars[i]) )
-               ++batchsize;
-         batchsize /= options.nbatches;
+         this->setName( "objective" );
+         this->msg = _msg;
+         this->num = _num;
       }
 
-      ( SCIPallocBufferArray(scip, &inds, batchsize) );
-      ( SCIPallocBufferArray(scip, &batch, batchsize) );
-      int nbatch = 0;
-
-
-      for( int i = nvars - 1; i >= 0; --i )
+      bool
+      initialize( ) override
       {
-         SCIP_VAR* var;
+         return false;
+      }
 
-         var = vars[i];
+      bool isObjectiveAdmissible(const Problem<double>& problem, int var)
+      {
+         return !num.isZetaZero(problem.getObjective( ).coefficients[ var ])
+           && ( problem.getColFlags( )[ var ].test(ColFlag::kLbInf)
+             || problem.getColFlags( )[ var ].test(ColFlag::kUbInf)
+             || !num.isZetaEq(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]) );
+      }
 
-         if( SCIPisObjectiveAdmissible(scip, var) )
+      ModulStatus
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double>& solution,
+              const BuggerOptions &options, const Timer &timer) override {
+
+         if( solution.status == SolutionStatus::kUnbounded )
+            return ModulStatus::kNotAdmissible;
+
+         int batchsize = 1;
+
+         if( options.nbatches > 0 )
          {
-            inds[nbatch] = i;
-            batch[nbatch].obj = var->obj;
-
-            if( iscip.exists_solution() )
-               SCIPsolUpdateVarObj(iscip.get_solution(), var, var->obj, 0);
-
-            var->obj = 0.0;
-            var->unchangedobj = 0.0;
-            ++nbatch;
+            batchsize = options.nbatches - 1;
+            for( int i = problem.getNCols( ) - 1; i >= 0; --i )
+               if( isObjectiveAdmissible(problem, i) )
+                  ++batchsize;
+            if( batchsize == options.nbatches - 1 )
+               return ModulStatus::kNotAdmissible;
+            batchsize /= options.nbatches;
          }
 
-         if( nbatch >= 1 && ( nbatch >= batchsize || i <= 0 ) )
-         {
-            int j;
+         bool admissible = false;
+         auto copy = Problem<double>(problem);
+         Vec<int> applied_reductions { };
+         Vec<int> batches { };
+         batches.reserve(batchsize);
 
-            if( iscip.runSCIP() != Status::kSuccess )
+         for( int var = copy.getNCols( ) - 1; var >= 0; --var )
+         {
+            if( isObjectiveAdmissible(copy, var) )
             {
-               // revert the change since they were not useful
-               for( j = nbatch - 1; j >= 0; --j )
+               admissible = true;
+               copy.getObjective( ).coefficients[ var ] = 0.0;
+               batches.push_back(var);
+            }
+
+            if( !batches.empty() && ( batches.size() >= batchsize || var <= 0 ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(copy, settings, solution);
+               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                {
-                  var = vars[inds[j]];
-                  var->obj = batch[j].obj;
-                  var->unchangedobj = batch[j].obj;
-                  //TODO check if this should revert the changes
-                  if( iscip.exists_solution())
-                     SCIPsolUpdateVarObj(iscip.get_solution(), var, 0, var->obj);
+                  copy = Problem<double>(problem);
+                  for( const auto &item: applied_reductions )
+                     copy.getObjective( ).coefficients[ item ] = 0.0;
                }
+               else
+                  applied_reductions.insert(applied_reductions.end(), batches.begin(), batches.end());
+               batches.clear();
             }
-            else
-            {
-               //TODO should we distinguish at this point?
-               nchgcoefs += nbatch;
-               result = ModulStatus::kSuccessful;
-            }
-
-            nbatch = 0;
+         }
+         if(!admissible)
+            return ModulStatus::kNotAdmissible;
+         if( applied_reductions.empty() )
+            return ModulStatus::kUnsuccesful;
+         else
+         {
+            problem = copy;
+            nchgcoefs += applied_reductions.size();
+            return ModulStatus::kSuccessful;
          }
       }
-
-      SCIPfreeBufferArray(scip, &batch);
-      SCIPfreeBufferArray(scip, &inds);
-      return result;
-   }
-};
-
+   };
 
 } // namespace bugger
 

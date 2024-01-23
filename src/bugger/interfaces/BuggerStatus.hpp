@@ -21,38 +21,16 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef _BUGGER_CORE_SOLUTION_HPP_
-#define _BUGGER_CORE_SOLUTION_HPP_
+#ifndef BUGGER_BUGGERSTATUS_HPP
+#define BUGGER_BUGGERSTATUS_HPP
 
-#include "bugger/misc/Vec.hpp"
 
-namespace bugger
-{
+enum class BuggerStatus : int {
+   kOkay = 0,
 
-enum class SolutionStatus
-{
-   kInfeasible,
-   kUnbounded,
-   kFeasible,
-   kUnknown,
+   kBug = 1,
+
+   kError = 2,
+
 };
-
-
-template <typename REAL>
-class Solution
-{
- public:
-   SolutionStatus status;
-   REAL value = std::numeric_limits<REAL>::signaling_NaN();
-   Vec<REAL> primal;
-
-   explicit Solution() : status( SolutionStatus::kUnknown ) {}
-
-   Solution(SolutionStatus _status) : status( _status ) {}
-
-   Solution( Vec<REAL> values ) : status( SolutionStatus::kFeasible ), primal( std::move( values ) ) {}
-};
-
-} // namespace bugger
-
-#endif
+#endif //BUGGER_BUGGERSTATUS_HPP

@@ -25,164 +25,137 @@
 #define BUGGER_SIDE_VARIABLE_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
-#include "bugger/interfaces/Status.hpp"
-#if BUGGER_HAVE_SCIP
-#include "scip/var.h"
-#include "scip/scip_sol.h"
-#include "scip/scip.h"
-#include "scip/scip_numerics.h"
-#include "scip/def.h"
-#include "scip/cons_linear.h"
-#endif
-namespace bugger
-{
+#include "bugger/interfaces/BuggerStatus.hpp"
 
-class SideModul : public BuggerModul
-{
- public:
-   SideModul() : BuggerModul()
-   {
-      this->setName( "side" );
-   }
+namespace bugger {
 
-   bool
-   initialize( ) override
-   {
-      return false;
-   }
+   class SideModul : public BuggerModul {
+   public:
+      SideModul(const Message &_msg, const Num<double> &_num, std::shared_ptr<SolverFactory>& factory) : BuggerModul(factory) {
+         this->setName("side");
+         this->msg = _msg;
+         this->num = _num;
 
-
-   SCIP_Bool SCIPisSideAdmissible(
-         SCIP*                      scip,          /**< SCIP data structure */
-         SCIP_CONS*                 cons           /**< SCIP constraint pointer */
-   )
-   {
-      SCIP_CONSDATALINEAR consdata;
-
-      (void)SCIPconsGetDataLinear(cons, &consdata);
-
-      /* preserve restricted constraints because they might be already fixed */
-      return SCIPconsIsChecked(cons) && strcmp(SCIPconshdlrGetName(SCIPconsGetHdlr(cons)), "linear") == 0
-             && SCIPisLT(scip, consdata.lhs, consdata.rhs);
-   }
-
-
-   ModulStatus
-   execute( ScipInterface& iscip, const BuggerOptions& options, const Timer& timer ) override
-   {
-      SCIP* scip = iscip.getSCIP();
-      SCIP_CONS** conss = SCIPgetOrigConss(scip);
-      int nconss = SCIPgetNOrigConss(scip);
-      SCIP_CONSDATALINEAR* batch;
-      int* inds;
-      ModulStatus result = ModulStatus::kUnsuccesful;
-
-      int batchsize = 1;
-      if( options.nbatches > 0 )
-      {
-         batchsize = options.nbatches - 1;
-
-         for( int i = nconss - 1; i >= 0; --i )
-            if( SCIPisSideAdmissible(scip, conss[i]) )
-               ++batchsize;
-
-         batchsize /= options.nbatches;
       }
 
-      ( SCIPallocBufferArray(scip, &inds, batchsize) );
-      ( SCIPallocBufferArray(scip, &batch, batchsize) );
-      int nbatch = 0;
-
-      for( int i = nconss - 1; i >= 0; --i )
-      {
-         SCIP_CONS* cons;
-
-         cons = conss[i];
-
-         if( SCIPisSideAdmissible(scip, cons) )
-         {
-            SCIP_CONSDATALINEAR consdata;
-            SCIP_VAR** vars;
-            SCIP_Real* vals;
-            SCIP_Real fixedval;
-            SCIP_Bool integral;
-            int nvals;
-            int j;
-
-            ( SCIPconsGetDataLinear(cons, &consdata) );
-            inds[nbatch] = i;
-            batch[nbatch].lhs = consdata.lhs;
-            batch[nbatch].rhs = consdata.rhs;
-            vars = SCIPgetVarsLinear(scip, cons);
-            vals = SCIPgetValsLinear(scip, cons);
-            nvals = SCIPgetNVarsLinear(scip, cons);
-            integral = TRUE;
-
-            for( j = 0; j < nvals; ++j )
-            {
-               if( !SCIPvarIsIntegral(vars[j]) || !SCIPisIntegral(scip, vals[j]) )
-               {
-                  integral = FALSE;
-
-                  break;
-               }
-            }
-
-            if( iscip.exists_solution() )
-            {
-               if( integral )
-                  fixedval = MAX(MIN(0.0, SCIPfloor(scip, consdata.rhs)), SCIPceil(scip, consdata.lhs));
-               else
-                  fixedval = MAX(MIN(0.0, consdata.rhs), consdata.lhs);
-            }
-            else
-            {
-               if( integral )
-                  fixedval = SCIPround(scip, SCIPgetActivityLinear(scip, cons, iscip.get_solution()));
-               else
-                  //TODO: [debug.c:2263] ERROR: cannot call method <SCIPhasCurrentNodeLP> in problem creation stage
-                  fixedval = SCIPgetActivityLinear(scip, cons, iscip.get_solution());
-            }
-
-            consdata.lhs = fixedval;
-            consdata.rhs = fixedval;
-            ( SCIPconsSetDataLinear(cons, &consdata) );
-            ++nbatch;
-         }
-
-         if( nbatch >= 1 && ( nbatch >= batchsize || i <= 0 ) )
-         {
-            int j;
-
-            if( iscip.runSCIP() != Status::kSuccess )
-            {
-               for( j = nbatch - 1; j >= 0; --j )
-               {
-                  SCIP_CONSDATALINEAR consdata;
-
-                  cons = conss[inds[j]];
-                  ( SCIPconsGetDataLinear(cons, &consdata) );
-                  consdata.lhs = batch[j].lhs;
-                  consdata.rhs = batch[j].rhs;
-                  ( SCIPconsSetDataLinear(cons, &consdata) );
-               }
-            }
-            else
-            {
-               nchgsides += nbatch;
-               result = ModulStatus::kSuccessful;
-            }
-
-            nbatch = 0;
-         }
+      bool
+      initialize( ) override {
+         return false;
       }
 
-      SCIPfreeBufferArray(scip, &batch);
-      SCIPfreeBufferArray(scip, &inds);
-      return result;
-   }
-};
+      bool isSideAdmissable(const Problem<double>& problem, int row) const
+      {
+         return !problem.getRowFlags( )[ row ].test(RowFlag::kRedundant)
+           && ( problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
+             || problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
+             || !num.isZetaEq(problem.getConstraintMatrix( ).getLeftHandSides( )[ row ], problem.getConstraintMatrix( ).getRightHandSides( )[ row ]) );
+      }
 
+      ModulStatus
+      execute(Problem<double> &problem, SolverSettings& settings,  Solution<double> &solution,
+              const BuggerOptions &options, const Timer &timer) override {
+
+         if( solution.status == SolutionStatus::kUnbounded )
+            return ModulStatus::kNotAdmissible;
+
+         int batchsize = 1;
+
+         if( options.nbatches > 0 )
+         {
+            batchsize = options.nbatches - 1;
+            for( int row = problem.getNRows( ) - 1; row >= 0; --row )
+               if( isSideAdmissable(problem, row) )
+                  ++batchsize;
+            if( batchsize == options.nbatches - 1 )
+               return ModulStatus::kNotAdmissible;
+            batchsize /= options.nbatches;
+         }
+
+         bool admissible = false;
+         auto copy = Problem<double>(problem);
+         ConstraintMatrix<double>& matrix = copy.getConstraintMatrix( );
+         Vec<std::pair<int, double>> applied_reductions { };
+         Vec<std::pair<int, double>> batches { };
+         batches.reserve(batchsize);
+
+         for( int row = copy.getNRows( ) - 1; row >= 0; --row )
+         {
+            if( isSideAdmissable(copy, row) )
+            {
+               admissible = true;
+               auto data = matrix.getRowCoefficients(row);
+               bool integral = true;
+               double fixedval;
+
+               for( int index = 0; index < data.getLength( ); ++index )
+               {
+                  if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral) || !num.isEpsIntegral(data.getValues( )[ index ]) )
+                  {
+                     integral = false;
+                     break;
+                  }
+               }
+
+               if( solution.status == SolutionStatus::kFeasible )
+               {
+                  fixedval = get_linear_activity(data, solution);
+                  if( integral )
+                     fixedval = num.round(fixedval);
+               }
+               else
+               {
+                  fixedval = 0.0;
+                  if( integral )
+                  {
+                     if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
+                        fixedval = num.min(fixedval, num.epsFloor(matrix.getRightHandSides( )[ row ]));
+                     if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
+                        fixedval = num.max(fixedval, num.epsCeil(matrix.getLeftHandSides( )[ row ]));
+                  }
+                  else
+                  {
+                     if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
+                        fixedval = num.min(fixedval, matrix.getRightHandSides( )[ row ]);
+                     if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
+                        fixedval = num.max(fixedval, matrix.getLeftHandSides( )[ row ]);
+                  }
+               }
+
+               matrix.modifyLeftHandSide( row, num, fixedval );
+               matrix.modifyRightHandSide( row, num, fixedval );
+               batches.emplace_back(row, fixedval);
+            }
+
+            if( !batches.empty() && ( batches.size() >= batchsize || row <= 0 ) )
+            {
+               auto solver = createSolver();
+               solver->doSetUp(copy, settings, solution);
+               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+               {
+                  copy = Problem<double>(problem);
+                  for( const auto &item: applied_reductions )
+                  {
+                     matrix.modifyLeftHandSide( item.first, num, item.second );
+                     matrix.modifyRightHandSide( item.first, num, item.second );
+                  }
+               }
+               else
+                  applied_reductions.insert(applied_reductions.end(), batches.begin(), batches.end());
+               batches.clear();
+            }
+         }
+         if(!admissible)
+            return ModulStatus::kNotAdmissible;
+         if( applied_reductions.empty() )
+            return ModulStatus::kUnsuccesful;
+         else
+         {
+            problem = copy;
+            nchgsides += 2 * applied_reductions.size();
+            return ModulStatus::kSuccessful;
+         }
+      }
+   };
 
 } // namespace bugger
 

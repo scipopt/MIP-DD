@@ -103,7 +103,7 @@ class ProblemBuilder
    void
    setObj( int col, REAL val )
    {
-      obj.coefficients[col] = std::move( val );
+      obj.coefficients[col] = val;
    }
 
    /// change the objective coefficient of all columns
@@ -112,14 +112,21 @@ class ProblemBuilder
    {
       assert( values.size() == obj.coefficients.size() );
       for( int c = 0; c < (int) values.size(); ++c )
-         obj.coefficients[c] = std::move( values[c] );
+         obj.coefficients[c] = values[c];
    }
 
    /// change the objectives constant offset
    void
-   setObjOffset( REAL val )
+   setObjOffset( REAL offset )
    {
-      obj.offset = std::move( val );
+      obj.offset = offset;
+   }
+
+   /// change the objectives optimization sense
+   void
+   setObjSense( bool minimize )
+   {
+      obj.sense = minimize;
    }
 
    void

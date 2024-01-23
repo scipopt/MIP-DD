@@ -139,49 +139,12 @@ using std::log2;
 using std::pow;
 using std::sqrt;
 
-template <typename REAL, bool exact = std::numeric_limits<REAL>::is_exact>
-struct DefaultTolerances;
-
-template <typename REAL>
-struct DefaultTolerances<REAL, false>
-{
-   static constexpr REAL
-   epsilon()
-   {
-      return feasTol() *
-             pow( REAL{ 10 }, -( std::numeric_limits<REAL>::digits10 / 4 ) );
-   }
-
-   static constexpr REAL
-   feasTol()
-   {
-      return pow( REAL{ 10 },
-                  -( std::numeric_limits<REAL>::digits10 / 2 - 1 ) );
-   }
-};
-
-template <typename REAL>
-struct DefaultTolerances<REAL, true>
-{
-   static constexpr REAL
-   epsilon()
-   {
-      return REAL{ 0 };
-   }
-
-   static constexpr REAL
-   feasTol()
-   {
-      return REAL{ 0 };
-   }
-};
-
 template <typename REAL>
 class Num
 {
  public:
    Num()
-       : epsilon( REAL{ 1e-9 } ), feastol( REAL{ 1e-6 } ),
+       : zeta( REAL{ 0 } ), epsilon( REAL{ 1e-9}), feastol( REAL{ 1e-6 } ),
          hugeval( REAL{ 1e8 } )
    {
    }
@@ -195,38 +158,46 @@ class Num
 
    template <typename R1, typename R2>
    bool
-   isEq( const R1& a, const R2& b ) const
+   isZetaEq(const R1& a, const R2& b ) const
+   {
+      return abs( a - b ) <= zeta;
+   }
+
+   template <typename R1, typename R2>
+   bool
+   isEpsEq( const R1& a, const R2& b ) const
    {
       return abs( a - b ) <= epsilon;
    }
 
    template <typename R1, typename R2>
    bool
-   isFeasEq( const R1& a, const R2& b ) const
+   isZetaGE(const R1& a, const R2& b ) const
    {
-      return abs( a - b ) <= feastol;
+      return a - b >= -zeta;
    }
 
    template <typename R1, typename R2>
    bool
-   isGE( const R1& a, const R2& b ) const
+   isEpsGE(const R1& a, const R2& b ) const
    {
       return a - b >= -epsilon;
    }
 
    template <typename R1, typename R2>
    bool
-   isFeasGE( const R1& a, const R2& b ) const
+   isZetaLE( const R1& a, const R2& b ) const
    {
-      return a - b >= -feastol;
+      return a - b <= zeta;
    }
 
    template <typename R1, typename R2>
    bool
-   isLE( const R1& a, const R2& b ) const
+   isEpsLE( const R1& a, const R2& b ) const
    {
       return a - b <= epsilon;
    }
+
 
    template <typename R1, typename R2>
    bool
@@ -237,7 +208,14 @@ class Num
 
    template <typename R1, typename R2>
    bool
-   isGT( const R1& a, const R2& b ) const
+   isZetaGT( const R1& a, const R2& b ) const
+   {
+      return a - b > zeta;
+   }
+
+   template <typename R1, typename R2>
+   bool
+   isEpsGT( const R1& a, const R2& b ) const
    {
       return a - b > epsilon;
    }
@@ -249,9 +227,17 @@ class Num
       return a - b > feastol;
    }
 
+
    template <typename R1, typename R2>
    bool
-   isLT( const R1& a, const R2& b ) const
+   isZetaLT(const R1& a, const R2& b ) const
+   {
+      return a - b < -zeta;
+   }
+
+   template <typename R1, typename R2>
+   bool
+   isEpsLT(const R1& a, const R2& b ) const
    {
       return a - b < -epsilon;
    }
@@ -277,127 +263,6 @@ class Num
       return a < b ? REAL( a ) : REAL( b );
    }
 
-   template <typename R1, typename R2>
-   static REAL
-   relDiff( const R1& a, const R2& b )
-   {
-      return ( a - b ) / max( max( abs( a ), abs( b ) ), 1 );
-   }
-
-   template <typename R1, typename R2>
-   bool
-   isRelEq( const R1& a, const R2& b ) const
-   {
-      return abs( relDiff( a, b ) ) <= epsilon;
-   }
-
-   template <typename R1, typename R2>
-   bool
-   isFeasRelEq( const R1& a, const R2& b ) const
-   {
-      return abs( relDiff( a, b ) ) <= feastol;
-   }
-
-   template <typename R1, typename R2>
-   bool
-   isRelGE( const R1& a, const R2& b ) const
-   {
-      return relDiff( a, b ) >= -epsilon;
-   }
-
-   template <typename R1, typename R2>
-   bool
-   isFeasRelGE( const R1& a, const R2& b ) const
-   {
-      return relDiff( a, b ) >= -feastol;
-   }
-
-   template <typename R1, typename R2>
-   bool
-   isRelLE( const R1& a, const R2& b ) const
-   {
-      return relDiff( a, b ) <= epsilon;
-   }
-
-   template <typename R1, typename R2>
-   bool
-   isFeasRelLE( const R1& a, const R2& b ) const
-   {
-      return relDiff( a, b ) <= feastol;
-   }
-
-   template <typename R1, typename R2>
-   bool
-   isRelGT( const R1& a, const R2& b ) const
-   {
-      return relDiff( a, b ) > epsilon;
-   }
-
-   template <typename R1, typename R2>
-   bool
-   isFeasRelGT( const R1& a, const R2& b ) const
-   {
-      return relDiff( a, b ) > feastol;
-   }
-
-   template <typename R1, typename R2>
-   bool
-   isRelLT( const R1& a, const R2& b ) const
-   {
-      return relDiff( a, b ) < -epsilon;
-   }
-
-   template <typename R1, typename R2>
-   bool
-   isFeasRelLT( const R1& a, const R2& b ) const
-   {
-      return relDiff( a, b ) < -feastol;
-   }
-
-   template <typename R1, typename R2>
-   static constexpr bool
-   isSafeEq( const R1& a, const R2& b )
-   {
-      return !num_traits<REAL>::is_floating_point ||
-             ( abs( relDiff( a, b ) ) <=
-               ( 1024 * std::numeric_limits<REAL>::epsilon() ) );
-   }
-
-   template <typename R1, typename R2>
-   static constexpr bool
-   isSafeGE( const R1& a, const R2& b )
-   {
-      return !num_traits<REAL>::is_floating_point ||
-             ( relDiff( a, b ) >=
-               -( 1024 * std::numeric_limits<REAL>::epsilon() ) );
-   }
-
-   template <typename R1, typename R2>
-   static constexpr bool
-   isSafeLE( const R1& a, const R2& b )
-   {
-      return num_traits<REAL>::is_floating_point
-                 ? ( relDiff( a, b ) <=
-                     ( 1024 * std::numeric_limits<REAL>::epsilon() ) )
-                 : true;
-   }
-
-   template <typename R1, typename R2>
-   static constexpr bool
-   isSafeGT( const R1& a, const R2& b )
-   {
-      return !num_traits<REAL>::is_floating_point ||
-             ( relDiff( a, b ) >
-               ( 1024 * std::numeric_limits<REAL>::epsilon() ) );
-   }
-
-   template <typename R1, typename R2>
-   bool static constexpr isSafeLT( const R1& a, const R2& b )
-   {
-      return !num_traits<REAL>::is_floating_point ||
-             ( relDiff( a, b ) <
-               -( 1024 * std::numeric_limits<REAL>::epsilon() ) );
-   }
 
    template <typename R>
    REAL
@@ -408,9 +273,16 @@ class Num
 
    template <typename R>
    REAL
-   epsCeil( const R& a ) const
+   epsCeil(const R& a ) const
    {
       return ceil( REAL( a - epsilon ) );
+   }
+
+   template <typename R>
+   REAL
+   zetaCeil(const R& a ) const
+   {
+      return ceil( REAL( a - zeta ) );
    }
 
    template <typename R>
@@ -422,31 +294,53 @@ class Num
 
    template <typename R>
    REAL
-   epsFloor( const R& a ) const
+   zetaFloor(const R& a ) const
+   {
+      return floor( REAL( a + zeta ) );
+   }
+
+   template <typename R>
+   REAL
+   epsFloor(const R& a ) const
    {
       return floor( REAL( a + epsilon ) );
    }
 
    template <typename R>
    bool
-   isIntegral( const R& a ) const
+   isZetaIntegral(const R& a ) const
    {
-      return isEq( a, round( a ) );
+      return isZetaEq(a, round(a));
    }
 
    template <typename R>
    bool
-   isFeasIntegral( const R& a ) const
+   isEpsIntegral(const R& a ) const
    {
-      return isFeasEq( a, round( a ) );
+      return isEpsEq(a, round(a));
    }
 
    template <typename R>
    bool
-   isZero( const R& a ) const
+   isFeasIntegral(const R& a ) const
+   {
+      return isFeasEq(a, round(a));
+   }
+
+   template <typename R>
+   bool
+   isEpsZero(const R& a ) const
    {
       return abs( a ) <= epsilon;
    }
+
+   template <typename R>
+   bool
+   isZetaZero(const R& a ) const
+   {
+      return abs( a ) <= zeta;
+   }
+
 
    template <typename R>
    bool
@@ -455,29 +349,6 @@ class Num
       return abs( a ) <= feastol;
    }
 
-   static std::size_t
-   hashCode( const REAL& xval )
-   {
-      int theexp;
-      double x = static_cast<double>( xval );
-
-      // normalize the value
-      double val = frexp( x, &theexp );
-
-      // include the sign bit and the value in the upper 16 bits, i.e. use the
-      // upper 15 bits of the mantissa. Cast to signed 16 bit int then to
-      // unsigned 16 bit int to have the wrap-around for negative numbers at
-      // 2^16.
-      uint16_t upperhalf =
-          static_cast<uint16_t>( static_cast<int16_t>( ldexp( val, 14 ) ) );
-
-      // in the lower 16 bits include the exponent
-      uint16_t lowerhalf = static_cast<uint16_t>( theexp );
-
-      // compose the halfs into one 32 bit integral value and add to state
-      return ( static_cast<std::size_t>( upperhalf ) << 16 ) |
-             static_cast<std::size_t>( lowerhalf );
-   }
 
    const REAL&
    getEpsilon() const
@@ -489,6 +360,12 @@ class Num
    getFeasTol() const
    {
       return feastol;
+   }
+
+   const REAL&
+   getZeta() const
+   {
+      return zeta;
    }
 
    const REAL&
@@ -512,6 +389,13 @@ class Num
    }
 
    void
+   setZeta( REAL value )
+   {
+      assert( value >= 0 );
+      this->zeta = value;
+   }
+
+   void
    setFeasTol( REAL value )
    {
       assert( value >= 0 );
@@ -525,18 +409,11 @@ class Num
       this->hugeval = value;
    }
 
-   template <typename Archive>
-   void
-   serialize( Archive& ar, const unsigned int version )
-   {
-      ar& epsilon;
-      ar& feastol;
-      ar& hugeval;
-   }
 
  private:
    REAL epsilon;
    REAL feastol;
+   REAL zeta;
    REAL hugeval;
 };
 

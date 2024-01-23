@@ -25,23 +25,17 @@
 #define _BUGGER_MODUL_VARIABLE_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
-#include "bugger/interfaces/Status.hpp"
+#include "bugger/interfaces/BuggerStatus.hpp"
 
-#if BUGGER_HAVE_SCIP
-
-#include "scip/var.h"
-#include "scip/scip_sol.h"
-#include "scip/scip.h"
-#include "scip/scip_numerics.h"
-#include "scip/def.h"
-
-#endif
 namespace bugger {
 
    class VariableModul : public BuggerModul {
    public:
-      VariableModul( ) : BuggerModul( ) {
+      VariableModul( const Message &_msg, const Num<double> &_num, std::shared_ptr<SolverFactory>& factory) : BuggerModul(factory) {
          this->setName("variable");
+         this->msg = _msg;
+         this->num = _num;
+
       }
 
       bool
@@ -49,108 +43,108 @@ namespace bugger {
          return false;
       }
 
-      SCIP_Bool SCIPisVariableAdmissible(SCIP *scip, SCIP_VAR *var) {
-         /* keep restricted variables because they might be already fixed */
-         return SCIPisLT(scip, var->data.original.origdom.lb, var->data.original.origdom.ub);
+      bool isVariableAdmissible(const Problem<double>& problem, int var) {
+         return problem.getColFlags( )[ var ].test(ColFlag::kLbInf)
+             || problem.getColFlags( )[ var ].test(ColFlag::kUbInf)
+             || !num.isZetaEq(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
       }
 
       ModulStatus
-      execute(ScipInterface &iscip, const BuggerOptions &options, const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double>& solution,
+              const BuggerOptions &options, const Timer &timer) override {
 
-         SCIP *scip = iscip.getSCIP( );
-         SCIP_VAR *batch;
-         int *inds;
-         int batchsize;
-         int nbatch;
-         int i;
-         ModulStatus result = ModulStatus::kUnsuccesful;
+         if( solution.status == SolutionStatus::kUnbounded )
+            return ModulStatus::kNotAdmissible;
 
-         SCIP_VAR **vars;
-         int nvars;
-         SCIPgetOrigVarsData(scip, &vars, &nvars, nullptr, nullptr, nullptr, nullptr);
+         int batchsize = 1;
 
-         if( options.nbatches <= 0 )
-            batchsize = 1;
-         else
+         if( options.nbatches > 0 )
          {
             batchsize = options.nbatches - 1;
-
-            for( i = nvars - 1; i >= 0; --i )
-               if( SCIPisVariableAdmissible(scip, vars[ i ]))
+            for( int i = problem.getNCols() - 1; i >= 0; --i )
+               if( isVariableAdmissible(problem, i) )
                   ++batchsize;
-
+            if( batchsize == options.nbatches - 1 )
+               return ModulStatus::kNotAdmissible;
             batchsize /= options.nbatches;
          }
 
-         (SCIPallocBufferArray(scip, &inds, batchsize));
-         (SCIPallocBufferArray(scip, &batch, batchsize));
-         nbatch = 0;
+         bool admissible = false;
+         auto copy = Problem<double>(problem);
+         Vec<std::pair<int, double>> applied_reductions { };
+         Vec<std::pair<int, double>> batches { };
+         batches.reserve(batchsize);
 
-         for( i = nvars - 1; i >= 0; --i )
+         for( int var = copy.getNCols() - 1; var >= 0; --var )
          {
-            SCIP_VAR *var;
-
-            var = vars[ i ];
-
-            if( SCIPisVariableAdmissible(scip, var))
+            if( isVariableAdmissible(copy, var) )
             {
-               SCIP_Real fixedval;
-
-               inds[ nbatch ] = i;
-               batch[ nbatch ].data.original.origdom.lb = var->data.original.origdom.lb;
-               batch[ nbatch ].data.original.origdom.ub = var->data.original.origdom.ub;
-
-               if( !iscip.exists_solution( ))
+               double fixedval;
+               admissible = true;
+               if( solution.status == SolutionStatus::kFeasible )
                {
-                  if( SCIPvarIsIntegral(var))
-                     fixedval = MAX(MIN(0.0, SCIPfloor(scip, var->data.original.origdom.ub)),
-                                    SCIPceil(scip, var->data.original.origdom.lb));
-                  else
-                     fixedval = MAX(MIN(0.0, var->data.original.origdom.ub), var->data.original.origdom.lb);
+                  fixedval = solution.primal[ var ];
+                  if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
+                     fixedval = num.round(fixedval);
                }
                else
                {
-                  if( SCIPvarIsIntegral(var))
-                     fixedval = SCIPround(scip, SCIPgetSolVal(scip, iscip.get_solution( ), var));
+                  fixedval = 0.0;
+                  if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
+                  {
+                     if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
+                        fixedval = num.min(fixedval, num.epsFloor(copy.getUpperBounds( )[ var ]));
+                     if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
+                        fixedval = num.max(fixedval, num.epsCeil(copy.getLowerBounds( )[ var ]));
+                  }
                   else
-                     fixedval = SCIPgetSolVal(scip, iscip.get_solution( ), var);
+                  {
+                     if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
+                        fixedval = num.min(fixedval, copy.getUpperBounds( )[ var ]);
+                     if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
+                        fixedval = num.max(fixedval, copy.getLowerBounds( )[ var ]);
+                  }
                }
 
-               var->data.original.origdom.lb = fixedval;
-               var->data.original.origdom.ub = fixedval;
-               ++nbatch;
+               copy.getColFlags( )[ var ].unset(ColFlag::kLbInf);
+               copy.getColFlags( )[ var ].unset(ColFlag::kUbInf);
+               copy.getLowerBounds( )[ var ] = fixedval;
+               copy.getUpperBounds( )[ var ] = fixedval;
+               batches.emplace_back(var, fixedval);
             }
 
-            if( nbatch >= 1 && ( nbatch >= batchsize || i <= 0 ))
+            if( !batches.empty() && ( batches.size() >= batchsize || var <= 0 ) )
             {
-               int j;
-
-               if( iscip.runSCIP( ) != Status::kSuccess )
+               auto solver = createSolver();
+               solver->doSetUp(copy, settings, solution);
+               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                {
-                  for( j = nbatch - 1; j >= 0; --j )
+                  copy = Problem<double>(problem);
+                  for( const auto &item: applied_reductions )
                   {
-                     var = vars[ inds[ j ]];
-                     var->data.original.origdom.lb = batch[ j ].data.original.origdom.lb;
-                     var->data.original.origdom.ub = batch[ j ].data.original.origdom.ub;
+                     copy.getColFlags( )[ item.first ].unset(ColFlag::kLbInf);
+                     copy.getColFlags( )[ item.first ].unset(ColFlag::kUbInf);
+                     copy.getLowerBounds( )[ item.first ] = item.second;
+                     copy.getUpperBounds( )[ item.first ] = item.second;
                   }
                }
                else
-               {
-                  nfixedvars += nbatch;
-                  result = ModulStatus::kSuccessful;
-               }
-
-               nbatch = 0;
+                  applied_reductions.insert(applied_reductions.end(), batches.begin(), batches.end());
+               batches.clear();
             }
          }
-
-         SCIPfreeBufferArray(scip, &batch);
-         SCIPfreeBufferArray(scip, &inds);
-
-         return result;
+         if(!admissible)
+            return ModulStatus::kNotAdmissible;
+         if( applied_reductions.empty() )
+            return ModulStatus::kUnsuccesful;
+         else
+         {
+            problem = copy;
+            nfixedvars += applied_reductions.size();
+            return ModulStatus::kSuccessful;
+         }
       }
    };
-
 
 } // namespace bugger
 

@@ -206,12 +206,16 @@ install(FILES
         ${PROJECT_SOURCE_DIR}/src/bugger/data/RowFlags.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/data/SingleRow.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/data/Solution.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/data/SolverSettings.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/data/SparseStorage.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/data/VariableDomains.hpp
    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/data)
 
 install(FILES
         ${PROJECT_SOURCE_DIR}/src/bugger/interfaces/ScipInterface.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/interfaces/BuggerStatus.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/interfaces/SolverStatus.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/interfaces/SolverInterface.hpp
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/interfaces)
 
 install(FILES

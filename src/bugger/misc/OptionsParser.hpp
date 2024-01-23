@@ -43,7 +43,8 @@ struct OptionsInfo
 {
    std::string instance_file;
    std::string param_settings_file;
-   std::string scip_settings_file;
+   std::string solver_settings_file;
+   std::string target_solver_settings_file;
    std::string solution_file;
    std::vector<std::string> unparsed_options;
    double tlim = std::numeric_limits<double>::max();
@@ -72,9 +73,15 @@ struct OptionsInfo
          return false;
       }
 
-      if( existsFile( scip_settings_file ))
+      if( existsFile(solver_settings_file ))
       {
-         fmt::print( "file {} is not valid\n", solution_file );
+         fmt::print("file {} is not valid\n", solver_settings_file );
+         return false;
+      }
+
+      if( existsFile(target_solver_settings_file ))
+      {
+         fmt::print("file {} is not valid\n", target_solver_settings_file );
          return false;
       }
 
@@ -101,16 +108,19 @@ struct OptionsInfo
                           value(&param_settings_file),
                           "filename for bugger parameter settings");
 
-      desc.add_options( )("scip parameter-settings,s",
-                          value(&scip_settings_file),
+      desc.add_options( )("scip-parameter-settings,s",
+                          value(&solver_settings_file),
                           "filename for SCIP parameter settings");
 
-      desc.add_options( )("solution file,o",
-                          value(&solution_file),
-                          "filename for solution settings");
+      desc.add_options( )("target-scip-parameter-settings,t",
+                          value(&target_solver_settings_file),
+                          "filename for SCIP parameter settings");
 
-      desc.add_options( )("threads,t",
-                          value(&nthreads)->default_value(0));
+      desc.add_options( )("solution-file,o",
+                          value(&solution_file),
+                          "filename for solution settings or unknown/infeasible/unbounded");
+
+      desc.add_options( )("threads", value(&nthreads)->default_value(0));
 
       desc.add_options()(
             "tlim", value( &tlim )->default_value( tlim ),

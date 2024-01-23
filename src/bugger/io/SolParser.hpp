@@ -44,7 +44,7 @@ struct SolParser
 {
 
    static bool
-   read( const std::string& filename, const Vec<int>& origcol_mapping,
+   read( const std::string& filename,
          const Vec<String>& colnames, Solution<REAL>& sol)
    {
       std::ifstream file( filename, std::ifstream::in );
@@ -52,6 +52,7 @@ struct SolParser
 
       if( !file )
          return false;
+      sol = Solution<REAL>(SolutionStatus::kFeasible);
 
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
       if( boost::algorithm::ends_with( filename, ".gz" ) )
@@ -67,13 +68,12 @@ struct SolParser
 
       HashMap<String, int> nameToCol;
 
-      for( size_t i = 0; i != origcol_mapping.size(); ++i )
+      for( size_t i = 0; i != colnames.size(); ++i )
       {
-         int origcol = origcol_mapping[i];
-         nameToCol.emplace( colnames[origcol], i );
+         nameToCol.emplace( colnames[i], i );
       }
 
-      sol.primal.resize( origcol_mapping.size(), REAL{ 0 } );
+      sol.primal.resize( colnames.size(), REAL{ 0 } );
       String strline;
 
       skip_header( colnames, in, strline );

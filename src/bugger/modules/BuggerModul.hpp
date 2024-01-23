@@ -41,42 +41,35 @@
 
 #include <bitset>
 
-//TODO: ideally the class does not know about SCIP or the solver at all -> use interface?
-#ifdef  BUGGER_HAVE_SCIP
-
-#include "scip/cons_linear.h"
-#include "scip/scip.h"
-#include "scip/scipdefplugins.h"
-#include "scip/struct_paramset.h"
-#include "scip/def.h"
-
-#endif
 
 namespace bugger {
 
    enum class ModulStatus : int {
       kDidNotRun = 0,
 
-      kUnsuccesful = 1,
+      kNotAdmissible = 1,
 
-      kSuccessful = 2,
+      kUnsuccesful = 2,
+
+      kSuccessful = 3,
 
    };
 
    class BuggerModul {
    public:
-      BuggerModul( ) {
+      BuggerModul( std::shared_ptr<SolverFactory>& _factory) {
          ncalls = 0;
          nsuccessCall = 0;
          name = "unnamed";
          execTime = 0.0;
          enabled = true;
-         delayed = false;
-         skip = 0;
          nchgcoefs = 0;
          nfixedvars = 0;
          nchgsides = 0;
          naggrvars = 0;
+         nchgsettings = 0;
+         ndeletedrows = 0;
+         solver_factory = _factory;
       }
 
       virtual ~BuggerModul( ) = default;
@@ -102,25 +95,24 @@ namespace bugger {
       }
 
       ModulStatus
-      run(ScipInterface &scip, const BuggerOptions &options, const Timer &timer) {
-         if( !enabled || delayed )
+      run(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const BuggerOptions &options,
+          const Timer &timer) {
+         if( !enabled )
             return ModulStatus::kDidNotRun;
 
-         if( skip != 0 )
-         {
-            --skip;
-            return ModulStatus::kDidNotRun;
-         }
-
-         ++ncalls;
-
+         msg.info("module {} running\n", name);
 #ifdef BUGGER_TBB
          auto start = tbb::tick_count::now( );
 #else
          auto start = std::chrono::steady_clock::now();
 #endif
-         ModulStatus result = execute(scip, options, timer);
+         ModulStatus result = execute(problem, settings, solution, options, timer);
 #ifdef BUGGER_TBB
+         if( result == ModulStatus::kSuccessful )
+            nsuccessCall++;
+         if ( result != ModulStatus::kDidNotRun && result != ModulStatus::kNotAdmissible )
+            ncalls++;
+
          auto end = tbb::tick_count::now( );
          auto duration = end - start;
          execTime = execTime + duration.seconds( );
@@ -129,26 +121,21 @@ namespace bugger {
          execTime = execTime + std::chrono::duration_cast<std::chrono::milliseconds>(
                                    end- start ).count()/1000;
 #endif
-
-
+         msg.info("module {} finished\n", name);
          return result;
       }
 
       void
-      printStats(const Message &message ) {
-         double success =ncalls == 0 ? 0.0 : ( double(nsuccessCall) / double(ncalls)) * 100.0;
-         message.info(" {:>18} {:>12} {:>18.1f} {:>18.3f}\n", name, ncalls, success, execTime);
+      printStats(const Message &message) {
+         double success = ncalls == 0 ? 0.0 : ( double(nsuccessCall) / double(ncalls)) * 100.0;
+         int changes = nchgcoefs + nfixedvars + nchgsides + naggrvars + ndeletedrows + nchgsettings;
+         message.info(" {:>18} {:>12} {:>12} {:>18.1f} {:>18.3f}\n", name, ncalls, changes, success, execTime);
       }
 
 
       bool
       isEnabled( ) const {
          return this->enabled;
-      }
-
-      bool
-      isDelayed( ) const {
-         return this->delayed;
       }
 
       const std::string &
@@ -162,19 +149,27 @@ namespace bugger {
       }
 
       void
-      setDelayed(bool value) {
-         this->delayed = value;
-      }
-
-      void
       setEnabled(bool value) {
          this->enabled = value;
       }
 
    protected:
 
+      std::unique_ptr<SolverInterface>
+      createSolver(){
+         return solver_factory->create_solver();
+      }
+
+      double get_linear_activity(SparseVectorView<double> &data, Solution<double> &solution) {
+         StableSum<double> sum;
+         for( int i = 0; i < data.getLength( ); i++ )
+            sum.add(solution.primal[ data.getIndices( )[ i ]] * data.getValues( )[ i ]);
+         return sum.get( );
+      }
+
       virtual ModulStatus
-      execute(ScipInterface &iscip, const BuggerOptions &options, const Timer &timer) = 0;
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
+              const BuggerOptions &options, const Timer &timer) = 0;
 
       void
       setName(const std::string &value) {
@@ -189,43 +184,43 @@ namespace bugger {
       }
 
 
-      void
-      skipRounds(unsigned int nrounds) {
-         this->skip += nrounds;
-      }
+      BuggerStatus
+      call_solver(SolverInterface *solver, const Message &msg, const BuggerOptions &options) {
 
-      template<typename LOOP>
-      void
-      loop(int start, int end, LOOP &&loop_instruction) {
-#ifdef BUGGER_TBB
-         tbb::parallel_for(tbb::blocked_range<int>(start, end),
-                           [ & ](const tbb::blocked_range<int> &r) {
-                              for( int i = r.begin( ); i != r.end( ); ++i )
-                                 loop_instruction(i);
-                           });
-#else
-         for( int i = 0; i < end; i++ )
+         std::pair<char, SolverStatus> result = solver->solve(options.passcodes);
+         if( result.first == SolverInterface::OKAY )
          {
-            loop_instruction( i );
+            msg.info("\tOkay  - Status {}\n", result.second);
+            return BuggerStatus::kOkay;
          }
-#endif
+         else if( result.first > SolverInterface::OKAY )
+         {
+            msg.info("\tBug {} - Status {}\n", (int) result.first, result.second);
+            return BuggerStatus::kBug;
+         }
+         else
+         {
+            msg.info("\tError {}\n", (int) result.first);
+            return BuggerStatus::kError;
+         }
       }
-
-
 
    private:
       std::string name;
       double execTime;
       bool enabled;
-      bool delayed{};
       unsigned int ncalls;
       unsigned int nsuccessCall;
-      unsigned int skip;
    protected:
       int nchgcoefs;
       int nfixedvars;
       int nchgsides;
-      int naggrvars{};
+      int naggrvars;
+      int nchgsettings;
+      int ndeletedrows;
+      Num<double> num;
+      Message msg;
+      std::shared_ptr<SolverFactory> solver_factory;
    };
 
 } // namespace bugger

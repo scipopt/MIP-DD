@@ -294,7 +294,7 @@ class ConstraintMatrix
       {
          flags[index].unset( RowFlag::kLhsInf );
 
-         if( num.isEq( value, rhs_values[index] ) )
+         if( num.isZetaEq(value, rhs_values[ index ]) )
             lhs_values[index] = rhs_values[index];
          else
             lhs_values[index] = value;
@@ -323,7 +323,7 @@ class ConstraintMatrix
       if( !infval )
       {
          flags[index].unset( RowFlag::kRhsInf );
-         if( num.isEq( value, lhs_values[index] ) )
+         if( num.isZetaEq(value, lhs_values[ index ]) )
             rhs_values[index] = lhs_values[index];
          else
             rhs_values[index] = value;
@@ -358,10 +358,7 @@ class ConstraintMatrix
    compress( bool full = false );
 
    void
-   deleteRowsAndCols( Vec<int>& deletedRows, Vec<int>& deletedCols,
-                      Vec<RowActivity<REAL>>& activities,
-                      Vec<int>& singletonRows, Vec<int>& singletonCols,
-                      Vec<int>& emptyCols );
+   deleteRowsAndCols( Vec<int>& deletedRows, Vec<int>& deletedCols );
 
    const Vec<int>&
    getRowSizes() const
@@ -387,12 +384,9 @@ class ConstraintMatrix
       return colsize;
    }
 
-   template <typename CoeffChanged>
+//   template <typename CoeffChanged>
    void
-   changeCoefficients( const MatrixBuffer<REAL>& matrixBuffer,
-                       Vec<int>& singletonRows, Vec<int>& singletonCols,
-                       Vec<int>& emptyCols, Vec<RowActivity<REAL>>& activities,
-                       CoeffChanged&& coeffChanged )
+   changeCoefficients( const MatrixBuffer<REAL>& matrixBuffer )
    {
       if( matrixBuffer.empty() )
          return;
@@ -419,22 +413,21 @@ class ConstraintMatrix
                        auto nextval = std::make_pair( iter->col, iter->val );
                        iter = matrixBuffer.template next<true>( buffer );
                        return nextval;
-                    },
-                    coeffChanged );
+                    } );
 
                 if( newsize != rowsize[row] )
                 {
-                   switch( newsize )
-                   {
-                   case 0:
-                      activities[row].min = 0;
-                      activities[row].max = 0;
-                      break;
-                   case 1:
-                      singletonRows.push_back( row );
-                   default:
-                      break;
-                   }
+//                   switch( newsize )
+//                   {
+//                   case 0:
+//                      activities[row].min = 0;
+//                      activities[row].max = 0;
+//                      break;
+//                   case 1:
+//                      singletonRows.push_back( row );
+//                   default:
+//                      break;
+//                   }
 
                    rowsize[row] = newsize;
                 }
@@ -464,21 +457,23 @@ class ConstraintMatrix
                        auto nextval = std::make_pair( iter2->row, iter2->val );
                        iter2 = matrixBuffer.template next<false>( buffer2 );
                        return nextval;
-                    },
-                    []( int, int, REAL, REAL ) {} );
+                    }
+//                    ,
+//                    []( int, int, REAL, REAL ) {}
+                    );
 
                 if( newsize != colsize[col] )
                 {
-                   switch( newsize )
-                   {
-                   case 0:
-                      emptyCols.push_back( col );
-                      break;
-                   case 1:
-                      singletonCols.push_back( col );
-                   default:
-                      break;
-                   }
+//                   switch( newsize )
+//                   {
+//                   case 0:
+//                      emptyCols.push_back( col );
+//                      break;
+//                   case 1:
+//                      singletonCols.push_back( col );
+//                   default:
+//                      break;
+//                   }
                    // in case that a singleton var is aggregated and has 2
                    // appearances and then is reduced again immediately it may
                    // appear two times in the list -> causes no bug but some
@@ -695,12 +690,7 @@ ConstraintMatrix<REAL>::compress( bool full )
 
 template <typename REAL>
 void
-ConstraintMatrix<REAL>::deleteRowsAndCols( Vec<int>& deletedRows,
-                                           Vec<int>& deletedCols,
-                                           Vec<RowActivity<REAL>>& activities,
-                                           Vec<int>& singletonRows,
-                                           Vec<int>& singletonCols,
-                                           Vec<int>& emptyCols )
+ConstraintMatrix<REAL>::deleteRowsAndCols( Vec<int>& deletedRows, Vec<int>& deletedCols)
 {
    if( deletedRows.empty() && deletedCols.empty() )
       return;
@@ -741,7 +731,7 @@ ConstraintMatrix<REAL>::deleteRowsAndCols( Vec<int>& deletedRows,
    // delete rows from row storage and update column sizes
 #ifdef BUGGER_TBB
    tbb::parallel_invoke(
-       [this, &deletedRows, rowranges, rowcols, &activities]() {
+       [this, &deletedRows, rowranges, rowcols ]() {
 #endif
           for( int row : deletedRows )
           {
@@ -761,10 +751,6 @@ ConstraintMatrix<REAL>::deleteRowsAndCols( Vec<int>& deletedRows,
              rowranges[row].end = rowranges[row + 1].start;
              lhs_values[row] = 0.0;
              rhs_values[row] = 0.0;
-             activities[row].ninfmax = 0;
-             activities[row].ninfmin = 0;
-             activities[row].min = 0;
-             activities[row].max = 0;
           }
 #ifdef BUGGER_TBB
        },
@@ -793,7 +779,7 @@ ConstraintMatrix<REAL>::deleteRowsAndCols( Vec<int>& deletedRows,
 
 #ifdef BUGGER_TBB
    tbb::parallel_invoke(
-       [this, colranges, &singletonCols, &emptyCols, colrows, colvalues]() {
+       [this, colranges, colrows, colvalues]() {
 #endif
           for( int col = 0; col != getNCols(); ++col )
           {
@@ -806,12 +792,9 @@ ConstraintMatrix<REAL>::deleteRowsAndCols( Vec<int>& deletedRows,
              switch( colsize[col] )
              {
              case 0:
-                emptyCols.push_back( col );
                 colranges[col].start = colranges[col + 1].start;
                 colranges[col].end = colranges[col + 1].start;
                 break;
-             case 1:
-                singletonCols.push_back( col );
              }
 
              if( colsize[col] >= 1 )
@@ -841,7 +824,7 @@ ConstraintMatrix<REAL>::deleteRowsAndCols( Vec<int>& deletedRows,
           }
 #ifdef BUGGER_TBB
        },
-       [this, rowranges, &singletonRows, &activities, rowcols, rowvalues]() {
+       [this, rowranges, rowcols, rowvalues]() {
 #endif
           for( int row = 0; row != getNRows(); ++row )
           {
@@ -849,17 +832,6 @@ ConstraintMatrix<REAL>::deleteRowsAndCols( Vec<int>& deletedRows,
              if( rowsize[row] == -1 ||
                  rowsize[row] == rowranges[row].end - rowranges[row].start )
                 continue;
-
-             // if the size is now 1, add to singleton row vector
-             switch( rowsize[row] )
-             {
-             case 0:
-                activities[row].min = 0;
-                activities[row].max = 0;
-                break;
-             case 1:
-                singletonRows.push_back( row );
-             }
 
              // now move contents of row to occupy free spaces
              int j = 0;
@@ -1067,7 +1039,7 @@ ConstraintMatrix<REAL>::sparsify(
       {
          REAL newval = rowvals[j] * scale + rowvals[k];
 
-         if( num.isZero( newval ) )
+         if( num.isEpsZero(newval) )
             ++ncancel;
          else if( num.isFeasZero( newval ) )
             return 0;
@@ -1155,7 +1127,7 @@ ConstraintMatrix<REAL>::sparsify(
 
          REAL newval = rowvals[k] + scale * rowvals[j];
 
-         if( num.isZero( newval ) )
+         if( num.isEpsZero(newval) )
          {
             --colsize[col];
 
@@ -1177,8 +1149,10 @@ ConstraintMatrix<REAL>::sparsify(
              [&]() {
                 assert( count == 1 );
                 return std::make_pair( targetrow, newval );
-             },
-             []( int, int, REAL, REAL ) {} );
+             }
+//             ,
+//             []( int, int, REAL, REAL ) {}
+             );
 
          UNUSED(newsize);
          assert( newsize == colsize[col] );
@@ -1248,7 +1222,7 @@ ConstraintMatrix<REAL>::sparsify(
        [&]( int i ) { return scale * rowvals[i]; },
        [&]( const REAL& a, const REAL& b ) {
           REAL val = a + b;
-          if( num.isZero( val ) )
+          if( num.isEpsZero(val) )
              val = 0;
           return val;
        },
@@ -1335,7 +1309,7 @@ ConstraintMatrix<REAL>::aggregate(
 
    auto mergeVal = [&]( const REAL& oldval, const REAL& addition ) {
       REAL val = oldval + addition;
-      if( num.isZero( val ) )
+      if( num.isEpsZero(val) )
          return REAL{ 0 };
 
       return val;
