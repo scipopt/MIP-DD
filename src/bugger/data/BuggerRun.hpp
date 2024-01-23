@@ -59,13 +59,14 @@ namespace bugger {
       bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &modules;
       bugger::Vec<bugger::ModulStatus> results;
       bugger::Message msg { };
+      std::shared_ptr<SolverFactory> solver_factory;
 
    public:
 
       BuggerRun(const std::string& _settings_filename, const std::string& _target_settings_filename, bugger::Problem<double> &_problem, bugger::Solution<double> &_solution,
                 bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
             : options({ }), settings_filename(_settings_filename), target_settings_filename(_target_settings_filename), problem(_problem), solution(_solution),
-              modules(_modules) { }
+              modules(_modules), solver_factory(load_solver_factory()) { }
 
       bool
       is_time_exceeded( const Timer& timer ) const
@@ -74,16 +75,13 @@ namespace bugger {
                 timer.getTime() >= options.tlim;
       }
 
-      void apply(bugger::Timer &timer, const std::string& filename) {
+      void apply(bugger::Timer &timer, const std::string &filename ) {
 
          check_feasibility_of_solution();
-
-         auto solver_factory = load_solver_factory();
 
          SolverSettings solver_settings = parseSettings(settings_filename, solver_factory);
 
          printOriginalSolveStatus(solver_settings, solver_factory);
-
 
          using uptr = std::unique_ptr<bugger::BuggerModul>;
 
@@ -93,16 +91,16 @@ namespace bugger {
          num.setZeta( options.zeta );
 
          bool settings_modul_activated = !target_settings_filename.empty( );
-         addModul(uptr(new ConstraintModul( msg, num, solver_factory)));
-         addModul(uptr(new VariableModul( msg, num, solver_factory)));
-         addModul(uptr(new CoefficientModul( msg, num, solver_factory)));
-         addModul(uptr(new FixingModul( msg, num, solver_factory)));
+         addModul(uptr(new ConstraintModul(msg, num, solver_factory)));
+         addModul(uptr(new VariableModul(msg, num, solver_factory)));
+         addModul(uptr(new CoefficientModul(msg, num, solver_factory)));
+         addModul(uptr(new FixingModul(msg, num, solver_factory)));
          if( settings_modul_activated )
-            addModul(uptr(new SettingModul( msg, num,parseSettings(target_settings_filename, solver_factory), solver_factory)));
-         addModul(uptr(new SideModul( msg, num, solver_factory)));
-         addModul(uptr(new ObjectiveModul( msg, num, solver_factory)));
-         addModul(uptr(new VarroundModul( msg, num, solver_factory)));
-         addModul(uptr(new ConsRoundModul( msg, num, solver_factory)));
+            addModul(uptr(new SettingModul(msg, num, parseSettings(target_settings_filename, solver_factory),solver_factory)));
+         addModul(uptr(new SideModul(msg, num, solver_factory)));
+         addModul(uptr(new ObjectiveModul(msg, num, solver_factory)));
+         addModul(uptr(new VarroundModul(msg, num, solver_factory)));
+         addModul(uptr(new ConsRoundModul(msg, num, solver_factory)));
 
          if( options.maxrounds < 0 )
             options.maxrounds = INT_MAX;
@@ -157,6 +155,7 @@ namespace bugger {
          options.addParameters(paramSet);
          for( const auto &module: modules )
             module->addParameters(paramSet);
+         solver_factory->add_parameters(paramSet);
          return paramSet;
       }
 
