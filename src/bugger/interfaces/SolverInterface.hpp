@@ -87,9 +87,7 @@ namespace bugger {
       create_solver( ) const = 0;
 
       virtual void
-      add_parameters( ParameterSet& parameter ) {
-      }
-
+      add_parameters( ParameterSet& parameter ) {}
 
       virtual ~SolverFactory() {}
    };
