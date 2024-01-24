@@ -47,11 +47,13 @@ namespace bugger {
       SCIP* scip = nullptr;
       Vec<SCIP_VAR*> vars;
       Solution<double>* reference = nullptr;
+      bool activate_objective_stop = false;
 
    public:
-      explicit ScipInterface( ) {
+      explicit ScipInterface( bool _activate_objective_stop ) {
          if( SCIPcreate(&scip) != SCIP_OKAY || SCIPincludeDefaultPlugins(scip) != SCIP_OKAY )
             throw std::runtime_error("could not create SCIP");
+         activate_objective_stop = _activate_objective_stop;
       }
 
       void
@@ -258,11 +260,11 @@ namespace bugger {
             SCIP_CALL(SCIPreleaseCons(scip, &cons));
          }
 
-//#if SCIP_VERSION >= 900
-////         TODO: test this
-//         if( solution_exists )
-//            SCIPsetRealParam(scip, "limits/objectivestop", reference->value);
-//#endif
+#if SCIP_VERSION >= 900
+//         TODO: test this
+         if( solution_exists && activate_objective_stop )
+            SCIPsetRealParam(scip, "limits/objectivestop", reference->value);
+#endif
          return SCIP_OKAY;
       }
 
@@ -349,12 +351,21 @@ namespace bugger {
 
    class ScipFactory : public SolverFactory
    {
+      bool activate_objective_stop = false;
 
    public:
+
+      void add_parameters(bugger::ParameterSet &parameter) override
+      {
+#if SCIP_VERSION >= 900
+         parameter.addParameter("scip.activateobjectivestop", "should limits/objectivestop be activated", activate_objective_stop);
+#endif
+      }
+
       virtual std::unique_ptr<SolverInterface>
       create_solver(  ) const
       {
-         auto scip = std::unique_ptr<SolverInterface>( new ScipInterface() );
+         auto scip = std::unique_ptr<SolverInterface>( new ScipInterface( activate_objective_stop ) );
          return scip;
       }
 
