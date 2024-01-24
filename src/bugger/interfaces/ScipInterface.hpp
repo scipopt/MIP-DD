@@ -262,7 +262,7 @@ namespace bugger {
 
 #if SCIP_VERSION >= 900
 //         TODO: test this
-         if( solution_exists && activate_objective_stop )
+         if( solution_exists && setprimalstop )
             SCIPsetRealParam(scip, "limits/objectivestop", reference->value);
 #endif
          return SCIP_OKAY;
@@ -351,21 +351,21 @@ namespace bugger {
 
    class ScipFactory : public SolverFactory
    {
-      bool activate_objective_stop = false;
+      bool setprimalstop = false;
 
    public:
 
       void add_parameters(bugger::ParameterSet &parameter) override
       {
 #if SCIP_VERSION >= 900
-         parameter.addParameter("scip.activateobjectivestop", "should limits/objectivestop be activated", activate_objective_stop);
+         parameter.addParameter("scip.setprimalstop", "should limits/objectivestop be activated", activate_objective_stop);
 #endif
       }
 
       virtual std::unique_ptr<SolverInterface>
       create_solver(  ) const
       {
-         auto scip = std::unique_ptr<SolverInterface>( new ScipInterface( activate_objective_stop ) );
+         auto scip = std::unique_ptr<SolverInterface>( new ScipInterface( setprimalstop ) );
          return scip;
       }
 
