@@ -258,6 +258,11 @@ namespace bugger {
             SCIP_CALL(SCIPreleaseCons(scip, &cons));
          }
 
+//#if SCIP_VERSION >= 900
+////         TODO: test this
+//         if( solution_exists )
+//            SCIPsetRealParam(scip, "limits/objectivestop", reference->value);
+//#endif
          return SCIP_OKAY;
       }
 
