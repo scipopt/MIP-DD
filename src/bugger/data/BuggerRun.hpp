@@ -81,8 +81,7 @@ namespace bugger {
 
          SolverSettings solver_settings = parseSettings(settings_filename, solver_factory);
 
-         std::string s = "/home/alexander/Downloads/gwin/gwin8_f_l.lp";
-         auto prob = solver_factory->create_solver()->read_problem(s);
+         auto prob = solver_factory->create_solver()->read_problem(instance_filename);
          if( !prob )
          {
             msg.info("Parser of the solver returned none. Using internal parser...");
