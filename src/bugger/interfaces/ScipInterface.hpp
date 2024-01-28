@@ -71,7 +71,7 @@ namespace bugger {
       };
 
 
-      boost::optional<Problem<double>> read_problem( std::string& filename ) override
+      boost::optional<Problem<double>> read_problem( const std::string& filename ) override
       {
          SCIPreadProb(scip, filename.c_str(), NULL);
          ProblemBuilder<SCIP_Real> builder;
@@ -106,9 +106,11 @@ namespace bugger {
             builder.setColLbInf(i, SCIPisInfinity(scip, -lb));
             builder.setColUbInf(i, SCIPisInfinity(scip, ub));
             builder.setColIntegral(i, SCIPvarIsIntegral(var));
+            builder.setColName(i, SCIPvarGetName(var));
             builder.setObj(i, SCIPvarGetObj(var));
          }
 
+         builder.setNumRows(nrows);
          for(int i=0; i< nrows; i++)
          {
             unsigned int success= 0;
@@ -133,7 +135,9 @@ namespace bugger {
             builder.setRowRhs(i, rhs);
             builder.setRowLhsInf(i, SCIPisInfinity(scip, -lhs));
             builder.setRowRhsInf(i, SCIPisInfinity(scip, rhs));
-            }
+            builder.setRowName(i, SCIPconsGetName(con));
+
+         }
 
 
          /* init objective offset - the value itself is irrelevant */
