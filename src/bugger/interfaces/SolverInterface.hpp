@@ -75,6 +75,11 @@ namespace bugger {
       virtual
       SolverSettings parseSettings(const std::string& settings) = 0;
 
+      virtual
+      boost::optional<Problem<double>>  read_problem( std::string& filename )
+      {
+         return boost::none;
+      };
 
       virtual ~SolverInterface() = default;
    };

@@ -53,9 +53,9 @@ namespace bugger {
    private:
       bugger::BuggerOptions options;
       const std::string& settings_filename;
+      const std::string& instance_filename;
       const std::string& target_settings_filename;
-      bugger::Problem<double> &problem;
-      bugger::Solution<double> &solution;
+      const std::string& solution_filename;
       bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &modules;
       bugger::Vec<bugger::ModulStatus> results;
       bugger::Message msg { };
@@ -63,9 +63,10 @@ namespace bugger {
 
    public:
 
-      BuggerRun(const std::string& _settings_filename, const std::string& _target_settings_filename, bugger::Problem<double> &_problem, bugger::Solution<double> &_solution,
+      BuggerRun(const std::string& _settings_filename, const std::string& _target_settings_filename, const std::string& _instance_filename,
+                const std::string& _solution_filename,
                 bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
-            : options({ }), settings_filename(_settings_filename), target_settings_filename(_target_settings_filename), problem(_problem), solution(_solution),
+            : options({ }), settings_filename(_settings_filename), target_settings_filename(_target_settings_filename), instance_filename(_instance_filename), solution_filename(_solution_filename),
               modules(_modules), solver_factory(load_solver_factory()) { }
 
       bool
@@ -77,11 +78,46 @@ namespace bugger {
 
       void apply(bugger::Timer &timer, const std::string &filename ) {
 
-         check_feasibility_of_solution();
 
          SolverSettings solver_settings = parseSettings(settings_filename, solver_factory);
 
-         printOriginalSolveStatus(solver_settings, solver_factory);
+         std::string s = "/home/alexander/Downloads/gwin/gwin8_f_l.lp";
+         auto prob = solver_factory->create_solver()->read_problem(s);
+         if( !prob )
+         {
+            msg.info("Parser of the solver returned none. Using internal parser...");
+            prob = MpsParser<double>::loadProblem(instance_filename);
+
+            if( !prob )
+            {
+               msg.error("error loading problem {}\n", instance_filename);
+               return;
+            }
+         }
+         auto problem = prob.get();
+
+
+         Solution<double> solution;
+         if( !solution_filename.empty( ) )
+         {
+            if( boost::iequals(solution_filename, "infeasible") )
+               solution.status = SolutionStatus::kInfeasible;
+            else if( boost::iequals(solution_filename, "unbounded") )
+               solution.status = SolutionStatus::kUnbounded;
+            else if( !boost::iequals(solution_filename, "unknown") )
+            {
+               bool success = SolParser<double>::read(solution_filename, problem.getVariableNames( ), solution);
+               if( !success )
+               {
+                  msg.error("error loading problem {}\n", solution_filename);
+                  return;
+               }
+            }
+         }
+
+         check_feasibility_of_solution(problem, solution);
+
+         printOriginalSolveStatus(solver_settings, solver_factory, problem, solution);
 
          using uptr = std::unique_ptr<bugger::BuggerModul>;
 
@@ -161,7 +197,7 @@ namespace bugger {
 
    private:
 
-      void check_feasibility_of_solution( ) {
+      void check_feasibility_of_solution( const Problem<double>& problem , const Solution<double>& solution) {
          if( solution.status != SolutionStatus::kFeasible )
             return;
          const Vec<double>& ub = problem.getUpperBounds();
@@ -259,7 +295,7 @@ namespace bugger {
          msg.info("\n");
       }
 
-      void printOriginalSolveStatus(const SolverSettings &settings, const std::shared_ptr<SolverFactory>& factory) {
+      void printOriginalSolveStatus(const SolverSettings &settings, const std::shared_ptr<SolverFactory>& factory, const Problem<double>& problem, Solution<double>& solution) {
          auto solver = factory->create_solver();
          solver->doSetUp(problem, settings, solution);
          Vec<int> empty_passcodes{};

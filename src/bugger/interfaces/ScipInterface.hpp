@@ -28,6 +28,7 @@
 
 #include "scip/cons_linear.h"
 #include "scip/scip.h"
+#include "scip/pub_cons.h"
 #include "scip/scip_param.h"
 #include "scip/scipdefplugins.h"
 #include "scip/struct_paramset.h"
@@ -68,6 +69,78 @@ namespace bugger {
             SCIPwriteParams(scip, (filename + ".set").c_str(), 0, 1);
          SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, 0);
       };
+
+
+      boost::optional<Problem<double>> read_problem( std::string& filename ) override
+      {
+         SCIPreadProb(scip, filename.c_str(), NULL);
+         ProblemBuilder<SCIP_Real> builder;
+
+         /* build problem from matrix */
+         int ncols = SCIPgetNVars(scip);
+
+         //TODO: add check that only linear constraints exists
+         int nrows = SCIPgetNConss(scip);
+         int nnz = 0;
+         SCIP_VAR **vars = SCIPgetVars(scip);
+         SCIP_CONS** cons = SCIPgetConss(scip);
+         for(int i=0; i< nrows; i++)
+         {
+            unsigned int success= 0;
+            int nconsvars = 0;
+            SCIP_CONS *con = cons[ i ];
+            SCIPgetConsNVars(scip, con, &nconsvars, &success);
+            nnz += nconsvars;
+         }
+         builder.reserve(nnz, nrows, ncols);
+
+         /* set up columns */
+         builder.setNumCols(ncols);
+         for(int i = 0; i != ncols; ++i)
+         {
+            SCIP_VAR* var = vars[i];
+            SCIP_Real lb = SCIPvarGetLbGlobal(var);
+            SCIP_Real ub = SCIPvarGetUbGlobal(var);
+            builder.setColLb(i, lb);
+            builder.setColUb(i, ub);
+            builder.setColLbInf(i, SCIPisInfinity(scip, -lb));
+            builder.setColUbInf(i, SCIPisInfinity(scip, ub));
+            builder.setColIntegral(i, SCIPvarIsIntegral(var));
+            builder.setObj(i, SCIPvarGetObj(var));
+         }
+
+         for(int i=0; i< nrows; i++)
+         {
+            unsigned int success= 0;
+            int nconsvars = 0;
+            SCIP_CONS *con = cons[ i ];
+            SCIPgetConsNVars(scip, con, &nconsvars, &success);
+            nnz += nconsvars;
+            SCIP_VAR* consvars[nconsvars];
+            int indices[nconsvars];
+            SCIP_Real consvals[nconsvars];
+            SCIPgetConsVars(scip, con, consvars, nconsvars, &success);
+            SCIPgetConsVals(scip, con, consvals, nconsvars, &success);
+            for(int j= 0; j< nconsvars; j++)
+            {
+               indices[ j ] = SCIPvarGetProbindex(consvars[ j ]);
+               assert(strcmp(SCIPvarGetName(consvars[j]), SCIPvarGetName(vars[indices[j]])) == 0);
+            }
+            builder.addRowEntries(i, nconsvars, indices, consvals);
+            SCIP_Real lhs = SCIPconsGetLhs(scip, con, &success);
+            SCIP_Real rhs = SCIPconsGetRhs(scip, con, &success);
+            builder.setRowLhs(i, lhs);
+            builder.setRowRhs(i, rhs);
+            builder.setRowLhsInf(i, SCIPisInfinity(scip, -lhs));
+            builder.setRowRhsInf(i, SCIPisInfinity(scip, rhs));
+            }
+
+
+         /* init objective offset - the value itself is irrelevant */
+         builder.setObjOffset(0);
+
+         return builder.build();
+      }
 
       SolverSettings
       parseSettings(const std::string& settings) override
