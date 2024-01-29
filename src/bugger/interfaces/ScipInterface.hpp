@@ -143,7 +143,7 @@ namespace bugger {
             builder.setRowRhs(i, rhs);
             builder.setRowLhsInf(i, SCIPisInfinity(scip, -lhs));
             builder.setRowRhsInf(i, SCIPisInfinity(scip, rhs));
-            builder.setRowName(i, SCIPconsGetName(con));
+            builder.setRowName(i, SCIPconsGetName(cons));
          }
 
          /* set objective offset */
