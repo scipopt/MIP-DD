@@ -107,16 +107,21 @@ namespace bugger {
             SCIP_VAR *var = vars[ i ];
             SCIP_Real lb = SCIPvarGetLbGlobal(var);
             SCIP_Real ub = SCIPvarGetUbGlobal(var);
+            SCIP_VARTYPE vartype = SCIPvarGetType(var);
             builder.setColLb(i, lb);
             builder.setColUb(i, ub);
             builder.setColLbInf(i, SCIPisInfinity(scip, -lb));
             builder.setColUbInf(i, SCIPisInfinity(scip, ub));
-            builder.setColIntegral(i, SCIPvarIsIntegral(var));
+            builder.setColIntegral(i, vartype == SCIP_VARTYPE_BINARY || vartype == SCIP_VARTYPE_INTEGER);
+            builder.setColImplInt(i, vartype != SCIP_VARTYPE_CONTINUOUS);
             builder.setColName(i, SCIPvarGetName(var));
             builder.setObj(i, SCIPvarGetObj(var));
          }
 
          /* set up rows */
+         Vec<SCIP_VAR*> consvars(ncols);
+         Vec<SCIP_Real> consvals(ncols);
+         Vec<int> indices(ncols);
          builder.setNumRows(nrows);
          for( int i = 0; i < nrows; ++i )
          {
@@ -124,15 +129,12 @@ namespace bugger {
             SCIP_Bool success = FALSE;
             SCIP_CONS *cons = conss[ i ];
             SCIPgetConsNVars(scip, cons, &nconsvars, &success);
-            Vec<SCIP_VAR*> consvars(nconsvars);
-            SCIPgetConsVars(scip, cons, consvars.data(), nconsvars, &success);
+            SCIPgetConsVars(scip, cons, consvars.data(), ncols, &success);
             if( !success )
                return boost::none;
-            Vec<SCIP_Real> consvals(nconsvars);
-            SCIPgetConsVals(scip, cons, consvals.data(), nconsvars, &success);
+            SCIPgetConsVals(scip, cons, consvals.data(), ncols, &success);
             if( !success )
                return boost::none;
-            Vec<int> indices(nconsvars);
             for( int j = 0; j < nconsvars; ++j )
             {
                indices[ j ] = SCIPvarGetProbindex(consvars[ j ]);
@@ -284,14 +286,14 @@ namespace bugger {
                               : SCIP_Real(domains.upper_bounds[ col ]);
                assert(!domains.flags[ col ].test(ColFlag::kInactive) || ( lb == ub ));
                SCIP_VARTYPE type;
-               if( domains.flags[ col ].test(ColFlag::kIntegral))
+               if( domains.flags[ col ].test(ColFlag::kIntegral) )
                {
                   if( lb == 0 && ub == 1 )
                      type = SCIP_VARTYPE_BINARY;
                   else
                      type = SCIP_VARTYPE_INTEGER;
                }
-               else if( domains.flags[ col ].test(ColFlag::kImplInt))
+               else if( domains.flags[ col ].test(ColFlag::kImplInt) )
                   type = SCIP_VARTYPE_IMPLINT;
                else
                   type = SCIP_VARTYPE_CONTINUOUS;
@@ -306,11 +308,8 @@ namespace bugger {
             }
          }
 
-         Vec<SCIP_VAR *> consvars;
-         Vec<SCIP_Real> consvals;
-         consvars.resize(problem.getNCols( ));
-         consvals.resize(problem.getNCols( ));
-
+         Vec<SCIP_VAR*> consvars(problem.getNCols( ));
+         Vec<SCIP_Real> consvals(problem.getNCols( ));
          for( int row = 0; row < nrows; ++row )
          {
             if( problem.getRowFlags( )[ row ].test(RowFlag::kRedundant) )
