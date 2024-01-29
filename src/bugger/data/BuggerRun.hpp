@@ -108,7 +108,7 @@ namespace bugger {
                bool success = SolParser<double>::read(solution_filename, problem.getVariableNames( ), solution);
                if( !success )
                {
-                  msg.error("error loading problem {}\n", solution_filename);
+                  msg.error("error loading solution {}\n", solution_filename);
                   return;
                }
             }
@@ -288,10 +288,10 @@ namespace bugger {
          }
 
          if( maxindex >= 0 )
-            msg.info("Solution is infeasible.\nMaximum violation {:<3} of {} {:<3} {}\n", maxviol, maxrow ? "row" : "column", (maxrow ? problem.getConstraintNames() : problem.getVariableNames())[maxindex], maxrow ? (maxupper ? "right" : "left") : (maxupper ? "upper" : "lower"));
+            msg.info("Solution is infeasible.\nMaximum violation {:<3} of {} {:<3} {}.", maxviol, maxrow ? "row" : "column", (maxrow ? problem.getConstraintNames() : problem.getVariableNames())[maxindex], maxrow ? (maxupper ? "right" : "left") : (maxupper ? "upper" : "lower"));
          else
-            msg.info("Solution is feasible.\nNo violations detected");
-         msg.info("\n");
+            msg.info("Solution is feasible.\nNo violations detected.");
+         msg.info("\n\n");
       }
 
       void printOriginalSolveStatus(const SolverSettings &settings, const std::shared_ptr<SolverFactory>& factory, const Problem<double>& problem, Solution<double>& solution) {
@@ -299,7 +299,7 @@ namespace bugger {
          solver->doSetUp(problem, settings, solution);
          Vec<int> empty_passcodes{};
          const std::pair<char, SolverStatus> &pair = solver->solve(empty_passcodes);
-         msg.info("original solve returned code {} with status {}\n", (int) pair.first, pair.second);
+         msg.info("Original solve returned code {} with status {}.\n", (int) pair.first, pair.second);
       }
 
       SolverSettings parseSettings( const std::string& filename, const std::shared_ptr<SolverFactory>& factory) {
