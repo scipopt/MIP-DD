@@ -51,7 +51,7 @@ namespace bugger {
    class BuggerRun {
 
    private:
-      BuggerOptions options;
+      BuggerOptions options { };
       Vec<std::unique_ptr<bugger::BuggerModul>> &modules;
       Vec<bugger::ModulStatus> results;
       Message msg { };
@@ -59,8 +59,8 @@ namespace bugger {
 
    public:
 
-      explicit BuggerRun( bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
-            : options({ }),  modules(_modules), solver_factory(load_solver_factory()) { }
+      BuggerRun( bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
+            : modules(_modules), solver_factory(load_solver_factory()) { }
 
       bool
       is_time_exceeded( const Timer& timer ) const
