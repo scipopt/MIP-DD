@@ -71,7 +71,7 @@ namespace bugger {
       };
 
 
-      boost::optional<Problem<double>> read_problem( const std::string& filename ) override
+      boost::optional<Problem<double>> read_problem(const std::string& filename ) override
       {
          SCIPreadProb(scip, filename.c_str(), NULL);
          ProblemBuilder<SCIP_Real> builder;

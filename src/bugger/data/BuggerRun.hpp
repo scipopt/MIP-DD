@@ -53,7 +53,7 @@ namespace bugger {
    private:
       bugger::BuggerOptions options;
       const std::string& settings_filename;
-      const std::string& instance_filename;
+      const std::string& problem_filename;
       const std::string& target_settings_filename;
       const std::string& solution_filename;
       bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &modules;
@@ -63,10 +63,10 @@ namespace bugger {
 
    public:
 
-      BuggerRun(const std::string& _settings_filename, const std::string& _target_settings_filename, const std::string& _instance_filename,
+      BuggerRun(const std::string& _problem_filename, const std::string& _settings_filename, const std::string& _target_settings_filename,
                 const std::string& _solution_filename,
                 bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
-            : options({ }), settings_filename(_settings_filename), target_settings_filename(_target_settings_filename), instance_filename(_instance_filename), solution_filename(_solution_filename),
+            : options({ }), problem_filename(_problem_filename), settings_filename(_settings_filename), target_settings_filename(_target_settings_filename), solution_filename(_solution_filename),
               modules(_modules), solver_factory(load_solver_factory()) { }
 
       bool
@@ -79,17 +79,17 @@ namespace bugger {
       void apply(bugger::Timer &timer, const std::string &filename ) {
 
 
-         SolverSettings solver_settings = parseSettings(settings_filename, solver_factory);
+         SolverSettings settings = parseSettings(settings_filename, solver_factory);
 
-         auto prob = solver_factory->create_solver()->read_problem(instance_filename);
+         auto prob = solver_factory->create_solver( )->read_problem(problem_filename);
          if( !prob )
          {
             msg.info("Parser of the solver failed. Using internal parser...");
-            prob = MpsParser<double>::loadProblem(instance_filename);
+            prob = MpsParser<double>::loadProblem(problem_filename);
 
             if( !prob )
             {
-               msg.error("error loading problem {}\n", instance_filename);
+               msg.error("error loading problem {}\n", problem_filename);
                return;
             }
          }
@@ -116,7 +116,7 @@ namespace bugger {
 
          check_feasibility_of_solution(problem, solution);
 
-         printOriginalSolveStatus(solver_settings, solver_factory, problem, solution);
+         printOriginalSolveStatus(problem, solution, settings, solver_factory);
 
          using uptr = std::unique_ptr<bugger::BuggerModul>;
 
@@ -154,7 +154,7 @@ namespace bugger {
          for( int round = options.initround, stage = options.initstage, success = 0; round < options.maxrounds && stage < options.maxstages; ++round )
          {
             //TODO: one can think about shrinking the matrix in each round
-            solver_factory->create_solver( )->writeInstance(filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round), solver_settings, problem, settings_modul_activated);
+            solver_factory->create_solver( )->writeInstance(filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round), settings, problem, settings_modul_activated);
 
             if( is_time_exceeded(timer) )
                break;
@@ -163,7 +163,7 @@ namespace bugger {
 
             for( int module = 0; module <= stage && stage < options.maxstages; ++module )
             {
-               results[ module ] = modules[ module ]->run(problem, solver_settings, solution, options, timer);
+               results[ module ] = modules[ module ]->run(problem, settings, solution, options, timer);
 
                if( results[ module ] == bugger::ModulStatus::kSuccessful )
                   success = module;
@@ -294,7 +294,7 @@ namespace bugger {
          msg.info("\n\n");
       }
 
-      void printOriginalSolveStatus(const SolverSettings &settings, const std::shared_ptr<SolverFactory>& factory, const Problem<double>& problem, Solution<double>& solution) {
+      void printOriginalSolveStatus( const Problem<double>& problem, Solution<double>& solution, const SolverSettings &settings, const std::shared_ptr<SolverFactory>& factory ) {
          auto solver = factory->create_solver();
          solver->doSetUp(problem, settings, solution);
          Vec<int> empty_passcodes{};
