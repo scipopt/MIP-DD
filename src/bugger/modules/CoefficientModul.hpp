@@ -83,6 +83,7 @@ namespace bugger {
          Vec<MatrixEntry<double>> batches_coeff { };
          Vec<std::pair<int, double>> batches_offset { };
          batches_offset.reserve(batchsize);
+         int batch = 0;
 
          for( int row = copy.getNRows( ) - 1; row >= 0; --row )
          {
@@ -129,14 +130,20 @@ namespace bugger {
                   }
                }
 
-               if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
-                  copy.getConstraintMatrix( ).modifyLeftHandSide( row, num, copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] + offset );
-               if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
-                  copy.getConstraintMatrix( ).modifyRightHandSide( row, num, copy.getConstraintMatrix( ).getRightHandSides( )[ row ] + offset );
-               batches_offset.emplace_back(row, offset);
+               if(!num.isZetaZero(offset))
+               {
+                  if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf))
+                     copy.getConstraintMatrix( ).modifyLeftHandSide(row, num,
+                                 copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] + offset);
+                  if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf))
+                     copy.getConstraintMatrix( ).modifyRightHandSide(row, num,
+                                 copy.getConstraintMatrix( ).getRightHandSides( )[ row ] + offset);
+                  batches_offset.emplace_back(row, offset);
+               }
+               ++batch;
             }
 
-            if( !batches_offset.empty() && ( batches_offset.size() >= batchsize || row <= 0 ) )
+            if( batch >= batchsize || row <= 0 )
             {
                MatrixBuffer<double> matrixBuffer{ };
                for(auto entry: batches_coeff)
@@ -166,12 +173,13 @@ namespace bugger {
                }
                batches_coeff.clear();
                batches_offset.clear();
+               batch = 0;
             }
          }
 
          if(!admissible)
             return ModulStatus::kNotAdmissible;
-         if( applied_reductions.empty() )
+         if( applied_reductions.empty() && applied_entries.empty())
             return ModulStatus::kUnsuccesful;
          else
          {
