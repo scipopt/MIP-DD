@@ -146,7 +146,7 @@ namespace bugger {
             if( batch != 0 && ( batch >= batchsize || row <= 0 ) )
             {
                MatrixBuffer<double> matrixBuffer{ };
-               for(auto entry: batches_coeff)
+               for( auto entry: batches_coeff )
                   matrixBuffer.addEntry(entry.row, entry.col, entry.val);
                copy.getConstraintMatrix( ).changeCoefficients(matrixBuffer);
                auto solver = createSolver();
@@ -155,7 +155,7 @@ namespace bugger {
                {
                   copy = Problem<double>(problem);
                   MatrixBuffer<double> matrixBuffer2{ };
-                  for(auto entry: applied_entries)
+                  for( auto entry: applied_entries )
                      matrixBuffer2.addEntry(entry.row, entry.col, entry.val);
                   copy.getConstraintMatrix( ).changeCoefficients(matrixBuffer2);
                   for( const auto &item: applied_reductions )
