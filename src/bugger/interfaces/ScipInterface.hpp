@@ -118,7 +118,6 @@ namespace bugger {
             int nconsvars = 0;
             SCIP_CONS *con = cons[ i ];
             SCIPgetConsNVars(scip, con, &nconsvars, &success);
-            nnz += nconsvars;
             SCIP_VAR* consvars[nconsvars];
             int indices[nconsvars];
             SCIP_Real consvals[nconsvars];
