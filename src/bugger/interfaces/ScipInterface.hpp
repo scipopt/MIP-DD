@@ -76,10 +76,14 @@ namespace bugger {
          SCIPreadProb(scip, filename.c_str(), NULL);
          ProblemBuilder<SCIP_Real> builder;
 
-         /* build problem from scip */
-         int ncols = SCIPgetNVars(scip);
+         /* set objective offset */
+         builder.setObjOffset(SCIPgetOrigObjoffset(scip));
 
-         //TODO: add check that only linear constraints exists
+         /* set objective sense */
+         builder.setObjSense(SCIPgetObjsense(scip) == SCIP_OBJSENSE_MINIMIZE);
+
+         /* reserve problem memory */
+         int ncols = SCIPgetNVars(scip);
          int nrows = SCIPgetNConss(scip);
          int nnz = 0;
          SCIP_VAR **vars = SCIPgetVars(scip);
@@ -111,6 +115,7 @@ namespace bugger {
             builder.setObj(i, SCIPvarGetObj(var));
          }
 
+         /* set up rows */
          builder.setNumRows(nrows);
          for( int i = 0; i < nrows; ++i )
          {
@@ -118,21 +123,21 @@ namespace bugger {
             SCIP_Bool success = FALSE;
             SCIP_CONS *cons = conss[ i ];
             SCIPgetConsNVars(scip, cons, &nconsvars, &success);
-            SCIP_VAR *consvars[nconsvars];
-            SCIP_Real consvals[nconsvars];
-            SCIPgetConsVars(scip, cons, consvars, nconsvars, &success);
+            std::vector<SCIP_VAR*> consvars(nconsvars);
+            SCIPgetConsVars(scip, cons, consvars.data(), nconsvars, &success);
             if( !success )
                return boost::none;
-            SCIPgetConsVals(scip, cons, consvals, nconsvars, &success);
+            std::vector<SCIP_Real> consvals(nconsvars);
+            SCIPgetConsVals(scip, cons, consvals.data(), nconsvars, &success);
             if( !success )
                return boost::none;
-            int indices[nconsvars];
+            std::vector<int> indices(nconsvars);
             for( int j = 0; j < nconsvars; ++j )
             {
                indices[ j ] = SCIPvarGetProbindex(consvars[ j ]);
-               assert(strcmp(SCIPvarGetName(consvars[j]), SCIPvarGetName(vars[indices[j]])) == 0);
+               assert(strcmp(SCIPvarGetName(consvars[ j ]), SCIPvarGetName(vars[ indices[ j ] ])) == 0);
             }
-            builder.addRowEntries(i, nconsvars, indices, consvals);
+            builder.addRowEntries(i, nconsvars, indices.data(), consvals.data());
             SCIP_Real lhs = SCIPconsGetLhs(scip, cons, &success);
             if( !success )
                return boost::none;
@@ -145,11 +150,6 @@ namespace bugger {
             builder.setRowRhsInf(i, SCIPisInfinity(scip, rhs));
             builder.setRowName(i, SCIPconsGetName(cons));
          }
-
-         /* set objective offset */
-         builder.setObjOffset(SCIPgetOrigObjoffset(scip));
-         /* set objective sense */
-         builder.setObjSense(SCIPgetObjsense(scip) == SCIP_OBJSENSE_MINIMIZE);
 
          return builder.build();
       }
