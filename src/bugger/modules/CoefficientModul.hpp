@@ -143,7 +143,7 @@ namespace bugger {
                ++batch;
             }
 
-            if( batch >= batchsize || row <= 0 )
+            if( batch != 0 && ( batch >= batchsize || row <= 0 ) )
             {
                MatrixBuffer<double> matrixBuffer{ };
                for(auto entry: batches_coeff)
