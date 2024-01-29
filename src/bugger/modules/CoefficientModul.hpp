@@ -130,9 +130,9 @@ namespace bugger {
                   }
                }
 
-               if(!num.isZetaZero(offset))
+               if( !num.isZetaZero(offset) )
                {
-                  if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf))
+                  if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
                      copy.getConstraintMatrix( ).modifyLeftHandSide(row, num,
                                  copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] + offset);
                   if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf))
