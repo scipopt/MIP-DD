@@ -71,34 +71,39 @@ namespace bugger {
       };
 
 
-      boost::optional<Problem<double>> read_problem(const std::string& filename ) override
+      boost::optional<Problem<double>> read_problem(const std::string& filename) override
       {
          SCIPreadProb(scip, filename.c_str(), NULL);
          ProblemBuilder<SCIP_Real> builder;
 
-         /* build problem from matrix */
-         int ncols = SCIPgetNVars(scip);
+         /* set objective offset */
+         builder.setObjOffset(SCIPgetOrigObjoffset(scip));
 
-         //TODO: add check that only linear constraints exists
+         /* set objective sense */
+         builder.setObjSense(SCIPgetObjsense(scip) == SCIP_OBJSENSE_MINIMIZE);
+
+         /* reserve problem memory */
+         int ncols = SCIPgetNVars(scip);
          int nrows = SCIPgetNConss(scip);
          int nnz = 0;
          SCIP_VAR **vars = SCIPgetVars(scip);
-         SCIP_CONS** cons = SCIPgetConss(scip);
-         for(int i=0; i< nrows; i++)
+         SCIP_CONS **conss = SCIPgetConss(scip);
+         for( int i = 0; i < nrows; ++i )
          {
-            unsigned int success= 0;
             int nconsvars = 0;
-            SCIP_CONS *con = cons[ i ];
-            SCIPgetConsNVars(scip, con, &nconsvars, &success);
+            SCIP_Bool success = FALSE;
+            SCIPgetConsNVars(scip, conss[ i ], &nconsvars, &success);
+            if( !success )
+               return boost::none;
             nnz += nconsvars;
          }
          builder.reserve(nnz, nrows, ncols);
 
          /* set up columns */
          builder.setNumCols(ncols);
-         for(int i = 0; i != ncols; ++i)
+         for( int i = 0; i < ncols; ++i )
          {
-            SCIP_VAR* var = vars[i];
+            SCIP_VAR *var = vars[ i ];
             SCIP_Real lb = SCIPvarGetLbGlobal(var);
             SCIP_Real ub = SCIPvarGetUbGlobal(var);
             builder.setColLb(i, lb);
@@ -110,38 +115,41 @@ namespace bugger {
             builder.setObj(i, SCIPvarGetObj(var));
          }
 
+         /* set up rows */
          builder.setNumRows(nrows);
-         for(int i=0; i< nrows; i++)
+         for( int i = 0; i < nrows; ++i )
          {
-            unsigned int success= 0;
             int nconsvars = 0;
-            SCIP_CONS *con = cons[ i ];
-            SCIPgetConsNVars(scip, con, &nconsvars, &success);
-            nnz += nconsvars;
-            SCIP_VAR* consvars[nconsvars];
-            int indices[nconsvars];
-            SCIP_Real consvals[nconsvars];
-            SCIPgetConsVars(scip, con, consvars, nconsvars, &success);
-            SCIPgetConsVals(scip, con, consvals, nconsvars, &success);
-            for(int j= 0; j< nconsvars; j++)
+            SCIP_Bool success = FALSE;
+            SCIP_CONS *cons = conss[ i ];
+            SCIPgetConsNVars(scip, cons, &nconsvars, &success);
+            std::vector<SCIP_VAR*> consvars(nconsvars);
+            SCIPgetConsVars(scip, cons, consvars.data(), nconsvars, &success);
+            if( !success )
+               return boost::none;
+            std::vector<SCIP_Real> consvals(nconsvars);
+            SCIPgetConsVals(scip, cons, consvals.data(), nconsvars, &success);
+            if( !success )
+               return boost::none;
+            std::vector<int> indices(nconsvars);
+            for( int j = 0; j < nconsvars; ++j )
             {
                indices[ j ] = SCIPvarGetProbindex(consvars[ j ]);
-               assert(strcmp(SCIPvarGetName(consvars[j]), SCIPvarGetName(vars[indices[j]])) == 0);
+               assert(strcmp(SCIPvarGetName(consvars[ j ]), SCIPvarGetName(vars[ indices[ j ] ])) == 0);
             }
-            builder.addRowEntries(i, nconsvars, indices, consvals);
-            SCIP_Real lhs = SCIPconsGetLhs(scip, con, &success);
-            SCIP_Real rhs = SCIPconsGetRhs(scip, con, &success);
+            builder.addRowEntries(i, nconsvars, indices.data(), consvals.data());
+            SCIP_Real lhs = SCIPconsGetLhs(scip, cons, &success);
+            if( !success )
+               return boost::none;
+            SCIP_Real rhs = SCIPconsGetRhs(scip, cons, &success);
+            if( !success )
+               return boost::none;
             builder.setRowLhs(i, lhs);
             builder.setRowRhs(i, rhs);
             builder.setRowLhsInf(i, SCIPisInfinity(scip, -lhs));
             builder.setRowRhsInf(i, SCIPisInfinity(scip, rhs));
-            builder.setRowName(i, SCIPconsGetName(con));
-
+            builder.setRowName(i, SCIPconsGetName(cons));
          }
-
-
-         /* init objective offset - the value itself is irrelevant */
-         builder.setObjOffset(0);
 
          return builder.build();
       }

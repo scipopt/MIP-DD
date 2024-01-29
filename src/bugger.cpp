@@ -81,8 +81,8 @@ main(int argc, char *argv[]) {
       return 0;
 
 
-   Vec<std::unique_ptr<BuggerModul>> list { };
-   BuggerRun bugger { optionsInfo.problem_file, optionsInfo.settings_file, optionsInfo.target_settings_file, optionsInfo.solution_file, list };
+   Vec<std::unique_ptr<BuggerModul>> modules { };
+   BuggerRun bugger {  modules };
 
    if( !optionsInfo.param_settings_file.empty( ) || !optionsInfo.unparsed_options.empty( ))
    {
@@ -166,7 +166,7 @@ main(int argc, char *argv[]) {
    double time = 0;
    Timer timer(time);
 
-   bugger.apply(timer, optionsInfo.problem_file);
+   bugger.apply(timer, optionsInfo);
 
    return 0;
 }
