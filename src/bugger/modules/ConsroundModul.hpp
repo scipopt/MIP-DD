@@ -100,15 +100,34 @@ namespace bugger {
                double lhs = num.round(copy.getConstraintMatrix( ).getLeftHandSides( )[ row ]);
                double rhs = num.round(copy.getConstraintMatrix( ).getRightHandSides( )[ row ]);
 
+
+               double activity = 0;
+
                for( int index = 0; index < data.getLength( ); ++index )
-                  if( !num.isZetaIntegral(data.getValues( )[ index ]) )
-                     batches_coeff.emplace_back(row, data.getIndices( )[ index ], num.round(data.getValues( )[ index ]));
-
-               if( solution.status == SolutionStatus::kFeasible )
                {
-                  data = copy.getConstraintMatrix( ).getRowCoefficients(row);
-                  double activity = get_linear_activity(data, solution);
+                  if( solution.status == SolutionStatus::kFeasible )
+                  {
+                     if( !num.isZetaIntegral(data.getValues( )[ index ]))
+                     {
+                        double new_coeff = num.round(data.getValues( )[ index ]);
+                        batches_coeff.emplace_back(row, data.getIndices( )[ index ], new_coeff);
+                        activity += solution.primal[ data.getIndices( )[ index ]] * new_coeff;
+                     }
+                     else
+                        activity += solution.primal[ data.getIndices( )[ index ]] * data.getValues( )[ index ];
+                  }
+                  else
+                  {
+                     if( !num.isZetaIntegral(data.getValues( )[ index ]))
+                     {
+                        double new_coeff = num.round(data.getValues( )[ index ]);
+                        batches_coeff.emplace_back(row, data.getIndices( )[ index ], new_coeff);
+                     }
+                  }
+               }
 
+               if(solution.status == SolutionStatus::kFeasible)
+               {
                   lhs = num.min(lhs, num.epsFloor(activity));
                   rhs = num.max(rhs, num.epsCeil(activity));
                }
@@ -167,7 +186,7 @@ namespace bugger {
 
          if(!admissible)
             return ModulStatus::kNotAdmissible;
-         if( applied_reductions_lhs.empty() )
+         if( applied_entries.empty() && applied_reductions_lhs.empty() || !applied_reductions_rhs.empty() )
             return ModulStatus::kUnsuccesful;
          else
          {
