@@ -114,18 +114,18 @@ namespace bugger {
                }
 
                if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
-                     && !num.isZetaEq(lhs, copy.getConstraintMatrix().getLeftHandSides()[row]) )
+                     && !num.isZetaEq(lhs, copy.getConstraintMatrix().getLeftHandSides()[ row ]) )
                {
                   copy.getConstraintMatrix( ).modifyLeftHandSide(row, num, lhs);
                   batches_lhs.emplace_back(row, lhs);
                }
                if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
-                     && !num.isZetaEq(lhs, copy.getConstraintMatrix().getLeftHandSides()[row]) )
+                     && !num.isZetaEq(rhs, copy.getConstraintMatrix().getRightHandSides()[ row ]) )
                {
                   copy.getConstraintMatrix( ).modifyRightHandSide(row, num, rhs);
                   batches_rhs.emplace_back(row, rhs);
                }
-               batch++;
+               ++batch;
             }
 
             if( batch != 0 && ( batch >= batchsize || row >= copy.getNRows( ) - 1 ) )
