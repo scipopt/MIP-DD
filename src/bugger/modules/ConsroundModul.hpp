@@ -183,7 +183,7 @@ namespace bugger {
 
          if(!admissible)
             return ModulStatus::kNotAdmissible;
-         if( applied_entries.empty() && applied_reductions_lhs.empty() && applied_reductions_rhs.empty() )
+         if( applied_reductions_lhs.empty() && applied_reductions_rhs.empty() && applied_entries.empty() )
             return ModulStatus::kUnsuccesful;
          else
          {
