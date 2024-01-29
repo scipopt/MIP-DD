@@ -97,9 +97,9 @@ namespace bugger {
 
          /* set up columns */
          builder.setNumCols(ncols);
-         for(int i = 0; i != ncols; ++i)
+         for( int i = 0; i < ncols; ++i )
          {
-            SCIP_VAR* var = vars[i];
+            SCIP_VAR *var = vars[ i ];
             SCIP_Real lb = SCIPvarGetLbGlobal(var);
             SCIP_Real ub = SCIPvarGetUbGlobal(var);
             builder.setColLb(i, lb);
