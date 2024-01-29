@@ -76,9 +76,10 @@ namespace bugger {
          SCIPreadProb(scip, filename.c_str(), NULL);
          ProblemBuilder<SCIP_Real> builder;
 
+         /* set problem name */
+         builder.setProblemName(std::string(SCIPgetProbName(scip)));
          /* set objective offset */
          builder.setObjOffset(SCIPgetOrigObjoffset(scip));
-
          /* set objective sense */
          builder.setObjSense(SCIPgetObjsense(scip) == SCIP_OBJSENSE_MINIMIZE);
 
@@ -123,15 +124,15 @@ namespace bugger {
             SCIP_Bool success = FALSE;
             SCIP_CONS *cons = conss[ i ];
             SCIPgetConsNVars(scip, cons, &nconsvars, &success);
-            std::vector<SCIP_VAR*> consvars(nconsvars);
+            Vec<SCIP_VAR*> consvars(nconsvars);
             SCIPgetConsVars(scip, cons, consvars.data(), nconsvars, &success);
             if( !success )
                return boost::none;
-            std::vector<SCIP_Real> consvals(nconsvars);
+            Vec<SCIP_Real> consvals(nconsvars);
             SCIPgetConsVals(scip, cons, consvals.data(), nconsvars, &success);
             if( !success )
                return boost::none;
-            std::vector<int> indices(nconsvars);
+            Vec<int> indices(nconsvars);
             for( int j = 0; j < nconsvars; ++j )
             {
                indices[ j ] = SCIPvarGetProbindex(consvars[ j ]);
