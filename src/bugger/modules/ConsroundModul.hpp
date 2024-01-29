@@ -114,7 +114,7 @@ namespace bugger {
                         activity += solution.primal[ data.getIndices( )[ index ]] * new_coeff;
                      }
                      else
-                        activity += solution.primal[ data.getIndices( )[ index ]] * data.getValues( )[ index ];
+                        activity += solution.primal[ data.getIndices( )[ index ] ] * data.getValues( )[ index ];
                   }
                   else
                   {
