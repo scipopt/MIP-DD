@@ -107,7 +107,7 @@ namespace bugger {
                {
                   if( solution.status == SolutionStatus::kFeasible )
                   {
-                     if( !num.isZetaIntegral(data.getValues( )[ index ]))
+                     if( !num.isZetaIntegral(data.getValues( )[ index ]) )
                      {
                         double new_coeff = num.round(data.getValues( )[ index ]);
                         batches_coeff.emplace_back(row, data.getIndices( )[ index ], new_coeff);
