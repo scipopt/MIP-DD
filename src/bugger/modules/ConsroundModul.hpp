@@ -111,7 +111,7 @@ namespace bugger {
                      {
                         double new_coeff = num.round(data.getValues( )[ index ]);
                         batches_coeff.emplace_back(row, data.getIndices( )[ index ], new_coeff);
-                        activity += solution.primal[ data.getIndices( )[ index ]] * new_coeff;
+                        activity += solution.primal[ data.getIndices( )[ index ] ] * new_coeff;
                      }
                      else
                         activity += solution.primal[ data.getIndices( )[ index ] ] * data.getValues( )[ index ];
