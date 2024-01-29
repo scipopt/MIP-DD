@@ -76,7 +76,7 @@ namespace bugger {
          SCIPreadProb(scip, filename.c_str(), NULL);
          ProblemBuilder<SCIP_Real> builder;
 
-         /* build problem from matrix */
+         /* build problem from scip */
          int ncols = SCIPgetNVars(scip);
 
          //TODO: add check that only linear constraints exists
