@@ -78,9 +78,9 @@ namespace bugger {
 
          bool admissible = false;
          auto copy = Problem<double>(problem);
-         MatrixBuffer<double> applied_entries { };
+         Vec<MatrixEntry<double>> applied_entries { };
          Vec<std::pair<int, double>> applied_reductions { };
-         MatrixBuffer<double> batches_coeff { };
+         Vec<MatrixEntry<double>> batches_coeff { };
          Vec<std::pair<int, double>> batches_offset { };
          batches_offset.reserve(batchsize);
 
@@ -125,7 +125,7 @@ namespace bugger {
                      }
 
                      offset -= data.getValues( )[ index ] * fixedval;
-                     batches_coeff.addEntry(row, var, 0.0);
+                     batches_coeff.emplace_back(row, var, 0.0);
                   }
                }
 
@@ -138,13 +138,19 @@ namespace bugger {
 
             if( !batches_offset.empty() && ( batches_offset.size() >= batchsize || row <= 0 ) )
             {
-               copy.getConstraintMatrix( ).changeCoefficients(batches_coeff);
+               MatrixBuffer<double> matrixBuffer{ };
+               for(auto entry: batches_coeff)
+                  matrixBuffer.addEntry(entry.row, entry.col, entry.val);
+               copy.getConstraintMatrix( ).changeCoefficients(matrixBuffer);
                auto solver = createSolver();
                solver->doSetUp(copy,  settings, solution );
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
-                  copy.getConstraintMatrix( ).changeCoefficients(applied_entries);
+                  MatrixBuffer<double> matrixBuffer2{ };
+                  for(auto entry: applied_entries)
+                     matrixBuffer2.addEntry(entry.row, entry.col, entry.val);
+                  copy.getConstraintMatrix( ).changeCoefficients(matrixBuffer2);
                   for( const auto &item: applied_reductions )
                   {
                      if( !copy.getRowFlags( )[ item.first ].test(RowFlag::kLhsInf) )
@@ -155,14 +161,8 @@ namespace bugger {
                }
                else
                {
-                  SmallVec<int, 32> buffer;
-                  const MatrixEntry<double> *iter = batches_coeff.template begin<true>(buffer);
-                  while( iter != batches_coeff.end( ) )
-                  {
-                     applied_entries.addEntry(iter->row, iter->col, iter->val);
-                     iter = batches_coeff.template next<true>( buffer );
-                  }
                   applied_reductions.insert(applied_reductions.end(), batches_offset.begin(), batches_offset.end());
+                  applied_entries.insert(applied_entries.end(), batches_coeff.begin(), batches_coeff.end());
                }
                batches_coeff.clear();
                batches_offset.clear();
@@ -176,7 +176,7 @@ namespace bugger {
          else
          {
             problem = copy;
-            nchgcoefs += applied_entries.getNnz();
+            nchgcoefs += applied_entries.size();
             nchgsides += 2 * applied_reductions.size();
             return ModulStatus::kSuccessful;
          }
