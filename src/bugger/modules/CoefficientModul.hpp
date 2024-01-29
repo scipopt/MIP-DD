@@ -135,7 +135,7 @@ namespace bugger {
                   if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
                      copy.getConstraintMatrix( ).modifyLeftHandSide(row, num,
                                  copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] + offset);
-                  if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf))
+                  if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
                      copy.getConstraintMatrix( ).modifyRightHandSide(row, num,
                                  copy.getConstraintMatrix( ).getRightHandSides( )[ row ] + offset);
                   batches_offset.emplace_back(row, offset);
