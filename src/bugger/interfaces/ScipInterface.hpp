@@ -112,31 +112,38 @@ namespace bugger {
          }
 
          builder.setNumRows(nrows);
-         for(int i=0; i< nrows; i++)
+         for( int i = 0; i < nrows; ++i )
          {
-            unsigned int success= 0;
             int nconsvars = 0;
-            SCIP_CONS *con = cons[ i ];
-            SCIPgetConsNVars(scip, con, &nconsvars, &success);
-            SCIP_VAR* consvars[nconsvars];
-            int indices[nconsvars];
+            SCIP_Bool success = FALSE;
+            SCIP_CONS *cons = conss[ i ];
+            SCIPgetConsNVars(scip, cons, &nconsvars, &success);
+            SCIP_VAR *consvars[nconsvars];
             SCIP_Real consvals[nconsvars];
-            SCIPgetConsVars(scip, con, consvars, nconsvars, &success);
-            SCIPgetConsVals(scip, con, consvals, nconsvars, &success);
-            for(int j= 0; j< nconsvars; j++)
+            SCIPgetConsVars(scip, cons, consvars, nconsvars, &success);
+            if( !success )
+               return boost::none;
+            SCIPgetConsVals(scip, cons, consvals, nconsvars, &success);
+            if( !success )
+               return boost::none;
+            int indices[nconsvars];
+            for( int j = 0; j < nconsvars; ++j )
             {
                indices[ j ] = SCIPvarGetProbindex(consvars[ j ]);
                assert(strcmp(SCIPvarGetName(consvars[j]), SCIPvarGetName(vars[indices[j]])) == 0);
             }
             builder.addRowEntries(i, nconsvars, indices, consvals);
-            SCIP_Real lhs = SCIPconsGetLhs(scip, con, &success);
-            SCIP_Real rhs = SCIPconsGetRhs(scip, con, &success);
+            SCIP_Real lhs = SCIPconsGetLhs(scip, cons, &success);
+            if( !success )
+               return boost::none;
+            SCIP_Real rhs = SCIPconsGetRhs(scip, cons, &success);
+            if( !success )
+               return boost::none;
             builder.setRowLhs(i, lhs);
             builder.setRowRhs(i, rhs);
             builder.setRowLhsInf(i, SCIPisInfinity(scip, -lhs));
             builder.setRowRhsInf(i, SCIPisInfinity(scip, rhs));
             builder.setRowName(i, SCIPconsGetName(con));
-
          }
 
          /* set objective offset */
