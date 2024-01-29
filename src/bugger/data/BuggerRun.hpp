@@ -51,14 +51,14 @@ namespace bugger {
    class BuggerRun {
 
    private:
-      bugger::BuggerOptions options;
+      BuggerOptions options;
       const std::string& settings_filename;
       const std::string& problem_filename;
       const std::string& target_settings_filename;
       const std::string& solution_filename;
-      bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &modules;
-      bugger::Vec<bugger::ModulStatus> results;
-      bugger::Message msg { };
+      Vec<std::unique_ptr<bugger::BuggerModul>> &modules;
+      Vec<bugger::ModulStatus> results;
+      Message msg { };
       std::shared_ptr<SolverFactory> solver_factory;
 
    public:
