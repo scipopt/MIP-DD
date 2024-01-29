@@ -52,10 +52,6 @@ namespace bugger {
 
    private:
       BuggerOptions options;
-      const std::string& settings_filename;
-      const std::string& problem_filename;
-      const std::string& target_settings_filename;
-      const std::string& solution_filename;
       Vec<std::unique_ptr<bugger::BuggerModul>> &modules;
       Vec<bugger::ModulStatus> results;
       Message msg { };
@@ -63,11 +59,8 @@ namespace bugger {
 
    public:
 
-      BuggerRun(const std::string& _problem_filename, const std::string& _settings_filename, const std::string& _target_settings_filename,
-                const std::string& _solution_filename,
-                bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
-            : options({ }), problem_filename(_problem_filename), settings_filename(_settings_filename), target_settings_filename(_target_settings_filename), solution_filename(_solution_filename),
-              modules(_modules), solver_factory(load_solver_factory()) { }
+      BuggerRun( bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
+            : options({ }),  modules(_modules), solver_factory(load_solver_factory()) { }
 
       bool
       is_time_exceeded( const Timer& timer ) const
@@ -76,20 +69,20 @@ namespace bugger {
                 timer.getTime() >= options.tlim;
       }
 
-      void apply(bugger::Timer &timer, const std::string &filename ) {
+      void apply(bugger::Timer &timer, const OptionsInfo& optionsInfo ) {
 
 
-         SolverSettings settings = parseSettings(settings_filename, solver_factory);
+         SolverSettings settings = parseSettings(optionsInfo.settings_file, solver_factory);
 
-         auto prob = solver_factory->create_solver( )->read_problem(problem_filename);
+         auto prob = solver_factory->create_solver( )->read_problem(optionsInfo.problem_file);
          if( !prob )
          {
             msg.info("Parser of the solver failed. Using internal parser...");
-            prob = MpsParser<double>::loadProblem(problem_filename);
+            prob = MpsParser<double>::loadProblem(optionsInfo.problem_file);
 
             if( !prob )
             {
-               msg.error("error loading problem {}\n", problem_filename);
+               msg.error("error loading problem {}\n", optionsInfo.problem_file);
                return;
             }
          }
@@ -97,18 +90,18 @@ namespace bugger {
 
 
          Solution<double> solution;
-         if( !solution_filename.empty( ) )
+         if( !optionsInfo.solution_file.empty( ) )
          {
-            if( boost::iequals(solution_filename, "infeasible") )
+            if( boost::iequals(optionsInfo.solution_file, "infeasible") )
                solution.status = SolutionStatus::kInfeasible;
-            else if( boost::iequals(solution_filename, "unbounded") )
+            else if( boost::iequals(optionsInfo.solution_file, "unbounded") )
                solution.status = SolutionStatus::kUnbounded;
-            else if( !boost::iequals(solution_filename, "unknown") )
+            else if( !boost::iequals(optionsInfo.solution_file, "unknown") )
             {
-               bool success = SolParser<double>::read(solution_filename, problem.getVariableNames( ), solution);
+               bool success = SolParser<double>::read(optionsInfo.solution_file, problem.getVariableNames( ), solution);
                if( !success )
                {
-                  msg.error("error loading solution {}\n", solution_filename);
+                  msg.error("error loading solution {}\n", optionsInfo.solution_file);
                   return;
                }
             }
@@ -125,13 +118,13 @@ namespace bugger {
          num.setEpsilon( options.epsilon );
          num.setZeta( options.zeta );
 
-         bool settings_modul_activated = !target_settings_filename.empty( );
+         bool settings_modul_activated = !optionsInfo.target_settings_file.empty( );
          addModul(uptr(new ConstraintModul(msg, num, solver_factory)));
          addModul(uptr(new VariableModul(msg, num, solver_factory)));
          addModul(uptr(new CoefficientModul(msg, num, solver_factory)));
          addModul(uptr(new FixingModul(msg, num, solver_factory)));
          if( settings_modul_activated )
-            addModul(uptr(new SettingModul(msg, num, parseSettings(target_settings_filename, solver_factory),solver_factory)));
+            addModul(uptr(new SettingModul(msg, num, parseSettings(optionsInfo.target_settings_file, solver_factory),solver_factory)));
          addModul(uptr(new SideModul(msg, num, solver_factory)));
          addModul(uptr(new ObjectiveModul(msg, num, solver_factory)));
          addModul(uptr(new VarroundModul(msg, num, solver_factory)));
@@ -145,16 +138,16 @@ namespace bugger {
          if( options.maxstages < 0 || options.maxstages > modules.size( ) )
             options.maxstages = (int) modules.size( );
 
+         //TODO: make this dynamic
          int ending = 4;
-         if( filename.substr(filename.length( ) - 3) == ".gz" )
+         if( optionsInfo.problem_file.substr(optionsInfo.problem_file.length( ) - 3) == ".gz" )
             ending = 7;
-         if( filename.substr(filename.length( ) - 3) == ".bz2" )
+         if( optionsInfo.problem_file.substr(optionsInfo.problem_file.length( ) - 3) == ".bz2" )
             ending = 7;
 
          for( int round = options.initround, stage = options.initstage, success = 0; round < options.maxrounds && stage < options.maxstages; ++round )
          {
-            //TODO: one can think about shrinking the matrix in each round
-            solver_factory->create_solver( )->writeInstance(filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round), settings, problem, settings_modul_activated);
+            solver_factory->create_solver( )->writeInstance(optionsInfo.problem_file.substr(0, optionsInfo.problem_file.length( ) - ending) + "_" + std::to_string(round), settings, problem, settings_modul_activated);
 
             if( is_time_exceeded(timer) )
                break;
