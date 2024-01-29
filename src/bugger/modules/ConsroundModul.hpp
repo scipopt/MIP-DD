@@ -118,7 +118,7 @@ namespace bugger {
                   }
                   else
                   {
-                     if( !num.isZetaIntegral(data.getValues( )[ index ]))
+                     if( !num.isZetaIntegral(data.getValues( )[ index ]) )
                      {
                         batches_coeff.emplace_back(row, data.getIndices( )[ index ], num.round(data.getValues( )[ index ]));
                      }
