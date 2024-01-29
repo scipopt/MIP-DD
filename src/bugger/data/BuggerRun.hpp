@@ -59,7 +59,7 @@ namespace bugger {
 
    public:
 
-      BuggerRun( bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
+      explicit BuggerRun( bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
             : modules(_modules), solver_factory(load_solver_factory()) { }
 
       bool
