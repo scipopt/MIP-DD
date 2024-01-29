@@ -126,7 +126,7 @@ namespace bugger {
                   }
                }
 
-               if(solution.status == SolutionStatus::kFeasible)
+               if( solution.status == SolutionStatus::kFeasible )
                {
                   lhs = num.min(lhs, num.epsFloor(activity));
                   rhs = num.max(rhs, num.epsCeil(activity));
