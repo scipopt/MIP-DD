@@ -59,7 +59,7 @@ namespace bugger {
 
    public:
 
-      BuggerRun( bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
+      explicit BuggerRun( bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
             : options({ }),  modules(_modules), solver_factory(load_solver_factory()) { }
 
       bool
@@ -109,7 +109,7 @@ namespace bugger {
 
          check_feasibility_of_solution(problem, solution);
 
-         printOriginalSolveStatus(problem, solution, settings, solver_factory);
+         printOriginalSolveStatus(settings, problem, solution, solver_factory);
 
          using uptr = std::unique_ptr<bugger::BuggerModul>;
 
@@ -287,7 +287,7 @@ namespace bugger {
          msg.info("\n\n");
       }
 
-      void printOriginalSolveStatus( const Problem<double>& problem, Solution<double>& solution, const SolverSettings &settings, const std::shared_ptr<SolverFactory>& factory ) {
+      void printOriginalSolveStatus( const SolverSettings &settings, const Problem<double>& problem, Solution<double>& solution, const std::shared_ptr<SolverFactory>& factory ) {
          auto solver = factory->create_solver();
          solver->doSetUp(problem, settings, solution);
          Vec<int> empty_passcodes{};

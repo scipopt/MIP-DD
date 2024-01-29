@@ -166,7 +166,7 @@ main(int argc, char *argv[]) {
    double time = 0;
    Timer timer(time);
 
-   bugger.apply(timer, optionsInfo.problem_file);
+   bugger.apply(timer, optionsInfo);
 
    return 0;
 }
