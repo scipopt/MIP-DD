@@ -83,13 +83,14 @@ namespace bugger {
          int nrows = SCIPgetNConss(scip);
          int nnz = 0;
          SCIP_VAR **vars = SCIPgetVars(scip);
-         SCIP_CONS** cons = SCIPgetConss(scip);
-         for(int i=0; i< nrows; i++)
+         SCIP_CONS **conss = SCIPgetConss(scip);
+         for( int i=0; i < nrows; ++i )
          {
-            unsigned int success= 0;
             int nconsvars = 0;
-            SCIP_CONS *con = cons[ i ];
-            SCIPgetConsNVars(scip, con, &nconsvars, &success);
+            SCIP_Bool success = FALSE;
+            SCIPgetConsNVars(scip, conss[ i ], &nconsvars, &success);
+            if( !success )
+               return boost::none;
             nnz += nconsvars;
          }
          builder.reserve(nnz, nrows, ncols);
