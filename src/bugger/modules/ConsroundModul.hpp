@@ -84,7 +84,6 @@ namespace bugger {
          Vec<MatrixEntry<double>> applied_entries { };
          Vec<std::pair<int, double>> applied_reductions_lhs { };
          Vec<std::pair<int, double>> applied_reductions_rhs { };
-//         MatrixBuffer<double> batches_coeff { };
          Vec<MatrixEntry<double>> batches_coeff { };
          Vec<std::pair<int, double>> batches_lhs { };
          Vec<std::pair<int, double>> batches_rhs { };
@@ -114,12 +113,18 @@ namespace bugger {
                   rhs = num.max(rhs, num.epsCeil(activity));
                }
 
-               if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
-                  copy.getConstraintMatrix( ).modifyLeftHandSide( row, num, lhs );
-               if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
-                  copy.getConstraintMatrix( ).modifyRightHandSide( row, num, rhs );
-               batches_lhs.emplace_back(row, lhs);
-               batches_rhs.emplace_back(row, rhs);
+               if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
+                     && !num.isZetaEq(lhs, copy.getConstraintMatrix().getLeftHandSides()[row]) )
+               {
+                  copy.getConstraintMatrix( ).modifyLeftHandSide(row, num, lhs);
+                  batches_lhs.emplace_back(row, lhs);
+               }
+               if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
+                     && !num.isZetaEq(lhs, copy.getConstraintMatrix().getLeftHandSides()[row]) )
+               {
+                  copy.getConstraintMatrix( ).modifyRightHandSide(row, num, rhs);
+                  batches_rhs.emplace_back(row, rhs);
+               }
                batch++;
             }
 
