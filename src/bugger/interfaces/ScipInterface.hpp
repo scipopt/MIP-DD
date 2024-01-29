@@ -84,7 +84,7 @@ namespace bugger {
          int nnz = 0;
          SCIP_VAR **vars = SCIPgetVars(scip);
          SCIP_CONS **conss = SCIPgetConss(scip);
-         for( int i=0; i < nrows; ++i )
+         for( int i = 0; i < nrows; ++i )
          {
             int nconsvars = 0;
             SCIP_Bool success = FALSE;
