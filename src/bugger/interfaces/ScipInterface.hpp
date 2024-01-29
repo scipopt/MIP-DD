@@ -140,9 +140,10 @@ namespace bugger {
 
          }
 
-
-         /* init objective offset - the value itself is irrelevant */
-         builder.setObjOffset(0);
+         /* set objective offset */
+         builder.setObjOffset(SCIPgetOrigObjoffset(scip));
+         /* set objective sense */
+         builder.setObjSense(SCIPgetObjsense(scip) == SCIP_OBJSENSE_MINIMIZE);
 
          return builder.build();
       }
