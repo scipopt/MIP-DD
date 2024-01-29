@@ -101,7 +101,7 @@ namespace bugger {
                double rhs = num.round(copy.getConstraintMatrix( ).getRightHandSides( )[ row ]);
 
 
-               double activity = 0;
+               double activity = 0.0;
 
                for( int index = 0; index < data.getLength( ); ++index )
                {
