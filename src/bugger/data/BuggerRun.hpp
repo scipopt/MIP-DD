@@ -84,7 +84,7 @@ namespace bugger {
          auto prob = solver_factory->create_solver()->read_problem(instance_filename);
          if( !prob )
          {
-            msg.info("Parser of the solver returned none. Using internal parser...");
+            msg.info("Parser of the solver failed. Using internal parser...");
             prob = MpsParser<double>::loadProblem(instance_filename);
 
             if( !prob )
