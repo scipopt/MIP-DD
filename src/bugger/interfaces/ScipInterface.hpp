@@ -76,9 +76,10 @@ namespace bugger {
          SCIPreadProb(scip, filename.c_str(), NULL);
          ProblemBuilder<SCIP_Real> builder;
 
+         /* set problem name */
+         builder.setProblemName(std::string(SCIPgetProbName(scip)));
          /* set objective offset */
          builder.setObjOffset(SCIPgetOrigObjoffset(scip));
-
          /* set objective sense */
          builder.setObjSense(SCIPgetObjsense(scip) == SCIP_OBJSENSE_MINIMIZE);
 
