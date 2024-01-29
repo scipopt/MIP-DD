@@ -184,8 +184,8 @@ namespace bugger {
          else
          {
             problem = copy;
-            nchgcoefs += applied_entries.size();
             nchgsides += 2 * applied_reductions.size();
+            nchgcoefs += applied_entries.size();
             return ModulStatus::kSuccessful;
          }
       }
