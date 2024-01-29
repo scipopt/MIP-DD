@@ -120,8 +120,7 @@ namespace bugger {
                   {
                      if( !num.isZetaIntegral(data.getValues( )[ index ]))
                      {
-                        double new_coeff = num.round(data.getValues( )[ index ]);
-                        batches_coeff.emplace_back(row, data.getIndices( )[ index ], new_coeff);
+                        batches_coeff.emplace_back(row, data.getIndices( )[ index ], num.round(data.getValues( )[ index ]));
                      }
                   }
                }
