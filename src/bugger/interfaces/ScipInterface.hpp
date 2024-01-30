@@ -28,6 +28,7 @@
 
 #include "scip/cons_linear.h"
 #include "scip/scip.h"
+#include "scip/pub_cons.h"
 #include "scip/scip_param.h"
 #include "scip/scipdefplugins.h"
 #include "scip/struct_paramset.h"
@@ -54,33 +55,18 @@ namespace bugger {
             throw std::runtime_error("could not create SCIP");
       }
 
-      void
-      doSetUp(const Problem<double> &problem, const SolverSettings &settings, Solution<double>& sol) override {
-         auto result = setup(problem, sol, settings);
-         assert(result == SCIP_OKAY);
-      }
-
-      void
-      writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings = true) override {
-         Solution<double> solution;
-         setup(problem, solution, settings);
-         if( writesettings )
-            SCIPwriteParams(scip, (filename + ".set").c_str(), 0, 1);
-         SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, 0);
-      };
-
       SolverSettings
-      parseSettings(const std::string& settings) override
+      parseSettings(const std::string &filename) override
       {
+         if( !filename.empty() )
+            SCIPreadParams(scip, filename.c_str());
+
          Vec<std::pair<std::string, bool>> bool_settings;
          Vec<std::pair<std::string, int>> int_settings;
          Vec<std::pair<std::string, long>> long_settings;
          Vec<std::pair<std::string, double>> double_settings;
          Vec<std::pair<std::string, char>> char_settings;
          Vec<std::pair<std::string, std::string>> string_settings;
-
-         if(!settings.empty())
-            SCIPreadParams(scip, settings.c_str( ));
          int nparams = SCIPgetNParams(scip);
          SCIP_PARAM **params = SCIPgetParams(scip);
 
@@ -122,7 +108,6 @@ namespace bugger {
                }
                case SCIP_PARAMTYPE_CHAR:
                {
-
                   char char_val = ( param->data.charparam.valueptr == nullptr ? param->data.charparam.curvalue
                                                                               : *param->data.charparam.valueptr );
                   char_settings.emplace_back(param->name, char_val);
@@ -144,6 +129,110 @@ namespace bugger {
          return {bool_settings, int_settings, long_settings, double_settings,char_settings, string_settings};
       }
 
+      void
+      doSetUp(const SolverSettings &settings, const Problem<double> &problem, Solution<double>& solution) override {
+         auto result = setup(settings, problem, solution);
+         assert(result == SCIP_OKAY);
+      }
+
+      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>>
+      readInstance(const std::string &settings_filename, const std::string &problem_filename) override {
+
+         SolverSettings settings = parseSettings(settings_filename);
+         SCIPreadProb(scip, problem_filename.c_str(), NULL);
+         ProblemBuilder<SCIP_Real> builder;
+
+         /* set problem name */
+         builder.setProblemName(std::string(SCIPgetProbName(scip)));
+         /* set objective offset */
+         builder.setObjOffset(SCIPgetOrigObjoffset(scip));
+         /* set objective sense */
+         builder.setObjSense(SCIPgetObjsense(scip) == SCIP_OBJSENSE_MINIMIZE);
+
+         /* reserve problem memory */
+         int ncols = SCIPgetNVars(scip);
+         int nrows = SCIPgetNConss(scip);
+         int nnz = 0;
+         SCIP_VAR **vars = SCIPgetVars(scip);
+         SCIP_CONS **conss = SCIPgetConss(scip);
+         for( int i = 0; i < nrows; ++i )
+         {
+            int nconsvars = 0;
+            SCIP_Bool success = FALSE;
+            SCIPgetConsNVars(scip, conss[ i ], &nconsvars, &success);
+            if( !success )
+               return { settings, boost::none };
+            nnz += nconsvars;
+         }
+         builder.reserve(nnz, nrows, ncols);
+
+         /* set up columns */
+         builder.setNumCols(ncols);
+         for( int i = 0; i < ncols; ++i )
+         {
+            SCIP_VAR *var = vars[ i ];
+            SCIP_Real lb = SCIPvarGetLbGlobal(var);
+            SCIP_Real ub = SCIPvarGetUbGlobal(var);
+            SCIP_VARTYPE vartype = SCIPvarGetType(var);
+            builder.setColLb(i, lb);
+            builder.setColUb(i, ub);
+            builder.setColLbInf(i, SCIPisInfinity(scip, -lb));
+            builder.setColUbInf(i, SCIPisInfinity(scip, ub));
+            builder.setColIntegral(i, vartype == SCIP_VARTYPE_BINARY || vartype == SCIP_VARTYPE_INTEGER);
+            builder.setColImplInt(i, vartype != SCIP_VARTYPE_CONTINUOUS);
+            builder.setColName(i, SCIPvarGetName(var));
+            builder.setObj(i, SCIPvarGetObj(var));
+         }
+
+         /* set up rows */
+         Vec<SCIP_VAR*> consvars(ncols);
+         Vec<SCIP_Real> consvals(ncols);
+         Vec<int> indices(ncols);
+         builder.setNumRows(nrows);
+         for( int i = 0; i < nrows; ++i )
+         {
+            int nconsvars = 0;
+            SCIP_Bool success = FALSE;
+            SCIP_CONS *cons = conss[ i ];
+            SCIPgetConsNVars(scip, cons, &nconsvars, &success);
+            SCIPgetConsVars(scip, cons, consvars.data(), ncols, &success);
+            if( !success )
+               return { settings, boost::none };
+            SCIPgetConsVals(scip, cons, consvals.data(), ncols, &success);
+            if( !success )
+               return { settings, boost::none };
+            for( int j = 0; j < nconsvars; ++j )
+            {
+               indices[ j ] = SCIPvarGetProbindex(consvars[ j ]);
+               assert(strcmp(SCIPvarGetName(consvars[ j ]), SCIPvarGetName(vars[ indices[ j ] ])) == 0);
+            }
+            builder.addRowEntries(i, nconsvars, indices.data(), consvals.data());
+            SCIP_Real lhs = SCIPconsGetLhs(scip, cons, &success);
+            if( !success )
+               return { settings, boost::none };
+            SCIP_Real rhs = SCIPconsGetRhs(scip, cons, &success);
+            if( !success )
+               return { settings, boost::none };
+            builder.setRowLhs(i, lhs);
+            builder.setRowRhs(i, rhs);
+            builder.setRowLhsInf(i, SCIPisInfinity(scip, -lhs));
+            builder.setRowRhsInf(i, SCIPisInfinity(scip, rhs));
+            builder.setRowName(i, SCIPconsGetName(cons));
+         }
+
+         return { settings, builder.build() };
+      }
+
+      void
+      writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings = true) override {
+
+         Solution<double> solution;
+         setup(settings, problem, solution);
+         if( writesettings )
+            SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
+         SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), NULL, FALSE);
+      };
+
       ~ScipInterface( ) override {
          if( scip != nullptr )
          {
@@ -156,9 +245,9 @@ namespace bugger {
    private:
 
       SCIP_RETCODE
-      setup(const Problem<double> &problem, Solution<double> &sol, const SolverSettings &settings) {
+      setup(const SolverSettings &settings, const Problem<double> &problem, Solution<double> &solution) {
 
-         reference = &sol;
+         reference = &solution;
          bool solution_exists = reference->status == SolutionStatus::kFeasible;
          int ncols = problem.getNCols( );
          int nrows = problem.getNRows( );
@@ -198,14 +287,14 @@ namespace bugger {
                               : SCIP_Real(domains.upper_bounds[ col ]);
                assert(!domains.flags[ col ].test(ColFlag::kInactive) || ( lb == ub ));
                SCIP_VARTYPE type;
-               if( domains.flags[ col ].test(ColFlag::kIntegral))
+               if( domains.flags[ col ].test(ColFlag::kIntegral) )
                {
                   if( lb == 0 && ub == 1 )
                      type = SCIP_VARTYPE_BINARY;
                   else
                      type = SCIP_VARTYPE_INTEGER;
                }
-               else if( domains.flags[ col ].test(ColFlag::kImplInt))
+               else if( domains.flags[ col ].test(ColFlag::kImplInt) )
                   type = SCIP_VARTYPE_IMPLINT;
                else
                   type = SCIP_VARTYPE_CONTINUOUS;
@@ -220,11 +309,8 @@ namespace bugger {
             }
          }
 
-         Vec<SCIP_VAR *> consvars;
-         Vec<SCIP_Real> consvals;
-         consvars.resize(problem.getNCols( ));
-         consvals.resize(problem.getNCols( ));
-
+         Vec<SCIP_VAR*> consvars(problem.getNCols( ));
+         Vec<SCIP_Real> consvals(problem.getNCols( ));
          for( int row = 0; row < nrows; ++row )
          {
             if( problem.getRowFlags( )[ row ].test(RowFlag::kRedundant) )
@@ -280,8 +366,6 @@ namespace bugger {
          for(const auto& pair : settings.getStringSettings())
             SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
       }
-
-   private:
 
       std::pair<char, SolverStatus> solve( const Vec<int>& passcodes) override {
 

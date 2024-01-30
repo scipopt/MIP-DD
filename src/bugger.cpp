@@ -80,34 +80,9 @@ main(int argc, char *argv[]) {
    if( !optionsInfo.is_complete )
       return 0;
 
-   auto prob = MpsParser<double>::loadProblem(optionsInfo.instance_file);
 
-   if( !prob )
-   {
-      fmt::print("error loading problem {}\n", optionsInfo.instance_file);
-      return -1;
-   }
-   auto problem = prob.get( );
-   Solution<double> sol;
-   if( !optionsInfo.solution_file.empty( ) )
-   {
-      if( boost::iequals(optionsInfo.solution_file, "infeasible") )
-         sol.status = SolutionStatus::kInfeasible;
-      else if( boost::iequals(optionsInfo.solution_file, "unbounded") )
-         sol.status = SolutionStatus::kUnbounded;
-      else if( !boost::iequals(optionsInfo.solution_file, "unknown") )
-      {
-         bool success = SolParser<double>::read(optionsInfo.solution_file, problem.getVariableNames( ), sol);
-         if( !success )
-         {
-            fmt::print("error loading problem {}\n", optionsInfo.instance_file);
-            return -1;
-         }
-      }
-   }
-
-   Vec<std::unique_ptr<BuggerModul>> list { };
-   BuggerRun bugger { optionsInfo.solver_settings_file, optionsInfo.target_solver_settings_file, problem, sol, list };
+   Vec<std::unique_ptr<BuggerModul>> modules { };
+   BuggerRun bugger {  modules };
 
    if( !optionsInfo.param_settings_file.empty( ) || !optionsInfo.unparsed_options.empty( ))
    {
@@ -191,7 +166,7 @@ main(int argc, char *argv[]) {
    double time = 0;
    Timer timer(time);
 
-   bugger.apply(timer, optionsInfo.instance_file);
+   bugger.apply(timer, optionsInfo);
 
    return 0;
 }

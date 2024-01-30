@@ -41,10 +41,10 @@ using namespace boost::program_options;
 
 struct OptionsInfo
 {
-   std::string instance_file;
+   std::string problem_file;
    std::string param_settings_file;
-   std::string solver_settings_file;
-   std::string target_solver_settings_file;
+   std::string settings_file;
+   std::string target_settings_file;
    std::string solution_file;
    std::vector<std::string> unparsed_options;
    double tlim = std::numeric_limits<double>::max();
@@ -54,9 +54,9 @@ struct OptionsInfo
    bool
    checkFiles()
    {
-      if( existsFile(instance_file))
+      if( existsFile(problem_file))
       {
-         fmt::print( "file {} is not valid\n", instance_file );
+         fmt::print("file {} is not valid\n", problem_file );
          return false;
       }
 
@@ -73,15 +73,15 @@ struct OptionsInfo
          return false;
       }
 
-      if( existsFile(solver_settings_file ))
+      if( existsFile(settings_file ))
       {
-         fmt::print("file {} is not valid\n", solver_settings_file );
+         fmt::print("file {} is not valid\n", settings_file );
          return false;
       }
 
-      if( existsFile(target_solver_settings_file ))
+      if( existsFile(target_settings_file ))
       {
-         fmt::print("file {} is not valid\n", target_solver_settings_file );
+         fmt::print("file {} is not valid\n", target_settings_file );
          return false;
       }
 
@@ -102,18 +102,18 @@ struct OptionsInfo
 
       options_description desc( fmt::format( ""));
 
-      desc.add_options()( "file,f", value( &instance_file ), "instance file" );
+      desc.add_options()("file,f", value( &problem_file ), "instance file" );
 
       desc.add_options( )("parameter-settings,p",
                           value(&param_settings_file),
                           "filename for bugger parameter settings");
 
       desc.add_options( )("scip-parameter-settings,s",
-                          value(&solver_settings_file),
+                          value(&settings_file),
                           "filename for SCIP parameter settings");
 
       desc.add_options( )("target-scip-parameter-settings,t",
-                          value(&target_solver_settings_file),
+                          value(&target_settings_file),
                           "filename for SCIP parameter settings");
 
       desc.add_options( )("solution-file,o",

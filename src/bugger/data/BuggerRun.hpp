@@ -51,22 +51,16 @@ namespace bugger {
    class BuggerRun {
 
    private:
-      bugger::BuggerOptions options;
-      const std::string& settings_filename;
-      const std::string& target_settings_filename;
-      bugger::Problem<double> &problem;
-      bugger::Solution<double> &solution;
-      bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &modules;
-      bugger::Vec<bugger::ModulStatus> results;
-      bugger::Message msg { };
+      BuggerOptions options { };
+      Vec<std::unique_ptr<bugger::BuggerModul>> &modules;
+      Vec<bugger::ModulStatus> results;
+      Message msg { };
       std::shared_ptr<SolverFactory> solver_factory;
 
    public:
 
-      BuggerRun(const std::string& _settings_filename, const std::string& _target_settings_filename, bugger::Problem<double> &_problem, bugger::Solution<double> &_solution,
-                bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
-            : options({ }), settings_filename(_settings_filename), target_settings_filename(_target_settings_filename), problem(_problem), solution(_solution),
-              modules(_modules), solver_factory(load_solver_factory()) { }
+      explicit BuggerRun( bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
+            : modules(_modules), solver_factory(load_solver_factory()) { }
 
       bool
       is_time_exceeded( const Timer& timer ) const
@@ -75,13 +69,47 @@ namespace bugger {
                 timer.getTime() >= options.tlim;
       }
 
-      void apply(bugger::Timer &timer, const std::string &filename ) {
+      void apply(bugger::Timer &timer, const OptionsInfo& optionsInfo ) {
 
-         check_feasibility_of_solution();
+         auto instance = solver_factory->create_solver( )->readInstance(optionsInfo.settings_file, optionsInfo.problem_file);
+         if( !instance.first )
+         {
+            msg.error("error loading settings {}\n", optionsInfo.settings_file);
+            return;
+         }
+         if( !instance.second )
+         {
+            msg.info("Parser of the solver failed. Using internal parser...");
+            instance.second = MpsParser<double>::loadProblem(optionsInfo.problem_file);
+            if( !instance.second )
+            {
+               msg.error("error loading problem {}\n", optionsInfo.problem_file);
+               return;
+            }
+         }
+         auto settings = instance.first.get();
+         auto problem = instance.second.get();
+         Solution<double> solution;
+         if( !optionsInfo.solution_file.empty( ) )
+         {
+            if( boost::iequals(optionsInfo.solution_file, "infeasible") )
+               solution.status = SolutionStatus::kInfeasible;
+            else if( boost::iequals(optionsInfo.solution_file, "unbounded") )
+               solution.status = SolutionStatus::kUnbounded;
+            else if( !boost::iequals(optionsInfo.solution_file, "unknown") )
+            {
+               bool success = SolParser<double>::read(optionsInfo.solution_file, problem.getVariableNames( ), solution);
+               if( !success )
+               {
+                  msg.error("error loading solution {}\n", optionsInfo.solution_file);
+                  return;
+               }
+            }
+         }
 
-         SolverSettings solver_settings = parseSettings(settings_filename, solver_factory);
+         check_feasibility_of_solution(problem, solution);
 
-         printOriginalSolveStatus(solver_settings, solver_factory);
+         printOriginalSolveStatus(settings, problem, solution, solver_factory);
 
          using uptr = std::unique_ptr<bugger::BuggerModul>;
 
@@ -90,13 +118,14 @@ namespace bugger {
          num.setEpsilon( options.epsilon );
          num.setZeta( options.zeta );
 
-         bool settings_modul_activated = !target_settings_filename.empty( );
+         bool settings_modul_activated = !optionsInfo.target_settings_file.empty( );
+
          addModul(uptr(new ConstraintModul(msg, num, solver_factory)));
          addModul(uptr(new VariableModul(msg, num, solver_factory)));
          addModul(uptr(new CoefficientModul(msg, num, solver_factory)));
          addModul(uptr(new FixingModul(msg, num, solver_factory)));
          if( settings_modul_activated )
-            addModul(uptr(new SettingModul(msg, num, parseSettings(target_settings_filename, solver_factory),solver_factory)));
+            addModul(uptr(new SettingModul(msg, num, solver_factory->create_solver( )->parseSettings(optionsInfo.target_settings_file), solver_factory)));
          addModul(uptr(new SideModul(msg, num, solver_factory)));
          addModul(uptr(new ObjectiveModul(msg, num, solver_factory)));
          addModul(uptr(new VarroundModul(msg, num, solver_factory)));
@@ -110,16 +139,16 @@ namespace bugger {
          if( options.maxstages < 0 || options.maxstages > modules.size( ) )
             options.maxstages = (int) modules.size( );
 
+         //TODO: make this dynamic
          int ending = 4;
-         if( filename.substr(filename.length( ) - 3) == ".gz" )
+         if( optionsInfo.problem_file.substr(optionsInfo.problem_file.length( ) - 3) == ".gz" )
             ending = 7;
-         if( filename.substr(filename.length( ) - 3) == ".bz2" )
+         if( optionsInfo.problem_file.substr(optionsInfo.problem_file.length( ) - 3) == ".bz2" )
             ending = 7;
-
+         std::string filename = optionsInfo.problem_file.substr(0, optionsInfo.problem_file.length( ) - ending) + "_";
          for( int round = options.initround, stage = options.initstage, success = 0; round < options.maxrounds && stage < options.maxstages; ++round )
          {
-            //TODO: one can think about shrinking the matrix in each round
-            solver_factory->create_solver( )->writeInstance(filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round), solver_settings, problem, settings_modul_activated);
+            solver_factory->create_solver( )->writeInstance(filename + std::to_string(round), settings, problem, settings_modul_activated);
 
             if( is_time_exceeded(timer) )
                break;
@@ -128,7 +157,7 @@ namespace bugger {
 
             for( int module = 0; module <= stage && stage < options.maxstages; ++module )
             {
-               results[ module ] = modules[ module ]->run(problem, solver_settings, solution, options, timer);
+               results[ module ] = modules[ module ]->run(problem, settings, solution, options, timer);
 
                if( results[ module ] == bugger::ModulStatus::kSuccessful )
                   success = module;
@@ -161,7 +190,7 @@ namespace bugger {
 
    private:
 
-      void check_feasibility_of_solution( ) {
+      void check_feasibility_of_solution( const Problem<double>& problem , const Solution<double>& solution) {
          if( solution.status != SolutionStatus::kFeasible )
             return;
          const Vec<double>& ub = problem.getUpperBounds();
@@ -253,23 +282,18 @@ namespace bugger {
          }
 
          if( maxindex >= 0 )
-            msg.info("Solution is infeasible.\nMaximum violation {:<3} of {} {:<3} {}\n", maxviol, maxrow ? "row" : "column", (maxrow ? problem.getConstraintNames() : problem.getVariableNames())[maxindex], maxrow ? (maxupper ? "right" : "left") : (maxupper ? "upper" : "lower"));
+            msg.info("Solution is infeasible.\nMaximum violation {:<3} of {} {:<3} {}.", maxviol, maxrow ? "row" : "column", (maxrow ? problem.getConstraintNames() : problem.getVariableNames())[maxindex], maxrow ? (maxupper ? "right" : "left") : (maxupper ? "upper" : "lower"));
          else
-            msg.info("Solution is feasible.\nNo violations detected");
-         msg.info("\n");
+            msg.info("Solution is feasible.\nNo violations detected.");
+         msg.info("\n\n");
       }
 
-      void printOriginalSolveStatus(const SolverSettings &settings, const std::shared_ptr<SolverFactory>& factory) {
+      void printOriginalSolveStatus( const SolverSettings &settings, const Problem<double>& problem, Solution<double>& solution, const std::shared_ptr<SolverFactory>& factory ) {
          auto solver = factory->create_solver();
-         solver->doSetUp(problem, settings, solution);
+         solver->doSetUp(settings, problem, solution);
          Vec<int> empty_passcodes{};
          const std::pair<char, SolverStatus> &pair = solver->solve(empty_passcodes);
-         msg.info("original solve returned code {} with status {}\n", (int) pair.first, pair.second);
-      }
-
-      SolverSettings parseSettings( const std::string& filename, const std::shared_ptr<SolverFactory>& factory) {
-         auto solver = factory->create_solver();
-         return solver->parseSettings(filename);
+         msg.info("Original solve returned code {} with status {}.\n", (int) pair.first, pair.second);
       }
 
       std::shared_ptr<SolverFactory>
