@@ -124,7 +124,16 @@ namespace bugger {
          addModul(uptr(new CoefficientModul(msg, num, solver_factory)));
          addModul(uptr(new FixingModul(msg, num, solver_factory)));
          if( settings_modul_activated )
-            addModul(uptr(new SettingModul(msg, num, solver_factory->create_solver( )->parseSettings(optionsInfo.target_settings_file), solver_factory)));
+         {
+            auto target_settings = solver_factory->create_solver( )->parseSettings(optionsInfo.target_settings_file);
+            if( !target_settings )
+            {
+               msg.error("error loading targets {}\n", optionsInfo.target_settings_file);
+               return;
+            }
+            auto targets = target_settings.get();
+            addModul(uptr(new SettingModul(msg, num, targets, solver_factory)));
+         }
          addModul(uptr(new SideModul(msg, num, solver_factory)));
          addModul(uptr(new ObjectiveModul(msg, num, solver_factory)));
          addModul(uptr(new VarroundModul(msg, num, solver_factory)));
@@ -138,13 +147,11 @@ namespace bugger {
          if( options.maxstages < 0 || options.maxstages > modules.size( ) )
             options.maxstages = (int) modules.size( );
 
-         //TODO: make this dynamic
-         int ending = 4;
-         if( optionsInfo.problem_file.substr(optionsInfo.problem_file.length( ) - 3) == ".gz" )
-            ending = 7;
-         if( optionsInfo.problem_file.substr(optionsInfo.problem_file.length( ) - 3) == ".bz2" )
-            ending = 7;
-         std::string filename = optionsInfo.problem_file.substr(0, optionsInfo.problem_file.length( ) - ending) + "_";
+         int ending = optionsInfo.problem_file.rfind('.');
+         if( optionsInfo.problem_file.substr(ending+1) == "gz" || optionsInfo.problem_file.substr(ending+1) == "bz2" )
+            ending = optionsInfo.problem_file.rfind('.', ending-1);
+         std::string filename = optionsInfo.problem_file.substr(0, ending) + "_";
+
          for( int round = options.initround, stage = options.initstage, success = 0; round < options.maxrounds && stage < options.maxstages; ++round )
          {
             solver_factory->create_solver( )->writeInstance(filename + std::to_string(round), settings, problem, settings_modul_activated);

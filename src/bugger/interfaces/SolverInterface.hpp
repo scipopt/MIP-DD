@@ -48,7 +48,7 @@ namespace bugger {
        * @param filename
        */
       virtual
-      SolverSettings parseSettings(const std::string &filename) = 0;
+      boost::optional<SolverSettings> parseSettings(const std::string &filename) = 0;
 
       /**
        * loads settings, problem, and solution
@@ -81,7 +81,7 @@ namespace bugger {
        * @param writesettings
        */
       virtual
-      void writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings) = 0;
+      void writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings = true) = 0;
 
       virtual ~SolverInterface() = default;
    };

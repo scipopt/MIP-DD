@@ -54,11 +54,15 @@ namespace bugger {
             throw std::runtime_error("could not create SCIP");
       }
 
-      SolverSettings
+      boost::optional<SolverSettings>
       parseSettings(const std::string &filename) override
       {
          if( !filename.empty() )
-            SCIPreadParams(scip, filename.c_str());
+         {
+            SCIP_RETCODE retcode = SCIPreadParams(scip, filename.c_str());
+            if( retcode != SCIP_OKAY )
+               return boost::none;
+         }
 
          Vec<std::pair<std::string, bool>> bool_settings;
          Vec<std::pair<std::string, int>> int_settings;
@@ -125,7 +129,7 @@ namespace bugger {
             }
          }
 
-         return {bool_settings, int_settings, long_settings, double_settings,char_settings, string_settings};
+         return SolverSettings(bool_settings, int_settings, long_settings, double_settings,char_settings, string_settings);
       }
 
       void
@@ -137,8 +141,10 @@ namespace bugger {
       std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>>
       readInstance(const std::string &settings_filename, const std::string &problem_filename) override {
 
-         SolverSettings settings = parseSettings(settings_filename);
-         SCIPreadProb(scip, problem_filename.c_str(), NULL);
+         auto settings = parseSettings(settings_filename);
+         SCIP_RETCODE retcode = SCIPreadProb(scip, problem_filename.c_str(), NULL);
+         if( retcode != SCIP_OKAY )
+            return { settings, boost::none };
          ProblemBuilder<SCIP_Real> builder;
 
          /* set problem name */
