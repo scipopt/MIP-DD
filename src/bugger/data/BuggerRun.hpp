@@ -71,24 +71,24 @@ namespace bugger {
 
       void apply(bugger::Timer &timer, const OptionsInfo& optionsInfo ) {
 
-
-         SolverSettings settings = parseSettings(optionsInfo.settings_file, solver_factory);
-
-         auto prob = solver_factory->create_solver( )->read_problem(optionsInfo.problem_file);
-         if( !prob )
+         auto instance = solver_factory->create_solver( )->readInstance(optionsInfo.settings_file, optionsInfo.problem_file);
+         if( !instance.first )
+         {
+            msg.error("error loading settings {}\n", optionsInfo.settings_file);
+            return;
+         }
+         if( !instance.second )
          {
             msg.info("Parser of the solver failed. Using internal parser...");
-            prob = MpsParser<double>::loadProblem(optionsInfo.problem_file);
-
-            if( !prob )
+            instance.second = MpsParser<double>::loadProblem(optionsInfo.problem_file);
+            if( !instance.second )
             {
                msg.error("error loading problem {}\n", optionsInfo.problem_file);
                return;
             }
          }
-         auto problem = prob.get();
-
-
+         auto settings = instance.first.get();
+         auto problem = instance.second.get();
          Solution<double> solution;
          if( !optionsInfo.solution_file.empty( ) )
          {
@@ -119,12 +119,13 @@ namespace bugger {
          num.setZeta( options.zeta );
 
          bool settings_modul_activated = !optionsInfo.target_settings_file.empty( );
+
          addModul(uptr(new ConstraintModul(msg, num, solver_factory)));
          addModul(uptr(new VariableModul(msg, num, solver_factory)));
          addModul(uptr(new CoefficientModul(msg, num, solver_factory)));
          addModul(uptr(new FixingModul(msg, num, solver_factory)));
          if( settings_modul_activated )
-            addModul(uptr(new SettingModul(msg, num, parseSettings(optionsInfo.target_settings_file, solver_factory),solver_factory)));
+            addModul(uptr(new SettingModul(msg, num, solver_factory->create_solver( )->parseSettings(optionsInfo.target_settings_file), solver_factory)));
          addModul(uptr(new SideModul(msg, num, solver_factory)));
          addModul(uptr(new ObjectiveModul(msg, num, solver_factory)));
          addModul(uptr(new VarroundModul(msg, num, solver_factory)));
@@ -144,10 +145,10 @@ namespace bugger {
             ending = 7;
          if( optionsInfo.problem_file.substr(optionsInfo.problem_file.length( ) - 3) == ".bz2" )
             ending = 7;
-
+         std::string filename = optionsInfo.problem_file.substr(0, optionsInfo.problem_file.length( ) - ending) + "_";
          for( int round = options.initround, stage = options.initstage, success = 0; round < options.maxrounds && stage < options.maxstages; ++round )
          {
-            solver_factory->create_solver( )->writeInstance(optionsInfo.problem_file.substr(0, optionsInfo.problem_file.length( ) - ending) + "_" + std::to_string(round), settings, problem, settings_modul_activated);
+            solver_factory->create_solver( )->writeInstance(filename + std::to_string(round), settings, problem, settings_modul_activated);
 
             if( is_time_exceeded(timer) )
                break;
@@ -293,11 +294,6 @@ namespace bugger {
          Vec<int> empty_passcodes{};
          const std::pair<char, SolverStatus> &pair = solver->solve(empty_passcodes);
          msg.info("Original solve returned code {} with status {}.\n", (int) pair.first, pair.second);
-      }
-
-      SolverSettings parseSettings( const std::string& filename, const std::shared_ptr<SolverFactory>& factory) {
-         auto solver = factory->create_solver();
-         return solver->parseSettings(filename);
       }
 
       std::shared_ptr<SolverFactory>

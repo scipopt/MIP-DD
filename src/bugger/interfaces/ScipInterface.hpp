@@ -63,17 +63,19 @@ namespace bugger {
 
       void
       writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings = true) override {
+
          Solution<double> solution;
          setup(problem, solution, settings);
          if( writesettings )
-            SCIPwriteParams(scip, (filename + ".set").c_str(), 0, 1);
-         SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, 0);
+            SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
+         SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), NULL, FALSE);
       };
 
+      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>>
+      readInstance(const std::string &settings_filename, const std::string &problem_filename) override {
 
-      boost::optional<Problem<double>> read_problem(const std::string& filename) override
-      {
-         SCIPreadProb(scip, filename.c_str(), NULL);
+         SolverSettings settings = parseSettings(settings_filename);
+         SCIPreadProb(scip, problem_filename.c_str(), NULL);
          ProblemBuilder<SCIP_Real> builder;
 
          /* set problem name */
@@ -95,7 +97,7 @@ namespace bugger {
             SCIP_Bool success = FALSE;
             SCIPgetConsNVars(scip, conss[ i ], &nconsvars, &success);
             if( !success )
-               return boost::none;
+               return { settings, boost::none };
             nnz += nconsvars;
          }
          builder.reserve(nnz, nrows, ncols);
@@ -131,10 +133,10 @@ namespace bugger {
             SCIPgetConsNVars(scip, cons, &nconsvars, &success);
             SCIPgetConsVars(scip, cons, consvars.data(), ncols, &success);
             if( !success )
-               return boost::none;
+               return { settings, boost::none };
             SCIPgetConsVals(scip, cons, consvals.data(), ncols, &success);
             if( !success )
-               return boost::none;
+               return { settings, boost::none };
             for( int j = 0; j < nconsvars; ++j )
             {
                indices[ j ] = SCIPvarGetProbindex(consvars[ j ]);
@@ -143,10 +145,10 @@ namespace bugger {
             builder.addRowEntries(i, nconsvars, indices.data(), consvals.data());
             SCIP_Real lhs = SCIPconsGetLhs(scip, cons, &success);
             if( !success )
-               return boost::none;
+               return { settings, boost::none };
             SCIP_Real rhs = SCIPconsGetRhs(scip, cons, &success);
             if( !success )
-               return boost::none;
+               return { settings, boost::none };
             builder.setRowLhs(i, lhs);
             builder.setRowRhs(i, rhs);
             builder.setRowLhsInf(i, SCIPisInfinity(scip, -lhs));
@@ -154,21 +156,21 @@ namespace bugger {
             builder.setRowName(i, SCIPconsGetName(cons));
          }
 
-         return builder.build();
+         return { settings, builder.build() };
       }
 
       SolverSettings
-      parseSettings(const std::string& settings) override
+      parseSettings(const std::string &filename) override
       {
+         if( !filename.empty() )
+            SCIPreadParams(scip, filename.c_str());
+
          Vec<std::pair<std::string, bool>> bool_settings;
          Vec<std::pair<std::string, int>> int_settings;
          Vec<std::pair<std::string, long>> long_settings;
          Vec<std::pair<std::string, double>> double_settings;
          Vec<std::pair<std::string, char>> char_settings;
          Vec<std::pair<std::string, std::string>> string_settings;
-
-         if(!settings.empty())
-            SCIPreadParams(scip, settings.c_str( ));
          int nparams = SCIPgetNParams(scip);
          SCIP_PARAM **params = SCIPgetParams(scip);
 
@@ -210,7 +212,6 @@ namespace bugger {
                }
                case SCIP_PARAMTYPE_CHAR:
                {
-
                   char char_val = ( param->data.charparam.valueptr == nullptr ? param->data.charparam.curvalue
                                                                               : *param->data.charparam.valueptr );
                   char_settings.emplace_back(param->name, char_val);
