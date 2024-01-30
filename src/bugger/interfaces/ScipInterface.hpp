@@ -55,21 +55,85 @@ namespace bugger {
             throw std::runtime_error("could not create SCIP");
       }
 
+      SolverSettings
+      parseSettings(const std::string &filename) override
+      {
+         if( !filename.empty() )
+            SCIPreadParams(scip, filename.c_str());
+
+         Vec<std::pair<std::string, bool>> bool_settings;
+         Vec<std::pair<std::string, int>> int_settings;
+         Vec<std::pair<std::string, long>> long_settings;
+         Vec<std::pair<std::string, double>> double_settings;
+         Vec<std::pair<std::string, char>> char_settings;
+         Vec<std::pair<std::string, std::string>> string_settings;
+         int nparams = SCIPgetNParams(scip);
+         SCIP_PARAM **params = SCIPgetParams(scip);
+
+         for( int i = 0; i < nparams; ++i )
+         {
+            SCIP_PARAM *param;
+
+            param = params[ i ];
+            param->isfixed = FALSE;
+            switch( SCIPparamGetType(param))
+            {
+               case SCIP_PARAMTYPE_BOOL:
+               {
+                  bool bool_val = ( param->data.boolparam.valueptr == nullptr ? param->data.boolparam.curvalue
+                                                                              : *param->data.boolparam.valueptr );
+                  bool_settings.emplace_back(param->name, bool_val);
+                  break;
+               }
+               case SCIP_PARAMTYPE_INT:
+               {
+                  int int_value = ( param->data.intparam.valueptr == nullptr ? param->data.intparam.curvalue
+                                                                             : *param->data.intparam.valueptr );
+                  int_settings.emplace_back( param->name, int_value);
+                  break;
+               }
+               case SCIP_PARAMTYPE_LONGINT:
+               {
+                  long long_val = ( param->data.longintparam.valueptr == nullptr ? param->data.longintparam.curvalue
+                                                                                 : *param->data.longintparam.valueptr );
+                  long_settings.emplace_back(param->name, long_val);
+                  break;
+               }
+               case SCIP_PARAMTYPE_REAL:
+               {
+                  double real_val = ( param->data.realparam.valueptr == nullptr ? param->data.realparam.curvalue
+                                                                                : *param->data.realparam.valueptr );
+                  double_settings.emplace_back(param->name, real_val);
+                  break;
+               }
+               case SCIP_PARAMTYPE_CHAR:
+               {
+                  char char_val = ( param->data.charparam.valueptr == nullptr ? param->data.charparam.curvalue
+                                                                              : *param->data.charparam.valueptr );
+                  char_settings.emplace_back(param->name, char_val);
+
+                  break;
+               }
+               case SCIP_PARAMTYPE_STRING:
+               {
+                  std::string string_val = ( param->data.stringparam.valueptr == nullptr ? param->data.stringparam.curvalue
+                                                                                         : *param->data.stringparam.valueptr );
+                  string_settings.emplace_back(param->name, string_val);
+                  break;
+               }
+               default:
+                  SCIPerrorMessage("unknown parameter type\n");
+            }
+         }
+
+         return {bool_settings, int_settings, long_settings, double_settings,char_settings, string_settings};
+      }
+
       void
       doSetUp(const Problem<double> &problem, const SolverSettings &settings, Solution<double>& sol) override {
          auto result = setup(problem, sol, settings);
          assert(result == SCIP_OKAY);
       }
-
-      void
-      writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings = true) override {
-
-         Solution<double> solution;
-         setup(problem, solution, settings);
-         if( writesettings )
-            SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
-         SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), NULL, FALSE);
-      };
 
       std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>>
       readInstance(const std::string &settings_filename, const std::string &problem_filename) override {
@@ -159,79 +223,15 @@ namespace bugger {
          return { settings, builder.build() };
       }
 
-      SolverSettings
-      parseSettings(const std::string &filename) override
-      {
-         if( !filename.empty() )
-            SCIPreadParams(scip, filename.c_str());
+      void
+      writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings = true) override {
 
-         Vec<std::pair<std::string, bool>> bool_settings;
-         Vec<std::pair<std::string, int>> int_settings;
-         Vec<std::pair<std::string, long>> long_settings;
-         Vec<std::pair<std::string, double>> double_settings;
-         Vec<std::pair<std::string, char>> char_settings;
-         Vec<std::pair<std::string, std::string>> string_settings;
-         int nparams = SCIPgetNParams(scip);
-         SCIP_PARAM **params = SCIPgetParams(scip);
-
-         for( int i = 0; i < nparams; ++i )
-         {
-            SCIP_PARAM *param;
-
-            param = params[ i ];
-            param->isfixed = FALSE;
-            switch( SCIPparamGetType(param))
-            {
-               case SCIP_PARAMTYPE_BOOL:
-               {
-                  bool bool_val = ( param->data.boolparam.valueptr == nullptr ? param->data.boolparam.curvalue
-                                                                              : *param->data.boolparam.valueptr );
-                  bool_settings.emplace_back(param->name, bool_val);
-                  break;
-               }
-               case SCIP_PARAMTYPE_INT:
-               {
-                  int int_value = ( param->data.intparam.valueptr == nullptr ? param->data.intparam.curvalue
-                                                                             : *param->data.intparam.valueptr );
-                  int_settings.emplace_back( param->name, int_value);
-                  break;
-               }
-               case SCIP_PARAMTYPE_LONGINT:
-               {
-                  long long_val = ( param->data.longintparam.valueptr == nullptr ? param->data.longintparam.curvalue
-                                                                                 : *param->data.longintparam.valueptr );
-                  long_settings.emplace_back(param->name, long_val);
-                  break;
-               }
-               case SCIP_PARAMTYPE_REAL:
-               {
-                  double real_val = ( param->data.realparam.valueptr == nullptr ? param->data.realparam.curvalue
-                                                                                : *param->data.realparam.valueptr );
-                  double_settings.emplace_back(param->name, real_val);
-                  break;
-               }
-               case SCIP_PARAMTYPE_CHAR:
-               {
-                  char char_val = ( param->data.charparam.valueptr == nullptr ? param->data.charparam.curvalue
-                                                                              : *param->data.charparam.valueptr );
-                  char_settings.emplace_back(param->name, char_val);
-
-                  break;
-               }
-               case SCIP_PARAMTYPE_STRING:
-               {
-                  std::string string_val = ( param->data.stringparam.valueptr == nullptr ? param->data.stringparam.curvalue
-                                                                                         : *param->data.stringparam.valueptr );
-                  string_settings.emplace_back(param->name, string_val);
-                  break;
-               }
-               default:
-                  SCIPerrorMessage("unknown parameter type\n");
-            }
-         }
-
-         return {bool_settings, int_settings, long_settings, double_settings,char_settings, string_settings};
-      }
+         Solution<double> solution;
+         setup(problem, solution, settings);
+         if( writesettings )
+            SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
+         SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), NULL, FALSE);
+      };
 
       ~ScipInterface( ) override {
          if( scip != nullptr )
@@ -366,8 +366,6 @@ namespace bugger {
          for(const auto& pair : settings.getStringSettings())
             SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
       }
-
-   private:
 
       std::pair<char, SolverStatus> solve( const Vec<int>& passcodes) override {
 

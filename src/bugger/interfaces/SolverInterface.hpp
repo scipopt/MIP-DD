@@ -45,6 +45,13 @@ namespace bugger {
       SolverInterface( ) = default;
 
       /**
+       * parse Settings
+       * @param filename
+       */
+      virtual
+      SolverSettings parseSettings(const std::string &filename) = 0;
+
+      /**
        * loads problem and settings
        * @param problem
        * @param settings
@@ -54,24 +61,7 @@ namespace bugger {
       void doSetUp(const Problem<double> &problem, const SolverSettings &settings, Solution<double> &sol) = 0;
 
       virtual
-      std::pair<char, SolverStatus> solve( const Vec<int>& passcodes) = 0;
-
-      /**
-       * write setting-problem pair to files
-       * @param filename
-       * @param settings
-       * @param problem
-       * @param writesettings
-       */
-      virtual
-      void writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings) = 0;
-
-      /**
-       * parse Settings
-       * @param filename
-       */
-      virtual
-      SolverSettings parseSettings(const std::string &filename) = 0;
+      std::pair<char, SolverStatus> solve(const Vec<int>& passcodes) = 0;
 
       /**
        * read setting-problem pair from files
@@ -83,6 +73,16 @@ namespace bugger {
       {
          return { boost::none, boost::none };
       };
+
+      /**
+       * write setting-problem pair to files
+       * @param filename
+       * @param settings
+       * @param problem
+       * @param writesettings
+       */
+      virtual
+      void writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings) = 0;
 
       virtual ~SolverInterface() = default;
    };
