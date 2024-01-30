@@ -290,7 +290,7 @@ namespace bugger {
 
       void printOriginalSolveStatus( const SolverSettings &settings, const Problem<double>& problem, Solution<double>& solution, const std::shared_ptr<SolverFactory>& factory ) {
          auto solver = factory->create_solver();
-         solver->doSetUp(problem, settings, solution);
+         solver->doSetUp(settings, problem, solution);
          Vec<int> empty_passcodes{};
          const std::pair<char, SolverStatus> &pair = solver->solve(empty_passcodes);
          msg.info("Original solve returned code {} with status {}.\n", (int) pair.first, pair.second);

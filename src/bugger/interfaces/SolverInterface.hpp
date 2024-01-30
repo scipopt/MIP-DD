@@ -52,13 +52,13 @@ namespace bugger {
       SolverSettings parseSettings(const std::string &filename) = 0;
 
       /**
-       * loads problem and settings
-       * @param problem
+       * loads settings, problem, and solution
        * @param settings
-       * @param sol
+       * @param problem
+       * @param solution
        */
       virtual
-      void doSetUp(const Problem<double> &problem, const SolverSettings &settings, Solution<double> &sol) = 0;
+      void doSetUp(const SolverSettings &settings, const Problem<double> &problem, Solution<double> &solution) = 0;
 
       virtual
       std::pair<char, SolverStatus> solve(const Vec<int>& passcodes) = 0;

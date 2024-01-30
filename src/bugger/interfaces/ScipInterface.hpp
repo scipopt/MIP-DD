@@ -130,8 +130,8 @@ namespace bugger {
       }
 
       void
-      doSetUp(const Problem<double> &problem, const SolverSettings &settings, Solution<double>& sol) override {
-         auto result = setup(problem, sol, settings);
+      doSetUp(const SolverSettings &settings, const Problem<double> &problem, Solution<double>& solution) override {
+         auto result = setup(settings, problem, solution);
          assert(result == SCIP_OKAY);
       }
 
@@ -227,7 +227,7 @@ namespace bugger {
       writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings = true) override {
 
          Solution<double> solution;
-         setup(problem, solution, settings);
+         setup(settings, problem, solution);
          if( writesettings )
             SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
          SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), NULL, FALSE);
@@ -245,9 +245,9 @@ namespace bugger {
    private:
 
       SCIP_RETCODE
-      setup(const Problem<double> &problem, Solution<double> &sol, const SolverSettings &settings) {
+      setup(const SolverSettings &settings, const Problem<double> &problem, Solution<double> &solution) {
 
-         reference = &sol;
+         reference = &solution;
          bool solution_exists = reference->status == SolutionStatus::kFeasible;
          int ncols = problem.getNCols( );
          int nrows = problem.getNRows( );
