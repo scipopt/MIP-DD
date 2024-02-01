@@ -142,7 +142,7 @@ namespace bugger {
       readInstance(const std::string &settings_filename, const std::string &problem_filename) override {
 
          auto settings = parseSettings(settings_filename);
-         SCIP_RETCODE retcode = SCIPreadProb(scip, problem_filename.c_str(), NULL);
+         SCIP_RETCODE retcode = SCIPreadProb(scip, problem_filename.c_str(), nullptr);
          if( retcode != SCIP_OKAY )
             return { settings, boost::none };
          ProblemBuilder<SCIP_Real> builder;
@@ -229,13 +229,13 @@ namespace bugger {
       }
 
       void
-      writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings = true) override {
+      writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings) override {
 
          Solution<double> solution;
          setup(settings, problem, solution);
          if( writesettings )
             SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
-         SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), NULL, FALSE);
+         SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE);
       };
 
       ~ScipInterface( ) override {
@@ -440,8 +440,8 @@ namespace bugger {
    {
 
    public:
-      virtual std::unique_ptr<SolverInterface>
-      create_solver(  ) const
+      std::unique_ptr<SolverInterface>
+      create_solver(  ) const override
       {
          auto scip = std::unique_ptr<SolverInterface>( new ScipInterface() );
          return scip;

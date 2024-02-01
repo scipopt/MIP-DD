@@ -81,7 +81,7 @@ namespace bugger {
        * @param writesettings
        */
       virtual
-      void writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings = true) = 0;
+      void writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings ) = 0;
 
       virtual ~SolverInterface() = default;
    };
