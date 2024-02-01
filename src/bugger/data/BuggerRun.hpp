@@ -198,6 +198,7 @@ namespace bugger {
          int maxindex = -1;
          bool maxrow = false;
          bool maxupper = false;
+         bool maxintegral = false;
          double viol;
 
          msg.info("\nCheck:\n");
@@ -206,7 +207,7 @@ namespace bugger {
             if( problem.getColFlags()[col].test( ColFlag::kInactive ) )
                continue;
 
-            if ( !problem.getColFlags()[col].test( ColFlag::kLbInf ) && solution.primal[col] < lb[col] )
+            if( !problem.getColFlags()[col].test( ColFlag::kLbInf ) && solution.primal[col] < lb[col] )
             {
                msg.detailed( "\tColumn {:<3} violates lower bound ({:<3} < {:<3}).\n", problem.getVariableNames()[col], solution.primal[col], lb[col] );
                viol = lb[col] - solution.primal[col];
@@ -216,10 +217,11 @@ namespace bugger {
                   maxindex = col;
                   maxrow = false;
                   maxupper = false;
+                  maxintegral = false;
                }
             }
 
-            if ( !problem.getColFlags()[col].test( ColFlag::kUbInf ) && solution.primal[col] > ub[col] )
+            if( !problem.getColFlags()[col].test( ColFlag::kUbInf ) && solution.primal[col] > ub[col] )
             {
                msg.detailed( "\tColumn {:<3} violates upper bound ({:<3} > {:<3}).\n", problem.getVariableNames()[col], solution.primal[col], ub[col] );
                viol = solution.primal[col] - ub[col];
@@ -229,6 +231,21 @@ namespace bugger {
                   maxindex = col;
                   maxrow = false;
                   maxupper = true;
+                  maxintegral = false;
+               }
+            }
+
+            if( problem.getColFlags()[col].test( ColFlag::kIntegral ) && solution.primal[col] != rint(solution.primal[col]) )
+            {
+               msg.detailed( "\tColumn {:<3} violates integrality property ({:<3} != {:<3}).\n", problem.getVariableNames()[col], solution.primal[col], rint(solution.primal[col]) );
+               viol = abs(solution.primal[col] - rint(solution.primal[col]));
+               if( viol > maxviol )
+               {
+                  maxviol = viol;
+                  maxindex = col;
+                  maxrow = false;
+                  maxupper = false;
+                  maxintegral = true;
                }
             }
          }
@@ -263,6 +280,7 @@ namespace bugger {
                   maxindex = row;
                   maxrow = true;
                   maxupper = false;
+                  maxintegral = false;
                }
             }
 
@@ -276,12 +294,13 @@ namespace bugger {
                   maxindex = row;
                   maxrow = true;
                   maxupper = true;
+                  maxintegral = false;
                }
             }
          }
 
          if( maxindex >= 0 )
-            msg.info("Solution is infeasible.\nMaximum violation {:<3} of {} {:<3} {}.", maxviol, maxrow ? "row" : "column", (maxrow ? problem.getConstraintNames() : problem.getVariableNames())[maxindex], maxrow ? (maxupper ? "right" : "left") : (maxupper ? "upper" : "lower"));
+            msg.info("Solution is infeasible.\nMaximum violation {:<3} of {} {:<3} {}.", maxviol, maxrow ? "row" : "column", (maxrow ? problem.getConstraintNames() : problem.getVariableNames())[maxindex], maxintegral ? "integral" : (maxrow ? (maxupper ? "right" : "left") : (maxupper ? "upper" : "lower")));
          else
             msg.info("Solution is feasible.\nNo violations detected.");
          msg.info("\n\n");
