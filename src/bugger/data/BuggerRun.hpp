@@ -334,7 +334,7 @@ namespace bugger {
          return static_cast<bugger::ModulStatus>( largestValue );
       }
 
-      void printStats( double time ) {
+      void printStats( const double &time ) {
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>18} \n", "modules",
                   "nb calls", "changes", "success calls(%)", "execution time(s)");
          for( const auto &module: modules )
