@@ -339,7 +339,7 @@ namespace bugger {
                   "nb calls", "changes", "success calls(%)", "execution time(s)");
          for( const auto &module: modules )
             module->printStats(msg);
-         fmt::print( "\ndebugging took {:.3} seconds\n", time );
+         fmt::print( "\nbugging took {:.3} seconds\n", time );
 
       }
    };
