@@ -48,7 +48,7 @@ namespace bugger {
        * @param filename
        */
       virtual
-      SolverSettings parseSettings(const std::string &filename) = 0;
+      boost::optional<SolverSettings> parseSettings(const std::string &filename) = 0;
 
       /**
        * loads settings, problem, and solution
