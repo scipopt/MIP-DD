@@ -235,7 +235,7 @@ namespace bugger {
                }
             }
 
-            if( !problem.getColFlags()[col].test( ColFlag::kIntegral ) && solution.primal[col] != rint(solution.primal[col]) )
+            if( problem.getColFlags()[col].test( ColFlag::kIntegral ) && solution.primal[col] != rint(solution.primal[col]) )
             {
                msg.detailed( "\tColumn {:<3} violates integrality property ({:<3} != {:<3}).\n", problem.getVariableNames()[col], solution.primal[col], rint(solution.primal[col]) );
                viol = abs(solution.primal[col] - rint(solution.primal[col]));
