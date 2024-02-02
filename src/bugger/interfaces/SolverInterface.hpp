@@ -40,6 +40,7 @@ namespace bugger {
 
       const static char OKAY = 0;
       const static char DUALFAIL = 1;
+      const static char PRIMALFAIL = 2;
 
       SolverInterface( ) = default;
 

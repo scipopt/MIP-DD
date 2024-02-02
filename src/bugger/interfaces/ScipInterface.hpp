@@ -46,6 +46,7 @@ namespace bugger {
    private:
       SCIP* scip = nullptr;
       Vec<SCIP_VAR*> vars;
+      const Problem<double>* model = nullptr;
       Solution<double>* reference = nullptr;
 
    public:
@@ -133,7 +134,7 @@ namespace bugger {
       }
 
       void
-      doSetUp(const SolverSettings &settings, const Problem<double> &problem, Solution<double>& solution) override {
+      doSetUp(const SolverSettings &settings, const Problem<double> &problem, Solution<double> &solution) override {
          auto result = setup(settings, problem, solution);
          assert(result == SCIP_OKAY);
       }
@@ -252,24 +253,25 @@ namespace bugger {
       SCIP_RETCODE
       setup(const SolverSettings &settings, const Problem<double> &problem, Solution<double> &solution) {
 
+         model = &problem;
          reference = &solution;
          bool solution_exists = reference->status == SolutionStatus::kFeasible;
-         int ncols = problem.getNCols( );
-         int nrows = problem.getNRows( );
-         const Vec<String> &varNames = problem.getVariableNames( );
-         const Vec<String> &consNames = problem.getConstraintNames( );
-         const VariableDomains<double> &domains = problem.getVariableDomains( );
-         const Objective<double> &obj = problem.getObjective( );
-         const auto &consMatrix = problem.getConstraintMatrix( );
+         int ncols = model->getNCols( );
+         int nrows = model->getNRows( );
+         const Vec<String> &varNames = model->getVariableNames( );
+         const Vec<String> &consNames = model->getConstraintNames( );
+         const VariableDomains<double> &domains = model->getVariableDomains( );
+         const Objective<double> &obj = model->getObjective( );
+         const auto &consMatrix = model->getConstraintMatrix( );
          const auto &lhs_values = consMatrix.getLeftHandSides( );
          const auto &rhs_values = consMatrix.getRightHandSides( );
-         const auto &rflags = problem.getRowFlags( );
+         const auto &rflags = model->getRowFlags( );
 
          set_parameters(settings);
-         SCIP_CALL(SCIPcreateProbBasic(scip, problem.getName( ).c_str( )));
+         SCIP_CALL(SCIPcreateProbBasic(scip, model->getName( ).c_str( )));
          SCIP_CALL(SCIPaddOrigObjoffset(scip, SCIP_Real(obj.offset)));
          SCIP_CALL(SCIPsetObjsense(scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
-         vars.resize(problem.getNCols( ));
+         vars.resize(model->getNCols( ));
 
          if( solution_exists )
             reference->value = obj.offset;
@@ -314,11 +316,11 @@ namespace bugger {
             }
          }
 
-         Vec<SCIP_VAR*> consvars(problem.getNCols( ));
-         Vec<SCIP_Real> consvals(problem.getNCols( ));
+         Vec<SCIP_VAR*> consvars(model->getNCols( ));
+         Vec<SCIP_Real> consvals(model->getNCols( ));
          for( int row = 0; row < nrows; ++row )
          {
-            if( problem.getRowFlags( )[ row ].test(RowFlag::kRedundant) )
+            if( model->getRowFlags( )[ row ].test(RowFlag::kRedundant) )
                continue;
             assert(!rflags[ row ].test(RowFlag::kLhsInf) || !rflags[ row ].test(RowFlag::kRhsInf));
 
@@ -333,7 +335,7 @@ namespace bugger {
             {
                if( vals[ k ] != 0.0 )
                {
-                  assert(!problem.getColFlags( )[ inds[ k ] ].test(ColFlag::kFixed));
+                  assert(!model->getColFlags( )[ inds[ k ] ].test(ColFlag::kFixed));
                   consvars[ length ] = vars[ inds[ k ] ];
                   consvals[ length ] = SCIP_Real(vals[ k ]);
                   ++length;
@@ -379,11 +381,123 @@ namespace bugger {
          char retcode = SCIPsolve(scip);
          if( retcode == SCIP_OKAY )
          {
+            // reset return code
+            retcode = OKAY;
+            assert(SCIPsumepsilon(scip) > 0.0 && SCIPsumepsilon(scip) < 0.5);
+
+            // check dual by reference solution objective
             if( reference->status != SolutionStatus::kUnknown && SCIPisSumNegative(scip, SCIPgetObjsense(scip) * (reference->value - SCIPgetDualbound(scip))) )
                retcode = DUALFAIL;
-            else
-               retcode = OKAY;
 
+            // check primal by generated solution values
+            SCIP_SOL** sols = SCIPgetSols(scip);
+            int nsols = SCIPgetNSols(scip);
+            Solution<double> solution { SolutionStatus::kFeasible };
+            solution.primal.resize(vars.size());
+
+            for( int i = 0; i < nsols; ++i )
+            {
+               double relax;
+
+               if( retcode != OKAY )
+                  break;
+
+               for( int col = 0; col < solution.primal.size(); ++col )
+               {
+                  if( model->getColFlags()[col].test( ColFlag::kFixed ) )
+                  {
+                     solution.primal[col] = 0.0;
+                     continue;
+                  }
+
+                  solution.primal[col] = SCIPgetSolVal(scip, sols[i], vars[col]);
+                  if( !model->getColFlags()[col].test( ColFlag::kLbInf ) )
+                  {
+                     if( abs(model->getLowerBounds()[col]) < 1.0 )
+                        relax = model->getLowerBounds()[col] - SCIPsumepsilon(scip);
+                     else if( abs(model->getLowerBounds()[col]) > 1.0 / SCIPsumepsilon(scip) - 1.0 )
+                        relax = model->getLowerBounds()[col] - (1.0 - SCIPsumepsilon(scip));
+                     else if( model->getLowerBounds()[col] < 0.0 )
+                        relax = model->getLowerBounds()[col] * (1.0 + SCIPsumepsilon(scip));
+                     else
+                        relax = model->getLowerBounds()[col] * (1.0 - SCIPsumepsilon(scip));
+                     if( solution.primal[col] < relax )
+                     {
+                        retcode = PRIMALFAIL;
+                        break;
+                     }
+                  }
+                  if( !model->getColFlags()[col].test( ColFlag::kUbInf ) )
+                  {
+                     if( abs(model->getUpperBounds()[col]) < 1.0 )
+                        relax = model->getUpperBounds()[col] + SCIPsumepsilon(scip);
+                     else if( abs(model->getUpperBounds()[col]) > 1.0 / SCIPsumepsilon(scip) - 1.0 )
+                        relax = model->getUpperBounds()[col] + (1.0 - SCIPsumepsilon(scip));
+                     else if( model->getUpperBounds()[col] < 0.0 )
+                        relax = model->getUpperBounds()[col] * (1.0 - SCIPsumepsilon(scip));
+                     else
+                        relax = model->getUpperBounds()[col] * (1.0 + SCIPsumepsilon(scip));
+                     if( solution.primal[col] > relax )
+                     {
+                        retcode = PRIMALFAIL;
+                        break;
+                     }
+                  }
+                  if( model->getColFlags()[col].test( ColFlag::kIntegral ) && !SCIPisSumZero(scip, solution.primal[col] - rint(solution.primal[col])) )
+                  {
+                     retcode = PRIMALFAIL;
+                     break;
+                  }
+               }
+
+               if( retcode != OKAY )
+                  break;
+
+               for( int row = 0; row < model->getNRows(); ++row )
+               {
+                  if( model->getRowFlags()[row].test( RowFlag::kRedundant ) )
+                     continue;
+
+                  double activity = 0.0;
+                  auto coefficients = model->getConstraintMatrix().getRowCoefficients( row );
+                  for( int j = 0; j < coefficients.getLength(); ++j )
+                     activity += coefficients.getValues()[j] * solution.primal[coefficients.getIndices()[j]];
+                  if( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) )
+                  {
+                     if( abs(model->getConstraintMatrix().getLeftHandSides()[row]) < 1.0 )
+                        relax = model->getConstraintMatrix().getLeftHandSides()[row] - SCIPsumepsilon(scip);
+                     else if( abs(model->getConstraintMatrix().getLeftHandSides()[row]) > 1.0 / SCIPsumepsilon(scip) - 1.0 )
+                        relax = model->getConstraintMatrix().getLeftHandSides()[row] - (1.0 - SCIPsumepsilon(scip));
+                     else if( model->getConstraintMatrix().getLeftHandSides()[row] < 0.0 )
+                        relax = model->getConstraintMatrix().getLeftHandSides()[row] * (1.0 + SCIPsumepsilon(scip));
+                     else
+                        relax = model->getConstraintMatrix().getLeftHandSides()[row] * (1.0 - SCIPsumepsilon(scip));
+                     if( activity < relax )
+                     {
+                        retcode = PRIMALFAIL;
+                        break;
+                     }
+                  }
+                  if( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) )
+                  {
+                     if( abs(model->getConstraintMatrix().getRightHandSides()[row]) < 1.0 )
+                        relax = model->getConstraintMatrix().getRightHandSides()[row] + SCIPsumepsilon(scip);
+                     else if( abs(model->getConstraintMatrix().getRightHandSides()[row]) > 1.0 / SCIPsumepsilon(scip) - 1.0 )
+                        relax = model->getConstraintMatrix().getRightHandSides()[row] + (1.0 - SCIPsumepsilon(scip));
+                     else if( model->getConstraintMatrix().getRightHandSides()[row] < 0.0 )
+                        relax = model->getConstraintMatrix().getRightHandSides()[row] * (1.0 - SCIPsumepsilon(scip));
+                     else
+                        relax = model->getConstraintMatrix().getRightHandSides()[row] * (1.0 + SCIPsumepsilon(scip));
+                     if( activity > relax )
+                     {
+                        retcode = PRIMALFAIL;
+                        break;
+                     }
+                  }
+               }
+            }
+
+            // translate solver status
             switch( SCIPgetStatus(scip))
             {
                case SCIP_STATUS_UNKNOWN:
