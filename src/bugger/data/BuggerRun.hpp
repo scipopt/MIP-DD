@@ -177,7 +177,7 @@ namespace bugger {
          }
 
          assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModulStatus::kSuccessful );
-         printStats( );
+         printStats( timer.getTime() );
       }
       
       void
@@ -341,11 +341,12 @@ namespace bugger {
          return static_cast<bugger::ModulStatus>( largestValue );
       }
 
-      void printStats( ) {
+      void printStats( const double &time ) {
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>18} \n", "modules",
                   "nb calls", "changes", "success calls(%)", "execution time(s)");
          for( const auto &module: modules )
             module->printStats(msg);
+         fmt::print( "\nbugging took {:.3} seconds\n", time );
 
       }
    };
