@@ -415,7 +415,7 @@ namespace bugger {
                   {
                      if( abs(model->getLowerBounds()[col]) < 1.0 )
                         relax = model->getLowerBounds()[col] - SCIPsumepsilon(scip);
-                     else if( abs(model->getLowerBounds()[col]) > 1.0 / SCIPsumepsilon(scip) - 1.0 )
+                     else if( (abs(model->getLowerBounds()[col]) + 1.0) * SCIPsumepsilon(scip) > 1.0 )
                         relax = model->getLowerBounds()[col] - (1.0 - SCIPsumepsilon(scip));
                      else if( model->getLowerBounds()[col] < 0.0 )
                         relax = model->getLowerBounds()[col] * (1.0 + SCIPsumepsilon(scip));
@@ -431,7 +431,7 @@ namespace bugger {
                   {
                      if( abs(model->getUpperBounds()[col]) < 1.0 )
                         relax = model->getUpperBounds()[col] + SCIPsumepsilon(scip);
-                     else if( abs(model->getUpperBounds()[col]) > 1.0 / SCIPsumepsilon(scip) - 1.0 )
+                     else if( (abs(model->getUpperBounds()[col]) + 1.0) * SCIPsumepsilon(scip) > 1.0 )
                         relax = model->getUpperBounds()[col] + (1.0 - SCIPsumepsilon(scip));
                      else if( model->getUpperBounds()[col] < 0.0 )
                         relax = model->getUpperBounds()[col] * (1.0 - SCIPsumepsilon(scip));
@@ -466,7 +466,7 @@ namespace bugger {
                   {
                      if( abs(model->getConstraintMatrix().getLeftHandSides()[row]) < 1.0 )
                         relax = model->getConstraintMatrix().getLeftHandSides()[row] - SCIPsumepsilon(scip);
-                     else if( abs(model->getConstraintMatrix().getLeftHandSides()[row]) > 1.0 / SCIPsumepsilon(scip) - 1.0 )
+                     else if( (abs(model->getConstraintMatrix().getLeftHandSides()[row]) + 1.0) * SCIPsumepsilon(scip) > 1.0 )
                         relax = model->getConstraintMatrix().getLeftHandSides()[row] - (1.0 - SCIPsumepsilon(scip));
                      else if( model->getConstraintMatrix().getLeftHandSides()[row] < 0.0 )
                         relax = model->getConstraintMatrix().getLeftHandSides()[row] * (1.0 + SCIPsumepsilon(scip));
@@ -482,7 +482,7 @@ namespace bugger {
                   {
                      if( abs(model->getConstraintMatrix().getRightHandSides()[row]) < 1.0 )
                         relax = model->getConstraintMatrix().getRightHandSides()[row] + SCIPsumepsilon(scip);
-                     else if( abs(model->getConstraintMatrix().getRightHandSides()[row]) > 1.0 / SCIPsumepsilon(scip) - 1.0 )
+                     else if( (abs(model->getConstraintMatrix().getRightHandSides()[row]) + 1.0) * SCIPsumepsilon(scip) > 1.0 )
                         relax = model->getConstraintMatrix().getRightHandSides()[row] + (1.0 - SCIPsumepsilon(scip));
                      else if( model->getConstraintMatrix().getRightHandSides()[row] < 0.0 )
                         relax = model->getConstraintMatrix().getRightHandSides()[row] * (1.0 - SCIPsumepsilon(scip));
