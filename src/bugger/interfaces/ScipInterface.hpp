@@ -393,15 +393,11 @@ namespace bugger {
             int nsols = SCIPgetNSols(scip);
             Solution<double> solution { SolutionStatus::kFeasible };
             solution.primal.resize(vars.size());
+            double relax;
 
-            for( int i = 0; i < nsols; ++i )
+            for( int i = nsols - 1; i >= 0 && retcode == OKAY; --i )
             {
-               double relax;
-
-               if( retcode != OKAY )
-                  break;
-
-               for( int col = 0; col < solution.primal.size(); ++col )
+               for( int col = 0; col < solution.primal.size() && retcode == OKAY; ++col )
                {
                   if( model->getColFlags()[col].test( ColFlag::kFixed ) )
                   {
@@ -421,10 +417,7 @@ namespace bugger {
                      else
                         relax = model->getLowerBounds()[col] * (1.0 - SCIPsumepsilon(scip));
                      if( solution.primal[col] < relax )
-                     {
                         retcode = PRIMALFAIL;
-                        break;
-                     }
                   }
                   if( !model->getColFlags()[col].test( ColFlag::kUbInf ) )
                   {
@@ -437,22 +430,13 @@ namespace bugger {
                      else
                         relax = model->getUpperBounds()[col] * (1.0 + SCIPsumepsilon(scip));
                      if( solution.primal[col] > relax )
-                     {
                         retcode = PRIMALFAIL;
-                        break;
-                     }
                   }
                   if( model->getColFlags()[col].test( ColFlag::kIntegral ) && !SCIPisSumZero(scip, solution.primal[col] - rint(solution.primal[col])) )
-                  {
                      retcode = PRIMALFAIL;
-                     break;
-                  }
                }
 
-               if( retcode != OKAY )
-                  break;
-
-               for( int row = 0; row < model->getNRows(); ++row )
+               for( int row = 0; row < model->getNRows() && retcode == OKAY; ++row )
                {
                   if( model->getRowFlags()[row].test( RowFlag::kRedundant ) )
                      continue;
@@ -472,10 +456,7 @@ namespace bugger {
                      else
                         relax = model->getConstraintMatrix().getLeftHandSides()[row] * (1.0 - SCIPsumepsilon(scip));
                      if( activity < relax )
-                     {
                         retcode = PRIMALFAIL;
-                        break;
-                     }
                   }
                   if( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) )
                   {
@@ -488,11 +469,49 @@ namespace bugger {
                      else
                         relax = model->getConstraintMatrix().getRightHandSides()[row] * (1.0 + SCIPsumepsilon(scip));
                      if( activity > relax )
-                     {
                         retcode = PRIMALFAIL;
-                        break;
-                     }
                   }
+               }
+            }
+
+            if( SCIPhasPrimalRay(scip) )
+            {
+               solution.status = SolutionStatus::kUnbounded;
+               solution.ray.resize(vars.size());
+               relax = 0.0;
+
+               for( int col = 0; col < solution.ray.size() && retcode == OKAY; ++col )
+               {
+                  if( model->getColFlags()[col].test( ColFlag::kFixed ) )
+                  {
+                     solution.ray[col] = std::numeric_limits<double>::signaling_NaN();
+                     continue;
+                  }
+
+                  solution.ray[col] = SCIPgetPrimalRayVal(scip, vars[col]);
+                  relax = std::max(relax, abs(solution.ray[col]));
+               }
+
+               relax *= SCIPsumepsilon(scip);
+
+               for( int col = 0; col < solution.ray.size() && retcode == OKAY; ++col )
+                  if( !model->getColFlags()[col].test( ColFlag::kFixed )
+                     && ( ( !model->getColFlags()[col].test( ColFlag::kLbInf ) && solution.ray[col] < -relax )
+                       || ( !model->getColFlags()[col].test( ColFlag::kUbInf ) && solution.ray[col] > relax ) ) )
+                     retcode = PRIMALFAIL;
+
+               for( int row = 0; row < model->getNRows() && retcode == OKAY; ++row )
+               {
+                  if( model->getRowFlags()[row].test( RowFlag::kRedundant ) )
+                     continue;
+
+                  double activity = 0.0;
+                  auto coefficients = model->getConstraintMatrix().getRowCoefficients( row );
+                  for( int j = 0; j < coefficients.getLength(); ++j )
+                     activity += coefficients.getValues()[j] * solution.ray[coefficients.getIndices()[j]];
+                  if( ( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < -relax )
+                   || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity > relax ) )
+                     retcode = PRIMALFAIL;
                }
             }
 
