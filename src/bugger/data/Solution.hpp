@@ -36,20 +36,19 @@ enum class SolutionStatus
    kUnknown,
 };
 
-
 template <typename REAL>
 class Solution
 {
  public:
    SolutionStatus status;
-   REAL value = std::numeric_limits<REAL>::signaling_NaN();
    Vec<REAL> primal;
+   Vec<REAL> ray;
 
    explicit Solution() : status( SolutionStatus::kUnknown ) {}
 
-   Solution(SolutionStatus _status) : status( _status ) {}
+   Solution(const SolutionStatus& _status) : status( _status ) {}
 
-   Solution( Vec<REAL> values ) : status( SolutionStatus::kFeasible ), primal( std::move( values ) ) {}
+   Solution(const Vec<REAL>& _primal) : status( SolutionStatus::kFeasible ), primal( _primal ) {}
 };
 
 } // namespace bugger

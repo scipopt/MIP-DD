@@ -58,7 +58,7 @@ namespace bugger {
        * @param solution
        */
       virtual
-      void doSetUp(const SolverSettings &settings, const Problem<double> &problem, Solution<double> &solution) = 0;
+      void doSetUp(const SolverSettings &settings, const Problem<double> &problem, const Solution<double> &solution) = 0;
 
       virtual
       std::pair<char, SolverStatus> solve(const Vec<int>& passcodes) = 0;

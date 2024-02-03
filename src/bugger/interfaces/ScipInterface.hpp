@@ -44,10 +44,11 @@ namespace bugger {
    class ScipInterface : public SolverInterface {
 
    private:
+      const Problem<double>* model = nullptr;
+      const Solution<double>* reference = nullptr;
+      double value = std::numeric_limits<double>::signaling_NaN();
       SCIP* scip = nullptr;
       Vec<SCIP_VAR*> vars;
-      const Problem<double>* model = nullptr;
-      Solution<double>* reference = nullptr;
 
    public:
       explicit ScipInterface( ) {
@@ -134,7 +135,7 @@ namespace bugger {
       }
 
       void
-      doSetUp(const SolverSettings &settings, const Problem<double> &problem, Solution<double> &solution) override {
+      doSetUp(const SolverSettings &settings, const Problem<double> &problem, const Solution<double> &solution) override {
          auto result = setup(settings, problem, solution);
          assert(result == SCIP_OKAY);
       }
@@ -251,7 +252,7 @@ namespace bugger {
    private:
 
       SCIP_RETCODE
-      setup(const SolverSettings &settings, const Problem<double> &problem, Solution<double> &solution) {
+      setup(const SolverSettings &settings, const Problem<double> &problem, const Solution<double> &solution) {
 
          model = &problem;
          reference = &solution;
@@ -274,11 +275,11 @@ namespace bugger {
          vars.resize(model->getNCols( ));
 
          if( solution_exists )
-            reference->value = obj.offset;
-         if( reference->status == SolutionStatus::kUnbounded )
-            reference->value = -SCIPgetObjsense(scip) * SCIPinfinity(scip);
-         if( reference->status == SolutionStatus::kInfeasible )
-            reference->value = SCIPgetObjsense(scip) * SCIPinfinity(scip);
+            value = obj.offset;
+         else if( reference->status == SolutionStatus::kUnbounded )
+            value = -SCIPgetObjsense(scip) * SCIPinfinity(scip);
+         else if( reference->status == SolutionStatus::kInfeasible )
+            value = SCIPgetObjsense(scip) * SCIPinfinity(scip);
          for( int col = 0; col < ncols; ++col )
          {
             if( domains.flags[ col ].test(ColFlag::kFixed) )
@@ -309,7 +310,7 @@ namespace bugger {
                      scip, &var, varNames[ col ].c_str( ), lb, ub,
                      SCIP_Real(obj.coefficients[ col ]), type));
                if( solution_exists )
-                  reference->value += obj.coefficients[ col ] * reference->primal[ col ];
+                  value += obj.coefficients[ col ] * reference->primal[ col ];
                SCIP_CALL(SCIPaddVar(scip, var));
                vars[ col ] = var;
                SCIP_CALL(SCIPreleaseVar(scip, &var));
@@ -354,7 +355,7 @@ namespace bugger {
 //#if SCIP_VERSION >= 900
 ////         TODO: test this
 //         if( solution_exists )
-//            SCIPsetRealParam(scip, "limits/objectivestop", reference->value);
+//            SCIPsetRealParam(scip, "limits/objectivestop", value);
 //#endif
          return SCIP_OKAY;
       }
@@ -386,7 +387,7 @@ namespace bugger {
             assert(SCIPsumepsilon(scip) > 0.0 && SCIPsumepsilon(scip) < 0.5);
 
             // check dual by reference solution objective
-            if( reference->status != SolutionStatus::kUnknown && SCIPisSumNegative(scip, SCIPgetObjsense(scip) * (reference->value - SCIPgetDualbound(scip))) )
+            if( reference->status != SolutionStatus::kUnknown && SCIPisSumNegative(scip, SCIPgetObjsense(scip) * (value - SCIPgetDualbound(scip))) )
                retcode = DUALFAIL;
 
             // check primal by generated solution values
@@ -557,8 +558,7 @@ namespace bugger {
       std::unique_ptr<SolverInterface>
       create_solver(  ) const override
       {
-         auto scip = std::unique_ptr<SolverInterface>( new ScipInterface() );
-         return scip;
+         return std::unique_ptr<SolverInterface>( new ScipInterface() );
       }
 
    };
