@@ -334,13 +334,11 @@ namespace bugger {
             int length = 0;
             for( int k = 0; k != rowvec.getLength( ); ++k )
             {
-               if( vals[ k ] != 0.0 )
-               {
-                  assert(!model->getColFlags( )[ inds[ k ] ].test(ColFlag::kFixed));
-                  consvars[ length ] = vars[ inds[ k ] ];
-                  consvals[ length ] = SCIP_Real(vals[ k ]);
-                  ++length;
-               }
+               assert(!model->getColFlags( )[ inds[ k ] ].test(ColFlag::kFixed));
+               assert(vals[ k ] != 0.0);
+               consvars[ length ] = vars[ inds[ k ] ];
+               consvals[ length ] = SCIP_Real(vals[ k ]);
+               ++length;
             }
 
             SCIP_CALL(SCIPcreateConsBasicLinear(
