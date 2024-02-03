@@ -407,7 +407,7 @@ namespace bugger {
                {
                   if( model->getColFlags()[col].test( ColFlag::kFixed ) )
                   {
-                     solution.primal[col] = 0.0;
+                     solution.primal[col] = std::numeric_limits<double>::signaling_NaN();
                      continue;
                   }
 
