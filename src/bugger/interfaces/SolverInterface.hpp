@@ -41,6 +41,7 @@ namespace bugger {
       const static char OKAY = 0;
       const static char DUALFAIL = 1;
       const static char PRIMALFAIL = 2;
+      const static char OBJECTIVEFAIL = 3;
 
       SolverInterface( ) = default;
 

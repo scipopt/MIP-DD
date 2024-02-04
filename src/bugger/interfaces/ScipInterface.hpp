@@ -136,8 +136,8 @@ namespace bugger {
 
       void
       doSetUp(const SolverSettings &settings, const Problem<double> &problem, const Solution<double> &solution) override {
-         auto result = setup(settings, problem, solution);
-         assert(result == SCIP_OKAY);
+         auto retcode = setup(settings, problem, solution);
+         assert(retcode == SCIP_OKAY);
       }
 
       std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>>
@@ -273,13 +273,13 @@ namespace bugger {
          SCIP_CALL(SCIPaddOrigObjoffset(scip, SCIP_Real(obj.offset)));
          SCIP_CALL(SCIPsetObjsense(scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
          vars.resize(model->getNCols( ));
-
          if( solution_exists )
             value = obj.offset;
          else if( reference->status == SolutionStatus::kUnbounded )
-            value = -SCIPgetObjsense(scip) * SCIPinfinity(scip);
+            value = obj.sense ? -SCIPinfinity(scip) : SCIPinfinity(scip);
          else if( reference->status == SolutionStatus::kInfeasible )
-            value = SCIPgetObjsense(scip) * SCIPinfinity(scip);
+            value = obj.sense ? SCIPinfinity(scip) : -SCIPinfinity(scip);
+
          for( int col = 0; col < ncols; ++col )
          {
             if( domains.flags[ col ].test(ColFlag::kFixed) )
@@ -316,6 +316,9 @@ namespace bugger {
                SCIP_CALL(SCIPreleaseVar(scip, &var));
             }
          }
+
+         if( solution_exists )
+            value = std::max(std::min(value, SCIPinfinity(scip)), -SCIPinfinity(scip));
 
          Vec<SCIP_VAR*> consvars(model->getNCols( ));
          Vec<SCIP_Real> consvals(model->getNCols( ));
@@ -385,7 +388,7 @@ namespace bugger {
             assert(SCIPsumepsilon(scip) > 0.0 && SCIPsumepsilon(scip) < 0.5);
 
             // check dual by reference solution objective
-            if( reference->status != SolutionStatus::kUnknown && SCIPisSumNegative(scip, SCIPgetObjsense(scip) * (value - SCIPgetDualbound(scip))) )
+            if( retcode == OKAY && reference->status != SolutionStatus::kUnknown && (model->getObjective().sense ? SCIPisSumPositive : SCIPisSumNegative)(scip, SCIPgetDualbound(scip) - value) )
                retcode = DUALFAIL;
 
             // check primal by generated solution values
@@ -394,6 +397,11 @@ namespace bugger {
             Solution<double> solution { SolutionStatus::kFeasible };
             solution.primal.resize(vars.size());
             double relax;
+            double result;
+            if( nsols >= 1 )
+               result = model->getObjective().offset;
+            else
+               result = model->getObjective().sense ? SCIPinfinity(scip) : -SCIPinfinity(scip);
 
             for( int i = nsols - 1; i >= 0 && retcode == OKAY; --i )
             {
@@ -434,6 +442,8 @@ namespace bugger {
                   }
                   if( model->getColFlags()[col].test( ColFlag::kIntegral ) && !SCIPisSumZero(scip, solution.primal[col] - rint(solution.primal[col])) )
                      retcode = PRIMALFAIL;
+                  if( i <= 0 )
+                     result += model->getObjective().coefficients[col] * solution.primal[col];
                }
 
                for( int row = 0; row < model->getNRows() && retcode == OKAY; ++row )
@@ -474,11 +484,15 @@ namespace bugger {
                }
             }
 
+            if( nsols >= 1 )
+               result = std::max(std::min(result, SCIPinfinity(scip)), -SCIPinfinity(scip));
+
             if( SCIPhasPrimalRay(scip) )
             {
                solution.status = SolutionStatus::kUnbounded;
                solution.ray.resize(vars.size());
                relax = 0.0;
+               double slope = 0.0;
 
                for( int col = 0; col < solution.ray.size() && retcode == OKAY; ++col )
                {
@@ -490,6 +504,8 @@ namespace bugger {
 
                   solution.ray[col] = SCIPgetPrimalRayVal(scip, vars[col]);
                   relax = std::max(relax, abs(solution.ray[col]));
+                  if( nsols >= 1 )
+                     slope += model->getObjective().coefficients[col] * solution.ray[col];
                }
 
                relax *= SCIPsumepsilon(scip);
@@ -513,10 +529,28 @@ namespace bugger {
                    || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity > relax ) )
                      retcode = PRIMALFAIL;
                }
+
+               if( nsols >= 1 )
+               {
+                  if( model->getObjective().sense )
+                  {
+                     if( slope < -relax )
+                        result = -SCIPinfinity(scip);
+                  }
+                  else
+                  {
+                     if( slope > relax )
+                        result = SCIPinfinity(scip);
+                  }
+               }
             }
 
+            // check objective by best solution evaluation
+            if( retcode == OKAY && (model->getObjective().sense ? SCIPisSumNegative : SCIPisSumPositive)(scip, SCIPgetPrimalbound(scip) - result) )
+               retcode = OBJECTIVEFAIL;
+
             // translate solver status
-            switch( SCIPgetStatus(scip))
+            switch( SCIPgetStatus(scip) )
             {
                case SCIP_STATUS_UNKNOWN:
                   solverstatus = SolverStatus::kUnknown;
