@@ -44,13 +44,12 @@ namespace bugger {
    class ScipInterface : public SolverInterface {
 
    private:
-      const Problem<double>* model = nullptr;
-      const Solution<double>* reference = nullptr;
-      double value = std::numeric_limits<double>::signaling_NaN();
+
       SCIP* scip = nullptr;
       Vec<SCIP_VAR*> vars;
 
    public:
+
       explicit ScipInterface( ) {
          if( SCIPcreate(&scip) != SCIP_OKAY || SCIPincludeDefaultPlugins(scip) != SCIP_OKAY )
             throw std::runtime_error("could not create SCIP");
@@ -317,9 +316,6 @@ namespace bugger {
             }
          }
 
-         if( solution_exists )
-            value = std::max(std::min(value, SCIPinfinity(scip)), -SCIPinfinity(scip));
-
          Vec<SCIP_VAR*> consvars(model->getNCols( ));
          Vec<SCIP_Real> consvals(model->getNCols( ));
          for( int row = 0; row < nrows; ++row )
@@ -376,7 +372,7 @@ namespace bugger {
             SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
       }
 
-      std::pair<char, SolverStatus> solve( const Vec<int>& passcodes) override {
+      std::pair<char, SolverStatus> solve( const Vec<int>& passcodes ) override {
 
          SolverStatus solverstatus = SolverStatus::kUndefinedError;
          SCIPsetMessagehdlrQuiet(scip, true);
@@ -385,169 +381,52 @@ namespace bugger {
          {
             // reset return code
             retcode = OKAY;
-            assert(SCIPsumepsilon(scip) > 0.0 && SCIPsumepsilon(scip) < 0.5);
+
+            // initialize primal solution
+            Solution<double> solution;
 
             // check dual by reference solution objective
-            if( retcode == OKAY && reference->status != SolutionStatus::kUnknown && (model->getObjective().sense ? SCIPisSumPositive : SCIPisSumNegative)(scip, SCIPgetDualbound(scip) - value) )
-               retcode = DUALFAIL;
+            if( retcode == OKAY )
+               retcode = check_dual_bound( SCIPgetDualbound(scip), SCIPsumepsilon(scip), SCIPinfinity(scip) );
 
             // check primal by generated solution values
-            SCIP_SOL** sols = SCIPgetSols(scip);
-            int nsols = SCIPgetNSols(scip);
-            Solution<double> solution { SolutionStatus::kFeasible };
-            solution.primal.resize(vars.size());
-            double relax;
-            double result;
-            if( nsols >= 1 )
-               result = model->getObjective().offset;
-            else
-               result = model->getObjective().sense ? SCIPinfinity(scip) : -SCIPinfinity(scip);
-
-            for( int i = nsols - 1; i >= 0 && retcode == OKAY; --i )
+            if( retcode == OKAY )
             {
-               for( int col = 0; col < solution.primal.size() && retcode == OKAY; ++col )
-               {
-                  if( model->getColFlags()[col].test( ColFlag::kFixed ) )
-                  {
-                     solution.primal[col] = std::numeric_limits<double>::signaling_NaN();
-                     continue;
-                  }
-
-                  solution.primal[col] = SCIPgetSolVal(scip, sols[i], vars[col]);
-                  if( !model->getColFlags()[col].test( ColFlag::kLbInf ) )
-                  {
-                     if( abs(model->getLowerBounds()[col]) < 1.0 )
-                        relax = model->getLowerBounds()[col] - SCIPsumepsilon(scip);
-                     else if( (abs(model->getLowerBounds()[col]) + 1.0) * SCIPsumepsilon(scip) > 1.0 )
-                        relax = model->getLowerBounds()[col] - (1.0 - SCIPsumepsilon(scip));
-                     else if( model->getLowerBounds()[col] < 0.0 )
-                        relax = model->getLowerBounds()[col] * (1.0 + SCIPsumepsilon(scip));
-                     else
-                        relax = model->getLowerBounds()[col] * (1.0 - SCIPsumepsilon(scip));
-                     if( solution.primal[col] < relax )
-                        retcode = PRIMALFAIL;
-                  }
-                  if( !model->getColFlags()[col].test( ColFlag::kUbInf ) )
-                  {
-                     if( abs(model->getUpperBounds()[col]) < 1.0 )
-                        relax = model->getUpperBounds()[col] + SCIPsumepsilon(scip);
-                     else if( (abs(model->getUpperBounds()[col]) + 1.0) * SCIPsumepsilon(scip) > 1.0 )
-                        relax = model->getUpperBounds()[col] + (1.0 - SCIPsumepsilon(scip));
-                     else if( model->getUpperBounds()[col] < 0.0 )
-                        relax = model->getUpperBounds()[col] * (1.0 - SCIPsumepsilon(scip));
-                     else
-                        relax = model->getUpperBounds()[col] * (1.0 + SCIPsumepsilon(scip));
-                     if( solution.primal[col] > relax )
-                        retcode = PRIMALFAIL;
-                  }
-                  if( model->getColFlags()[col].test( ColFlag::kIntegral ) && !SCIPisSumZero(scip, solution.primal[col] - rint(solution.primal[col])) )
-                     retcode = PRIMALFAIL;
-                  if( i <= 0 )
-                     result += model->getObjective().coefficients[col] * solution.primal[col];
-               }
-
-               for( int row = 0; row < model->getNRows() && retcode == OKAY; ++row )
-               {
-                  if( model->getRowFlags()[row].test( RowFlag::kRedundant ) )
-                     continue;
-
-                  double activity = 0.0;
-                  auto coefficients = model->getConstraintMatrix().getRowCoefficients( row );
-                  for( int j = 0; j < coefficients.getLength(); ++j )
-                     activity += coefficients.getValues()[j] * solution.primal[coefficients.getIndices()[j]];
-                  if( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) )
-                  {
-                     if( abs(model->getConstraintMatrix().getLeftHandSides()[row]) < 1.0 )
-                        relax = model->getConstraintMatrix().getLeftHandSides()[row] - SCIPsumepsilon(scip);
-                     else if( (abs(model->getConstraintMatrix().getLeftHandSides()[row]) + 1.0) * SCIPsumepsilon(scip) > 1.0 )
-                        relax = model->getConstraintMatrix().getLeftHandSides()[row] - (1.0 - SCIPsumepsilon(scip));
-                     else if( model->getConstraintMatrix().getLeftHandSides()[row] < 0.0 )
-                        relax = model->getConstraintMatrix().getLeftHandSides()[row] * (1.0 + SCIPsumepsilon(scip));
-                     else
-                        relax = model->getConstraintMatrix().getLeftHandSides()[row] * (1.0 - SCIPsumepsilon(scip));
-                     if( activity < relax )
-                        retcode = PRIMALFAIL;
-                  }
-                  if( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) )
-                  {
-                     if( abs(model->getConstraintMatrix().getRightHandSides()[row]) < 1.0 )
-                        relax = model->getConstraintMatrix().getRightHandSides()[row] + SCIPsumepsilon(scip);
-                     else if( (abs(model->getConstraintMatrix().getRightHandSides()[row]) + 1.0) * SCIPsumepsilon(scip) > 1.0 )
-                        relax = model->getConstraintMatrix().getRightHandSides()[row] + (1.0 - SCIPsumepsilon(scip));
-                     else if( model->getConstraintMatrix().getRightHandSides()[row] < 0.0 )
-                        relax = model->getConstraintMatrix().getRightHandSides()[row] * (1.0 - SCIPsumepsilon(scip));
-                     else
-                        relax = model->getConstraintMatrix().getRightHandSides()[row] * (1.0 + SCIPsumepsilon(scip));
-                     if( activity > relax )
-                        retcode = PRIMALFAIL;
-                  }
-               }
-            }
-
-            if( nsols >= 1 )
-               result = std::max(std::min(result, SCIPinfinity(scip)), -SCIPinfinity(scip));
-
-            if( SCIPhasPrimalRay(scip) )
-            {
-               solution.status = SolutionStatus::kUnbounded;
-               solution.ray.resize(vars.size());
-               relax = 0.0;
-               double slope = 0.0;
-
-               for( int col = 0; col < solution.ray.size() && retcode == OKAY; ++col )
-               {
-                  if( model->getColFlags()[col].test( ColFlag::kFixed ) )
-                  {
-                     solution.ray[col] = std::numeric_limits<double>::signaling_NaN();
-                     continue;
-                  }
-
-                  solution.ray[col] = SCIPgetPrimalRayVal(scip, vars[col]);
-                  relax = std::max(relax, abs(solution.ray[col]));
-                  if( nsols >= 1 )
-                     slope += model->getObjective().coefficients[col] * solution.ray[col];
-               }
-
-               relax *= SCIPsumepsilon(scip);
-
-               for( int col = 0; col < solution.ray.size() && retcode == OKAY; ++col )
-                  if( !model->getColFlags()[col].test( ColFlag::kFixed )
-                     && ( ( !model->getColFlags()[col].test( ColFlag::kLbInf ) && solution.ray[col] < -relax )
-                       || ( !model->getColFlags()[col].test( ColFlag::kUbInf ) && solution.ray[col] > relax ) ) )
-                     retcode = PRIMALFAIL;
-
-               for( int row = 0; row < model->getNRows() && retcode == OKAY; ++row )
-               {
-                  if( model->getRowFlags()[row].test( RowFlag::kRedundant ) )
-                     continue;
-
-                  double activity = 0.0;
-                  auto coefficients = model->getConstraintMatrix().getRowCoefficients( row );
-                  for( int j = 0; j < coefficients.getLength(); ++j )
-                     activity += coefficients.getValues()[j] * solution.ray[coefficients.getIndices()[j]];
-                  if( ( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < -relax )
-                   || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity > relax ) )
-                     retcode = PRIMALFAIL;
-               }
+               SCIP_SOL** sols = SCIPgetSols(scip);
+               int nsols = SCIPgetNSols(scip);
 
                if( nsols >= 1 )
                {
-                  if( model->getObjective().sense )
+                  solution.status = SolutionStatus::kFeasible;
+                  solution.primal.resize(vars.size());
+
+                  for( int i = nsols - 1; i >= 0 && retcode == OKAY; --i )
                   {
-                     if( slope < -relax )
-                        result = -SCIPinfinity(scip);
+                     for( int col = 0; col < solution.primal.size(); ++col )
+                        solution.primal[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetSolVal(scip, sols[i], vars[col]);
+
+                     if( i <= 0 && SCIPhasPrimalRay(scip) )
+                     {
+                        solution.status = SolutionStatus::kUnbounded;
+                        solution.ray.resize(vars.size());
+
+                        for( int col = 0; col < solution.ray.size(); ++col )
+                           solution.ray[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetPrimalRayVal(scip, vars[col]);
+                     }
+
+                     retcode = check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
                   }
-                  else
-                  {
-                     if( slope > relax )
-                        result = SCIPinfinity(scip);
-                  }
+               }
+               else
+               {
+                  solution.status = SolutionStatus::kInfeasible;
+                  retcode = check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
                }
             }
 
             // check objective by best solution evaluation
-            if( retcode == OKAY && (model->getObjective().sense ? SCIPisSumNegative : SCIPisSumPositive)(scip, SCIPgetPrimalbound(scip) - result) )
-               retcode = OBJECTIVEFAIL;
+            if( retcode == OKAY )
+               retcode = check_objective_value( SCIPgetPrimalbound(scip), solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
 
             // translate solver status
             switch( SCIPgetStatus(scip) )
