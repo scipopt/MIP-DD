@@ -25,15 +25,6 @@
 
 #include "bugger/modules/BuggerModul.hpp"
 
-#if BUGGER_HAVE_SCIP
-
-#include "scip/var.h"
-#include "scip/scip_sol.h"
-#include "scip/scip.h"
-#include "scip/scip_numerics.h"
-#include "scip/def.h"
-
-#endif
 namespace bugger {
 
    class ConstraintModul : public BuggerModul {
@@ -78,7 +69,7 @@ namespace bugger {
 
          bool admissible = false;
          auto copy = Problem<double>(problem);
-         Vec<int> applied_redundant_rows { };
+         Vec<int> applied_reductions { };
          Vec<int> batches { };
          batches.reserve(batchsize);
 
@@ -99,27 +90,25 @@ namespace bugger {
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
-                  for( const auto &item: applied_redundant_rows )
+                  for( const auto &item: applied_reductions )
                   {
                      assert(!copy.getRowFlags( )[ item ].test(RowFlag::kRedundant));
                      copy.getRowFlags( )[ item ].set(RowFlag::kRedundant);
                   }
                }
                else
-                  applied_redundant_rows.insert(applied_redundant_rows.end(), batches.begin(), batches.end());
+                  applied_reductions.insert(applied_reductions.end(), batches.begin(), batches.end());
                batches.clear();
             }
          }
-         if(!admissible)
+
+         if( !admissible )
             return ModulStatus::kNotAdmissible;
-         if( applied_redundant_rows.empty() )
+         if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
-         else
-         {
-            problem = copy;
-            ndeletedrows += applied_redundant_rows.size();
-            return ModulStatus::kSuccessful;
-         }
+         problem = copy;
+         ndeletedrows += applied_reductions.size();
+         return ModulStatus::kSuccessful;
       }
    };
 
