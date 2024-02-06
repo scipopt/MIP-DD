@@ -102,16 +102,14 @@ namespace bugger
                batches.clear();
             }
          }
-         if(!admissible)
+
+         if( !admissible )
             return ModulStatus::kNotAdmissible;
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
-         else
-         {
-            problem = copy;
-            nchgcoefs += applied_reductions.size();
-            return ModulStatus::kSuccessful;
-         }
+         problem = copy;
+         nchgcoefs += applied_reductions.size();
+         return ModulStatus::kSuccessful;
       }
    };
 

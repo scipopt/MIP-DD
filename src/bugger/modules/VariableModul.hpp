@@ -104,7 +104,6 @@ namespace bugger {
                         fixedval = num.max(fixedval, copy.getLowerBounds( )[ var ]);
                   }
                }
-
                copy.getColFlags( )[ var ].unset(ColFlag::kLbInf);
                copy.getColFlags( )[ var ].unset(ColFlag::kUbInf);
                copy.getLowerBounds( )[ var ] = fixedval;
@@ -132,16 +131,14 @@ namespace bugger {
                batches.clear();
             }
          }
-         if(!admissible)
+
+         if( !admissible )
             return ModulStatus::kNotAdmissible;
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
-         else
-         {
-            problem = copy;
-            nfixedvars += applied_reductions.size();
-            return ModulStatus::kSuccessful;
-         }
+         problem = copy;
+         nfixedvars += applied_reductions.size();
+         return ModulStatus::kSuccessful;
       }
    };
 

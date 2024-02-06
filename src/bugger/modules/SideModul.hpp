@@ -85,16 +85,14 @@ namespace bugger {
                auto data = matrix.getRowCoefficients(row);
                bool integral = true;
                double fixedval;
-
                for( int index = 0; index < data.getLength( ); ++index )
                {
-                  if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral) || !num.isEpsIntegral(data.getValues( )[ index ]) )
+                  if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral) || !num.isEpsIntegral(data.getValues( )[ index ]) ) )
                   {
                      integral = false;
                      break;
                   }
                }
-
                if( solution.status == SolutionStatus::kFeasible )
                {
                   fixedval = get_linear_activity(data, solution);
@@ -119,7 +117,6 @@ namespace bugger {
                         fixedval = num.max(fixedval, matrix.getLeftHandSides( )[ row ]);
                   }
                }
-
                matrix.modifyLeftHandSide( row, num, fixedval );
                matrix.modifyRightHandSide( row, num, fixedval );
                batches.emplace_back(row, fixedval);
@@ -143,16 +140,14 @@ namespace bugger {
                batches.clear();
             }
          }
-         if(!admissible)
+
+         if( !admissible )
             return ModulStatus::kNotAdmissible;
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
-         else
-         {
-            problem = copy;
-            nchgsides += 2 * applied_reductions.size();
-            return ModulStatus::kSuccessful;
-         }
+         problem = copy;
+         nchgsides += 2 * applied_reductions.size();
+         return ModulStatus::kSuccessful;
       }
    };
 
