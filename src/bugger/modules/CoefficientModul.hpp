@@ -41,11 +41,11 @@ namespace bugger {
          return false;
       }
 
-      bool isFixingAdmissible(const Problem<double>& problem, int var) {
-         return !problem.getColFlags( )[ var ].test(ColFlag::kFixed)
-             && !problem.getColFlags( )[ var ].test(ColFlag::kLbInf)
-             && !problem.getColFlags( )[ var ].test(ColFlag::kUbInf)
-             && num.isZetaEq(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
+      bool isFixingAdmissible(const Problem<double>& problem, int col) {
+         return !problem.getColFlags( )[ col ].test(ColFlag::kFixed)
+             && !problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
+             && !problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
+             && num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
       }
 
       bool isCoefficientAdmissible(const Problem<double>& problem, int row) {
@@ -97,39 +97,39 @@ namespace bugger {
                double offset = 0.0;
                for( int index = data.getLength( ) - 1; index >= 0; --index )
                {
-                  int var = data.getIndices( )[ index ];
+                  int col = data.getIndices( )[ index ];
                   double val = data.getValues( )[ index ];
-                  if( !num.isZetaZero(val) && isFixingAdmissible(copy, var) )
+                  if( !num.isZetaZero(val) && isFixingAdmissible(copy, col) )
                   {
                      double fixedval;
                      if( solution.status == SolutionStatus::kFeasible )
                      {
-                        fixedval = solution.primal[ var ];
-                        if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
+                        fixedval = solution.primal[ col ];
+                        if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
                            fixedval = num.round(fixedval);
                      }
                      else
                      {
                         fixedval = 0.0;
-                        if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
+                        if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
                         {
-                           if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
-                              fixedval = num.min(fixedval, num.epsFloor(copy.getUpperBounds( )[ var ]));
-                           if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
-                              fixedval = num.max(fixedval, num.epsCeil(copy.getLowerBounds( )[ var ]));
+                           if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
+                              fixedval = num.min(fixedval, num.epsFloor(copy.getUpperBounds( )[ col ]));
+                           if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) )
+                              fixedval = num.max(fixedval, num.epsCeil(copy.getLowerBounds( )[ col ]));
                         }
                         else
                         {
-                           if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
-                              fixedval = num.min(fixedval, copy.getUpperBounds( )[ var ]);
-                           if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
-                              fixedval = num.max(fixedval, copy.getLowerBounds( )[ var ]);
+                           if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
+                              fixedval = num.min(fixedval, copy.getUpperBounds( )[ col ]);
+                           if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) )
+                              fixedval = num.max(fixedval, copy.getLowerBounds( )[ col ]);
                         }
                      }
                      offset -= val * fixedval;
-                     batches_coeff.emplace_back(row, var, 0.0);
+                     batches_coeff.emplace_back(row, col, 0.0);
                   }
-                  else if( !copy.getColFlags( )[ var ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ var ].test(ColFlag::kIntegral) || !num.isEpsIntegral(val) ) )
+                  else if( !copy.getColFlags( )[ col ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ col ].test(ColFlag::kIntegral) || !num.isEpsIntegral(val) ) )
                      integral = false;
                }
                if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )

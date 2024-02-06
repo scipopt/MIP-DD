@@ -41,15 +41,15 @@ namespace bugger {
          return false;
       }
 
-      bool isVarroundAdmissible(const Problem<double>& problem, int var) {
-         if( problem.getColFlags( )[ var ].test(ColFlag::kFixed) )
+      bool isVarroundAdmissible(const Problem<double>& problem, int col) {
+         if( problem.getColFlags( )[ col ].test(ColFlag::kFixed) )
             return false;
-         if( !num.isZetaIntegral(problem.getObjective( ).coefficients[ var ]) )
+         if( !num.isZetaIntegral(problem.getObjective( ).coefficients[ col ]) )
             return true;
-         bool lbinf = problem.getColFlags( )[ var ].test(ColFlag::kLbInf);
-         bool ubinf = problem.getColFlags( )[ var ].test(ColFlag::kUbInf);
-         double lb = problem.getLowerBounds( )[ var ];
-         double ub = problem.getUpperBounds( )[ var ];
+         bool lbinf = problem.getColFlags( )[ col ].test(ColFlag::kLbInf);
+         bool ubinf = problem.getColFlags( )[ col ].test(ColFlag::kUbInf);
+         double lb = problem.getLowerBounds( )[ col ];
+         double ub = problem.getUpperBounds( )[ col ];
          return ( lbinf || ubinf || !num.isZetaEq(lb, ub) ) && ( ( !lbinf && !num.isZetaIntegral(lb) ) || ( !ubinf && !num.isZetaIntegral(ub) ) );
       }
 
@@ -86,39 +86,39 @@ namespace bugger {
          batches_ub.reserve(batchsize);
          int batch = 0;
 
-         for( int var = 0; var < copy.getNCols( ); ++var )
+         for( int col = 0; col < copy.getNCols( ); ++col )
          {
-            if( isVarroundAdmissible(copy, var) )
+            if( isVarroundAdmissible(copy, col) )
             {
                admissible = true;
-               double lb = num.round(copy.getLowerBounds( )[ var ]);
-               double ub = num.round(copy.getUpperBounds( )[ var ]);
+               double lb = num.round(copy.getLowerBounds( )[ col ]);
+               double ub = num.round(copy.getUpperBounds( )[ col ]);
                if( solution.status == SolutionStatus::kFeasible )
                {
-                  double value = solution.primal[ var ];
+                  double value = solution.primal[ col ];
                   lb = num.min(lb, num.epsFloor(value));
                   ub = num.max(ub, num.epsCeil(value));
                }
-               if( !num.isZetaIntegral(copy.getObjective( ).coefficients[ var ]) )
+               if( !num.isZetaIntegral(copy.getObjective( ).coefficients[ col ]) )
                {
-                  double obj = num.round(copy.getObjective( ).coefficients[ var ]);
-                  copy.getObjective( ).coefficients[ var ] = obj;
-                  batches_obj.emplace_back(var, obj);
+                  double obj = num.round(copy.getObjective( ).coefficients[ col ]);
+                  copy.getObjective( ).coefficients[ col ] = obj;
+                  batches_obj.emplace_back(col, obj);
                }
-               if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) && !num.isZetaEq(copy.getLowerBounds( )[ var ], lb) )
+               if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) && !num.isZetaEq(copy.getLowerBounds( )[ col ], lb) )
                {
-                  copy.getLowerBounds( )[ var ] = lb;
-                  batches_lb.emplace_back(var, lb);
+                  copy.getLowerBounds( )[ col ] = lb;
+                  batches_lb.emplace_back(col, lb);
                }
-               if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) && !num.isZetaEq(copy.getUpperBounds( )[ var ], ub) )
+               if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) && !num.isZetaEq(copy.getUpperBounds( )[ col ], ub) )
                {
-                  copy.getUpperBounds( )[ var ] = ub;
-                  batches_ub.emplace_back(var, ub);
+                  copy.getUpperBounds( )[ col ] = ub;
+                  batches_ub.emplace_back(col, ub);
                }
                ++batch;
             }
 
-            if( batch >= 1 && ( batch >= batchsize || var >= copy.getNCols( ) - 1 ) )
+            if( batch >= 1 && ( batch >= batchsize || col >= copy.getNCols( ) - 1 ) )
             {
                auto solver = createSolver();
                solver->doSetUp(settings, copy, solution);

@@ -42,11 +42,11 @@ namespace bugger {
          return false;
       }
 
-      bool isFixingAdmissible(const Problem<double>& problem, int var) {
-         return !problem.getColFlags( )[ var ].test(ColFlag::kFixed)
-             && !problem.getColFlags( )[ var ].test(ColFlag::kLbInf)
-             && !problem.getColFlags( )[ var ].test(ColFlag::kUbInf)
-             && num.isZetaEq(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
+      bool isFixingAdmissible(const Problem<double>& problem, int col) {
+         return !problem.getColFlags( )[ col ].test(ColFlag::kFixed)
+             && !problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
+             && !problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
+             && num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
       }
 
       ModulStatus
@@ -58,8 +58,8 @@ namespace bugger {
          if( options.nbatches > 0 )
          {
             batchsize = options.nbatches - 1;
-            for( int var = problem.getNCols( ) - 1; var >= 0; --var )
-               if( isFixingAdmissible(problem, var) )
+            for( int col = problem.getNCols( ) - 1; col >= 0; --col )
+               if( isFixingAdmissible(problem, col) )
                   ++batchsize;
             if( batchsize == options.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
@@ -78,40 +78,40 @@ namespace bugger {
          Vec<std::pair<int, double>> batches_rhs { };
          batches_vars.reserve(batchsize);
 
-         for( int var = copy.getNCols( ) - 1; var >= 0; --var )
+         for( int col = copy.getNCols( ) - 1; col >= 0; --col )
          {
-            if( isFixingAdmissible(copy, var) )
+            if( isFixingAdmissible(copy, col) )
             {
                admissible = true;
-               auto data = copy.getConstraintMatrix( ).getColumnCoefficients(var);
+               auto data = copy.getConstraintMatrix( ).getColumnCoefficients(col);
                double fixedval;
                if( solution.status == SolutionStatus::kFeasible )
                {
-                  fixedval = solution.primal[ var ];
-                  if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
+                  fixedval = solution.primal[ col ];
+                  if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
                      fixedval = num.round(fixedval);
                }
                else
                {
                   fixedval = 0.0;
-                  if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
+                  if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
                   {
-                     if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
-                        fixedval = num.min(fixedval, num.epsFloor(copy.getUpperBounds( )[ var ]));
-                     if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
-                        fixedval = num.max(fixedval, num.epsCeil(copy.getLowerBounds( )[ var ]));
+                     if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
+                        fixedval = num.min(fixedval, num.epsFloor(copy.getUpperBounds( )[ col ]));
+                     if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) )
+                        fixedval = num.max(fixedval, num.epsCeil(copy.getLowerBounds( )[ col ]));
                   }
                   else
                   {
-                     if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
-                        fixedval = num.min(fixedval, copy.getUpperBounds( )[ var ]);
-                     if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
-                        fixedval = num.max(fixedval, copy.getLowerBounds( )[ var ]);
+                     if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
+                        fixedval = num.min(fixedval, copy.getUpperBounds( )[ col ]);
+                     if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) )
+                        fixedval = num.max(fixedval, copy.getLowerBounds( )[ col ]);
                   }
                }
-               assert(!copy.getColFlags( )[ var ].test(ColFlag::kFixed));
-               copy.getColFlags( )[ var ].set(ColFlag::kFixed);
-               batches_vars.push_back(var);
+               assert(!copy.getColFlags( )[ col ].test(ColFlag::kFixed));
+               copy.getColFlags( )[ col ].set(ColFlag::kFixed);
+               batches_vars.push_back(col);
                for( int index = data.getLength( ) - 1; index >= 0; --index )
                {
                   int row = data.getIndices( )[ index ];
@@ -129,7 +129,7 @@ namespace bugger {
                            break;
                         }
                      }
-                     batches_coeff.emplace_back(row, var, 0.0);
+                     batches_coeff.emplace_back(row, col, 0.0);
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
                      {
                         double lhs = copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] + offset;
@@ -156,7 +156,7 @@ namespace bugger {
                }
             }
 
-            if( !batches_vars.empty() && ( batches_vars.size() >= batchsize || var <= 0 ) )
+            if( !batches_vars.empty() && ( batches_vars.size() >= batchsize || col <= 0 ) )
             {
                MatrixBuffer<double> matrixBuffer{ };
                for(auto entry: batches_coeff)
