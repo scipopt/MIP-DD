@@ -123,10 +123,9 @@ namespace bugger {
                      double offset = -val * fixedval;
                      for( int col_index = 0; col_index < row_data.getLength( ); ++col_index )
                      {
-                        int c = row_data.getIndices( )[ col_index ];
-                        if( !copy.getColFlags( )[ c ].test(ColFlag::kFixed)
-                           && ( !copy.getColFlags( )[ c ].test(ColFlag::kIntegral)
-                           || !num.isEpsIntegral(row_data.getValues( )[ col_index ]) ) )
+                        int index = row_data.getIndices( )[ col_index ];
+                        double value = row_data.getValues( )[ col_index ];
+                        if( !copy.getColFlags( )[ index ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ index ].test(ColFlag::kIntegral) || !num.isEpsIntegral(value) ) )
                         {
                            integral = false;
                            break;
