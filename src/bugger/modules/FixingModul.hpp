@@ -199,8 +199,6 @@ namespace bugger {
          naggrvars += applied_reductions.size();
          return ModulStatus::kSuccessful;
       }
-
-
    };
 
 } // namespace bugger

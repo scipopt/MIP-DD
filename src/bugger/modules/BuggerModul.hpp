@@ -204,9 +204,9 @@ namespace bugger {
          }
       }
 
-   void apply_changes(Problem<double> &copy, Vec <MatrixEntry<double>> &entries) const {
+   void apply_changes(Problem<double> &copy, const Vec<MatrixEntry<double>> &entries) const {
       MatrixBuffer<double> matrixBuffer{ };
-      for(auto entry: entries)
+      for( const auto &entry: entries )
          matrixBuffer.addEntry(entry.row, entry.col, entry.val);
       copy.getConstraintMatrix( ).changeCoefficients(matrixBuffer);
    }
