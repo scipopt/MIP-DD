@@ -83,7 +83,7 @@ namespace bugger {
             if( isFixingAdmissible(copy, col) )
             {
                admissible = true;
-               auto data = copy.getConstraintMatrix( ).getColumnCoefficients(col);
+               auto col_data = copy.getConstraintMatrix( ).getColumnCoefficients(col);
                double fixedval;
                if( solution.status == SolutionStatus::kFeasible )
                {
@@ -112,18 +112,21 @@ namespace bugger {
                assert(!copy.getColFlags( )[ col ].test(ColFlag::kFixed));
                copy.getColFlags( )[ col ].set(ColFlag::kFixed);
                batches_vars.push_back(col);
-               for( int index = data.getLength( ) - 1; index >= 0; --index )
+               for( int row_index = col_data.getLength( ) - 1; row_index >= 0; --row_index )
                {
-                  int row = data.getIndices( )[ index ];
-                  double val = data.getValues( )[ index ];
-                  if( !num.isZetaZero(val) && !copy.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant) )
+                  int row = col_data.getIndices( )[ row_index ];
+                  double val = col_data.getValues( )[ row_index ];
+                  if( !num.isZetaZero(val) && !copy.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant))
                   {
-                     auto data2 = copy.getConstraintMatrix( ).getRowCoefficients(row);
+                     auto row_data = copy.getConstraintMatrix( ).getRowCoefficients(row);
                      bool integral = true;
                      double offset = -val * fixedval;
-                     for( int index2 = 0; index2 < data2.getLength( ); ++index2 )
+                     for( int col_index = 0; col_index < row_data.getLength( ); ++col_index )
                      {
-                        if( !copy.getColFlags( )[ data2.getIndices( )[ index2 ] ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ data2.getIndices( )[ index2 ] ].test(ColFlag::kIntegral) || !num.isEpsIntegral(data2.getValues( )[ index2 ]) ) )
+                        int c = row_data.getIndices( )[ col_index ];
+                        if( !copy.getColFlags( )[ c ].test(ColFlag::kFixed)
+                           && ( !copy.getColFlags( )[ c ].test(ColFlag::kIntegral)
+                           || !num.isEpsIntegral(row_data.getValues( )[ col_index ]) ) )
                         {
                            integral = false;
                            break;
