@@ -204,6 +204,13 @@ namespace bugger {
          }
       }
 
+   void apply_changes(Problem<double> &copy, Vec <MatrixEntry<double>> &entries) const {
+      MatrixBuffer<double> matrixBuffer{ };
+      for(auto entry: entries)
+         matrixBuffer.addEntry(entry.row, entry.col, entry.val);
+      copy.getConstraintMatrix( ).changeCoefficients(matrixBuffer);
+   }
+
    private:
       std::string name;
       double execTime;

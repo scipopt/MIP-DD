@@ -159,19 +159,13 @@ namespace bugger {
 
             if( batch >= 1 && ( batch >= batchsize || row <= 0 ) )
             {
-               MatrixBuffer<double> matrixBuffer{ };
-               for( auto entry: batches_coeff )
-                  matrixBuffer.addEntry(entry.row, entry.col, entry.val);
-               copy.getConstraintMatrix( ).changeCoefficients(matrixBuffer);
+               apply_changes(copy, batches_coeff);
                auto solver = createSolver();
                solver->doSetUp(settings, copy, solution);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
-                  MatrixBuffer<double> matrixBuffer2{ };
-                  for( auto entry: applied_entries )
-                     matrixBuffer2.addEntry(entry.row, entry.col, entry.val);
-                  copy.getConstraintMatrix( ).changeCoefficients(matrixBuffer2);
+                  apply_changes(copy, applied_entries);
                   for( const auto &item: applied_lefts )
                      copy.getConstraintMatrix( ).modifyLeftHandSide( item.first, num, item.second );
                   for( const auto &item: applied_rights )
