@@ -51,7 +51,49 @@ namespace bugger {
 
       SolverInterface( ) = default;
 
-      const char
+      /**
+       * parse Settings
+       * @param filename
+       */
+      virtual
+      boost::optional<SolverSettings> parseSettings(const std::string &filename) = 0;
+
+      /**
+       * loads settings, problem, and solution
+       * @param settings
+       * @param problem
+       * @param solution
+       */
+      virtual
+      void doSetUp(const SolverSettings &settings, const Problem<double> &problem, const Solution<double> &solution) = 0;
+
+      virtual
+      std::pair<char, SolverStatus> solve(const Vec<int>& passcodes) = 0;
+
+      /**
+       * read setting-problem pair from files
+       * @param settings_filename
+       * @param problem_filename
+       */
+      virtual
+      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>> readInstance(const std::string &settings_filename, const std::string &problem_filename)
+      {
+         return { boost::none, boost::none };
+      };
+
+      /**
+       * write stored setting-problem pair to files
+       * @param filename
+       * @param writesettings
+       */
+      virtual
+      void writeInstance(const std::string &filename, const bool &writesettings) = 0;
+
+      virtual ~SolverInterface() = default;
+
+   protected:
+
+      char
       check_dual_bound( const double &dual, const double &tolerance, const double &infinity )
       {
          assert(tolerance > 0.0);
@@ -64,7 +106,7 @@ namespace bugger {
          return OKAY;
       }
 
-      const char
+      char
       check_primal_solution( const Solution<double> &solution, const double &tolerance, const double &infinity )
       {
          assert(tolerance > 0.0);
@@ -171,8 +213,8 @@ namespace bugger {
 
             for( int col = 0; col < model->getNCols(); ++col )
                if( !model->getColFlags()[col].test( ColFlag::kFixed )
-                  && ( ( !model->getColFlags()[col].test( ColFlag::kLbInf ) && solution.ray[col] < -relax )
-                    || ( !model->getColFlags()[col].test( ColFlag::kUbInf ) && solution.ray[col] > relax ) ) )
+                   && ( ( !model->getColFlags()[col].test( ColFlag::kLbInf ) && solution.ray[col] < -relax )
+                        || ( !model->getColFlags()[col].test( ColFlag::kUbInf ) && solution.ray[col] > relax ) ) )
                   return PRIMALFAIL;
 
             for( int row = 0; row < model->getNRows(); ++row )
@@ -185,7 +227,7 @@ namespace bugger {
                for( int i = 0; i < coefficients.getLength(); ++i )
                   activity += coefficients.getValues()[i] * solution.ray[coefficients.getIndices()[i]];
                if( ( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < -relax )
-                || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity > relax ) )
+                   || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity > relax ) )
                   return PRIMALFAIL;
             }
          }
@@ -193,7 +235,7 @@ namespace bugger {
          return OKAY;
       }
 
-      const char
+      char
       check_objective_value( const double &primal, const Solution<double> &solution, const double &tolerance, const double &infinity )
       {
          assert(tolerance > 0.0);
@@ -249,47 +291,6 @@ namespace bugger {
          return OKAY;
       }
 
-      /**
-       * parse Settings
-       * @param filename
-       */
-      virtual
-      boost::optional<SolverSettings> parseSettings(const std::string &filename) = 0;
-
-      /**
-       * loads settings, problem, and solution
-       * @param settings
-       * @param problem
-       * @param solution
-       */
-      virtual
-      void doSetUp(const SolverSettings &settings, const Problem<double> &problem, const Solution<double> &solution) = 0;
-
-      virtual
-      std::pair<char, SolverStatus> solve(const Vec<int>& passcodes) = 0;
-
-      /**
-       * read setting-problem pair from files
-       * @param settings_filename
-       * @param problem_filename
-       */
-      virtual
-      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>> readInstance(const std::string &settings_filename, const std::string &problem_filename)
-      {
-         return { boost::none, boost::none };
-      };
-
-      /**
-       * write setting-problem pair to files
-       * @param filename
-       * @param settings
-       * @param problem
-       * @param writesettings
-       */
-      virtual
-      void writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings) = 0;
-
-      virtual ~SolverInterface() = default;
    };
 
    class SolverFactory

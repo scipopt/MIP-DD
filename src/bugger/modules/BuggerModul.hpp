@@ -185,7 +185,8 @@ namespace bugger {
 
       BuggerStatus
       call_solver(SolverInterface *solver, const Message &msg, const BuggerOptions &options) {
-
+         if( !options.debug_filename.empty( ) )
+            solver->writeInstance(options.debug_filename,  false);
          std::pair<char, SolverStatus> result = solver->solve(options.passcodes);
          if( result.first == SolverInterface::OKAY )
          {
