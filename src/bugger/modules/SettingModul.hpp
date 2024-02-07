@@ -198,6 +198,7 @@ namespace bugger {
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
                auto solver = createSolver();
+               solver->doSetUp(copy, problem, solution);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
