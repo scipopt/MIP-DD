@@ -154,7 +154,9 @@ namespace bugger {
 
          for( int round = options.initround, stage = options.initstage, success = 0; round < options.maxrounds && stage < options.maxstages; ++round )
          {
-            solver_factory->create_solver( )->writeInstance(filename + std::to_string(round), settings, problem, settings_modul_activated);
+            auto solver = solver_factory->create_solver( );
+            solver->doSetUp(settings, problem, solution);
+            solver->writeInstance(filename + std::to_string(round), settings_modul_activated);
 
             if( is_time_exceeded(timer) )
                break;

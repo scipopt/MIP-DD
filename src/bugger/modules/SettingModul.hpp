@@ -141,7 +141,7 @@ namespace bugger {
                auto solver = createSolver();
                solver->doSetUp(copy, problem, solution);
                if( !options.debug_filename.empty( ))
-                  solver->writeInstance(options.debug_filename, copy, problem, true);
+                  solver->writeInstance(options.debug_filename, true);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
@@ -172,7 +172,7 @@ namespace bugger {
                auto solver = createSolver();
                solver->doSetUp(copy, problem, solution);
                if( !options.debug_filename.empty( ))
-                  solver->writeInstance(options.debug_filename, copy, problem, true);
+                  solver->writeInstance(options.debug_filename, true);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
@@ -204,7 +204,7 @@ namespace bugger {
                auto solver = createSolver();
                solver->doSetUp(copy, problem, solution);
                if( !options.debug_filename.empty( ))
-                  solver->writeInstance(options.debug_filename, copy, problem, true);
+                  solver->writeInstance(options.debug_filename, true);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
@@ -237,7 +237,7 @@ namespace bugger {
                auto solver = createSolver();
                solver->doSetUp(copy, problem, solution);
                if( !options.debug_filename.empty( ))
-                  solver->writeInstance(options.debug_filename, copy, problem, true);
+                  solver->writeInstance(options.debug_filename, true);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
@@ -271,7 +271,7 @@ namespace bugger {
                auto solver = createSolver();
                solver->doSetUp(copy, problem, solution);
                if( !options.debug_filename.empty( ))
-                  solver->writeInstance(options.debug_filename, copy, problem, true);
+                  solver->writeInstance(options.debug_filename, true);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
@@ -306,7 +306,7 @@ namespace bugger {
                auto solver = createSolver();
                solver->doSetUp(copy, problem, solution);
                if( !options.debug_filename.empty( ))
-                  solver->writeInstance(options.debug_filename, copy, problem, true);
+                  solver->writeInstance(options.debug_filename, true);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else

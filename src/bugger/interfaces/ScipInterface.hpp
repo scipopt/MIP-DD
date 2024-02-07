@@ -230,10 +230,7 @@ namespace bugger {
       }
 
       void
-      writeInstance(const std::string &filename, const SolverSettings &settings, const Problem<double> &problem, const bool &writesettings) override {
-
-         Solution<double> solution;
-         setup(settings, problem, solution);
+      writeInstance(const std::string &filename, const bool &writesettings) override {
          if( writesettings )
             SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
          SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE);
