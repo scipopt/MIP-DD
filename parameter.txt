@@ -28,7 +28,7 @@ zeta = 0;
 # list of ignored return codes (string separated by blanks) example: [passcodes = -1 -2]
 passcodes = ""
 
-# if not empty reduced instance before every solve is written to this file (default = "")
+# if not empty, current instance is written to this file before every solve (default = "")
 debug_filename = ""
 
 # is the Module Coefficient enabled? [Boolean]

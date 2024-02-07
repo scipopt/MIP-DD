@@ -72,7 +72,7 @@ public:
       paramSet.addParameter( "numerics.epsilon", "epsilon tolerance to consider two values numerically equal", epsilon, 0.0, 1e-1 );
       paramSet.addParameter( "numerics.zeta", "zeta tolerance to consider two values exactly equal", zeta, 0.0, 1e-1 );
       paramSet.addParameter( "passcodes", "list of ignored return codes (string separated by blanks) example: [passcodes = -1 -2]", passcodes );
-      paramSet.addParameter( "debug_filename", "if not empty reduced instance before every solve is written to this file (default = "") ]", debug_filename );
+      paramSet.addParameter( "debug_filename", "if not empty, current instance is written to this file before every solve (default = "") ]", debug_filename );
    }
 
 };
