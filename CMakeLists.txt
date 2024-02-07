@@ -223,7 +223,6 @@ install(FILES
         ${PROJECT_SOURCE_DIR}/src/bugger/io/MpsParser.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/io/MpsWriter.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/io/SolParser.hpp
-        ${PROJECT_SOURCE_DIR}/src/bugger/io/SolWriter.hpp
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/io)
 
 install(FILES
