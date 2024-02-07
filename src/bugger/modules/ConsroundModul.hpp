@@ -141,8 +141,6 @@ namespace bugger {
                apply_changes(copy, batches_coeff);
                auto solver = createSolver( );
                solver->doSetUp(settings, copy, solution);
-               if( !options.debug_filename.empty( ))
-                  solver->writeInstance(options.debug_filename, false);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
