@@ -71,7 +71,7 @@ namespace bugger {
       void apply(bugger::Timer &timer, const OptionsInfo& optionsInfo ) {
 
          const auto &solver = solver_factory->create_solver( );
-         msg.info("\n MIP Solver:\n");
+         msg.info("\nMIP Solver:\n");
          solver->print_header(msg);
          msg.info("\n");
          auto instance = solver->readInstance(optionsInfo.settings_file, optionsInfo.problem_file);
