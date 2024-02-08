@@ -379,8 +379,9 @@ namespace bugger {
             // reset return code
             retcode = OKAY;
 
-            // initialize primal solution
+            // declare primal solution and bound
             Solution<double> solution;
+            double bound;
 
             // check dual by reference solution objective
             if( retcode == OKAY )
@@ -419,11 +420,14 @@ namespace bugger {
                   solution.status = SolutionStatus::kInfeasible;
                   retcode = check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
                }
+
+               // check solution objective instead of primal bound if no ray is provided
+               bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
             }
 
             // check objective by best solution evaluation
             if( retcode == OKAY )
-               retcode = check_objective_value( SCIPgetPrimalbound(scip), solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
+               retcode = check_objective_value( bound, solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
 
             // translate solver status
             switch( SCIPgetStatus(scip) )
