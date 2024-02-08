@@ -58,17 +58,16 @@ namespace bugger {
       void
       print_header(Message& msg ) override
       {
-         fmt::print( "  SCIP     {}.{}.{} \t Mixed Integer Programming Solver "
-                     "developed at Zuse "
-                     "Institute Berlin (scip.zib.de) [GitHash: {}]\n",
-                     SCIP_VERSION_MAJOR, SCIP_VERSION_MINOR, SCIP_VERSION_PATCH,
-                     SCIPgetGitHash() );
-         int n = SCIPgetNExternalCodes(scip);
+//         use fmt to print Version
+         SCIPprintVersion(scip, nullptr);
+         int length = SCIPgetNExternalCodes(scip);
          auto description = SCIPgetExternalCodeDescriptions(scip);
-         for(int i= 0; i< n; i++)
+         auto names = SCIPgetExternalCodeNames(scip);
+         for( int i= 0; i < length; i++)
          {
-            std::string s { description[i] };
-            msg.info("\t" + s + "\n");
+            std::string n { names[i] };
+            std::string d { description[i] };
+            msg.info("\t{:20} {}\n", n,d);
          }
       }
 

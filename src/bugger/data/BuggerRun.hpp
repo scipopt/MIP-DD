@@ -68,7 +68,7 @@ namespace bugger {
                 timer.getTime() >= options.tlim;
       }
 
-      void apply(bugger::Timer &timer, const OptionsInfo& optionsInfo ) {
+      void apply(bugger::Timer &timer, const OptionsInfo &optionsInfo) {
 
          const auto &solver = solver_factory->create_solver( );
          msg.info("\nMIP Solver:\n");
