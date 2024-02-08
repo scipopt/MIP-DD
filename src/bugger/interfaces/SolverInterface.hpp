@@ -59,6 +59,13 @@ namespace bugger {
       boost::optional<SolverSettings> parseSettings(const std::string &filename) = 0;
 
       /**
+       * prints the header of the used solver
+       * @param msg
+       */
+      virtual
+      void print_header(Message& msg ){}
+
+      /**
        * loads settings, problem, and solution
        * @param settings
        * @param problem

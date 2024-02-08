@@ -70,7 +70,11 @@ namespace bugger {
 
       void apply(bugger::Timer &timer, const OptionsInfo& optionsInfo ) {
 
-         auto instance = solver_factory->create_solver( )->readInstance(optionsInfo.settings_file, optionsInfo.problem_file);
+         const auto &solver = solver_factory->create_solver( );
+         msg.info("\n MIP Solver:\n");
+         solver->print_header(msg);
+         msg.info("\n");
+         auto instance = solver->readInstance(optionsInfo.settings_file, optionsInfo.problem_file);
          if( !instance.first )
          {
             msg.error("error loading settings {}\n", optionsInfo.settings_file);
