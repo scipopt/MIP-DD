@@ -56,7 +56,7 @@ namespace bugger {
       }
 
       void
-      print_header(Message& msg ) override
+      print_header( const Message &msg ) override
       {
 //         use fmt to print Version
          SCIPprintVersion(scip, nullptr);
