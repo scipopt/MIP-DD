@@ -63,7 +63,7 @@ namespace bugger {
        * @param msg
        */
       virtual
-      void print_header(Message& msg ){}
+      void print_header( const Message &msg ){}
 
       /**
        * loads settings, problem, and solution
