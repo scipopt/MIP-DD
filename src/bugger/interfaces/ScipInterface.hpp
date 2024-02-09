@@ -62,19 +62,19 @@ namespace bugger {
          SCIPprintVersion(scip, nullptr);
 
 #if defined(__INTEL_COMPILER)
-         fmt::print("\tCompiler Intel {}\n", __INTEL_COMPILER);
+         msg.info("\tCompiler Intel {}\n", __INTEL_COMPILER);
 #elif defined(__clang__)
-         fmt::print("\tCompiler clang {}.{}.{}\n", __clang_major__, __clang_minor__, __clang_patchlevel__);
+         msg.info("\tCompiler clang {}.{}.{}\n", __clang_major__, __clang_minor__, __clang_patchlevel__);
 #elif defined(_MSC_VER)
-         fmt::print("\tCompiler microsoft visual c {}\n", _MSC_FULL_VER);
+         msg.info("\tCompiler microsoft visual c {}\n", _MSC_FULL_VER);
 #elif defined(__GNUC__)
    #if defined(__GNUC_PATCHLEVEL__)
-         fmt::print("\tCompiler gcc {}.{}.{}\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+         msg.info("\tCompiler gcc {}.{}.{}\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
    #else
-         fmt::print("\tCompiler gcc {}.{}\n", __GNUC__, __GNUC_MINOR__);
+         msg.info("\tCompiler gcc {}.{}\n", __GNUC__, __GNUC_MINOR__);
    #endif
 #else
-         fmt::print("\tCompiler: unknown\n");
+         msg.info("\tCompiler: unknown\n");
 #endif
 
          int length = SCIPgetNExternalCodes(scip);
