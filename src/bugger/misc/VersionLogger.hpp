@@ -66,7 +66,7 @@ print_header()
                BOOST_VERSION_NUMBER_MAJOR( BOOST_VERSION ) );
 #endif
 
-   fmt::print( "  TBB            \t Thread building block https://github.com/oneapi-src/oneTBB developed by Intel\n");
+   fmt::print( "  TBB            \t Thread building block https://github.com/oneapi-src/oneTBB developed by Intel\n" );
 
    fmt::print( "\n" );
 }
