@@ -202,7 +202,7 @@ namespace bugger {
 
    private:
 
-      void check_feasibility_of_solution( const Problem<double>& problem , const Solution<double>& solution) {
+      void check_feasibility_of_solution( const Problem<double> &problem , const Solution<double> &solution ) {
          if( solution.status != SolutionStatus::kFeasible )
             return;
          const Vec<double>& ub = problem.getUpperBounds();
