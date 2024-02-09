@@ -62,7 +62,7 @@ namespace bugger {
             : modules(_modules), solver_factory(load_solver_factory()) { }
 
       bool
-      is_time_exceeded( const Timer& timer ) const
+      is_time_exceeded( const Timer &timer ) const
       {
          return options.tlim != std::numeric_limits<double>::max() &&
                 timer.getTime() >= options.tlim;
