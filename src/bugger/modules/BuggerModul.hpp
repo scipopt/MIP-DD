@@ -33,7 +33,8 @@
 #ifdef BUGGER_TBB
 
 #include "bugger/misc/tbb.hpp"
-
+#include "bugger/interfaces/SolverInterface.hpp"
+#include "bugger/interfaces/BuggerStatus.hpp"
 #else
 #include <chrono>
 #endif
