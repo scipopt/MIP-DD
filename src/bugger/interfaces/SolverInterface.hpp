@@ -23,14 +23,10 @@
 #ifndef _BUGGER_INTERFACES_SOLVER_INTERFACE_HPP_
 #define _BUGGER_INTERFACES_SOLVER_INTERFACE_HPP_
 
-
-#include "bugger/misc/Vec.hpp"
+#include "bugger/data/SolverSettings.hpp"
 #include "bugger/data/Problem.hpp"
 #include "bugger/data/Solution.hpp"
-#include "bugger/data/SolverSettings.hpp"
-#include "bugger/interfaces/SolverStatus.hpp"
-#include <cassert>
-#include <stdexcept>
+
 
 namespace bugger {
 
