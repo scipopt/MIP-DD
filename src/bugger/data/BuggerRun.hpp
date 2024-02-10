@@ -58,7 +58,7 @@ namespace bugger {
 
    public:
 
-      explicit BuggerRun( Vec<std::unique_ptr<BuggerModul>> &_modules )
+      explicit BuggerRun( bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules )
             : modules(_modules), solver_factory(load_solver_factory()) { }
 
       bool
@@ -187,7 +187,7 @@ namespace bugger {
       }
       
       void
-      addModul( std::unique_ptr<BuggerModul> &module ) {
+      addModul(std::unique_ptr<bugger::BuggerModul> module) {
          modules.emplace_back(std::move(module));
       }
 
