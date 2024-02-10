@@ -262,11 +262,11 @@ namespace bugger {
          return { settings, builder.build() };
       }
 
-      void
+      bool
       writeInstance(const std::string &filename, const bool &writesettings) override {
          if( writesettings )
             SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
-         SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE);
+         return SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
       };
 
       ~ScipInterface( ) override {

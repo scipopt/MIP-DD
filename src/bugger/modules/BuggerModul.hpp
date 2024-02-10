@@ -25,21 +25,13 @@
 
 #include "bugger/data/BuggerOptions.hpp"
 #include "bugger/io/Message.hpp"
-#include "bugger/misc/Num.hpp"
-#include "bugger/misc/Vec.hpp"
-#include "bugger/misc/fmt.hpp"
 #include "bugger/misc/Timer.hpp"
 
 #ifdef BUGGER_TBB
-
 #include "bugger/misc/tbb.hpp"
-#include "bugger/interfaces/SolverInterface.hpp"
-#include "bugger/interfaces/BuggerStatus.hpp"
 #else
 #include <chrono>
 #endif
-
-#include <bitset>
 
 
 namespace bugger {

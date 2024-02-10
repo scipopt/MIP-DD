@@ -26,18 +26,14 @@
 #include <algorithm>
 #include <fstream>
 #include <memory>
+#include <boost/program_options.hpp>
 
 #include "bugger/data/BuggerOptions.hpp"
-
+#include "bugger/data/BuggerRun.hpp"
 #include "bugger/misc/MultiPrecision.hpp"
 #include "bugger/misc/OptionsParser.hpp"
 #include "bugger/misc/VersionLogger.hpp"
-#include "bugger/io/MpsParser.hpp"
-#include "bugger/io/SolParser.hpp"
 #include "bugger/modules/BuggerModul.hpp"
-#include "bugger/data/BuggerRun.hpp"
-
-#include <boost/program_options.hpp>
 
 
 int

@@ -23,7 +23,21 @@
 #ifndef BUGGER_BUGGERRUN_HPP
 #define BUGGER_BUGGERRUN_HPP
 
+#include <utility>
+#include <memory>
+#include <fstream>
+#include <algorithm>
 #include <boost/program_options.hpp>
+
+#include "bugger/data/BuggerOptions.hpp"
+#include "bugger/io/MpsParser.hpp"
+#include "bugger/io/MpsWriter.hpp"
+#include "bugger/io/SolParser.hpp"
+#include "bugger/misc/VersionLogger.hpp"
+#include "bugger/misc/OptionsParser.hpp"
+#include "bugger/misc/Vec.hpp"
+#include "bugger/misc/MultiPrecision.hpp"
+#include "bugger/interfaces/ScipInterface.hpp"
 #include "bugger/modules/VarroundModul.hpp"
 #include "bugger/modules/VariableModul.hpp"
 #include "bugger/modules/SideModul.hpp"
@@ -34,16 +48,7 @@
 #include "bugger/modules/ConsroundModul.hpp"
 #include "bugger/modules/CoefficientModul.hpp"
 #include "bugger/modules/BuggerModul.hpp"
-#include "bugger/interfaces/ScipInterface.hpp"
-#include "bugger/misc/VersionLogger.hpp"
-#include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/Vec.hpp"
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/data/BuggerOptions.hpp"
-#include <utility>
-#include <memory>
-#include <fstream>
-#include <algorithm>
+
 
 namespace bugger {
 
@@ -160,7 +165,8 @@ namespace bugger {
          {
             auto solver = solver_factory->create_solver( );
             solver->doSetUp(settings, problem, solution);
-            solver->writeInstance(filename + std::to_string(round), settings_modul_activated);
+            if( !solver->writeInstance(filename + std::to_string(round), settings_modul_activated) )
+               MpsWriter<double>::writeProb(filename + std::to_string(round) + ".mps", problem);
 
             if( is_time_exceeded(timer) )
                break;
