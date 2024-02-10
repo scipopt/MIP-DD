@@ -32,8 +32,6 @@
 #include <cassert>
 #include <stdexcept>
 
-
-
 namespace bugger {
 
    class SolverInterface {
