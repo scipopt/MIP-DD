@@ -22,7 +22,7 @@
 
 #ifndef BUGGER_INTERFACES_SCIP_INTERFACE_HPP_
 #define BUGGER_INTERFACES_SCIP_INTERFACE_HPP_
-
+#define COUNT
 #define UNUSED(expr) do { (void)(expr); } while (0)
 
 #include "scip/cons_linear.h"
@@ -38,6 +38,7 @@
 #include "bugger/interfaces/BuggerStatus.hpp"
 #include "bugger/interfaces/SolverStatus.hpp"
 #include "bugger/interfaces/SolverInterface.hpp"
+
 
 namespace bugger {
 
@@ -373,12 +374,17 @@ namespace bugger {
 
          SolverStatus solverstatus = SolverStatus::kUndefinedError;
          SCIPsetMessagehdlrQuiet(scip, true);
+#ifndef COUNT
          char retcode = SCIPsolve(scip);
+#else
+         SCIPsetParamsCountsols(scip);
+         char retcode = SCIPcount(scip);
+#endif
          if( retcode == SCIP_OKAY )
          {
             // reset return code
             retcode = OKAY;
-
+#ifndef COUNT
             // declare primal solution and bound
             Solution<double> solution;
             double bound;
@@ -428,7 +434,17 @@ namespace bugger {
             // check objective by best solution evaluation
             if( retcode == OKAY )
                retcode = check_objective_value( bound, solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
+#else
+            // check count by primal solution existence
+            if( retcode == OKAY )
+            {
+               long long int count;
+               unsigned int valid;
 
+               count = SCIPgetNCountedSols(scip, &valid);
+               retcode = check_count_number( SCIPgetDualbound(scip), SCIPgetPrimalbound(scip), (valid ? count : -1), SCIPinfinity(scip) );
+            }
+#endif
             // translate solver status
             switch( SCIPgetStatus(scip) )
             {

@@ -100,7 +100,7 @@ namespace bugger {
          assert(tolerance < 0.5);
          assert(infinity > 1.0);
 
-         if( dual < -infinity || dual > infinity || ( reference->status != SolutionStatus::kUnknown && (model->getObjective().sense ? dual - std::max(value, -infinity) : std::min(value, infinity) - dual) > tolerance ) )
+         if( abs(dual) > infinity || ( reference->status != SolutionStatus::kUnknown && (model->getObjective().sense ? dual - std::max(value, -infinity) : std::min(value, infinity) - dual) > tolerance ) )
             return DUALFAIL;
 
          return OKAY;
@@ -242,7 +242,7 @@ namespace bugger {
          assert(tolerance < 0.5);
          assert(infinity > 1.0);
 
-         if( primal < -infinity || primal > infinity )
+         if( abs(primal) > infinity )
             return OBJECTIVEFAIL;
 
          if( solution.status == SolutionStatus::kUnknown )
@@ -287,6 +287,31 @@ namespace bugger {
 
          if( (model->getObjective().sense ? std::min(result, infinity) - primal : primal - std::max(result, -infinity)) > tolerance )
             return OBJECTIVEFAIL;
+
+         return OKAY;
+      }
+
+      char
+      check_count_number( const double &dual, const double &primal, const long long int &count, const double &infinity )
+      {
+         assert(infinity > 1.0);
+
+         if( abs(dual) > infinity || (model->getObjective().sense ? primal : -primal) != infinity || count < -1 )
+            return OBJECTIVEFAIL;
+
+         if( reference->status == SolutionStatus::kUnknown )
+            return OKAY;
+
+         if( reference->status == SolutionStatus::kInfeasible )
+         {
+            if( count != 0 )
+               return PRIMALFAIL;
+         }
+         else if( abs(value) < infinity && (model->getObjective().sense ? dual : -dual) == infinity )
+         {
+            if( count == 0 )
+               return DUALFAIL;
+         }
 
          return OKAY;
       }
