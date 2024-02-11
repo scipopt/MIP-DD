@@ -22,7 +22,7 @@
 
 #ifndef BUGGER_INTERFACES_SCIP_INTERFACE_HPP_
 #define BUGGER_INTERFACES_SCIP_INTERFACE_HPP_
-#define COUNT
+
 #define UNUSED(expr) do { (void)(expr); } while (0)
 
 #include "scip/cons_linear.h"
