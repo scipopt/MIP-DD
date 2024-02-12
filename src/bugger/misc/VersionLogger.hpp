@@ -44,16 +44,30 @@ print_header()
 #ifndef NDEBUG
    mode = "debug";
 #endif
+   fmt::print( "Bugger version {}.{}.{} ", BUGGER_VERSION_MAJOR, BUGGER_VERSION_MINOR, BUGGER_VERSION_PATCH);
 
+   #if defined(__INTEL_COMPILER)
+   fmt::print("[Compiler: Intel {}]", __INTEL_COMPILER);
+   #elif defined(__clang__)
+   fmt::print("[Compiler: clang {}.{}.{}]", __clang_major__, __clang_minor__, __clang_patchlevel__);
+   #elif defined(_MSC_VER)
+   fmt::print("[Compiler: microsoft visual c {}]", _MSC_FULL_VER);
+   #elif defined(__GNUC__)
+   #if defined(__GNUC_PATCHLEVEL__)
+   fmt::print("[Compiler: gcc {}.{}.{}]", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+   #else
+   fmt::print("[Compiler: gcc {}.{}]", __GNUC__, __GNUC_MINOR__);
+   #endif
+   #else
+   fmt::print("[Compiler: unknown]");
+   #endif
+
+   fmt::print("[mode: {}]", mode);
 #ifdef BUGGER_GITHASH_AVAILABLE
-   fmt::print( "Bugger version {}.{}.{} [mode: {}][GitHash: {}]\n",
-               BUGGER_VERSION_MAJOR, BUGGER_VERSION_MINOR, BUGGER_VERSION_PATCH,
-               mode, BUGGER_GITHASH );
-#else
-   fmt::print( "bugger version {}.{}.{} [mode: {}][GitHash: ]\n",
-               BUGGER_VERSION_MAJOR, BUGGER_VERSION_MINOR, BUGGER_VERSION_PATCH,
-               mode );
+   fmt::print("[GitHash: {}]", BUGGER_GITHASH);
 #endif
+
+   fmt::print( "\n" );
    fmt::print( "Copyright (C) 2024 Zuse Institute Berlin (ZIB)\n" );
    fmt::print( "\n" );
 
@@ -67,22 +81,6 @@ print_header()
 #endif
 
    fmt::print( "  TBB            \t Thread building block https://github.com/oneapi-src/oneTBB developed by Intel\n" );
-
-#if defined(__INTEL_COMPILER)
-   fmt::print("\tCompiler Intel {}\n", __INTEL_COMPILER);
-#elif defined(__clang__)
-   fmt::print("\tCompiler clang {}.{}.{}\n", __clang_major__, __clang_minor__, __clang_patchlevel__);
-#elif defined(_MSC_VER)
-   fmt::print("\tCompiler microsoft visual c {}\n", _MSC_FULL_VER);
-#elif defined(__GNUC__)
-   #if defined(__GNUC_PATCHLEVEL__)
-      fmt::print("\tCompiler gcc {}.{}.{}\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
-   #else
-      fmt::print("\tCompiler gcc {}.{}\n", __GNUC__, __GNUC_MINOR__);
-   #endif
-#else
-   fmt::print("\tCompiler: unknown\n");
-#endif
    
    fmt::print( "\n" );
 }
