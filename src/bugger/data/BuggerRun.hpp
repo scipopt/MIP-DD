@@ -40,7 +40,7 @@
 #include "bugger/misc/OptionsParser.hpp"
 #include "bugger/misc/Vec.hpp"
 #include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/data/BuggerOptions.hpp"
+#include "bugger/data/BuggerParameters.hpp"
 #include <utility>
 #include <memory>
 #include <fstream>
@@ -51,7 +51,7 @@ namespace bugger {
    class BuggerRun {
 
    private:
-      bugger::BuggerOptions options;
+      bugger::BuggerParameters options;
       const std::string& settings_filename;
       const std::string& target_settings_filename;
       bugger::Problem<double> &problem;

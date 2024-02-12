@@ -29,7 +29,7 @@
 #include <memory>
 #include <utility>
 
-#include "bugger/data/BuggerOptions.hpp"
+#include "bugger/data/BuggerParameters.hpp"
 
 #include "bugger/misc/MultiPrecision.hpp"
 #include "bugger/misc/Vec.hpp"

@@ -24,7 +24,7 @@
 #ifndef _BUGGER_PRESOLVE_METHOD_HPP_
 #define _BUGGER_PRESOLVE_METHOD_HPP_
 
-#include "bugger/data/BuggerOptions.hpp"
+#include "bugger/data/BuggerParameters.hpp"
 #include "bugger/io/Message.hpp"
 #include "bugger/misc/Num.hpp"
 #include "bugger/misc/Vec.hpp"
@@ -95,7 +95,7 @@ namespace bugger {
       }
 
       ModulStatus
-      run(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const BuggerOptions &options,
+      run(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const BuggerParameters &options,
           const Timer &timer) {
          if( !enabled )
             return ModulStatus::kDidNotRun;
@@ -169,7 +169,7 @@ namespace bugger {
 
       virtual ModulStatus
       execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
-              const BuggerOptions &options, const Timer &timer) = 0;
+              const BuggerParameters &options, const Timer &timer) = 0;
 
       void
       setName(const std::string &value) {
@@ -185,7 +185,7 @@ namespace bugger {
 
 
       BuggerStatus
-      call_solver(SolverInterface *solver, const Message &msg, const BuggerOptions &options) {
+      call_solver(SolverInterface *solver, const Message &msg, const BuggerParameters &options) {
 
          std::pair<char, SolverStatus> result = solver->solve(options.passcodes);
          if( result.first == SolverInterface::OKAY )

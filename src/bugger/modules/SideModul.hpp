@@ -52,8 +52,8 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings,  Solution<double> &solution,
-              const BuggerOptions &options, const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
+              const BuggerParameters &options, const Timer &timer) override {
 
          if( solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;

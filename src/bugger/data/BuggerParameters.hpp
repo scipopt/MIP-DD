@@ -30,7 +30,7 @@
 namespace bugger
 {
 
-struct BuggerOptions
+struct BuggerParameters
 {
 
    int threads = 0;
