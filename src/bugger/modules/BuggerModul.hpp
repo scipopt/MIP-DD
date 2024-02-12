@@ -156,8 +156,8 @@ namespace bugger {
    protected:
 
       std::unique_ptr<SolverInterface>
-      createSolver(){
-         return solver_factory->create_solver();
+      createSolver( ){
+         return solver_factory->create_solver( msg );
       }
 
       double get_linear_activity(SparseVectorView<double> &data, Solution<double> &solution) {

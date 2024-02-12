@@ -84,7 +84,7 @@ namespace bugger {
    public:
 
       virtual std::unique_ptr<SolverInterface>
-      create_solver( ) const = 0;
+      create_solver( Message& msg ) const = 0;
 
       virtual void
       add_parameters( ParameterSet& parameter ) {}

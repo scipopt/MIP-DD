@@ -139,7 +139,7 @@ namespace bugger {
             if( !batches_offset.empty() && ( batches_offset.size() >= batchsize || row <= 0 ) )
             {
                copy.getConstraintMatrix( ).changeCoefficients(batches_coeff);
-               auto solver = createSolver();
+               auto solver = createSolver( );
                solver->doSetUp(copy,  settings, solution );
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                {

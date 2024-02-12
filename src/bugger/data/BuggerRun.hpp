@@ -119,7 +119,7 @@ namespace bugger {
          for( int round = options.initround, stage = options.initstage, success = 0; round < options.maxrounds && stage < options.maxstages; ++round )
          {
             //TODO: one can think about shrinking the matrix in each round
-            solver_factory->create_solver( )->writeInstance(filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round), solver_settings, problem, settings_modul_activated);
+            solver_factory->create_solver( msg )->writeInstance(filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round), solver_settings, problem, settings_modul_activated);
 
             if( is_time_exceeded(timer) )
                break;
@@ -260,7 +260,7 @@ namespace bugger {
       }
 
       void printOriginalSolveStatus(const SolverSettings &settings, const std::shared_ptr<SolverFactory>& factory) {
-         auto solver = factory->create_solver();
+         auto solver = factory->create_solver( msg );
          solver->doSetUp(problem, settings, solution);
          Vec<int> empty_passcodes{};
          const std::pair<char, SolverStatus> &pair = solver->solve(empty_passcodes);
@@ -268,7 +268,7 @@ namespace bugger {
       }
 
       SolverSettings parseSettings( const std::string& filename, const std::shared_ptr<SolverFactory>& factory) {
-         auto solver = factory->create_solver();
+         auto solver = factory->create_solver( msg );
          return solver->parseSettings(filename);
       }
 
