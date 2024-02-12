@@ -23,7 +23,21 @@
 #ifndef BUGGER_BUGGERRUN_HPP
 #define BUGGER_BUGGERRUN_HPP
 
+#include <utility>
+#include <memory>
+#include <fstream>
+#include <algorithm>
 #include <boost/program_options.hpp>
+
+#include "bugger/data/BuggerOptions.hpp"
+#include "bugger/io/MpsParser.hpp"
+#include "bugger/io/MpsWriter.hpp"
+#include "bugger/io/SolParser.hpp"
+#include "bugger/misc/VersionLogger.hpp"
+#include "bugger/misc/OptionsParser.hpp"
+#include "bugger/misc/Vec.hpp"
+#include "bugger/misc/MultiPrecision.hpp"
+#include "bugger/interfaces/ScipInterface.hpp"
 #include "bugger/modules/VarroundModul.hpp"
 #include "bugger/modules/VariableModul.hpp"
 #include "bugger/modules/SideModul.hpp"
@@ -34,16 +48,7 @@
 #include "bugger/modules/ConsroundModul.hpp"
 #include "bugger/modules/CoefficientModul.hpp"
 #include "bugger/modules/BuggerModul.hpp"
-#include "bugger/interfaces/ScipInterface.hpp"
-#include "bugger/misc/VersionLogger.hpp"
-#include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/Vec.hpp"
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/data/BuggerOptions.hpp"
-#include <utility>
-#include <memory>
-#include <fstream>
-#include <algorithm>
+
 
 namespace bugger {
 
@@ -58,19 +63,23 @@ namespace bugger {
 
    public:
 
-      explicit BuggerRun( bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
+      explicit BuggerRun( Vec<std::unique_ptr<BuggerModul>> &_modules )
             : modules(_modules), solver_factory(load_solver_factory()) { }
 
       bool
-      is_time_exceeded( const Timer& timer ) const
+      is_time_exceeded( const Timer &timer ) const
       {
          return options.tlim != std::numeric_limits<double>::max() &&
                 timer.getTime() >= options.tlim;
       }
 
-      void apply(bugger::Timer &timer, const OptionsInfo& optionsInfo ) {
+      void apply( const Timer &timer, const OptionsInfo &optionsInfo ) {
 
-         auto instance = solver_factory->create_solver( )->readInstance(optionsInfo.settings_file, optionsInfo.problem_file);
+         const auto &solver = solver_factory->create_solver( );
+         msg.info("\nMIP Solver:\n");
+         solver->print_header(msg);
+         msg.info("\n");
+         auto instance = solver->readInstance(optionsInfo.settings_file, optionsInfo.problem_file);
          if( !instance.first )
          {
             msg.error("error loading settings {}\n", optionsInfo.settings_file);
@@ -156,7 +165,8 @@ namespace bugger {
          {
             auto solver = solver_factory->create_solver( );
             solver->doSetUp(settings, problem, solution);
-            solver->writeInstance(filename + std::to_string(round), settings_modul_activated);
+            if( !solver->writeInstance(filename + std::to_string(round), settings_modul_activated) )
+               MpsWriter<double>::writeProb(filename + std::to_string(round) + ".mps", problem);
 
             if( is_time_exceeded(timer) )
                break;
@@ -183,7 +193,7 @@ namespace bugger {
       }
       
       void
-      addModul(std::unique_ptr<bugger::BuggerModul> module) {
+      addModul( std::unique_ptr<BuggerModul> module ) {
          modules.emplace_back(std::move(module));
       }
 
@@ -198,7 +208,7 @@ namespace bugger {
 
    private:
 
-      void check_feasibility_of_solution( const Problem<double>& problem , const Solution<double>& solution) {
+      void check_feasibility_of_solution( const Problem<double> &problem , const Solution<double> &solution ) {
          if( solution.status != SolutionStatus::kFeasible )
             return;
          const Vec<double>& ub = problem.getUpperBounds();

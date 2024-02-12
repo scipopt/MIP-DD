@@ -26,34 +26,14 @@
 #include <algorithm>
 #include <fstream>
 #include <memory>
-#include <utility>
+#include <boost/program_options.hpp>
 
 #include "bugger/data/BuggerOptions.hpp"
-
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/misc/Vec.hpp"
-#include "bugger/misc/OptionsParser.hpp"
-
-#include "bugger/misc/VersionLogger.hpp"
-
-#include "bugger/io/MpsParser.hpp"
-#include "bugger/io/MpsWriter.hpp"
-#include "bugger/io/SolParser.hpp"
-
-#include "bugger/interfaces/ScipInterface.hpp"
-#include "bugger/modules/BuggerModul.hpp"
-#include "bugger/modules/CoefficientModul.hpp"
-#include "bugger/modules/ConsroundModul.hpp"
-#include "bugger/modules/ConstraintModul.hpp"
-#include "bugger/modules/FixingModul.hpp"
-#include "bugger/modules/ObjectiveModul.hpp"
-#include "bugger/modules/SettingModul.hpp"
-#include "bugger/modules/SideModul.hpp"
-#include "bugger/modules/VariableModul.hpp"
-#include "bugger/modules/VarroundModul.hpp"
 #include "bugger/data/BuggerRun.hpp"
-
-#include <boost/program_options.hpp>
+#include "bugger/misc/MultiPrecision.hpp"
+#include "bugger/misc/OptionsParser.hpp"
+#include "bugger/misc/VersionLogger.hpp"
+#include "bugger/modules/BuggerModul.hpp"
 
 
 int

@@ -23,14 +23,10 @@
 #ifndef _BUGGER_INTERFACES_SOLVER_INTERFACE_HPP_
 #define _BUGGER_INTERFACES_SOLVER_INTERFACE_HPP_
 
-
-#include "bugger/misc/Vec.hpp"
-#include <cassert>
-#include <stdexcept>
-
+#include "bugger/data/SolverSettings.hpp"
 #include "bugger/data/Problem.hpp"
 #include "bugger/data/Solution.hpp"
-#include "bugger/data/SolverSettings.hpp"
+
 
 namespace bugger {
 
@@ -57,6 +53,13 @@ namespace bugger {
        */
       virtual
       boost::optional<SolverSettings> parseSettings(const std::string &filename) = 0;
+
+      /**
+       * prints the header of the used solver
+       * @param msg
+       */
+      virtual
+      void print_header( const Message &msg ){}
 
       /**
        * loads settings, problem, and solution
@@ -87,7 +90,7 @@ namespace bugger {
        * @param writesettings
        */
       virtual
-      void writeInstance(const std::string &filename, const bool &writesettings) = 0;
+      bool writeInstance(const std::string &filename, const bool &writesettings) = 0;
 
       virtual ~SolverInterface() = default;
 

@@ -55,6 +55,39 @@ namespace bugger {
             throw std::runtime_error("could not create SCIP");
       }
 
+      void
+      print_header( const Message &msg ) override
+      {
+//         use fmt to print Version
+         SCIPprintVersion(scip, nullptr);
+
+#if defined(__INTEL_COMPILER)
+         msg.info("\tCompiler Intel {}\n", __INTEL_COMPILER);
+#elif defined(__clang__)
+         msg.info("\tCompiler clang {}.{}.{}\n", __clang_major__, __clang_minor__, __clang_patchlevel__);
+#elif defined(_MSC_VER)
+         msg.info("\tCompiler microsoft visual c {}\n", _MSC_FULL_VER);
+#elif defined(__GNUC__)
+   #if defined(__GNUC_PATCHLEVEL__)
+         msg.info("\tCompiler gcc {}.{}.{}\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+   #else
+         msg.info("\tCompiler gcc {}.{}\n", __GNUC__, __GNUC_MINOR__);
+   #endif
+#else
+         msg.info("\tCompiler: unknown\n");
+#endif
+
+         int length = SCIPgetNExternalCodes(scip);
+         auto description = SCIPgetExternalCodeDescriptions(scip);
+         auto names = SCIPgetExternalCodeNames(scip);
+         for( int i= 0; i < length; i++)
+         {
+            std::string n { names[i] };
+            std::string d { description[i] };
+            msg.info("\t{:20} {}\n", n,d);
+         }
+      }
+
       boost::optional<SolverSettings>
       parseSettings(const std::string &filename) override
       {
@@ -229,11 +262,11 @@ namespace bugger {
          return { settings, builder.build() };
       }
 
-      void
+      bool
       writeInstance(const std::string &filename, const bool &writesettings) override {
          if( writesettings )
             SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
-         SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE);
+         return SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
       };
 
       ~ScipInterface( ) override {
