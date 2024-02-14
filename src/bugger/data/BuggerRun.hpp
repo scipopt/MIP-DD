@@ -79,15 +79,16 @@ namespace bugger {
          msg.info("\nMIP Solver:\n");
          solver->print_header(msg);
          msg.info("\n");
-         boost::optional<SolverSettings> target_settings = boost::none;
+         SolverSettings targets { };
          if( !optionsInfo.target_settings_file.empty( ) )
          {
-            target_settings = solver_factory->create_solver( )->parseSettings(optionsInfo.target_settings_file);
+            auto target_settings = solver_factory->create_solver( )->parseSettings(optionsInfo.target_settings_file);
             if( !target_settings )
             {
                msg.error("error loading targets {}\n", optionsInfo.target_settings_file);
                return;
             }
+            targets = target_settings.get();
          }
          auto instance = solver->readInstance(optionsInfo.settings_file, optionsInfo.problem_file);
          if( !instance.first )
@@ -140,11 +141,16 @@ namespace bugger {
          addModul(uptr(new VariableModul(msg, num, solver_factory)));
          addModul(uptr(new CoefficientModul(msg, num, solver_factory)));
          addModul(uptr(new FixingModul(msg, num, solver_factory)));
-         addModul(uptr(new SettingModul(msg, num, target_settings, solver_factory)));
+         addModul(uptr(new SettingModul(msg, num, solver_factory, targets)));
          addModul(uptr(new SideModul(msg, num, solver_factory)));
          addModul(uptr(new ObjectiveModul(msg, num, solver_factory)));
          addModul(uptr(new VarroundModul(msg, num, solver_factory)));
          addModul(uptr(new ConsRoundModul(msg, num, solver_factory)));
+
+         // disable module setting
+         auto &setting = *modules[4];
+         if( optionsInfo.target_settings_file.empty( ) )
+            setting.setEnabled(false);
 
          if( options.maxrounds < 0 )
             options.maxrounds = INT_MAX;
@@ -165,7 +171,7 @@ namespace bugger {
          {
             auto solver = solver_factory->create_solver( );
             solver->doSetUp(settings, problem, solution);
-            if( !solver->writeInstance(filename + std::to_string(round), (bool)target_settings) )
+            if( !solver->writeInstance(filename + std::to_string(round), setting.isEnabled()) )
                MpsWriter<double>::writeProb(filename + std::to_string(round) + ".mps", problem);
 
             if( is_time_exceeded(timer) )
