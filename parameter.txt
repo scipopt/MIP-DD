@@ -1,10 +1,10 @@
 # bugger time limit [Numerical: [0,1.7976931348623157e+308]]
 tlim = 0.0
       
-# initial bugger round [Integer]
+# initial bugger round or -1 for last round [Integer]
 initround = 0
  
-# initial bugger stage [Integer]
+# initial bugger stage or -1 for last stage [Integer]
 initstage = 0
 
 # maximum number of bugger rounds or -1 for no limit [Integer]
