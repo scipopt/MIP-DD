@@ -150,18 +150,20 @@ namespace bugger {
 
          if( options.maxrounds < 0 )
             options.maxrounds = INT_MAX;
-
-         results.resize(modules.size( ));
-
+         if( options.initround < 0 || options.initround >= options.maxrounds )
+            options.initround = options.maxrounds-1;
          if( options.maxstages < 0 || options.maxstages > modules.size( ) )
-            options.maxstages = (int) modules.size( );
+            options.maxstages = modules.size( );
+         if( options.initstage < 0 || options.initstage >= options.maxstages )
+            options.initstage = options.maxstages-1;
 
          int ending = optionsInfo.problem_file.rfind('.');
          if( optionsInfo.problem_file.substr(ending+1) == "gz" || optionsInfo.problem_file.substr(ending+1) == "bz2" )
             ending = optionsInfo.problem_file.rfind('.', ending-1);
          std::string filename = optionsInfo.problem_file.substr(0, ending) + "_";
+         results.resize(modules.size( ));
 
-         for( int round = options.initround, stage = options.initstage, success = 0; round < options.maxrounds && stage < options.maxstages; ++round )
+         for( int round = options.initround, stage = options.initstage, success = options.initstage; round < options.maxrounds && stage < options.maxstages; ++round )
          {
             auto solver = solver_factory->create_solver( );
             solver->doSetUp(settings, problem, solution);
