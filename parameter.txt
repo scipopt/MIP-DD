@@ -10,7 +10,7 @@ initstage = 0
 # maximum number of bugger rounds or -1 for no limit [Integer]
 maxrounds = -1
 
-# maximum number of bugger stages or -1 for number of included bugger modules [Integer]
+# maximum number of bugger stages or -1 for number of modules [Integer]
 maxstages = -1
 
 # maximum number of batches or 0 for singleton batches [Integer]
