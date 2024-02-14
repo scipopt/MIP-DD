@@ -32,15 +32,14 @@ namespace bugger {
 
    private:
 
-      SolverSettings target_settings ;
+      const boost::optional<SolverSettings>& target_settings;
 
    public:
 
-      SettingModul(const Message &_msg, const Num<double> &_num, const SolverSettings& _target_settings, std::shared_ptr<SolverFactory>& factory) : BuggerModul(factory) {
+      SettingModul(const Message &_msg, const Num<double> &_num, const boost::optional<SolverSettings>& _target_settings, std::shared_ptr<SolverFactory>& factory) : BuggerModul(factory), target_settings(_target_settings) {
          this->setName("setting");
          this->msg = _msg;
          this->num = _num;
-         target_settings = _target_settings;
       }
 
       bool
@@ -52,45 +51,48 @@ namespace bugger {
       execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
               const BuggerOptions &options, const Timer &timer) override {
 
+         if( !target_settings )
+            return ModulStatus::kDidNotRun;
+
          int batchsize = 1;
 
          if( options.nbatches > 0 )
          {
             batchsize = options.nbatches - 1;
-            for( int i = 0; i < target_settings.getBoolSettings().size(); i++)
+            for( int i = 0; i < target_settings.get().getBoolSettings().size(); i++)
             {
-               assert(target_settings.getBoolSettings()[i].first == settings.getBoolSettings()[i].first);
-               if( target_settings.getBoolSettings()[i].second != settings.getBoolSettings()[i].second)
+               assert(target_settings.get().getBoolSettings()[i].first == settings.getBoolSettings()[i].first);
+               if( target_settings.get().getBoolSettings()[i].second != settings.getBoolSettings()[i].second)
                   ++batchsize;
             }
-            for( int i = 0; i < target_settings.getIntSettings().size(); i++)
+            for( int i = 0; i < target_settings.get().getIntSettings().size(); i++)
             {
-               assert(target_settings.getIntSettings()[i].first == settings.getIntSettings()[i].first);
-               if( target_settings.getIntSettings()[i].second != settings.getIntSettings()[i].second)
+               assert(target_settings.get().getIntSettings()[i].first == settings.getIntSettings()[i].first);
+               if( target_settings.get().getIntSettings()[i].second != settings.getIntSettings()[i].second)
                   ++batchsize;
             }
-            for( int i = 0; i < target_settings.getLongSettings().size(); i++)
+            for( int i = 0; i < target_settings.get().getLongSettings().size(); i++)
             {
-               assert(target_settings.getLongSettings()[i].first == settings.getLongSettings()[i].first);
-               if( target_settings.getLongSettings()[i].second != settings.getLongSettings()[i].second)
+               assert(target_settings.get().getLongSettings()[i].first == settings.getLongSettings()[i].first);
+               if( target_settings.get().getLongSettings()[i].second != settings.getLongSettings()[i].second)
                   ++batchsize;
             }
-            for( int i = 0; i < target_settings.getDoubleSettings().size(); i++)
+            for( int i = 0; i < target_settings.get().getDoubleSettings().size(); i++)
             {
-               assert(target_settings.getDoubleSettings()[i].first == settings.getDoubleSettings()[i].first);
-               if( target_settings.getDoubleSettings()[i].second != settings.getDoubleSettings()[i].second)
+               assert(target_settings.get().getDoubleSettings()[i].first == settings.getDoubleSettings()[i].first);
+               if( target_settings.get().getDoubleSettings()[i].second != settings.getDoubleSettings()[i].second)
                   ++batchsize;
             }
-            for( int i = 0; i < target_settings.getCharSettings().size(); i++)
+            for( int i = 0; i < target_settings.get().getCharSettings().size(); i++)
             {
-               assert(target_settings.getCharSettings()[i].first == settings.getCharSettings()[i].first);
-               if( target_settings.getCharSettings()[i].second != settings.getCharSettings()[i].second)
+               assert(target_settings.get().getCharSettings()[i].first == settings.getCharSettings()[i].first);
+               if( target_settings.get().getCharSettings()[i].second != settings.getCharSettings()[i].second)
                   ++batchsize;
             }
-            for( int i = 0; i < target_settings.getStringSettings().size(); i++)
+            for( int i = 0; i < target_settings.get().getStringSettings().size(); i++)
             {
-               assert(target_settings.getStringSettings()[i].first == settings.getStringSettings()[i].first);
-               if( target_settings.getStringSettings()[i].second != settings.getStringSettings()[i].second)
+               assert(target_settings.get().getStringSettings()[i].first == settings.getStringSettings()[i].first);
+               if( target_settings.get().getStringSettings()[i].second != settings.getStringSettings()[i].second)
                   ++batchsize;
             }
             if( batchsize == options.nbatches - 1 )
@@ -120,23 +122,23 @@ namespace bugger {
          batches_string.reserve(batchsize);
          int batches = 0;
 
-         for( int i = 0; i < target_settings.getBoolSettings().size(); ++i )
+         for( int i = 0; i < target_settings.get().getBoolSettings().size(); ++i )
          {
-            assert(target_settings.getBoolSettings()[i].first == settings.getBoolSettings()[i].first);
-            if( target_settings.getBoolSettings()[i].second != copy.getBoolSettings()[i].second)
+            assert(target_settings.get().getBoolSettings()[i].first == settings.getBoolSettings()[i].first);
+            if( target_settings.get().getBoolSettings()[i].second != copy.getBoolSettings()[i].second)
             {
                admissible = true;
-               copy.setBoolSettings(i, target_settings.getBoolSettings( )[ i ].second);
-               batches_bool.emplace_back(i, target_settings.getBoolSettings( )[ i ].second);
+               copy.setBoolSettings(i, target_settings.get().getBoolSettings( )[ i ].second);
+               batches_bool.emplace_back(i, target_settings.get().getBoolSettings( )[ i ].second);
                ++batches;
             }
 
-            if( batches >= 1 && ( batches >= batchsize || ( i + 1 == target_settings.getBoolSettings().size()
-                                                            && target_settings.getIntSettings().empty()
-                                                            && target_settings.getLongSettings().empty()
-                                                            && target_settings.getDoubleSettings().empty()
-                                                            && target_settings.getCharSettings().empty()
-                                                            && target_settings.getStringSettings().empty() ) ) )
+            if( batches >= 1 && ( batches >= batchsize || ( i + 1 == target_settings.get().getBoolSettings().size()
+                                                            && target_settings.get().getIntSettings().empty()
+                                                            && target_settings.get().getLongSettings().empty()
+                                                            && target_settings.get().getDoubleSettings().empty()
+                                                            && target_settings.get().getCharSettings().empty()
+                                                            && target_settings.get().getStringSettings().empty() ) ) )
             {
                auto solver = createSolver();
                solver->doSetUp(copy, problem, solution);
@@ -150,22 +152,22 @@ namespace bugger {
                batches = 0;
             }
          }
-         for( int i = 0; i < target_settings.getIntSettings().size(); ++i )
+         for( int i = 0; i < target_settings.get().getIntSettings().size(); ++i )
          {
-            assert(target_settings.getIntSettings()[i].first == settings.getIntSettings()[i].first);
-            if( target_settings.getIntSettings()[i].second != settings.getIntSettings()[i].second)
+            assert(target_settings.get().getIntSettings()[i].first == settings.getIntSettings()[i].first);
+            if( target_settings.get().getIntSettings()[i].second != settings.getIntSettings()[i].second)
             {
                admissible = true;
-               copy.setIntSettings(i, target_settings.getIntSettings( )[ i ].second);
-               batches_int.emplace_back(i, target_settings.getIntSettings( )[ i ].second);
+               copy.setIntSettings(i, target_settings.get().getIntSettings( )[ i ].second);
+               batches_int.emplace_back(i, target_settings.get().getIntSettings( )[ i ].second);
                ++batches;
             }
 
-            if( batches >= 1 && ( batches >= batchsize || ( i + 1 == target_settings.getIntSettings().size()
-                                                            && target_settings.getLongSettings().empty()
-                                                            && target_settings.getDoubleSettings().empty()
-                                                            && target_settings.getCharSettings().empty()
-                                                            && target_settings.getStringSettings().empty() ) ) )
+            if( batches >= 1 && ( batches >= batchsize || ( i + 1 == target_settings.get().getIntSettings().size()
+                                                            && target_settings.get().getLongSettings().empty()
+                                                            && target_settings.get().getDoubleSettings().empty()
+                                                            && target_settings.get().getCharSettings().empty()
+                                                            && target_settings.get().getStringSettings().empty() ) ) )
             {
                auto solver = createSolver();
                solver->doSetUp(copy, problem, solution);
@@ -181,21 +183,21 @@ namespace bugger {
                batches = 0;
             }
          }
-         for( int i = 0; i < target_settings.getLongSettings().size(); ++i )
+         for( int i = 0; i < target_settings.get().getLongSettings().size(); ++i )
          {
-            assert(target_settings.getLongSettings()[i].first == settings.getLongSettings()[i].first);
-            if( target_settings.getLongSettings()[i].second != settings.getLongSettings()[i].second)
+            assert(target_settings.get().getLongSettings()[i].first == settings.getLongSettings()[i].first);
+            if( target_settings.get().getLongSettings()[i].second != settings.getLongSettings()[i].second)
             {
                admissible = true;
-               copy.setLongSettings(i, target_settings.getLongSettings( )[ i ].second);
-               batches_long.emplace_back(i, target_settings.getLongSettings( )[ i ].second);
+               copy.setLongSettings(i, target_settings.get().getLongSettings( )[ i ].second);
+               batches_long.emplace_back(i, target_settings.get().getLongSettings( )[ i ].second);
                ++batches;
             }
 
-            if( batches >= 1 && ( batches >= batchsize || ( i + 1 == target_settings.getLongSettings().size()
-                                                            && target_settings.getDoubleSettings().empty()
-                                                            && target_settings.getCharSettings().empty()
-                                                            && target_settings.getStringSettings().empty() ) ) )
+            if( batches >= 1 && ( batches >= batchsize || ( i + 1 == target_settings.get().getLongSettings().size()
+                                                            && target_settings.get().getDoubleSettings().empty()
+                                                            && target_settings.get().getCharSettings().empty()
+                                                            && target_settings.get().getStringSettings().empty() ) ) )
             {
                auto solver = createSolver();
                solver->doSetUp(copy, problem, solution);
@@ -213,20 +215,20 @@ namespace bugger {
                batches = 0;
             }
          }
-         for( int i = 0; i < target_settings.getDoubleSettings().size(); ++i )
+         for( int i = 0; i < target_settings.get().getDoubleSettings().size(); ++i )
          {
-            assert(target_settings.getDoubleSettings()[i].first == settings.getDoubleSettings()[i].first);
-            if( target_settings.getDoubleSettings()[i].second != settings.getDoubleSettings()[i].second)
+            assert(target_settings.get().getDoubleSettings()[i].first == settings.getDoubleSettings()[i].first);
+            if( target_settings.get().getDoubleSettings()[i].second != settings.getDoubleSettings()[i].second)
             {
                admissible = true;
-               copy.setDoubleSettings(i, target_settings.getDoubleSettings( )[ i ].second);
-               batches_double.emplace_back(i, target_settings.getDoubleSettings( )[ i ].second);
+               copy.setDoubleSettings(i, target_settings.get().getDoubleSettings( )[ i ].second);
+               batches_double.emplace_back(i, target_settings.get().getDoubleSettings( )[ i ].second);
                ++batches;
             }
 
-            if( batches >= 1 && ( batches >= batchsize || ( i + 1 == target_settings.getDoubleSettings().size()
-                                                            && target_settings.getCharSettings().empty()
-                                                            && target_settings.getStringSettings().empty() ) ) )
+            if( batches >= 1 && ( batches >= batchsize || ( i + 1 == target_settings.get().getDoubleSettings().size()
+                                                            && target_settings.get().getCharSettings().empty()
+                                                            && target_settings.get().getStringSettings().empty() ) ) )
             {
                auto solver = createSolver();
                solver->doSetUp(copy, problem, solution);
@@ -246,19 +248,19 @@ namespace bugger {
                batches = 0;
             }
          }
-         for( int i = 0; i < target_settings.getCharSettings().size(); ++i )
+         for( int i = 0; i < target_settings.get().getCharSettings().size(); ++i )
          {
-            assert(target_settings.getCharSettings()[i].first == settings.getCharSettings()[i].first);
-            if( target_settings.getCharSettings()[i].second != settings.getCharSettings()[i].second)
+            assert(target_settings.get().getCharSettings()[i].first == settings.getCharSettings()[i].first);
+            if( target_settings.get().getCharSettings()[i].second != settings.getCharSettings()[i].second)
             {
                admissible = true;
-               copy.setCharSettings(i, target_settings.getCharSettings( )[ i ].second);
-               batches_char.emplace_back(i, target_settings.getCharSettings( )[ i ].second);
+               copy.setCharSettings(i, target_settings.get().getCharSettings( )[ i ].second);
+               batches_char.emplace_back(i, target_settings.get().getCharSettings( )[ i ].second);
                ++batches;
             }
 
-            if( batches >= 1 && ( batches >= batchsize || ( i + 1 == target_settings.getCharSettings().size()
-                                                            && target_settings.getStringSettings().empty() ) ) )
+            if( batches >= 1 && ( batches >= batchsize || ( i + 1 == target_settings.get().getCharSettings().size()
+                                                            && target_settings.get().getStringSettings().empty() ) ) )
             {
                auto solver = createSolver();
                solver->doSetUp(copy, problem, solution);
@@ -280,18 +282,18 @@ namespace bugger {
                batches = 0;
             }
          }
-         for( int i = 0; i < target_settings.getStringSettings().size(); ++i )
+         for( int i = 0; i < target_settings.get().getStringSettings().size(); ++i )
          {
-            assert(target_settings.getStringSettings()[i].first == settings.getStringSettings()[i].first);
-            if( target_settings.getStringSettings()[i].second != settings.getStringSettings()[i].second)
+            assert(target_settings.get().getStringSettings()[i].first == settings.getStringSettings()[i].first);
+            if( target_settings.get().getStringSettings()[i].second != settings.getStringSettings()[i].second)
             {
                admissible = true;
-               copy.setStringSettings(i, target_settings.getStringSettings( )[ i ].second);
-               batches_string.emplace_back(i, target_settings.getStringSettings( )[ i ].second);
+               copy.setStringSettings(i, target_settings.get().getStringSettings( )[ i ].second);
+               batches_string.emplace_back(i, target_settings.get().getStringSettings( )[ i ].second);
                ++batches;
             }
 
-            if( batches >= 1 && ( batches >= batchsize || i + 1 == target_settings.getStringSettings().size() ) )
+            if( batches >= 1 && ( batches >= batchsize || i + 1 == target_settings.get().getStringSettings().size() ) )
             {
                auto solver = createSolver();
                solver->doSetUp(copy, problem, solution);

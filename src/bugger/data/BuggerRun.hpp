@@ -79,6 +79,16 @@ namespace bugger {
          msg.info("\nMIP Solver:\n");
          solver->print_header(msg);
          msg.info("\n");
+         boost::optional<SolverSettings> target_settings = boost::none;
+         if( !optionsInfo.target_settings_file.empty( ) )
+         {
+            target_settings = solver_factory->create_solver( )->parseSettings(optionsInfo.target_settings_file);
+            if( !target_settings )
+            {
+               msg.error("error loading targets {}\n", optionsInfo.target_settings_file);
+               return;
+            }
+         }
          auto instance = solver->readInstance(optionsInfo.settings_file, optionsInfo.problem_file);
          if( !instance.first )
          {
@@ -126,23 +136,11 @@ namespace bugger {
          num.setEpsilon( options.epsilon );
          num.setZeta( options.zeta );
 
-         bool settings_modul_activated = !optionsInfo.target_settings_file.empty( );
-
          addModul(uptr(new ConstraintModul(msg, num, solver_factory)));
          addModul(uptr(new VariableModul(msg, num, solver_factory)));
          addModul(uptr(new CoefficientModul(msg, num, solver_factory)));
          addModul(uptr(new FixingModul(msg, num, solver_factory)));
-         if( settings_modul_activated )
-         {
-            auto target_settings = solver_factory->create_solver( )->parseSettings(optionsInfo.target_settings_file);
-            if( !target_settings )
-            {
-               msg.error("error loading targets {}\n", optionsInfo.target_settings_file);
-               return;
-            }
-            auto targets = target_settings.get();
-            addModul(uptr(new SettingModul(msg, num, targets, solver_factory)));
-         }
+         addModul(uptr(new SettingModul(msg, num, target_settings, solver_factory)));
          addModul(uptr(new SideModul(msg, num, solver_factory)));
          addModul(uptr(new ObjectiveModul(msg, num, solver_factory)));
          addModul(uptr(new VarroundModul(msg, num, solver_factory)));
@@ -167,7 +165,7 @@ namespace bugger {
          {
             auto solver = solver_factory->create_solver( );
             solver->doSetUp(settings, problem, solution);
-            if( !solver->writeInstance(filename + std::to_string(round), settings_modul_activated) )
+            if( !solver->writeInstance(filename + std::to_string(round), (bool)target_settings) )
                MpsWriter<double>::writeProb(filename + std::to_string(round) + ".mps", problem);
 
             if( is_time_exceeded(timer) )
