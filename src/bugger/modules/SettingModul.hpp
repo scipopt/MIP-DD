@@ -32,15 +32,14 @@ namespace bugger {
 
    private:
 
-      SolverSettings target_settings ;
+      const SolverSettings &target_settings;
 
    public:
 
-      SettingModul(const Message &_msg, const Num<double> &_num, const SolverSettings& _target_settings, std::shared_ptr<SolverFactory>& factory) : BuggerModul(factory) {
+      SettingModul(const Message &_msg, const Num<double> &_num, std::shared_ptr<SolverFactory> &factory, const SolverSettings &_target_settings) : BuggerModul(factory), target_settings(_target_settings) {
          this->setName("setting");
          this->msg = _msg;
          this->num = _num;
-         target_settings = _target_settings;
       }
 
       bool

@@ -79,6 +79,17 @@ namespace bugger {
          msg.info("\nMIP Solver:\n");
          solver->print_header(msg);
          msg.info("\n");
+         SolverSettings targets { };
+         if( !optionsInfo.target_settings_file.empty( ) )
+         {
+            auto target_settings = solver_factory->create_solver( )->parseSettings(optionsInfo.target_settings_file);
+            if( !target_settings )
+            {
+               msg.error("error loading targets {}\n", optionsInfo.target_settings_file);
+               return;
+            }
+            targets = target_settings.get();
+         }
          auto instance = solver->readInstance(optionsInfo.settings_file, optionsInfo.problem_file);
          if( !instance.first )
          {
@@ -126,46 +137,41 @@ namespace bugger {
          num.setEpsilon( options.epsilon );
          num.setZeta( options.zeta );
 
-         bool settings_modul_activated = !optionsInfo.target_settings_file.empty( );
-
          addModul(uptr(new ConstraintModul(msg, num, solver_factory)));
          addModul(uptr(new VariableModul(msg, num, solver_factory)));
          addModul(uptr(new CoefficientModul(msg, num, solver_factory)));
          addModul(uptr(new FixingModul(msg, num, solver_factory)));
-         if( settings_modul_activated )
-         {
-            auto target_settings = solver_factory->create_solver( )->parseSettings(optionsInfo.target_settings_file);
-            if( !target_settings )
-            {
-               msg.error("error loading targets {}\n", optionsInfo.target_settings_file);
-               return;
-            }
-            auto targets = target_settings.get();
-            addModul(uptr(new SettingModul(msg, num, targets, solver_factory)));
-         }
+         addModul(uptr(new SettingModul(msg, num, solver_factory, targets)));
          addModul(uptr(new SideModul(msg, num, solver_factory)));
          addModul(uptr(new ObjectiveModul(msg, num, solver_factory)));
          addModul(uptr(new VarroundModul(msg, num, solver_factory)));
          addModul(uptr(new ConsRoundModul(msg, num, solver_factory)));
 
+         // disable module setting
+         auto &setting = *modules[4];
+         if( optionsInfo.target_settings_file.empty( ) )
+            setting.setEnabled(false);
+
          if( options.maxrounds < 0 )
             options.maxrounds = INT_MAX;
-
-         results.resize(modules.size( ));
-
+         if( options.initround < 0 || options.initround >= options.maxrounds )
+            options.initround = options.maxrounds-1;
          if( options.maxstages < 0 || options.maxstages > modules.size( ) )
-            options.maxstages = (int) modules.size( );
+            options.maxstages = modules.size( );
+         if( options.initstage < 0 || options.initstage >= options.maxstages )
+            options.initstage = options.maxstages-1;
 
          int ending = optionsInfo.problem_file.rfind('.');
          if( optionsInfo.problem_file.substr(ending+1) == "gz" || optionsInfo.problem_file.substr(ending+1) == "bz2" )
             ending = optionsInfo.problem_file.rfind('.', ending-1);
          std::string filename = optionsInfo.problem_file.substr(0, ending) + "_";
+         results.resize(modules.size( ));
 
-         for( int round = options.initround, stage = options.initstage, success = 0; round < options.maxrounds && stage < options.maxstages; ++round )
+         for( int round = options.initround, stage = options.initstage, success = options.initstage; round < options.maxrounds && stage < options.maxstages; ++round )
          {
             auto solver = solver_factory->create_solver( );
             solver->doSetUp(settings, problem, solution);
-            if( !solver->writeInstance(filename + std::to_string(round), settings_modul_activated) )
+            if( !solver->writeInstance(filename + std::to_string(round), setting.isEnabled()) )
                MpsWriter<double>::writeProb(filename + std::to_string(round) + ".mps", problem);
 
             if( is_time_exceeded(timer) )
