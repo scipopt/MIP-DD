@@ -45,13 +45,13 @@ struct BuggerOptions
 
    int nbatches = 0;
 
-   double epsilon = 1e-9;
-
-   double zeta = 0;
+   double tlim = std::numeric_limits<double>::max();
 
    double feastol = 1e-6;
 
-   double tlim = std::numeric_limits<double>::max();
+   double epsilon = 1e-9;
+
+   double zeta = 0;
 
    Vec<int> passcodes = {};
 
