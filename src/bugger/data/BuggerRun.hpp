@@ -127,16 +127,19 @@ namespace bugger {
          }
 
          check_feasibility_of_solution(problem, solution);
-
-         printOriginalSolveStatus(settings, problem, solution, solver_factory);
-
-         using uptr = std::unique_ptr<bugger::BuggerModul>;
+         if( options.mode != 1 )
+         {
+            printOriginalSolveStatus(settings, problem, solution, solver_factory);
+            if( options.mode == 0 )
+               return;
+         }
 
          Num<double> num{};
          num.setFeasTol( options.feastol );
          num.setEpsilon( options.epsilon );
          num.setZeta( options.zeta );
 
+         using uptr = std::unique_ptr<bugger::BuggerModul>;
          addModul(uptr(new ConstraintModul(msg, num, solver_factory)));
          addModul(uptr(new VariableModul(msg, num, solver_factory)));
          addModul(uptr(new CoefficientModul(msg, num, solver_factory)));
@@ -336,13 +339,13 @@ namespace bugger {
          solver->doSetUp(settings, problem, solution);
          Vec<int> empty_passcodes{};
          const std::pair<char, SolverStatus> &pair = solver->solve(empty_passcodes);
-         msg.info("Original solve returned code {} with status {}.\n", (int) pair.first, pair.second);
+         msg.info("Original solve returned code {} with status {}.\n\n", (int) pair.first, pair.second);
       }
 
       std::shared_ptr<SolverFactory>
       load_solver_factory(){
 #ifdef BUGGER_HAVE_SCIP
-         return std::shared_ptr<SolverFactory>(new ScipFactory( ) );
+         return std::shared_ptr<SolverFactory>( new ScipFactory( ) );
 #else
          msg.error("No solver specified -- aborting ....");
          return nullptr;

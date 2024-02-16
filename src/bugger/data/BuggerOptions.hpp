@@ -31,6 +31,7 @@ namespace bugger
 
 struct BuggerOptions
 {
+   int mode = -1;
 
    int threads = 0;
 
@@ -61,13 +62,14 @@ public:
    void
    addParameters( ParameterSet& paramSet )
    {
-      paramSet.addParameter( "tlim", "bugger time limit", tlim, 0.0 );
+      paramSet.addParameter( "mode", "selective bugger mode (-1: reproduce and reduce, 0: only reproduce, 1: only reduce)", mode, -1, 1 );
+      paramSet.addParameter( "threads", "maximal number of threads to use (0: automatic)", threads, 0 );
       paramSet.addParameter( "initround", "initial bugger round or -1 for last round", initround, -1 );
       paramSet.addParameter( "initstage", "initial bugger stage or -1 for last stage", initstage, -1 );
       paramSet.addParameter( "maxrounds", "the maximum number of bugger rounds or -1 for no limit", maxrounds, -1 );
       paramSet.addParameter( "maxstages", " maximum number of bugger stages or -1 for number of modules", maxstages, -1 );
       paramSet.addParameter( "nbatches", "the maximum number of batches or 0 for singleton batches", nbatches, 0 );
-      paramSet.addParameter( "threads", "maximal number of threads to use (0: automatic)", threads, 0 );
+      paramSet.addParameter( "tlim", "bugger time limit", tlim, 0.0 );
       paramSet.addParameter( "numerics.feastol", "the feasibility tolerance", feastol, 0.0, 1e-1 );
       paramSet.addParameter( "numerics.epsilon", "epsilon tolerance to consider two values numerically equal", epsilon, 0.0, 1e-1 );
       paramSet.addParameter( "numerics.zeta", "zeta tolerance to consider two values exactly equal", zeta, 0.0, 1e-1 );
