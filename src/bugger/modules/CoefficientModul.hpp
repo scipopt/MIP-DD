@@ -60,19 +60,19 @@ namespace bugger {
 
       ModulStatus
       execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
-              const BuggerParameters &options, const Timer &timer) override {
+              const BuggerParameters &parameters, const Timer &timer) override {
 
          int batchsize = 1;
 
-         if( options.nbatches > 0 )
+         if( parameters.nbatches > 0 )
          {
-            batchsize = options.nbatches - 1;
+            batchsize = parameters.nbatches - 1;
             for( int i = problem.getNRows( ) - 1; i >= 0; --i )
                if( isCoefficientAdmissible(problem, i) )
                   ++batchsize;
-            if( batchsize == options.nbatches - 1 )
+            if( batchsize == parameters.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
-            batchsize /= options.nbatches;
+            batchsize /= parameters.nbatches;
          }
 
          bool admissible = false;
@@ -162,7 +162,7 @@ namespace bugger {
                apply_changes(copy, batches_coeff);
                auto solver = createSolver( );
                solver->doSetUp(settings, copy, solution);
-               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+               if( call_solver(solver.get( ), msg, parameters) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
                   apply_changes(copy, applied_entries);

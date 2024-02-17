@@ -87,7 +87,7 @@ namespace bugger {
       }
 
       ModulStatus
-      run(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const BuggerParameters &options,
+      run(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const BuggerParameters &parameters,
           const Timer &timer) {
          if( !enabled )
             return ModulStatus::kDidNotRun;
@@ -98,7 +98,7 @@ namespace bugger {
 #else
          auto start = std::chrono::steady_clock::now();
 #endif
-         ModulStatus result = execute(problem, settings, solution, options, timer);
+         ModulStatus result = execute(problem, settings, solution, parameters, timer);
 #ifdef BUGGER_TBB
          if( result == ModulStatus::kSuccessful )
             nsuccessCall++;
@@ -161,7 +161,7 @@ namespace bugger {
 
       virtual ModulStatus
       execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
-              const BuggerParameters &options, const Timer &timer) = 0;
+              const BuggerParameters &parameters, const Timer &timer) = 0;
 
       void
       setName(const std::string &value) {
@@ -177,11 +177,11 @@ namespace bugger {
 
 
       BuggerStatus
-      call_solver(SolverInterface *solver, const Message &msg, const BuggerParameters &options) {
+      call_solver(SolverInterface *solver, const Message &msg, const BuggerParameters &parameters) {
 
-         if( !options.debug_filename.empty( ) )
-            solver->writeInstance(options.debug_filename, true);
-         std::pair<char, SolverStatus> result = solver->solve(options.passcodes);
+         if( !parameters.debug_filename.empty( ) )
+            solver->writeInstance(parameters.debug_filename, true);
+         std::pair<char, SolverStatus> result = solver->solve(parameters.passcodes);
          if( result.first == SolverInterface::OKAY )
          {
             msg.info("\tOkay  - Status {}\n", result.second);
