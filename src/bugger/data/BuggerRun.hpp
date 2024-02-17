@@ -56,7 +56,7 @@ namespace bugger {
 
    private:
 
-      BuggerParameters options { };
+      BuggerParameters parameters { };
       Vec<std::unique_ptr<bugger::BuggerModul>> &modules;
       Vec<bugger::ModulStatus> results;
       Message msg { };
@@ -70,8 +70,8 @@ namespace bugger {
       bool
       is_time_exceeded( const Timer &timer ) const
       {
-         return options.tlim != std::numeric_limits<double>::max() &&
-                timer.getTime() >= options.tlim;
+         return parameters.tlim != std::numeric_limits<double>::max() &&
+                timer.getTime() >= parameters.tlim;
       }
 
       void apply( const Timer &timer, const OptionsInfo &optionsInfo ) {
@@ -133,9 +133,9 @@ namespace bugger {
          using uptr = std::unique_ptr<bugger::BuggerModul>;
 
          Num<double> num{};
-         num.setFeasTol( options.feastol );
-         num.setEpsilon( options.epsilon );
-         num.setZeta( options.zeta );
+         num.setFeasTol( parameters.feastol );
+         num.setEpsilon( parameters.epsilon );
+         num.setZeta( parameters.zeta );
 
          addModul(uptr(new ConstraintModul(msg, num, solver_factory)));
          addModul(uptr(new VariableModul(msg, num, solver_factory)));
@@ -152,14 +152,14 @@ namespace bugger {
          if( optionsInfo.target_settings_file.empty( ) )
             setting.setEnabled(false);
 
-         if( options.maxrounds < 0 )
-            options.maxrounds = INT_MAX;
-         if( options.initround < 0 || options.initround >= options.maxrounds )
-            options.initround = options.maxrounds-1;
-         if( options.maxstages < 0 || options.maxstages > modules.size( ) )
-            options.maxstages = modules.size( );
-         if( options.initstage < 0 || options.initstage >= options.maxstages )
-            options.initstage = options.maxstages-1;
+         if( parameters.maxrounds < 0 )
+            parameters.maxrounds = INT_MAX;
+         if( parameters.initround < 0 || parameters.initround >= parameters.maxrounds )
+            parameters.initround = parameters.maxrounds-1;
+         if( parameters.maxstages < 0 || parameters.maxstages > modules.size( ) )
+            parameters.maxstages = modules.size( );
+         if( parameters.initstage < 0 || parameters.initstage >= parameters.maxstages )
+            parameters.initstage = parameters.maxstages-1;
 
          int ending = optionsInfo.problem_file.rfind('.');
          if( optionsInfo.problem_file.substr(ending+1) == "gz" || optionsInfo.problem_file.substr(ending+1) == "bz2" )
@@ -167,7 +167,7 @@ namespace bugger {
          std::string filename = optionsInfo.problem_file.substr(0, ending) + "_";
          results.resize(modules.size( ));
 
-         for( int round = options.initround, stage = options.initstage, success = options.initstage; round < options.maxrounds && stage < options.maxstages; ++round )
+         for( int round = parameters.initround, stage = parameters.initstage, success = parameters.initstage; round < parameters.maxrounds && stage < parameters.maxstages; ++round )
          {
             //TODO: Clean the matrix in each round
             //TODO: Simplify solver handling
@@ -182,9 +182,9 @@ namespace bugger {
 
             msg.info("Round {} Stage {}\n", round+1, stage+1);
 
-            for( int module = 0; module <= stage && stage < options.maxstages; ++module )
+            for( int module = 0; module <= stage && stage < parameters.maxstages; ++module )
             {
-               results[ module ] = modules[ module ]->run(problem, settings, solution, options, timer);
+               results[ module ] = modules[ module ]->run(problem, settings, solution, parameters, timer);
 
                if( results[ module ] == bugger::ModulStatus::kSuccessful )
                   success = module;
@@ -208,7 +208,7 @@ namespace bugger {
 
       ParameterSet getParameters( ) {
          ParameterSet paramSet;
-         options.addParameters(paramSet);
+         parameters.addParameters(paramSet);
          for( const auto &module: modules )
             module->addParameters(paramSet);
          solver_factory->add_parameters(paramSet);
@@ -356,7 +356,7 @@ namespace bugger {
       evaluateResults( ) {
          int largestValue = static_cast<int>( bugger::ModulStatus::kDidNotRun );
 
-         for( int module = 0; module < options.maxstages; ++module )
+         for( int module = 0; module < parameters.maxstages; ++module )
             largestValue = std::max(largestValue, static_cast<int>( results[ module ] ));
 
          return static_cast<bugger::ModulStatus>( largestValue );

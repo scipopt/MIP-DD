@@ -517,10 +517,10 @@ namespace bugger {
    public:
 
       void
-      add_parameters(ParameterSet& parameter) override
+      add_parameters(ParameterSet& parameterset) override
       {
 #if SCIP_VERSION >= 900
-         parameter.addParameter( "scip.setprimalstop", "should limits/objectivestop be activated", parameters.activate_objective_stop );
+         parameterset.addParameter( "scip.setprimalstop", "should limits/objectivestop be activated", parameters.activate_objective_stop );
 #endif
       }
 

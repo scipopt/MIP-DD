@@ -301,7 +301,7 @@ namespace bugger {
    public:
 
       virtual
-      void add_parameters(ParameterSet& parameter) = 0;
+      void add_parameters(ParameterSet& parameterset) = 0;
 
       virtual
       std::unique_ptr<SolverInterface> create_solver(const Message& msg) const = 0;
