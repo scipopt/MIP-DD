@@ -373,6 +373,9 @@ namespace bugger {
 
          if( solution_exists )
          {
+            assert(SCIPepsilon(scip) >= 0.0);
+            assert(SCIPepsilon(scip) <= SCIPsumepsilon(scip));
+
             if( parameters.set_dual_stop )
             {
                //TODO: Adapt parameter name
