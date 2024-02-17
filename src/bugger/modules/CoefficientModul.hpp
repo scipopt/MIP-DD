@@ -24,16 +24,17 @@
 #define BUGGER_MODUL_COEFFICIENT_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
-#include "bugger/interfaces/BuggerStatus.hpp"
+
 
 namespace bugger {
 
    class CoefficientModul : public BuggerModul {
+
    public:
-      CoefficientModul( const Message &_msg, const Num<double> &_num, std::shared_ptr<SolverFactory>& factory) : BuggerModul(factory) {
+
+      explicit CoefficientModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
+                                std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory) {
          this->setName("coefficient");
-         this->msg = _msg;
-         this->num = _num;
       }
 
       bool
@@ -59,8 +60,7 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
-              const BuggerParameters &parameters, const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) override {
 
          int batchsize = 1;
 
@@ -160,9 +160,7 @@ namespace bugger {
             if( batch >= 1 && ( batch >= batchsize || row <= 0 ) )
             {
                apply_changes(copy, batches_coeff);
-               auto solver = createSolver( );
-               solver->doSetUp(settings, copy, solution);
-               if( call_solver(solver.get( ), msg, parameters) == BuggerStatus::kOkay )
+               if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
                   apply_changes(copy, applied_entries);

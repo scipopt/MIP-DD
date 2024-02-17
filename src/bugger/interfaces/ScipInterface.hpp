@@ -60,7 +60,8 @@ namespace bugger {
 
    public:
 
-      explicit ScipInterface(const Message& _msg, const ScipParameters& _parameters) : SolverInterface(_msg), parameters(_parameters) {
+      explicit ScipInterface(const Message& _msg, const ScipParameters& _parameters) : SolverInterface(_msg),
+                             parameters(_parameters) {
          if( SCIPcreate(&scip) != SCIP_OKAY || SCIPincludeDefaultPlugins(scip) != SCIP_OKAY )
             throw std::runtime_error("could not create SCIP");
       }

@@ -24,17 +24,17 @@
 #define BUGGER_SIDE_VARIABLE_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
-#include "bugger/interfaces/BuggerStatus.hpp"
+
 
 namespace bugger {
 
    class SideModul : public BuggerModul {
-   public:
-      SideModul(const Message &_msg, const Num<double> &_num, std::shared_ptr<SolverFactory>& factory) : BuggerModul(factory) {
-         this->setName("side");
-         this->msg = _msg;
-         this->num = _num;
 
+   public:
+
+      explicit SideModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
+                         std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory) {
+         this->setName("side");
       }
 
       bool
@@ -51,8 +51,7 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
-              const BuggerParameters &parameters, const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) override {
 
          if( solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;
@@ -124,9 +123,7 @@ namespace bugger {
 
             if( !batches.empty() && ( batches.size() >= batchsize || row <= 0 ) )
             {
-               auto solver = createSolver();
-               solver->doSetUp(settings, copy, solution);
-               if( call_solver(solver.get( ), msg, parameters) == BuggerStatus::kOkay )
+               if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions )

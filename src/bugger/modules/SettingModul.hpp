@@ -24,7 +24,7 @@
 #define BUGGER_MODUL_SETTING_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
-#include "bugger/interfaces/BuggerStatus.hpp"
+
 
 namespace bugger {
 
@@ -36,10 +36,9 @@ namespace bugger {
 
    public:
 
-      SettingModul(const Message &_msg, const Num<double> &_num, std::shared_ptr<SolverFactory> &factory, const SolverSettings &_target_settings) : BuggerModul(factory), target_settings(_target_settings) {
+      explicit SettingModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
+                            std::shared_ptr<SolverFactory>& _factory, const SolverSettings &_target_settings) : BuggerModul(_msg, _num, _parameters, _factory), target_settings(_target_settings) {
          this->setName("setting");
-         this->msg = _msg;
-         this->num = _num;
       }
 
       bool
@@ -48,8 +47,7 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
-              const BuggerParameters &parameters, const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) override {
 
          int batchsize = 1;
 
@@ -137,9 +135,7 @@ namespace bugger {
                                                             && target_settings.getCharSettings().empty()
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
-               auto solver = createSolver();
-               solver->doSetUp(copy, problem, solution);
-               if( call_solver(solver.get( ), msg, parameters) == BuggerStatus::kOkay )
+               if( call_solver(copy, problem, solution) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -166,9 +162,7 @@ namespace bugger {
                                                             && target_settings.getCharSettings().empty()
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
-               auto solver = createSolver();
-               solver->doSetUp(copy, problem, solution);
-               if( call_solver(solver.get( ), msg, parameters) == BuggerStatus::kOkay )
+               if( call_solver(copy, problem, solution) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -196,9 +190,7 @@ namespace bugger {
                                                             && target_settings.getCharSettings().empty()
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
-               auto solver = createSolver();
-               solver->doSetUp(copy, problem, solution);
-               if( call_solver(solver.get( ), msg, parameters) == BuggerStatus::kOkay )
+               if( call_solver(copy, problem, solution) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -227,9 +219,7 @@ namespace bugger {
                                                             && target_settings.getCharSettings().empty()
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
-               auto solver = createSolver();
-               solver->doSetUp(copy, problem, solution);
-               if( call_solver(solver.get( ), msg, parameters) == BuggerStatus::kOkay )
+               if( call_solver(copy, problem, solution) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -259,9 +249,7 @@ namespace bugger {
             if( batches >= 1 && ( batches >= batchsize || ( i + 1 == target_settings.getCharSettings().size()
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
-               auto solver = createSolver();
-               solver->doSetUp(copy, problem, solution);
-               if( call_solver(solver.get( ), msg, parameters) == BuggerStatus::kOkay )
+               if( call_solver(copy, problem, solution) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -292,9 +280,7 @@ namespace bugger {
 
             if( batches >= 1 && ( batches >= batchsize || i + 1 == target_settings.getStringSettings().size() ) )
             {
-               auto solver = createSolver();
-               solver->doSetUp(copy, problem, solution);
-               if( call_solver(solver.get( ), msg, parameters) == BuggerStatus::kOkay )
+               if( call_solver(copy, problem, solution) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
