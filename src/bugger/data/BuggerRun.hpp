@@ -76,14 +76,13 @@ namespace bugger {
 
       void apply( const Timer &timer, const OptionsInfo &optionsInfo ) {
 
-         const auto &solver = solver_factory->create_solver( );
          msg.info("\nMIP Solver:\n");
-         solver->print_header(msg);
+         solver_factory->create_solver(msg)->print_header();
          msg.info("\n");
          SolverSettings targets { };
          if( !optionsInfo.target_settings_file.empty( ) )
          {
-            auto target_settings = solver_factory->create_solver( )->parseSettings(optionsInfo.target_settings_file);
+            auto target_settings = solver_factory->create_solver(msg)->parseSettings(optionsInfo.target_settings_file);
             if( !target_settings )
             {
                msg.error("error loading targets {}\n", optionsInfo.target_settings_file);
@@ -91,7 +90,7 @@ namespace bugger {
             }
             targets = target_settings.get();
          }
-         auto instance = solver->readInstance(optionsInfo.settings_file, optionsInfo.problem_file);
+         auto instance = solver_factory->create_solver(msg)->readInstance(optionsInfo.settings_file, optionsInfo.problem_file);
          if( !instance.first )
          {
             msg.error("error loading settings {}\n", optionsInfo.settings_file);
@@ -170,8 +169,10 @@ namespace bugger {
 
          for( int round = options.initround, stage = options.initstage, success = options.initstage; round < options.maxrounds && stage < options.maxstages; ++round )
          {
-            //TODO: clean the matrix in each round
-            auto solver = solver_factory->create_solver( );
+            //TODO: Clean the matrix in each round
+            //TODO: Simplify solver handling
+            //TODO: Free solver afterwards
+            auto solver = solver_factory->create_solver(msg);
             solver->doSetUp(settings, problem, solution);
             if( !solver->writeInstance(filename + std::to_string(round), setting.isEnabled()) )
                MpsWriter<double>::writeProb(filename + std::to_string(round) + ".mps", problem);
@@ -334,7 +335,7 @@ namespace bugger {
       }
 
       void printOriginalSolveStatus( const SolverSettings &settings, const Problem<double>& problem, Solution<double>& solution, const std::shared_ptr<SolverFactory>& factory ) {
-         auto solver = factory->create_solver();
+         auto solver = factory->create_solver(msg);
          solver->doSetUp(settings, problem, solution);
          Vec<int> empty_passcodes{};
          const std::pair<char, SolverStatus> &pair = solver->solve(empty_passcodes);

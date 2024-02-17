@@ -34,6 +34,7 @@ namespace bugger {
 
    protected:
 
+      const Message& msg;
       const Problem<double>* model = nullptr;
       const Solution<double>* reference = nullptr;
       double value = std::numeric_limits<double>::signaling_NaN();
@@ -45,21 +46,20 @@ namespace bugger {
       const static char PRIMALFAIL = 2;
       const static char OBJECTIVEFAIL = 3;
 
-      SolverInterface( ) = default;
+      SolverInterface(const Message& _msg) : msg(_msg) { }
 
       /**
        * parse Settings
        * @param filename
        */
       virtual
-      boost::optional<SolverSettings> parseSettings(const std::string &filename) = 0;
+      boost::optional<SolverSettings> parseSettings(const std::string& filename) = 0;
 
       /**
        * prints the header of the used solver
-       * @param msg
        */
       virtual
-      void print_header( const Message &msg ){}
+      void print_header() = 0;
 
       /**
        * loads settings, problem, and solution
@@ -68,7 +68,7 @@ namespace bugger {
        * @param solution
        */
       virtual
-      void doSetUp(const SolverSettings &settings, const Problem<double> &problem, const Solution<double> &solution) = 0;
+      void doSetUp(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) = 0;
 
       virtual
       std::pair<char, SolverStatus> solve(const Vec<int>& passcodes) = 0;
@@ -79,7 +79,7 @@ namespace bugger {
        * @param problem_filename
        */
       virtual
-      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>> readInstance(const std::string &settings_filename, const std::string &problem_filename)
+      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>> readInstance(const std::string& settings_filename, const std::string& problem_filename)
       {
          return { boost::none, boost::none };
       };
@@ -90,14 +90,14 @@ namespace bugger {
        * @param writesettings
        */
       virtual
-      bool writeInstance(const std::string &filename, const bool &writesettings) = 0;
+      bool writeInstance(const std::string& filename, const bool& writesettings) = 0;
 
       virtual ~SolverInterface() = default;
 
    protected:
 
       char
-      check_dual_bound( const double &dual, const double &tolerance, const double &infinity )
+      check_dual_bound(const double& dual, const double& tolerance, const double& infinity)
       {
          assert(tolerance > 0.0);
          assert(tolerance < 0.5);
@@ -110,7 +110,7 @@ namespace bugger {
       }
 
       char
-      check_primal_solution( const Solution<double> &solution, const double &tolerance, const double &infinity )
+      check_primal_solution(const Solution<double>& solution, const double& tolerance, const double& infinity)
       {
          assert(tolerance > 0.0);
          assert(tolerance < 0.5);
@@ -239,7 +239,7 @@ namespace bugger {
       }
 
       char
-      check_objective_value( const double &primal, const Solution<double> &solution, const double &tolerance, const double &infinity )
+      check_objective_value(const double& primal, const Solution<double>& solution, const double& tolerance, const double& infinity)
       {
          assert(tolerance > 0.0);
          assert(tolerance < 0.5);
@@ -300,15 +300,14 @@ namespace bugger {
    {
    public:
 
-      virtual std::unique_ptr<SolverInterface>
-      create_solver( Message& msg ) const = 0;
+      virtual
+      void add_parameters(ParameterSet& parameter) = 0;
 
-      virtual void
-      add_parameters( ParameterSet& parameter ) {}
+      virtual
+      std::unique_ptr<SolverInterface> create_solver(const Message& msg) const = 0;
 
-      virtual ~SolverFactory() {}
+      virtual ~SolverFactory() = default;
    };
-
 
 } // namespace bugger
 

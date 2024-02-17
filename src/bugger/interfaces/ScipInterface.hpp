@@ -50,24 +50,20 @@ namespace bugger {
 
    private:
 
+      ScipParameters parameters;
       SCIP* scip = nullptr;
       Vec<SCIP_VAR*> vars;
-      ScipParameters parameters;
-      Message msg;
 
    public:
 
-      explicit ScipInterface( ScipParameters _parameters, Message& _msg ) {
+      explicit ScipInterface(const Message& _msg, const ScipParameters& _parameters) : SolverInterface(_msg), parameters(_parameters) {
          if( SCIPcreate(&scip) != SCIP_OKAY || SCIPincludeDefaultPlugins(scip) != SCIP_OKAY )
             throw std::runtime_error("could not create SCIP");
-         parameters = _parameters;
-         msg = _msg;
       }
 
       void
-      print_header( const Message &msg ) override
+      print_header( ) override
       {
-//         use fmt to print Version
          SCIPprintVersion(scip, nullptr);
          int length = SCIPgetNExternalCodes(scip);
          auto description = SCIPgetExternalCodeDescriptions(scip);
@@ -81,7 +77,7 @@ namespace bugger {
       }
 
       boost::optional<SolverSettings>
-      parseSettings(const std::string &filename) override
+      parseSettings(const std::string& filename) override
       {
          if( !filename.empty() )
          {
@@ -159,13 +155,13 @@ namespace bugger {
       }
 
       void
-      doSetUp(const SolverSettings &settings, const Problem<double> &problem, const Solution<double> &solution) override {
+      doSetUp(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) override {
          auto retcode = setup(settings, problem, solution);
          assert(retcode == SCIP_OKAY);
       }
 
       std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>>
-      readInstance(const std::string &settings_filename, const std::string &problem_filename) override {
+      readInstance(const std::string& settings_filename, const std::string& problem_filename) override {
 
          auto settings = parseSettings(settings_filename);
          SCIP_RETCODE retcode = SCIPreadProb(scip, problem_filename.c_str(), nullptr);
@@ -173,14 +169,14 @@ namespace bugger {
             return { settings, boost::none };
          ProblemBuilder<SCIP_Real> builder;
 
-         /* set problem name */
+         // set problem name
          builder.setProblemName(std::string(SCIPgetProbName(scip)));
-         /* set objective offset */
+         // set objective offset
          builder.setObjOffset(SCIPgetOrigObjoffset(scip));
-         /* set objective sense */
+         // set objective sense
          builder.setObjSense(SCIPgetObjsense(scip) == SCIP_OBJSENSE_MINIMIZE);
 
-         /* reserve problem memory */
+         // reserve problem memory
          int ncols = SCIPgetNVars(scip);
          int nrows = SCIPgetNConss(scip);
          int nnz = 0;
@@ -197,7 +193,7 @@ namespace bugger {
          }
          builder.reserve(nnz, nrows, ncols);
 
-         /* set up columns */
+         // set up columns
          builder.setNumCols(ncols);
          for( int i = 0; i < ncols; ++i )
          {
@@ -215,7 +211,7 @@ namespace bugger {
             builder.setObj(i, SCIPvarGetObj(var));
          }
 
-         /* set up rows */
+         // set up rows
          Vec<SCIP_VAR*> consvars(ncols);
          Vec<SCIP_Real> consvals(ncols);
          Vec<int> indices(ncols);
@@ -255,7 +251,7 @@ namespace bugger {
       }
 
       bool
-      writeInstance(const std::string &filename, const bool &writesettings) override {
+      writeInstance(const std::string& filename, const bool& writesettings) override {
          if( writesettings )
             SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
          return SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
@@ -273,7 +269,7 @@ namespace bugger {
    private:
 
       SCIP_RETCODE
-      setup(const SolverSettings &settings, const Problem<double> &problem, const Solution<double> &solution) {
+      setup(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) {
 
          model = &problem;
          reference = &solution;
@@ -399,7 +395,7 @@ namespace bugger {
             SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
       }
 
-      std::pair<char, SolverStatus> solve( const Vec<int>& passcodes ) override {
+      std::pair<char, SolverStatus> solve(const Vec<int>& passcodes) override {
 
          SolverStatus solverstatus = SolverStatus::kUndefinedError;
          SCIPsetMessagehdlrQuiet(scip, true);
@@ -516,21 +512,22 @@ namespace bugger {
 
    class ScipFactory : public SolverFactory
    {
-      ScipParameters parameters{};
+      ScipParameters parameters { };
 
    public:
 
-      void add_parameters(bugger::ParameterSet &parameter) override
+      void
+      add_parameters(ParameterSet& parameter) override
       {
 #if SCIP_VERSION >= 900
-         parameter.addParameter("scip.setprimalstop", "should limits/objectivestop be activated", parameters.activate_objective_stop);
+         parameter.addParameter( "scip.setprimalstop", "should limits/objectivestop be activated", parameters.activate_objective_stop );
 #endif
       }
 
       std::unique_ptr<SolverInterface>
-      create_solver( Message& msg ) const
+      create_solver(const Message& msg) const override
       {
-         return std::unique_ptr<SolverInterface>( new ScipInterface( parameters, msg ) );
+         return std::unique_ptr<SolverInterface>( new ScipInterface( msg, parameters ) );
       }
 
    };
