@@ -3,8 +3,7 @@
 /*               This file is part of the program and library                */
 /*    BUGGER                                                                 */
 /*                                                                           */
-/* Copyright (C) 2023             Konrad-Zuse-Zentrum                        */
-/*                     fuer Informationstechnik Berlin                       */
+/* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
 /* This program is free software: you can redistribute it and/or modify      */
 /* it under the terms of the GNU Lesser General Public License as published  */
@@ -26,20 +25,13 @@
 
 #include "bugger/data/BuggerParameters.hpp"
 #include "bugger/io/Message.hpp"
-#include "bugger/misc/Num.hpp"
-#include "bugger/misc/Vec.hpp"
-#include "bugger/misc/fmt.hpp"
 #include "bugger/misc/Timer.hpp"
 
 #ifdef BUGGER_TBB
-
 #include "bugger/misc/tbb.hpp"
-
 #else
 #include <chrono>
 #endif
-
-#include <bitset>
 
 
 namespace bugger {
@@ -187,6 +179,8 @@ namespace bugger {
       BuggerStatus
       call_solver(SolverInterface *solver, const Message &msg, const BuggerParameters &options) {
 
+         if( !options.debug_filename.empty( ) )
+            solver->writeInstance(options.debug_filename, true);
          std::pair<char, SolverStatus> result = solver->solve(options.passcodes);
          if( result.first == SolverInterface::OKAY )
          {
@@ -204,6 +198,13 @@ namespace bugger {
             return BuggerStatus::kError;
          }
       }
+
+   void apply_changes(Problem<double> &copy, const Vec<MatrixEntry<double>> &entries) const {
+      MatrixBuffer<double> matrixBuffer{ };
+      for( const auto &entry: entries )
+         matrixBuffer.addEntry(entry.row, entry.col, entry.val);
+      copy.getConstraintMatrix( ).changeCoefficients(matrixBuffer);
+   }
 
    private:
       std::string name;

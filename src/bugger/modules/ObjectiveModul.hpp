@@ -3,8 +3,7 @@
 /*               This file is part of the program and library                */
 /*    BUGGER                                                                 */
 /*                                                                           */
-/* Copyright (C) 2023             Konrad-Zuse-Zentrum                        */
-/*                     fuer Informationstechnik Berlin                       */
+/* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
 /* This program is free software: you can redistribute it and/or modify      */
 /* it under the terms of the GNU Lesser General Public License as published  */
@@ -45,12 +44,12 @@ namespace bugger
          return false;
       }
 
-      bool isObjectiveAdmissible(const Problem<double>& problem, int var)
+      bool isObjectiveAdmissible(const Problem<double>& problem, int col)
       {
-         return !num.isZetaZero(problem.getObjective( ).coefficients[ var ])
-           && ( problem.getColFlags( )[ var ].test(ColFlag::kLbInf)
-             || problem.getColFlags( )[ var ].test(ColFlag::kUbInf)
-             || !num.isZetaEq(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]) );
+         return !num.isZetaZero(problem.getObjective( ).coefficients[ col ])
+           && ( problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
+             || problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
+             || !num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) );
       }
 
       ModulStatus
@@ -79,19 +78,19 @@ namespace bugger
          Vec<int> batches { };
          batches.reserve(batchsize);
 
-         for( int var = copy.getNCols( ) - 1; var >= 0; --var )
+         for( int col = copy.getNCols( ) - 1; col >= 0; --col )
          {
-            if( isObjectiveAdmissible(copy, var) )
+            if( isObjectiveAdmissible(copy, col) )
             {
                admissible = true;
-               copy.getObjective( ).coefficients[ var ] = 0.0;
-               batches.push_back(var);
+               copy.getObjective( ).coefficients[ col ] = 0.0;
+               batches.push_back(col);
             }
 
-            if( !batches.empty() && ( batches.size() >= batchsize || var <= 0 ) )
+            if( !batches.empty() && ( batches.size() >= batchsize || col <= 0 ) )
             {
                auto solver = createSolver();
-               solver->doSetUp(copy, settings, solution);
+               solver->doSetUp(settings, copy, solution);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
@@ -103,16 +102,14 @@ namespace bugger
                batches.clear();
             }
          }
-         if(!admissible)
+
+         if( !admissible )
             return ModulStatus::kNotAdmissible;
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
-         else
-         {
-            problem = copy;
-            nchgcoefs += applied_reductions.size();
-            return ModulStatus::kSuccessful;
-         }
+         problem = copy;
+         nchgcoefs += applied_reductions.size();
+         return ModulStatus::kSuccessful;
       }
    };
 

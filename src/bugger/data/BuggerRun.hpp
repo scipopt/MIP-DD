@@ -3,8 +3,7 @@
 /*               This file is part of the program and library                */
 /*    BUGGER                                                                 */
 /*                                                                           */
-/* Copyright (C) 2023             Konrad-Zuse-Zentrum                        */
-/*                     fuer Informationstechnik Berlin                       */
+/* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
 /* This program is free software: you can redistribute it and/or modify      */
 /* it under the terms of the GNU Lesser General Public License as published  */
@@ -24,7 +23,21 @@
 #ifndef BUGGER_BUGGERRUN_HPP
 #define BUGGER_BUGGERRUN_HPP
 
+#include <utility>
+#include <memory>
+#include <fstream>
+#include <algorithm>
 #include <boost/program_options.hpp>
+
+#include "bugger/data/BuggerParameters.hpp"
+#include "bugger/io/MpsParser.hpp"
+#include "bugger/io/MpsWriter.hpp"
+#include "bugger/io/SolParser.hpp"
+#include "bugger/misc/VersionLogger.hpp"
+#include "bugger/misc/OptionsParser.hpp"
+#include "bugger/misc/Vec.hpp"
+#include "bugger/misc/MultiPrecision.hpp"
+#include "bugger/interfaces/ScipInterface.hpp"
 #include "bugger/modules/VarroundModul.hpp"
 #include "bugger/modules/VariableModul.hpp"
 #include "bugger/modules/SideModul.hpp"
@@ -35,53 +48,88 @@
 #include "bugger/modules/ConsroundModul.hpp"
 #include "bugger/modules/CoefficientModul.hpp"
 #include "bugger/modules/BuggerModul.hpp"
-#include "bugger/interfaces/ScipInterface.hpp"
-#include "bugger/misc/VersionLogger.hpp"
-#include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/Vec.hpp"
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/data/BuggerParameters.hpp"
-#include <utility>
-#include <memory>
-#include <fstream>
-#include <algorithm>
+
 
 namespace bugger {
 
    class BuggerRun {
 
    private:
-      bugger::BuggerParameters options;
-      const std::string& settings_filename;
-      const std::string& target_settings_filename;
-      bugger::Problem<double> &problem;
-      bugger::Solution<double> &solution;
-      bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &modules;
-      bugger::Vec<bugger::ModulStatus> results;
-      bugger::Message msg { };
+
+      BuggerParameters options { };
+      Vec<std::unique_ptr<bugger::BuggerModul>> &modules;
+      Vec<bugger::ModulStatus> results;
+      Message msg { };
       std::shared_ptr<SolverFactory> solver_factory;
 
    public:
 
-      BuggerRun(const std::string& _settings_filename, const std::string& _target_settings_filename, bugger::Problem<double> &_problem, bugger::Solution<double> &_solution,
-                bugger::Vec<std::unique_ptr<bugger::BuggerModul>> &_modules)
-            : options({ }), settings_filename(_settings_filename), target_settings_filename(_target_settings_filename), problem(_problem), solution(_solution),
-              modules(_modules), solver_factory(load_solver_factory()) { }
+      explicit BuggerRun( Vec<std::unique_ptr<BuggerModul>> &_modules )
+            : modules(_modules), solver_factory(load_solver_factory()) { }
 
       bool
-      is_time_exceeded( const Timer& timer ) const
+      is_time_exceeded( const Timer &timer ) const
       {
          return options.tlim != std::numeric_limits<double>::max() &&
                 timer.getTime() >= options.tlim;
       }
 
-      void apply(bugger::Timer &timer, const std::string &filename ) {
+      void apply( const Timer &timer, const OptionsInfo &optionsInfo ) {
 
-         check_feasibility_of_solution();
+         const auto &solver = solver_factory->create_solver( );
+         msg.info("\nMIP Solver:\n");
+         solver->print_header(msg);
+         msg.info("\n");
+         SolverSettings targets { };
+         if( !optionsInfo.target_settings_file.empty( ) )
+         {
+            auto target_settings = solver_factory->create_solver( )->parseSettings(optionsInfo.target_settings_file);
+            if( !target_settings )
+            {
+               msg.error("error loading targets {}\n", optionsInfo.target_settings_file);
+               return;
+            }
+            targets = target_settings.get();
+         }
+         auto instance = solver->readInstance(optionsInfo.settings_file, optionsInfo.problem_file);
+         if( !instance.first )
+         {
+            msg.error("error loading settings {}\n", optionsInfo.settings_file);
+            return;
+         }
+         if( !instance.second )
+         {
+            msg.info("Parser of the solver failed. Using internal parser...");
+            instance.second = MpsParser<double>::loadProblem(optionsInfo.problem_file);
+            if( !instance.second )
+            {
+               msg.error("error loading problem {}\n", optionsInfo.problem_file);
+               return;
+            }
+         }
+         auto settings = instance.first.get();
+         auto problem = instance.second.get();
+         Solution<double> solution;
+         if( !optionsInfo.solution_file.empty( ) )
+         {
+            if( boost::iequals(optionsInfo.solution_file, "infeasible") )
+               solution.status = SolutionStatus::kInfeasible;
+            else if( boost::iequals(optionsInfo.solution_file, "unbounded") )
+               solution.status = SolutionStatus::kUnbounded;
+            else if( !boost::iequals(optionsInfo.solution_file, "unknown") )
+            {
+               bool success = SolParser<double>::read(optionsInfo.solution_file, problem.getVariableNames( ), solution);
+               if( !success )
+               {
+                  msg.error("error loading solution {}\n", optionsInfo.solution_file);
+                  return;
+               }
+            }
+         }
 
-         SolverSettings solver_settings = parseSettings(settings_filename, solver_factory);
+         check_feasibility_of_solution(problem, solution);
 
-         printOriginalSolveStatus(solver_settings, solver_factory);
+         printOriginalSolveStatus(settings, problem, solution, solver_factory);
 
          using uptr = std::unique_ptr<bugger::BuggerModul>;
 
@@ -90,36 +138,43 @@ namespace bugger {
          num.setEpsilon( options.epsilon );
          num.setZeta( options.zeta );
 
-         bool settings_modul_activated = !target_settings_filename.empty( );
          addModul(uptr(new ConstraintModul(msg, num, solver_factory)));
          addModul(uptr(new VariableModul(msg, num, solver_factory)));
          addModul(uptr(new CoefficientModul(msg, num, solver_factory)));
          addModul(uptr(new FixingModul(msg, num, solver_factory)));
-         if( settings_modul_activated )
-            addModul(uptr(new SettingModul(msg, num, parseSettings(target_settings_filename, solver_factory),solver_factory)));
+         addModul(uptr(new SettingModul(msg, num, solver_factory, targets)));
          addModul(uptr(new SideModul(msg, num, solver_factory)));
          addModul(uptr(new ObjectiveModul(msg, num, solver_factory)));
          addModul(uptr(new VarroundModul(msg, num, solver_factory)));
          addModul(uptr(new ConsRoundModul(msg, num, solver_factory)));
 
+         // disable module setting
+         auto &setting = *modules[4];
+         if( optionsInfo.target_settings_file.empty( ) )
+            setting.setEnabled(false);
+
          if( options.maxrounds < 0 )
             options.maxrounds = INT_MAX;
+         if( options.initround < 0 || options.initround >= options.maxrounds )
+            options.initround = options.maxrounds-1;
+         if( options.maxstages < 0 || options.maxstages > modules.size( ) )
+            options.maxstages = modules.size( );
+         if( options.initstage < 0 || options.initstage >= options.maxstages )
+            options.initstage = options.maxstages-1;
 
+         int ending = optionsInfo.problem_file.rfind('.');
+         if( optionsInfo.problem_file.substr(ending+1) == "gz" || optionsInfo.problem_file.substr(ending+1) == "bz2" )
+            ending = optionsInfo.problem_file.rfind('.', ending-1);
+         std::string filename = optionsInfo.problem_file.substr(0, ending) + "_";
          results.resize(modules.size( ));
 
-         if( options.maxstages < 0 || options.maxstages > modules.size( ) )
-            options.maxstages = (int) modules.size( );
-
-         int ending = 4;
-         if( filename.substr(filename.length( ) - 3) == ".gz" )
-            ending = 7;
-         if( filename.substr(filename.length( ) - 3) == ".bz2" )
-            ending = 7;
-
-         for( int round = options.initround, stage = options.initstage, success = 0; round < options.maxrounds && stage < options.maxstages; ++round )
+         for( int round = options.initround, stage = options.initstage, success = options.initstage; round < options.maxrounds && stage < options.maxstages; ++round )
          {
-            //TODO: one can think about shrinking the matrix in each round
-            solver_factory->create_solver( msg )->writeInstance(filename.substr(0, filename.length( ) - ending) + "_" + std::to_string(round), solver_settings, problem, settings_modul_activated);
+            //TODO: clean the matrix in each round
+            auto solver = solver_factory->create_solver( );
+            solver->doSetUp(settings, problem, solution);
+            if( !solver->writeInstance(filename + std::to_string(round), setting.isEnabled()) )
+               MpsWriter<double>::writeProb(filename + std::to_string(round) + ".mps", problem);
 
             if( is_time_exceeded(timer) )
                break;
@@ -128,7 +183,7 @@ namespace bugger {
 
             for( int module = 0; module <= stage && stage < options.maxstages; ++module )
             {
-               results[ module ] = modules[ module ]->run(problem, solver_settings, solution, options, timer);
+               results[ module ] = modules[ module ]->run(problem, settings, solution, options, timer);
 
                if( results[ module ] == bugger::ModulStatus::kSuccessful )
                   success = module;
@@ -142,11 +197,11 @@ namespace bugger {
          }
 
          assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModulStatus::kSuccessful );
-         printStats( );
+         printStats( timer.getTime() );
       }
       
       void
-      addModul(std::unique_ptr<bugger::BuggerModul> module) {
+      addModul( std::unique_ptr<BuggerModul> module ) {
          modules.emplace_back(std::move(module));
       }
 
@@ -161,7 +216,7 @@ namespace bugger {
 
    private:
 
-      void check_feasibility_of_solution( ) {
+      void check_feasibility_of_solution( const Problem<double> &problem , const Solution<double> &solution ) {
          if( solution.status != SolutionStatus::kFeasible )
             return;
          const Vec<double>& ub = problem.getUpperBounds();
@@ -170,6 +225,7 @@ namespace bugger {
          int maxindex = -1;
          bool maxrow = false;
          bool maxupper = false;
+         bool maxintegral = false;
          double viol;
 
          msg.info("\nCheck:\n");
@@ -178,7 +234,7 @@ namespace bugger {
             if( problem.getColFlags()[col].test( ColFlag::kInactive ) )
                continue;
 
-            if ( !problem.getColFlags()[col].test( ColFlag::kLbInf ) && solution.primal[col] < lb[col] )
+            if( !problem.getColFlags()[col].test( ColFlag::kLbInf ) && solution.primal[col] < lb[col] )
             {
                msg.detailed( "\tColumn {:<3} violates lower bound ({:<3} < {:<3}).\n", problem.getVariableNames()[col], solution.primal[col], lb[col] );
                viol = lb[col] - solution.primal[col];
@@ -188,10 +244,11 @@ namespace bugger {
                   maxindex = col;
                   maxrow = false;
                   maxupper = false;
+                  maxintegral = false;
                }
             }
 
-            if ( !problem.getColFlags()[col].test( ColFlag::kUbInf ) && solution.primal[col] > ub[col] )
+            if( !problem.getColFlags()[col].test( ColFlag::kUbInf ) && solution.primal[col] > ub[col] )
             {
                msg.detailed( "\tColumn {:<3} violates upper bound ({:<3} > {:<3}).\n", problem.getVariableNames()[col], solution.primal[col], ub[col] );
                viol = solution.primal[col] - ub[col];
@@ -201,6 +258,21 @@ namespace bugger {
                   maxindex = col;
                   maxrow = false;
                   maxupper = true;
+                  maxintegral = false;
+               }
+            }
+
+            if( problem.getColFlags()[col].test( ColFlag::kIntegral ) && solution.primal[col] != rint(solution.primal[col]) )
+            {
+               msg.detailed( "\tColumn {:<3} violates integrality property ({:<3} != {:<3}).\n", problem.getVariableNames()[col], solution.primal[col], rint(solution.primal[col]) );
+               viol = abs(solution.primal[col] - rint(solution.primal[col]));
+               if( viol > maxviol )
+               {
+                  maxviol = viol;
+                  maxindex = col;
+                  maxrow = false;
+                  maxupper = false;
+                  maxintegral = true;
                }
             }
          }
@@ -235,6 +307,7 @@ namespace bugger {
                   maxindex = row;
                   maxrow = true;
                   maxupper = false;
+                  maxintegral = false;
                }
             }
 
@@ -248,28 +321,24 @@ namespace bugger {
                   maxindex = row;
                   maxrow = true;
                   maxupper = true;
+                  maxintegral = false;
                }
             }
          }
 
          if( maxindex >= 0 )
-            msg.info("Solution is infeasible.\nMaximum violation {:<3} of {} {:<3} {}\n", maxviol, maxrow ? "row" : "column", (maxrow ? problem.getConstraintNames() : problem.getVariableNames())[maxindex], maxrow ? (maxupper ? "right" : "left") : (maxupper ? "upper" : "lower"));
+            msg.info("Solution is infeasible.\nMaximum violation {:<3} of {} {:<3} {}.", maxviol, maxrow ? "row" : "column", (maxrow ? problem.getConstraintNames() : problem.getVariableNames())[maxindex], maxintegral ? "integral" : (maxrow ? (maxupper ? "right" : "left") : (maxupper ? "upper" : "lower")));
          else
-            msg.info("Solution is feasible.\nNo violations detected");
-         msg.info("\n");
+            msg.info("Solution is feasible.\nNo violations detected.");
+         msg.info("\n\n");
       }
 
-      void printOriginalSolveStatus(const SolverSettings &settings, const std::shared_ptr<SolverFactory>& factory) {
-         auto solver = factory->create_solver( msg );
-         solver->doSetUp(problem, settings, solution);
+      void printOriginalSolveStatus( const SolverSettings &settings, const Problem<double>& problem, Solution<double>& solution, const std::shared_ptr<SolverFactory>& factory ) {
+         auto solver = factory->create_solver();
+         solver->doSetUp(settings, problem, solution);
          Vec<int> empty_passcodes{};
          const std::pair<char, SolverStatus> &pair = solver->solve(empty_passcodes);
-         msg.info("original solve returned code {} with status {}\n", (int) pair.first, pair.second);
-      }
-
-      SolverSettings parseSettings( const std::string& filename, const std::shared_ptr<SolverFactory>& factory) {
-         auto solver = factory->create_solver( msg );
-         return solver->parseSettings(filename);
+         msg.info("Original solve returned code {} with status {}.\n", (int) pair.first, pair.second);
       }
 
       std::shared_ptr<SolverFactory>
@@ -292,11 +361,12 @@ namespace bugger {
          return static_cast<bugger::ModulStatus>( largestValue );
       }
 
-      void printStats( ) {
+      void printStats( const double &time ) {
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>18} \n", "modules",
                   "nb calls", "changes", "success calls(%)", "execution time(s)");
          for( const auto &module: modules )
             module->printStats(msg);
+         fmt::print( "\nbugging took {:.3} seconds\n", time );
 
       }
    };

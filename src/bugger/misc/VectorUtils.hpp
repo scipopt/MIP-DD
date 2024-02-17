@@ -4,8 +4,7 @@
 /*               This file is part of the program and library                */
 /*    BUGGER                                                                 */
 /*                                                                           */
-/* Copyright (C) 2023             Konrad-Zuse-Zentrum                        */
-/*                     fuer Informationstechnik Berlin                       */
+/* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
 /* This program is free software: you can redistribute it and/or modify      */
 /* it under the terms of the GNU Lesser General Public License as published  */

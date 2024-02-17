@@ -3,8 +3,7 @@
 /*               This file is part of the program and library                */
 /*    BUGGER                                                                 */
 /*                                                                           */
-/* Copyright (C) 2023             Konrad-Zuse-Zentrum                        */
-/*                     fuer Informationstechnik Berlin                       */
+/* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
 /* This program is free software: you can redistribute it and/or modify      */
 /* it under the terms of the GNU Lesser General Public License as published  */
@@ -27,34 +26,14 @@
 #include <algorithm>
 #include <fstream>
 #include <memory>
-#include <utility>
+#include <boost/program_options.hpp>
 
 #include "bugger/data/BuggerParameters.hpp"
-
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/misc/Vec.hpp"
-#include "bugger/misc/OptionsParser.hpp"
-
-#include "bugger/misc/VersionLogger.hpp"
-
-#include "bugger/io/MpsParser.hpp"
-#include "bugger/io/MpsWriter.hpp"
-#include "bugger/io/SolParser.hpp"
-
-#include "bugger/interfaces/ScipInterface.hpp"
-#include "bugger/modules/BuggerModul.hpp"
-#include "bugger/modules/CoefficientModul.hpp"
-#include "bugger/modules/ConsroundModul.hpp"
-#include "bugger/modules/ConstraintModul.hpp"
-#include "bugger/modules/FixingModul.hpp"
-#include "bugger/modules/ObjectiveModul.hpp"
-#include "bugger/modules/SettingModul.hpp"
-#include "bugger/modules/SideModul.hpp"
-#include "bugger/modules/VariableModul.hpp"
-#include "bugger/modules/VarroundModul.hpp"
 #include "bugger/data/BuggerRun.hpp"
-
-#include <boost/program_options.hpp>
+#include "bugger/misc/MultiPrecision.hpp"
+#include "bugger/misc/OptionsParser.hpp"
+#include "bugger/misc/VersionLogger.hpp"
+#include "bugger/modules/BuggerModul.hpp"
 
 
 int
@@ -80,34 +59,9 @@ main(int argc, char *argv[]) {
    if( !optionsInfo.is_complete )
       return 0;
 
-   auto prob = MpsParser<double>::loadProblem(optionsInfo.instance_file);
 
-   if( !prob )
-   {
-      fmt::print("error loading problem {}\n", optionsInfo.instance_file);
-      return -1;
-   }
-   auto problem = prob.get( );
-   Solution<double> sol;
-   if( !optionsInfo.solution_file.empty( ) )
-   {
-      if( boost::iequals(optionsInfo.solution_file, "infeasible") )
-         sol.status = SolutionStatus::kInfeasible;
-      else if( boost::iequals(optionsInfo.solution_file, "unbounded") )
-         sol.status = SolutionStatus::kUnbounded;
-      else if( !boost::iequals(optionsInfo.solution_file, "unknown") )
-      {
-         bool success = SolParser<double>::read(optionsInfo.solution_file, problem.getVariableNames( ), sol);
-         if( !success )
-         {
-            fmt::print("error loading problem {}\n", optionsInfo.instance_file);
-            return -1;
-         }
-      }
-   }
-
-   Vec<std::unique_ptr<BuggerModul>> list { };
-   BuggerRun bugger { optionsInfo.solver_settings_file, optionsInfo.target_solver_settings_file, problem, sol, list };
+   Vec<std::unique_ptr<BuggerModul>> modules { };
+   BuggerRun bugger {  modules };
 
    if( !optionsInfo.param_settings_file.empty( ) || !optionsInfo.unparsed_options.empty( ))
    {
@@ -191,7 +145,7 @@ main(int argc, char *argv[]) {
    double time = 0;
    Timer timer(time);
 
-   bugger.apply(timer, optionsInfo.instance_file);
+   bugger.apply(timer, optionsInfo);
 
    return 0;
 }

@@ -3,8 +3,7 @@
 /*               This file is part of the program and library                */
 /*    BUGGER                                                                 */
 /*                                                                           */
-/* Copyright (C) 2023             Konrad-Zuse-Zentrum                        */
-/*                     fuer Informationstechnik Berlin                       */
+/* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
 /* This program is free software: you can redistribute it and/or modify      */
 /* it under the terms of the GNU Lesser General Public License as published  */
@@ -86,16 +85,14 @@ namespace bugger {
                auto data = matrix.getRowCoefficients(row);
                bool integral = true;
                double fixedval;
-
                for( int index = 0; index < data.getLength( ); ++index )
                {
-                  if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral) || !num.isEpsIntegral(data.getValues( )[ index ]) )
+                  if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral) || !num.isEpsIntegral(data.getValues( )[ index ]) ) )
                   {
                      integral = false;
                      break;
                   }
                }
-
                if( solution.status == SolutionStatus::kFeasible )
                {
                   fixedval = get_linear_activity(data, solution);
@@ -120,7 +117,6 @@ namespace bugger {
                         fixedval = num.max(fixedval, matrix.getLeftHandSides( )[ row ]);
                   }
                }
-
                matrix.modifyLeftHandSide( row, num, fixedval );
                matrix.modifyRightHandSide( row, num, fixedval );
                batches.emplace_back(row, fixedval);
@@ -129,7 +125,7 @@ namespace bugger {
             if( !batches.empty() && ( batches.size() >= batchsize || row <= 0 ) )
             {
                auto solver = createSolver();
-               solver->doSetUp(copy, settings, solution);
+               solver->doSetUp(settings, copy, solution);
                if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
@@ -144,16 +140,14 @@ namespace bugger {
                batches.clear();
             }
          }
-         if(!admissible)
+
+         if( !admissible )
             return ModulStatus::kNotAdmissible;
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
-         else
-         {
-            problem = copy;
-            nchgsides += 2 * applied_reductions.size();
-            return ModulStatus::kSuccessful;
-         }
+         problem = copy;
+         nchgsides += 2 * applied_reductions.size();
+         return ModulStatus::kSuccessful;
       }
    };
 

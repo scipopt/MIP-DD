@@ -1,16 +1,16 @@
 # bugger time limit [Numerical: [0,1.7976931348623157e+308]]
 tlim = 0.0
       
-# initial bugger round [Integer]
+# initial bugger round or -1 for last round [Integer]
 initround = 0
  
-# initial bugger stage [Integer]
+# initial bugger stage or -1 for last stage [Integer]
 initstage = 0
 
 # maximum number of bugger rounds or -1 for no limit [Integer]
 maxrounds = -1
 
-# maximum number of bugger stages or -1 for number of included bugger modules [Integer]
+# maximum number of bugger stages or -1 for number of modules [Integer]
 maxstages = -1
 
 # maximum number of batches or 0 for singleton batches [Integer]
@@ -27,6 +27,9 @@ zeta = 0;
 
 # list of ignored return codes (string separated by blanks) example: [passcodes = -1 -2]
 passcodes = ""
+
+# if not empty, current instance is written to this file before every solve (default = "")
+debug_filename = ""
 
 # is the Module Coefficient enabled? [Boolean]
 coefficient.enabled = true
@@ -54,3 +57,4 @@ variable.enabled = true
 
 # is the Module Variable Rounding enabled? [Boolean]
 varround.enabled = true
+
