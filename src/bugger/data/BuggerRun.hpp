@@ -211,7 +211,7 @@ namespace bugger {
          parameters.addParameters(paramSet);
          for( const auto &module: modules )
             module->addParameters(paramSet);
-         solver_factory->add_parameters(paramSet);
+         solver_factory->addParameters(paramSet);
          return paramSet;
       }
 

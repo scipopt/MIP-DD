@@ -293,15 +293,14 @@ namespace bugger {
 
          return OKAY;
       }
-
    };
 
-   class SolverFactory
-   {
+   class SolverFactory {
+
    public:
 
       virtual
-      void add_parameters(ParameterSet& parameterset) = 0;
+      void addParameters(ParameterSet& parameterset) = 0;
 
       virtual
       std::unique_ptr<SolverInterface> create_solver(const Message& msg) const = 0;

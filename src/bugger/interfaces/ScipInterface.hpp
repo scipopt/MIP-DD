@@ -39,18 +39,22 @@
 #include "bugger/interfaces/SolverStatus.hpp"
 #include "bugger/interfaces/SolverInterface.hpp"
 
+
 namespace bugger {
 
-   class ScipParameters{
+   class ScipParameters {
+
    public:
-      bool activate_objective_stop = false;
+
+      bool set_dual_stop = true;
+      bool set_prim_stop = true;
    };
 
    class ScipInterface : public SolverInterface {
 
    private:
 
-      ScipParameters parameters;
+      const ScipParameters& parameters;
       SCIP* scip = nullptr;
       Vec<SCIP_VAR*> vars;
 
@@ -367,16 +371,23 @@ namespace bugger {
             SCIP_CALL(SCIPreleaseCons(scip, &cons));
          }
 
-#if SCIP_VERSION >= 900
-//         TODO: test this
-         if( solution_exists && parameters.activate_objective_stop )
+         if( solution_exists )
          {
-            if( SCIPgetParam(scip, "limits/objectivestop") != NULL)
-               SCIPsetRealParam(scip, "limits/objectivestop", value);
+            if( parameters.set_dual_stop )
+            {
+               //TODO: Adapt parameter name
+               SCIP_PARAM* param = SCIPgetParam(scip, "limits/proofstop");
+               if( param != NULL )
+                  SCIPchgRealParam(scip, param, value + (obj.sense ? 2.0 : -2.0) * SCIPsumepsilon(scip));
+            }
+            if( parameters.set_prim_stop )
+            {
+               SCIP_PARAM* param = SCIPgetParam(scip, "limits/objectivestop");
+               if( param != NULL )
+                  SCIPchgRealParam(scip, param, value);
+            }
          }
-         else
-            msg.info("Parameter 'limits/objectivestop' unknown.\n ");
-#endif
+
          return SCIP_OKAY;
       }
 
@@ -508,20 +519,19 @@ namespace bugger {
       }
    };
 
+   class ScipFactory : public SolverFactory {
 
+   private:
 
-   class ScipFactory : public SolverFactory
-   {
       ScipParameters parameters { };
 
    public:
 
       void
-      add_parameters(ParameterSet& parameterset) override
+      addParameters(ParameterSet& parameterset) override
       {
-#if SCIP_VERSION >= 900
-         parameterset.addParameter( "scip.setprimalstop", "should limits/objectivestop be activated", parameters.activate_objective_stop );
-#endif
+         parameterset.addParameter("scip.setdualstop", "stop when dual bound is worse than reference solution", parameters.set_dual_stop);
+         parameterset.addParameter("scip.setprimstop", "stop when prim bound is as good as reference solution", parameters.set_prim_stop);
       }
 
       std::unique_ptr<SolverInterface>
@@ -529,7 +539,6 @@ namespace bugger {
       {
          return std::unique_ptr<SolverInterface>( new ScipInterface( msg, parameters ) );
       }
-
    };
 
 } // namespace bugger
