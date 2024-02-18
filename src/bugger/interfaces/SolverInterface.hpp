@@ -129,8 +129,22 @@ namespace bugger {
       char
       check_dual_bound(const double& dual, const double& tolerance, const double& infinity)
       {
-         if( dual < -infinity || dual > infinity || ( reference->status != SolutionStatus::kUnknown && (model->getObjective().sense ? dual - std::max(value, -infinity) : std::min(value, infinity) - dual) > tolerance ) )
+         if( dual < -infinity || dual > infinity )
             return DUALFAIL;
+
+         if( reference->status == SolutionStatus::kUnknown )
+            return OKAY;
+
+         if( model->getObjective().sense )
+         {
+            if( dual > relax( value, true, tolerance, infinity ) )
+               return DUALFAIL;
+         }
+         else
+         {
+            if( dual < relax( value, false, tolerance, infinity ) )
+               return DUALFAIL;
+         }
 
          return OKAY;
       }
@@ -150,8 +164,8 @@ namespace bugger {
                if( model->getColFlags()[col].test( ColFlag::kFixed ) )
                   continue;
 
-               if( solution.primal[col] < model->getColFlags()[col].test( ColFlag::kLbInf ) ? -infinity : relax( model->getLowerBounds()[col], false, tolerance, infinity )
-                || solution.primal[col] > model->getColFlags()[col].test( ColFlag::kUbInf ) ?  infinity : relax( model->getUpperBounds()[col], true,  tolerance, infinity )
+               if( solution.primal[col] < relax( model->getColFlags()[col].test( ColFlag::kLbInf ) ? -infinity : model->getLowerBounds()[col], false, tolerance, infinity )
+                || solution.primal[col] > relax( model->getColFlags()[col].test( ColFlag::kUbInf ) ?  infinity : model->getUpperBounds()[col], true,  tolerance, infinity )
                 || ( model->getColFlags()[col].test( ColFlag::kIntegral ) && abs(solution.primal[col] - rint(solution.primal[col])) > tolerance ) )
                   return PRIMALFAIL;
             }
@@ -253,8 +267,16 @@ namespace bugger {
                   result += model->getObjective().coefficients[col] * solution.primal[col];
          }
 
-         if( (model->getObjective().sense ? std::min(result, infinity) - primal : primal - std::max(result, -infinity)) > tolerance )
-            return OBJECTIVEFAIL;
+         if( model->getObjective().sense )
+         {
+            if( primal < relax( result, false, tolerance, infinity ) )
+               return OBJECTIVEFAIL;
+         }
+         else
+         {
+            if( primal > relax( result, true, tolerance, infinity ) )
+               return OBJECTIVEFAIL;
+         }
 
          return OKAY;
       }

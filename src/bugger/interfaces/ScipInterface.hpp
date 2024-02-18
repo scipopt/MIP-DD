@@ -386,11 +386,8 @@ namespace bugger {
 
          if( solution_exists )
          {
-            assert(SCIPepsilon(scip) > 0.0);
-            assert(SCIPepsilon(scip) <= SCIPsumepsilon(scip));
-
             if( parameters.set_dual_stop )
-               SCIP_CALL(SCIPsetRealParam(scip, DUAL.c_str(), value + (obj.sense ? 2.0 : -2.0) * SCIPsumepsilon(scip)));
+               SCIP_CALL(SCIPsetRealParam(scip, DUAL.c_str(), relax( value, obj.sense, 2.0 * SCIPsumepsilon(scip), SCIPinfinity(scip) )));
             if( parameters.set_prim_stop )
                SCIP_CALL(SCIPsetRealParam(scip, PRIM.c_str(), value));
          }
