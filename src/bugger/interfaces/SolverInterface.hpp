@@ -106,12 +106,17 @@ namespace bugger {
    protected:
 
       double
-      relax(const double& bound, const bool& increase, const double& tolerance)
+      relax(const double& bound, const bool& increase, const double& tolerance, const double& infinity)
       {
          assert(tolerance > 0.0);
          assert(tolerance < 0.5);
+         assert(infinity > 1.0);
 
-         if( abs(bound) < 1.0 )
+         if( bound <= -infinity )
+            return -infinity;
+         else if( bound >= infinity )
+            return infinity;
+         else if( abs(bound) < 1.0 )
             return bound + (increase ? tolerance : -tolerance);
          else if( (abs(bound) + 1.0) * tolerance > 1.0 )
             return bound + (increase ? 1.0 - tolerance : tolerance - 1.0);
@@ -124,8 +129,6 @@ namespace bugger {
       char
       check_dual_bound(const double& dual, const double& tolerance, const double& infinity)
       {
-         assert(infinity > 1.0);
-
          if( dual < -infinity || dual > infinity || ( reference->status != SolutionStatus::kUnknown && (model->getObjective().sense ? dual - std::max(value, -infinity) : std::min(value, infinity) - dual) > tolerance ) )
             return DUALFAIL;
 
@@ -135,8 +138,6 @@ namespace bugger {
       char
       check_primal_solution(const Solution<double>& solution, const double& tolerance, const double& infinity)
       {
-         assert(infinity > 1.0);
-
          if( solution.status == SolutionStatus::kUnknown )
             return OKAY;
 
@@ -149,8 +150,8 @@ namespace bugger {
                if( model->getColFlags()[col].test( ColFlag::kFixed ) )
                   continue;
 
-               if( solution.primal[col] < model->getColFlags()[col].test( ColFlag::kLbInf ) ? -infinity : relax( model->getLowerBounds()[col], false, tolerance )
-                || solution.primal[col] > model->getColFlags()[col].test( ColFlag::kUbInf ) ?  infinity : relax( model->getUpperBounds()[col], true,  tolerance )
+               if( solution.primal[col] < model->getColFlags()[col].test( ColFlag::kLbInf ) ? -infinity : relax( model->getLowerBounds()[col], false, tolerance, infinity )
+                || solution.primal[col] > model->getColFlags()[col].test( ColFlag::kUbInf ) ?  infinity : relax( model->getUpperBounds()[col], true,  tolerance, infinity )
                 || ( model->getColFlags()[col].test( ColFlag::kIntegral ) && abs(solution.primal[col] - rint(solution.primal[col])) > tolerance ) )
                   return PRIMALFAIL;
             }
@@ -164,8 +165,8 @@ namespace bugger {
                auto coefficients = model->getConstraintMatrix().getRowCoefficients(row);
                for( int i = 0; i < coefficients.getLength(); ++i )
                   activity += coefficients.getValues()[i] * solution.primal[coefficients.getIndices()[i]];
-               if( ( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < relax( model->getConstraintMatrix().getLeftHandSides()[row],  false, tolerance ) )
-                || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity > relax( model->getConstraintMatrix().getRightHandSides()[row], true,  tolerance ) ) )
+               if( ( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < relax( model->getConstraintMatrix().getLeftHandSides()[row],  false, tolerance, infinity ) )
+                || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity > relax( model->getConstraintMatrix().getRightHandSides()[row], true,  tolerance, infinity ) ) )
                   return PRIMALFAIL;
             }
          }
@@ -209,8 +210,6 @@ namespace bugger {
       char
       check_objective_value(const double& primal, const Solution<double>& solution, const double& tolerance, const double& infinity)
       {
-         assert(infinity > 1.0);
-
          if( primal < -infinity || primal > infinity )
             return OBJECTIVEFAIL;
 
