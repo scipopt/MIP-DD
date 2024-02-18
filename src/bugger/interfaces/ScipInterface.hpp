@@ -256,7 +256,7 @@ namespace bugger {
 
       bool
       writeInstance(const String& filename, const bool& writesettings) override {
-         if( writesettings )
+         if( writesettings || parameters.set_dual_stop || parameters.set_prim_stop )
             SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
          return SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
       };
