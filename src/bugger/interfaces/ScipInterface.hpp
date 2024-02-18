@@ -46,9 +46,8 @@ namespace bugger {
 
    public:
 
-      //TODO: Enable reliable stops by default
-      bool set_dual_stop = false;
-      bool set_prim_stop = false;
+      bool set_dual_stop = true;
+      bool set_prim_stop = true;
    };
 
    class ScipInterface : public SolverInterface {
