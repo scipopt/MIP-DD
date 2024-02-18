@@ -114,55 +114,43 @@ namespace bugger {
 
          for( int i = 0; i < nparams; ++i )
          {
-            SCIP_PARAM *param;
-
-            param = params[ i ];
-            param->isfixed = FALSE;
-            switch( SCIPparamGetType(param))
+            SCIP_PARAM* param = params[ i ];
+            String name { param->name };
+            // drop interface settings
+            if( ( parameters.set_dual_stop && name == DUAL ) || ( parameters.set_prim_stop && name == PRIM ) )
+               continue;
+            switch( param->paramtype )
             {
                case SCIP_PARAMTYPE_BOOL:
-               {
-                  bool bool_val = ( param->data.boolparam.valueptr == nullptr ? param->data.boolparam.curvalue
-                                                                              : *param->data.boolparam.valueptr );
-                  bool_settings.emplace_back(param->name, bool_val);
+                  bool_settings.emplace_back( name, param->data.boolparam.valueptr == nullptr
+                                                  ? param->data.boolparam.curvalue
+                                                  : *param->data.boolparam.valueptr );
                   break;
-               }
                case SCIP_PARAMTYPE_INT:
-               {
-                  int int_value = ( param->data.intparam.valueptr == nullptr ? param->data.intparam.curvalue
-                                                                             : *param->data.intparam.valueptr );
-                  int_settings.emplace_back( param->name, int_value);
+                  int_settings.emplace_back( name, param->data.intparam.valueptr == nullptr
+                                                 ? param->data.intparam.curvalue
+                                                 : *param->data.intparam.valueptr );
                   break;
-               }
                case SCIP_PARAMTYPE_LONGINT:
-               {
-                  long long_val = ( param->data.longintparam.valueptr == nullptr ? param->data.longintparam.curvalue
-                                                                                 : *param->data.longintparam.valueptr );
-                  long_settings.emplace_back(param->name, long_val);
+                  long_settings.emplace_back( name, param->data.longintparam.valueptr == nullptr
+                                                  ? param->data.longintparam.curvalue
+                                                  : *param->data.longintparam.valueptr );
                   break;
-               }
                case SCIP_PARAMTYPE_REAL:
-               {
-                  double real_val = ( param->data.realparam.valueptr == nullptr ? param->data.realparam.curvalue
-                                                                                : *param->data.realparam.valueptr );
-                  double_settings.emplace_back(param->name, real_val);
+                  double_settings.emplace_back( name, param->data.realparam.valueptr == nullptr
+                                                    ? param->data.realparam.curvalue
+                                                    : *param->data.realparam.valueptr );
                   break;
-               }
                case SCIP_PARAMTYPE_CHAR:
-               {
-                  char char_val = ( param->data.charparam.valueptr == nullptr ? param->data.charparam.curvalue
-                                                                              : *param->data.charparam.valueptr );
-                  char_settings.emplace_back(param->name, char_val);
-
+                  char_settings.emplace_back( name, param->data.charparam.valueptr == nullptr
+                                                  ? param->data.charparam.curvalue
+                                                  : *param->data.charparam.valueptr );
                   break;
-               }
                case SCIP_PARAMTYPE_STRING:
-               {
-                  String string_val = ( param->data.stringparam.valueptr == nullptr ? param->data.stringparam.curvalue
-                                                                                         : *param->data.stringparam.valueptr );
-                  string_settings.emplace_back(param->name, string_val);
+                  string_settings.emplace_back( name, param->data.stringparam.valueptr == nullptr
+                                                    ? param->data.stringparam.curvalue
+                                                    : *param->data.stringparam.valueptr );
                   break;
-               }
                default:
                   SCIPerrorMessage("unknown parameter type\n");
             }
