@@ -46,15 +46,15 @@ namespace bugger {
 
    public:
 
-      bool set_dual_stop = true;
-      bool set_prim_stop = true;
+      //TODO: Enable reliable stops by default
+      bool set_dual_stop = false;
+      bool set_prim_stop = false;
    };
 
    class ScipInterface : public SolverInterface {
 
    public:
 
-      //TODO: Adapt setting name
       static const String DUAL;
       static const String PRIM;
 
@@ -526,6 +526,7 @@ namespace bugger {
       }
    };
 
+   //TODO: Adapt proof stop setting name
    const String ScipInterface::DUAL = "limits/proofstop";
    const String ScipInterface::PRIM = "limits/objectivestop";
 
