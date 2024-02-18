@@ -32,6 +32,13 @@ namespace bugger {
 
    class SolverInterface {
 
+   public:
+
+      static const char OKAY = 0;
+      static const char DUALFAIL = 1;
+      static const char PRIMALFAIL = 2;
+      static const char OBJECTIVEFAIL = 3;
+
    protected:
 
       const Message& msg;
@@ -41,25 +48,27 @@ namespace bugger {
 
    public:
 
-      const static char OKAY = 0;
-      const static char DUALFAIL = 1;
-      const static char PRIMALFAIL = 2;
-      const static char OBJECTIVEFAIL = 3;
-
       SolverInterface(const Message& _msg) : msg(_msg) { }
+
+      /**
+       * prints the header of the used solver
+       */
+      virtual
+      void print_header() const = 0;
+
+      /**
+       * reports whether given setting is available
+       * @param name
+       */
+      virtual
+      bool has_setting(const String& name) const = 0;
 
       /**
        * parse Settings
        * @param filename
        */
       virtual
-      boost::optional<SolverSettings> parseSettings(const std::string& filename) = 0;
-
-      /**
-       * prints the header of the used solver
-       */
-      virtual
-      void print_header() = 0;
+      boost::optional<SolverSettings> parseSettings(const String& filename) const = 0;
 
       /**
        * loads settings, problem, and solution
@@ -79,7 +88,7 @@ namespace bugger {
        * @param problem_filename
        */
       virtual
-      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>> readInstance(const std::string& settings_filename, const std::string& problem_filename)
+      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>> readInstance(const String& settings_filename, const String& problem_filename)
       {
          return { boost::none, boost::none };
       };
@@ -90,7 +99,7 @@ namespace bugger {
        * @param writesettings
        */
       virtual
-      bool writeInstance(const std::string& filename, const bool& writesettings) = 0;
+      bool writeInstance(const String& filename, const bool& writesettings) = 0;
 
       virtual ~SolverInterface() = default;
 
@@ -303,7 +312,7 @@ namespace bugger {
       void addParameters(ParameterSet& parameterset) = 0;
 
       virtual
-      std::unique_ptr<SolverInterface> create_solver(const Message& msg) const = 0;
+      std::unique_ptr<SolverInterface> create_solver(const Message& msg) = 0;
 
       virtual ~SolverFactory() = default;
    };

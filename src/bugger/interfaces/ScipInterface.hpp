@@ -52,6 +52,12 @@ namespace bugger {
 
    class ScipInterface : public SolverInterface {
 
+   public:
+
+      //TODO: Adapt setting name
+      static const String DUAL;
+      static const String PRIM;
+
    private:
 
       const ScipParameters& parameters;
@@ -67,7 +73,7 @@ namespace bugger {
       }
 
       void
-      print_header( ) override
+      print_header( ) const override
       {
          SCIPprintVersion(scip, nullptr);
          int length = SCIPgetNExternalCodes(scip);
@@ -75,14 +81,20 @@ namespace bugger {
          auto names = SCIPgetExternalCodeNames(scip);
          for( int i= 0; i < length; i++)
          {
-            std::string n { names[i] };
-            std::string d { description[i] };
+            String n { names[i] };
+            String d { description[i] };
             msg.info("\t{:20} {}\n", n,d);
          }
       }
 
+      bool
+      has_setting(const String& name) const override
+      {
+         return SCIPgetParam(scip, name.c_str()) != nullptr;
+      }
+
       boost::optional<SolverSettings>
-      parseSettings(const std::string& filename) override
+      parseSettings(const String& filename) const override
       {
          if( !filename.empty() )
          {
@@ -91,12 +103,12 @@ namespace bugger {
                return boost::none;
          }
 
-         Vec<std::pair<std::string, bool>> bool_settings;
-         Vec<std::pair<std::string, int>> int_settings;
-         Vec<std::pair<std::string, long>> long_settings;
-         Vec<std::pair<std::string, double>> double_settings;
-         Vec<std::pair<std::string, char>> char_settings;
-         Vec<std::pair<std::string, std::string>> string_settings;
+         Vec<std::pair<String, bool>> bool_settings;
+         Vec<std::pair<String, int>> int_settings;
+         Vec<std::pair<String, long>> long_settings;
+         Vec<std::pair<String, double>> double_settings;
+         Vec<std::pair<String, char>> char_settings;
+         Vec<std::pair<String, String>> string_settings;
          int nparams = SCIPgetNParams(scip);
          SCIP_PARAM **params = SCIPgetParams(scip);
 
@@ -146,7 +158,7 @@ namespace bugger {
                }
                case SCIP_PARAMTYPE_STRING:
                {
-                  std::string string_val = ( param->data.stringparam.valueptr == nullptr ? param->data.stringparam.curvalue
+                  String string_val = ( param->data.stringparam.valueptr == nullptr ? param->data.stringparam.curvalue
                                                                                          : *param->data.stringparam.valueptr );
                   string_settings.emplace_back(param->name, string_val);
                   break;
@@ -166,7 +178,7 @@ namespace bugger {
       }
 
       std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>>
-      readInstance(const std::string& settings_filename, const std::string& problem_filename) override {
+      readInstance(const String& settings_filename, const String& problem_filename) override {
 
          auto settings = parseSettings(settings_filename);
          SCIP_RETCODE retcode = SCIPreadProb(scip, problem_filename.c_str(), nullptr);
@@ -175,7 +187,7 @@ namespace bugger {
          ProblemBuilder<SCIP_Real> builder;
 
          // set problem name
-         builder.setProblemName(std::string(SCIPgetProbName(scip)));
+         builder.setProblemName(String(SCIPgetProbName(scip)));
          // set objective offset
          builder.setObjOffset(SCIPgetOrigObjoffset(scip));
          // set objective sense
@@ -256,7 +268,7 @@ namespace bugger {
       }
 
       bool
-      writeInstance(const std::string& filename, const bool& writesettings) override {
+      writeInstance(const String& filename, const bool& writesettings) override {
          if( writesettings )
             SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
          return SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
@@ -374,22 +386,13 @@ namespace bugger {
 
          if( solution_exists )
          {
-            assert(SCIPepsilon(scip) >= 0.0);
+            assert(SCIPepsilon(scip) > 0.0);
             assert(SCIPepsilon(scip) <= SCIPsumepsilon(scip));
 
             if( parameters.set_dual_stop )
-            {
-               //TODO: Adapt parameter name
-               SCIP_PARAM* param = SCIPgetParam(scip, "limits/proofstop");
-               if( param != NULL )
-                  SCIPchgRealParam(scip, param, value + (obj.sense ? 2.0 : -2.0) * SCIPsumepsilon(scip));
-            }
+               SCIP_CALL(SCIPsetRealParam(scip, DUAL.c_str(), value + (obj.sense ? 2.0 : -2.0) * SCIPsumepsilon(scip)));
             if( parameters.set_prim_stop )
-            {
-               SCIP_PARAM* param = SCIPgetParam(scip, "limits/objectivestop");
-               if( param != NULL )
-                  SCIPchgRealParam(scip, param, value);
-            }
+               SCIP_CALL(SCIPsetRealParam(scip, PRIM.c_str(), value));
          }
 
          return SCIP_OKAY;
@@ -523,11 +526,15 @@ namespace bugger {
       }
    };
 
+   const String ScipInterface::DUAL = "limits/proofstop";
+   const String ScipInterface::PRIM = "limits/objectivestop";
+
    class ScipFactory : public SolverFactory {
 
    private:
 
       ScipParameters parameters { };
+      bool initial = true;
 
    public:
 
@@ -539,9 +546,24 @@ namespace bugger {
       }
 
       std::unique_ptr<SolverInterface>
-      create_solver(const Message& msg) const override
+      create_solver(const Message& msg) override
       {
-         return std::unique_ptr<SolverInterface>( new ScipInterface( msg, parameters ) );
+         auto scip = std::unique_ptr<SolverInterface>( new ScipInterface( msg, parameters ) );
+         if( initial )
+         {
+            if( parameters.set_dual_stop && !scip->has_setting( ScipInterface::DUAL ) )
+            {
+               msg.info("Dual stop disabled because {} unavailable.\n", ScipInterface::DUAL);
+               parameters.set_dual_stop = false;
+            }
+            if( parameters.set_prim_stop && !scip->has_setting( ScipInterface::PRIM ) )
+            {
+               msg.info("Prim stop disabled because {} unavailable.\n", ScipInterface::PRIM);
+               parameters.set_prim_stop = false;
+            }
+            initial = false;
+         }
+         return scip;
       }
    };
 
