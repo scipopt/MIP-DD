@@ -23,22 +23,15 @@
 #ifndef _BUGGER_PRESOLVE_METHOD_HPP_
 #define _BUGGER_PRESOLVE_METHOD_HPP_
 
-#include "bugger/data/BuggerOptions.hpp"
+#include "bugger/data/BuggerParameters.hpp"
 #include "bugger/io/Message.hpp"
-#include "bugger/misc/Num.hpp"
-#include "bugger/misc/Vec.hpp"
-#include "bugger/misc/fmt.hpp"
 #include "bugger/misc/Timer.hpp"
 
 #ifdef BUGGER_TBB
-
 #include "bugger/misc/tbb.hpp"
-
 #else
 #include <chrono>
 #endif
-
-#include <bitset>
 
 
 namespace bugger {
@@ -55,8 +48,33 @@ namespace bugger {
    };
 
    class BuggerModul {
+
+   private:
+
+      std::string name;
+      double execTime;
+      bool enabled;
+      unsigned int ncalls;
+      unsigned int nsuccessCall;
+
+   protected:
+
+      const Message& msg;
+      const Num<double>& num;
+      const BuggerParameters& parameters;
+      std::shared_ptr<SolverFactory> factory;
+      int nchgcoefs;
+      int nfixedvars;
+      int nchgsides;
+      int naggrvars;
+      int nchgsettings;
+      int ndeletedrows;
+
    public:
-      BuggerModul( std::shared_ptr<SolverFactory>& _factory) {
+
+      BuggerModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
+                  std::shared_ptr<SolverFactory>& _factory) : msg(_msg), num(_num), parameters(_parameters),
+                  factory(_factory) {
          ncalls = 0;
          nsuccessCall = 0;
          name = "unnamed";
@@ -68,7 +86,6 @@ namespace bugger {
          naggrvars = 0;
          nchgsettings = 0;
          ndeletedrows = 0;
-         solver_factory = _factory;
       }
 
       virtual ~BuggerModul( ) = default;
@@ -94,8 +111,7 @@ namespace bugger {
       }
 
       ModulStatus
-      run(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const BuggerOptions &options,
-          const Timer &timer) {
+      run(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) {
          if( !enabled )
             return ModulStatus::kDidNotRun;
 
@@ -105,7 +121,7 @@ namespace bugger {
 #else
          auto start = std::chrono::steady_clock::now();
 #endif
-         ModulStatus result = execute(problem, settings, solution, options, timer);
+         ModulStatus result = execute(problem, settings, solution, timer);
 #ifdef BUGGER_TBB
          if( result == ModulStatus::kSuccessful )
             nsuccessCall++;
@@ -154,21 +170,15 @@ namespace bugger {
 
    protected:
 
-      std::unique_ptr<SolverInterface>
-      createSolver(){
-         return solver_factory->create_solver();
-      }
-
       double get_linear_activity(SparseVectorView<double> &data, Solution<double> &solution) {
          StableSum<double> sum;
-         for( int i = 0; i < data.getLength( ); i++ )
-            sum.add(solution.primal[ data.getIndices( )[ i ]] * data.getValues( )[ i ]);
+         for( int i = 0; i < data.getLength( ); ++i )
+            sum.add(solution.primal[ data.getIndices( )[ i ] ] * data.getValues( )[ i ]);
          return sum.get( );
       }
 
       virtual ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
-              const BuggerOptions &options, const Timer &timer) = 0;
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) = 0;
 
       void
       setName(const std::string &value) {
@@ -182,12 +192,13 @@ namespace bugger {
                 timer.getTime( ) >= tlim;
       }
 
-
       BuggerStatus
-      call_solver(SolverInterface *solver, const Message &msg, const BuggerOptions &options) {
-         if( !options.debug_filename.empty( ) )
-            solver->writeInstance(options.debug_filename,  false);
-         std::pair<char, SolverStatus> result = solver->solve(options.passcodes);
+      call_solver(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) {
+         auto solver = factory->create_solver(msg);
+         solver->doSetUp(settings, problem, solution);
+         if( !parameters.debug_filename.empty( ) )
+            solver->writeInstance(parameters.debug_filename, true);
+         std::pair<char, SolverStatus> result = solver->solve(parameters.passcodes);
          if( result.first == SolverInterface::OKAY )
          {
             msg.info("\tOkay  - Status {}\n", result.second);
@@ -205,29 +216,12 @@ namespace bugger {
          }
       }
 
-   void apply_changes(Problem<double> &copy, const Vec<MatrixEntry<double>> &entries) const {
-      MatrixBuffer<double> matrixBuffer{ };
-      for( const auto &entry: entries )
-         matrixBuffer.addEntry(entry.row, entry.col, entry.val);
-      copy.getConstraintMatrix( ).changeCoefficients(matrixBuffer);
-   }
-
-   private:
-      std::string name;
-      double execTime;
-      bool enabled;
-      unsigned int ncalls;
-      unsigned int nsuccessCall;
-   protected:
-      int nchgcoefs;
-      int nfixedvars;
-      int nchgsides;
-      int naggrvars;
-      int nchgsettings;
-      int ndeletedrows;
-      Num<double> num;
-      Message msg;
-      std::shared_ptr<SolverFactory> solver_factory;
+      void apply_changes(Problem<double> &copy, const Vec<MatrixEntry<double>> &entries) const {
+         MatrixBuffer<double> matrixBuffer{ };
+         for( const auto &entry: entries )
+            matrixBuffer.addEntry(entry.row, entry.col, entry.val);
+         copy.getConstraintMatrix( ).changeCoefficients(matrixBuffer);
+      }
    };
 
 } // namespace bugger

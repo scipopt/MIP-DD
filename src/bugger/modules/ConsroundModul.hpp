@@ -24,17 +24,17 @@
 #define BUGGER_MODUL_CONSROUND_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
-#include "bugger/interfaces/BuggerStatus.hpp"
+
 
 namespace bugger {
 
    class ConsRoundModul : public BuggerModul {
-   public:
-      explicit ConsRoundModul( const Message &_msg, const Num<double> &_num, std::shared_ptr<SolverFactory>& factory) : BuggerModul(factory) {
-         this->setName("consround");
-         this->msg = _msg;
-         this->num = _num;
 
+   public:
+
+      explicit ConsRoundModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
+                              std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory) {
+         this->setName("consround");
       }
 
       bool
@@ -59,23 +59,22 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
-              const BuggerOptions &options, const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) override {
 
          if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;
 
          int batchsize = 1;
 
-         if( options.nbatches > 0 )
+         if( parameters.nbatches > 0 )
          {
-            batchsize = options.nbatches - 1;
+            batchsize = parameters.nbatches - 1;
             for( int i = 0; i < problem.getNRows( ); ++i )
                if( isConsroundAdmissible(problem, i) )
                   ++batchsize;
-            if( batchsize == options.nbatches - 1 )
+            if( batchsize == parameters.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
-            batchsize /= options.nbatches;
+            batchsize /= parameters.nbatches;
          }
 
          bool admissible = false;
@@ -139,9 +138,7 @@ namespace bugger {
             if( batch >= 1 && ( batch >= batchsize || row >= copy.getNRows( ) - 1 ) )
             {
                apply_changes(copy, batches_coeff);
-               auto solver = createSolver( );
-               solver->doSetUp(settings, copy, solution);
-               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+               if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
                   apply_changes(copy, applied_entries);

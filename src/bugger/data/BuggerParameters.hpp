@@ -29,7 +29,7 @@
 namespace bugger
 {
 
-struct BuggerOptions
+struct BuggerParameters
 {
 
    int threads = 0;
@@ -62,10 +62,10 @@ public:
    addParameters( ParameterSet& paramSet )
    {
       paramSet.addParameter( "tlim", "bugger time limit", tlim, 0.0 );
-      paramSet.addParameter( "initround", "initial bugger round", initround, 0 );
-      paramSet.addParameter( "initstage", "initial bugger stage", initstage, 0 );
+      paramSet.addParameter( "initround", "initial bugger round or -1 for last round", initround, -1 );
+      paramSet.addParameter( "initstage", "initial bugger stage or -1 for last stage", initstage, -1 );
       paramSet.addParameter( "maxrounds", "the maximum number of bugger rounds or -1 for no limit", maxrounds, -1 );
-      paramSet.addParameter( "maxstages", " maximum number of bugger stages or -1 for number of included bugger modules", maxstages, -1 );
+      paramSet.addParameter( "maxstages", " maximum number of bugger stages or -1 for number of modules", maxstages, -1 );
       paramSet.addParameter( "nbatches", "the maximum number of batches or 0 for singleton batches", nbatches, 0 );
       paramSet.addParameter( "threads", "maximal number of threads to use (0: automatic)", threads, 0 );
       paramSet.addParameter( "numerics.feastol", "the feasibility tolerance", feastol, 0.0, 1e-1 );

@@ -24,7 +24,7 @@
 #define BUGGER_MODUL_SETTING_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
-#include "bugger/interfaces/BuggerStatus.hpp"
+
 
 namespace bugger {
 
@@ -32,15 +32,13 @@ namespace bugger {
 
    private:
 
-      SolverSettings target_settings ;
+      const SolverSettings &target_settings;
 
    public:
 
-      SettingModul(const Message &_msg, const Num<double> &_num, const SolverSettings& _target_settings, std::shared_ptr<SolverFactory>& factory) : BuggerModul(factory) {
+      explicit SettingModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
+                            std::shared_ptr<SolverFactory>& _factory, const SolverSettings &_target_settings) : BuggerModul(_msg, _num, _parameters, _factory), target_settings(_target_settings) {
          this->setName("setting");
-         this->msg = _msg;
-         this->num = _num;
-         target_settings = _target_settings;
       }
 
       bool
@@ -49,14 +47,13 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
-              const BuggerOptions &options, const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) override {
 
          int batchsize = 1;
 
-         if( options.nbatches > 0 )
+         if( parameters.nbatches > 0 )
          {
-            batchsize = options.nbatches - 1;
+            batchsize = parameters.nbatches - 1;
             for( int i = 0; i < target_settings.getBoolSettings().size(); i++)
             {
                assert(target_settings.getBoolSettings()[i].first == settings.getBoolSettings()[i].first);
@@ -93,9 +90,9 @@ namespace bugger {
                if( target_settings.getStringSettings()[i].second != settings.getStringSettings()[i].second)
                   ++batchsize;
             }
-            if( batchsize == options.nbatches - 1 )
+            if( batchsize == parameters.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
-            batchsize /= options.nbatches;
+            batchsize /= parameters.nbatches;
          }
 
          bool admissible = false;
@@ -138,9 +135,7 @@ namespace bugger {
                                                             && target_settings.getCharSettings().empty()
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
-               auto solver = createSolver();
-               solver->doSetUp(copy, problem, solution);
-               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+               if( call_solver(copy, problem, solution) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -167,9 +162,7 @@ namespace bugger {
                                                             && target_settings.getCharSettings().empty()
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
-               auto solver = createSolver();
-               solver->doSetUp(copy, problem, solution);
-               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+               if( call_solver(copy, problem, solution) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -197,9 +190,7 @@ namespace bugger {
                                                             && target_settings.getCharSettings().empty()
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
-               auto solver = createSolver();
-               solver->doSetUp(copy, problem, solution);
-               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+               if( call_solver(copy, problem, solution) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -228,9 +219,7 @@ namespace bugger {
                                                             && target_settings.getCharSettings().empty()
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
-               auto solver = createSolver();
-               solver->doSetUp(copy, problem, solution);
-               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+               if( call_solver(copy, problem, solution) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -260,9 +249,7 @@ namespace bugger {
             if( batches >= 1 && ( batches >= batchsize || ( i + 1 == target_settings.getCharSettings().size()
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
-               auto solver = createSolver();
-               solver->doSetUp(copy, problem, solution);
-               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+               if( call_solver(copy, problem, solution) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -293,9 +280,7 @@ namespace bugger {
 
             if( batches >= 1 && ( batches >= batchsize || i + 1 == target_settings.getStringSettings().size() ) )
             {
-               auto solver = createSolver();
-               solver->doSetUp(copy, problem, solution);
-               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+               if( call_solver(copy, problem, solution) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
