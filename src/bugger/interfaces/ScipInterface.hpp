@@ -39,40 +39,62 @@
 #include "bugger/interfaces/SolverStatus.hpp"
 #include "bugger/interfaces/SolverInterface.hpp"
 
+
 namespace bugger {
+
+   class ScipParameters {
+
+   public:
+
+      int mode = -1;
+      bool set_dual_stop = true;
+      bool set_prim_stop = true;
+   };
 
    class ScipInterface : public SolverInterface {
 
+   public:
+
+      static const String DUAL;
+      static const String PRIM;
+
    private:
 
+      const ScipParameters& parameters;
       SCIP* scip = nullptr;
       Vec<SCIP_VAR*> vars;
 
    public:
 
-      explicit ScipInterface( ) {
+      explicit ScipInterface(const Message& _msg, const ScipParameters& _parameters) : SolverInterface(_msg),
+                             parameters(_parameters) {
          if( SCIPcreate(&scip) != SCIP_OKAY || SCIPincludeDefaultPlugins(scip) != SCIP_OKAY )
             throw std::runtime_error("could not create SCIP");
       }
 
       void
-      print_header( const Message &msg ) override
+      print_header( ) const override
       {
-//         use fmt to print Version
          SCIPprintVersion(scip, nullptr);
          int length = SCIPgetNExternalCodes(scip);
          auto description = SCIPgetExternalCodeDescriptions(scip);
          auto names = SCIPgetExternalCodeNames(scip);
          for( int i= 0; i < length; i++)
          {
-            std::string n { names[i] };
-            std::string d { description[i] };
+            String n { names[i] };
+            String d { description[i] };
             msg.info("\t{:20} {}\n", n,d);
          }
       }
 
+      bool
+      has_setting(const String& name) const override
+      {
+         return SCIPgetParam(scip, name.c_str()) != nullptr;
+      }
+
       boost::optional<SolverSettings>
-      parseSettings(const std::string &filename) override
+      parseSettings(const String& filename) const override
       {
          if( !filename.empty() )
          {
@@ -81,66 +103,54 @@ namespace bugger {
                return boost::none;
          }
 
-         Vec<std::pair<std::string, bool>> bool_settings;
-         Vec<std::pair<std::string, int>> int_settings;
-         Vec<std::pair<std::string, long>> long_settings;
-         Vec<std::pair<std::string, double>> double_settings;
-         Vec<std::pair<std::string, char>> char_settings;
-         Vec<std::pair<std::string, std::string>> string_settings;
+         Vec<std::pair<String, bool>> bool_settings;
+         Vec<std::pair<String, int>> int_settings;
+         Vec<std::pair<String, long>> long_settings;
+         Vec<std::pair<String, double>> double_settings;
+         Vec<std::pair<String, char>> char_settings;
+         Vec<std::pair<String, String>> string_settings;
          int nparams = SCIPgetNParams(scip);
          SCIP_PARAM **params = SCIPgetParams(scip);
 
          for( int i = 0; i < nparams; ++i )
          {
-            SCIP_PARAM *param;
-
-            param = params[ i ];
-            param->isfixed = FALSE;
-            switch( SCIPparamGetType(param))
+            SCIP_PARAM* param = params[ i ];
+            String name { param->name };
+            // drop interface settings
+            if( ( parameters.set_dual_stop && name == DUAL ) || ( parameters.set_prim_stop && name == PRIM ) )
+               continue;
+            switch( param->paramtype )
             {
                case SCIP_PARAMTYPE_BOOL:
-               {
-                  bool bool_val = ( param->data.boolparam.valueptr == nullptr ? param->data.boolparam.curvalue
-                                                                              : *param->data.boolparam.valueptr );
-                  bool_settings.emplace_back(param->name, bool_val);
+                  bool_settings.emplace_back( name, param->data.boolparam.valueptr == nullptr
+                                                  ? param->data.boolparam.curvalue
+                                                  : *param->data.boolparam.valueptr );
                   break;
-               }
                case SCIP_PARAMTYPE_INT:
-               {
-                  int int_value = ( param->data.intparam.valueptr == nullptr ? param->data.intparam.curvalue
-                                                                             : *param->data.intparam.valueptr );
-                  int_settings.emplace_back( param->name, int_value);
+                  int_settings.emplace_back( name, param->data.intparam.valueptr == nullptr
+                                                 ? param->data.intparam.curvalue
+                                                 : *param->data.intparam.valueptr );
                   break;
-               }
                case SCIP_PARAMTYPE_LONGINT:
-               {
-                  long long_val = ( param->data.longintparam.valueptr == nullptr ? param->data.longintparam.curvalue
-                                                                                 : *param->data.longintparam.valueptr );
-                  long_settings.emplace_back(param->name, long_val);
+                  long_settings.emplace_back( name, param->data.longintparam.valueptr == nullptr
+                                                  ? param->data.longintparam.curvalue
+                                                  : *param->data.longintparam.valueptr );
                   break;
-               }
                case SCIP_PARAMTYPE_REAL:
-               {
-                  double real_val = ( param->data.realparam.valueptr == nullptr ? param->data.realparam.curvalue
-                                                                                : *param->data.realparam.valueptr );
-                  double_settings.emplace_back(param->name, real_val);
+                  double_settings.emplace_back( name, param->data.realparam.valueptr == nullptr
+                                                    ? param->data.realparam.curvalue
+                                                    : *param->data.realparam.valueptr );
                   break;
-               }
                case SCIP_PARAMTYPE_CHAR:
-               {
-                  char char_val = ( param->data.charparam.valueptr == nullptr ? param->data.charparam.curvalue
-                                                                              : *param->data.charparam.valueptr );
-                  char_settings.emplace_back(param->name, char_val);
-
+                  char_settings.emplace_back( name, param->data.charparam.valueptr == nullptr
+                                                  ? param->data.charparam.curvalue
+                                                  : *param->data.charparam.valueptr );
                   break;
-               }
                case SCIP_PARAMTYPE_STRING:
-               {
-                  std::string string_val = ( param->data.stringparam.valueptr == nullptr ? param->data.stringparam.curvalue
-                                                                                         : *param->data.stringparam.valueptr );
-                  string_settings.emplace_back(param->name, string_val);
+                  string_settings.emplace_back( name, param->data.stringparam.valueptr == nullptr
+                                                    ? param->data.stringparam.curvalue
+                                                    : *param->data.stringparam.valueptr );
                   break;
-               }
                default:
                   SCIPerrorMessage("unknown parameter type\n");
             }
@@ -150,13 +160,13 @@ namespace bugger {
       }
 
       void
-      doSetUp(const SolverSettings &settings, const Problem<double> &problem, const Solution<double> &solution) override {
+      doSetUp(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) override {
          auto retcode = setup(settings, problem, solution);
          assert(retcode == SCIP_OKAY);
       }
 
       std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>>
-      readInstance(const std::string &settings_filename, const std::string &problem_filename) override {
+      readInstance(const String& settings_filename, const String& problem_filename) override {
 
          auto settings = parseSettings(settings_filename);
          SCIP_RETCODE retcode = SCIPreadProb(scip, problem_filename.c_str(), nullptr);
@@ -164,14 +174,14 @@ namespace bugger {
             return { settings, boost::none };
          ProblemBuilder<SCIP_Real> builder;
 
-         /* set problem name */
-         builder.setProblemName(std::string(SCIPgetProbName(scip)));
-         /* set objective offset */
+         // set problem name
+         builder.setProblemName(String(SCIPgetProbName(scip)));
+         // set objective offset
          builder.setObjOffset(SCIPgetOrigObjoffset(scip));
-         /* set objective sense */
+         // set objective sense
          builder.setObjSense(SCIPgetObjsense(scip) == SCIP_OBJSENSE_MINIMIZE);
 
-         /* reserve problem memory */
+         // reserve problem memory
          int ncols = SCIPgetNVars(scip);
          int nrows = SCIPgetNConss(scip);
          int nnz = 0;
@@ -188,7 +198,7 @@ namespace bugger {
          }
          builder.reserve(nnz, nrows, ncols);
 
-         /* set up columns */
+         // set up columns
          builder.setNumCols(ncols);
          for( int i = 0; i < ncols; ++i )
          {
@@ -206,7 +216,7 @@ namespace bugger {
             builder.setObj(i, SCIPvarGetObj(var));
          }
 
-         /* set up rows */
+         // set up rows
          Vec<SCIP_VAR*> consvars(ncols);
          Vec<SCIP_Real> consvals(ncols);
          Vec<int> indices(ncols);
@@ -246,8 +256,8 @@ namespace bugger {
       }
 
       bool
-      writeInstance(const std::string &filename, const bool &writesettings) override {
-         if( writesettings )
+      writeInstance(const String& filename, const bool& writesettings) override {
+         if( writesettings || parameters.set_dual_stop || parameters.set_prim_stop )
             SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
          return SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
       };
@@ -264,7 +274,7 @@ namespace bugger {
    private:
 
       SCIP_RETCODE
-      setup(const SolverSettings &settings, const Problem<double> &problem, const Solution<double> &solution) {
+      setup(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) {
 
          model = &problem;
          reference = &solution;
@@ -362,11 +372,14 @@ namespace bugger {
             SCIP_CALL(SCIPreleaseCons(scip, &cons));
          }
 
-//#if SCIP_VERSION >= 900
-////         TODO: test this
-//         if( solution_exists )
-//            SCIPsetRealParam(scip, "limits/objectivestop", value);
-//#endif
+         if( solution_exists )
+         {
+            if( parameters.set_dual_stop )
+               SCIP_CALL(SCIPsetRealParam(scip, DUAL.c_str(), relax( value, obj.sense, 2.0 * SCIPsumepsilon(scip), SCIPinfinity(scip) )));
+            if( parameters.set_prim_stop )
+               SCIP_CALL(SCIPsetRealParam(scip, PRIM.c_str(), value));
+         }
+
          return SCIP_OKAY;
       }
 
@@ -385,65 +398,91 @@ namespace bugger {
             SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
       }
 
-      std::pair<char, SolverStatus> solve( const Vec<int>& passcodes ) override {
+      std::pair<char, SolverStatus> solve(const Vec<int>& passcodes) override {
 
+         char retcode = SCIP_ERROR;
          SolverStatus solverstatus = SolverStatus::kUndefinedError;
          SCIPsetMessagehdlrQuiet(scip, true);
-         char retcode = SCIPsolve(scip);
+         // optimize
+         if( parameters.mode == -1 )
+            retcode = SCIPsolve(scip);
+         // count
+         else
+         {
+            retcode = SCIPsetParamsCountsols(scip);
+            if( retcode == SCIP_OKAY )
+               retcode = SCIPcount(scip);
+         }
+
          if( retcode == SCIP_OKAY )
          {
             // reset return code
             retcode = OKAY;
 
-            // declare primal solution and bound
-            Solution<double> solution;
-            double bound;
-
-            // check dual by reference solution objective
-            if( retcode == OKAY )
-               retcode = check_dual_bound( SCIPgetDualbound(scip), SCIPsumepsilon(scip), SCIPinfinity(scip) );
-
-            // check primal by generated solution values
-            if( retcode == OKAY )
+            if( parameters.mode == -1 )
             {
-               SCIP_SOL** sols = SCIPgetSols(scip);
-               int nsols = SCIPgetNSols(scip);
+               // declare primal solution and bound
+               Solution<double> solution;
+               double bound;
 
-               if( nsols >= 1 )
+               // check dual by reference solution objective
+               if( retcode == OKAY )
+                  retcode = check_dual_bound( SCIPgetDualbound(scip), SCIPsumepsilon(scip), SCIPinfinity(scip) );
+
+               // check primal by generated solution values
+               if( retcode == OKAY )
                {
-                  solution.status = SolutionStatus::kFeasible;
-                  solution.primal.resize(vars.size());
+                  SCIP_SOL** sols = SCIPgetSols(scip);
+                  int nsols = SCIPgetNSols(scip);
 
-                  for( int i = nsols - 1; i >= 0 && retcode == OKAY; --i )
+                  if( nsols >= 1 )
                   {
-                     for( int col = 0; col < solution.primal.size(); ++col )
-                        solution.primal[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetSolVal(scip, sols[i], vars[col]);
+                     solution.status = SolutionStatus::kFeasible;
+                     solution.primal.resize(vars.size());
 
-                     if( i <= 0 && SCIPhasPrimalRay(scip) )
+                     for( int i = nsols - 1; i >= 0 && retcode == OKAY; --i )
                      {
-                        solution.status = SolutionStatus::kUnbounded;
-                        solution.ray.resize(vars.size());
+                        for( int col = 0; col < solution.primal.size(); ++col )
+                           solution.primal[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetSolVal(scip, sols[i], vars[col]);
 
-                        for( int col = 0; col < solution.ray.size(); ++col )
-                           solution.ray[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetPrimalRayVal(scip, vars[col]);
+                        if( i <= 0 && SCIPhasPrimalRay(scip) )
+                        {
+                           solution.status = SolutionStatus::kUnbounded;
+                           solution.ray.resize(vars.size());
+
+                           for( int col = 0; col < solution.ray.size(); ++col )
+                              solution.ray[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetPrimalRayVal(scip, vars[col]);
+                        }
+
+                        retcode = check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
                      }
-
+                  }
+                  else
+                  {
+                     solution.status = SolutionStatus::kInfeasible;
                      retcode = check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
                   }
-               }
-               else
-               {
-                  solution.status = SolutionStatus::kInfeasible;
-                  retcode = check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
+
+                  // check solution objective instead of primal bound if no ray is provided
+                  bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
                }
 
-               // check solution objective instead of primal bound if no ray is provided
-               bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
+               // check objective by best solution evaluation
+               if( retcode == OKAY )
+                  retcode = check_objective_value( bound, solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
             }
+            else
+            {
+               // check count by primal solution existence
+               if( retcode == OKAY )
+               {
+                  long long int count;
+                  unsigned int valid;
 
-            // check objective by best solution evaluation
-            if( retcode == OKAY )
-               retcode = check_objective_value( bound, solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
+                  count = SCIPgetNCountedSols(scip, &valid);
+                  retcode = check_count_number( SCIPgetDualbound(scip), SCIPgetPrimalbound(scip), (valid ? count : -1), SCIPinfinity(scip) );
+               }
+            }
 
             // translate solver status
             switch( SCIPgetStatus(scip) )
@@ -498,16 +537,55 @@ namespace bugger {
       }
    };
 
-   class ScipFactory : public SolverFactory
-   {
+   //TODO: Adapt proof stop setting name
+   const String ScipInterface::DUAL = "limits/proofstop";
+   const String ScipInterface::PRIM = "limits/objectivestop";
+
+   class ScipFactory : public SolverFactory {
+
+   private:
+
+      ScipParameters parameters { };
+      bool initial = true;
 
    public:
-      std::unique_ptr<SolverInterface>
-      create_solver(  ) const override
+
+      void
+      addParameters(ParameterSet& parameterset) override
       {
-         return std::unique_ptr<SolverInterface>( new ScipInterface() );
+         parameterset.addParameter("scip.mode", "solve scip mode (-1: optimize, 0: count)", parameters.mode, -1, 0);
+         parameterset.addParameter("scip.setdualstop", "stop when dual bound is worse than reference solution", parameters.set_dual_stop);
+         parameterset.addParameter("scip.setprimstop", "stop when prim bound is as good as reference solution", parameters.set_prim_stop);
       }
 
+      std::unique_ptr<SolverInterface>
+      create_solver(const Message& msg) override
+      {
+         auto scip = std::unique_ptr<SolverInterface>( new ScipInterface( msg, parameters ) );
+         if( initial )
+         {
+            if( parameters.mode == -1 )
+            {
+               if( parameters.set_dual_stop && !scip->has_setting( ScipInterface::DUAL ) )
+               {
+                  msg.info("Dual stop disabled because {} unavailable.\n", ScipInterface::DUAL);
+                  parameters.set_dual_stop = false;
+               }
+               if( parameters.set_prim_stop && !scip->has_setting( ScipInterface::PRIM ) )
+               {
+                  msg.info("Prim stop disabled because {} unavailable.\n", ScipInterface::PRIM);
+                  parameters.set_prim_stop = false;
+               }
+            }
+            else
+            {
+               parameters.set_dual_stop = false;
+               parameters.set_prim_stop = false;
+            }
+            initial = false;
+         }
+         return scip;
+      }
    };
 
 } // namespace bugger

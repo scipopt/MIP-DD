@@ -29,7 +29,7 @@
 namespace bugger
 {
 
-struct BuggerOptions
+struct BuggerParameters
 {
    int mode = -1;
 

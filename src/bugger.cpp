@@ -28,7 +28,7 @@
 #include <memory>
 #include <boost/program_options.hpp>
 
-#include "bugger/data/BuggerOptions.hpp"
+#include "bugger/data/BuggerParameters.hpp"
 #include "bugger/data/BuggerRun.hpp"
 #include "bugger/misc/MultiPrecision.hpp"
 #include "bugger/misc/OptionsParser.hpp"

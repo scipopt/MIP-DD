@@ -25,15 +25,16 @@
 
 #include "bugger/modules/BuggerModul.hpp"
 
+
 namespace bugger {
 
    class VarroundModul : public BuggerModul {
-   public:
-      VarroundModul( const Message &_msg, const Num<double> &_num, std::shared_ptr<SolverFactory>& factory) : BuggerModul(factory) {
-         this->setName("varround");
-         this->msg = _msg;
-         this->num = _num;
 
+   public:
+
+      explicit VarroundModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
+                    std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory) {
+         this->setName("varround");
       }
 
       bool
@@ -54,23 +55,22 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
-              const BuggerOptions &options, const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) override {
 
          if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;
 
          int batchsize = 1;
 
-         if( options.nbatches > 0 )
+         if( parameters.nbatches > 0 )
          {
-            batchsize = options.nbatches - 1;
+            batchsize = parameters.nbatches - 1;
             for( int i = 0; i < problem.getNCols( ); ++i )
                if( isVarroundAdmissible(problem, i) )
                   ++batchsize;
-            if( batchsize == options.nbatches - 1 )
+            if( batchsize == parameters.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
-            batchsize /= options.nbatches;
+            batchsize /= parameters.nbatches;
          }
 
          bool admissible = false;
@@ -120,9 +120,7 @@ namespace bugger {
 
             if( batch >= 1 && ( batch >= batchsize || col >= copy.getNCols( ) - 1 ) )
             {
-               auto solver = createSolver();
-               solver->doSetUp(settings, copy, solution);
-               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+               if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_objectives )

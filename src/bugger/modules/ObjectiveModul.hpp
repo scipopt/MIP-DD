@@ -24,18 +24,17 @@
 #define BUGGER_COEFFICIENT_VARIABLE_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
-#include "bugger/interfaces/BuggerStatus.hpp"
 
-namespace bugger
-{
-   class ObjectiveModul : public BuggerModul
-   {
-    public:
-      ObjectiveModul( const Message &_msg, const Num<double> &_num, std::shared_ptr<SolverFactory>& factory) : BuggerModul( factory )
-      {
-         this->setName( "objective" );
-         this->msg = _msg;
-         this->num = _num;
+
+namespace bugger {
+
+   class ObjectiveModul : public BuggerModul {
+
+   public:
+
+      explicit ObjectiveModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
+                              std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory) {
+         this->setName("objective");
       }
 
       bool
@@ -53,23 +52,22 @@ namespace bugger
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double>& solution,
-              const BuggerOptions &options, const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double>& solution, const Timer &timer) override {
 
          if( solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;
 
          int batchsize = 1;
 
-         if( options.nbatches > 0 )
+         if( parameters.nbatches > 0 )
          {
-            batchsize = options.nbatches - 1;
+            batchsize = parameters.nbatches - 1;
             for( int i = problem.getNCols( ) - 1; i >= 0; --i )
                if( isObjectiveAdmissible(problem, i) )
                   ++batchsize;
-            if( batchsize == options.nbatches - 1 )
+            if( batchsize == parameters.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
-            batchsize /= options.nbatches;
+            batchsize /= parameters.nbatches;
          }
 
          bool admissible = false;
@@ -89,9 +87,7 @@ namespace bugger
 
             if( !batches.empty() && ( batches.size() >= batchsize || col <= 0 ) )
             {
-               auto solver = createSolver();
-               solver->doSetUp(settings, copy, solution);
-               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+               if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions )
