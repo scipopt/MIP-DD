@@ -206,18 +206,18 @@ namespace bugger {
       }
 
       void overwrite_parameters_by_cmd_options(const OptionsInfo &optionsInfo) {
-         if( !isnan(optionsInfo.tlim) && optionsInfo.tlim >= 0)
+         if( !isnan(optionsInfo.tlim) && optionsInfo.tlim >= 0 )
          {
             parameters.tlim = optionsInfo.tlim;
             msg.info("overwriting parameter tlim by cmd to {}\n", parameters.tlim);
 
          }
-         if( optionsInfo.mode <= 1 && optionsInfo.mode >= -1)
+         if( optionsInfo.mode <= 1 && optionsInfo.mode >= -1 )
          {
             parameters.mode = optionsInfo.mode;
             msg.info("overwriting parameter mode by cmd to {}\n", parameters.mode);
          }
-         if( !optionsInfo.debug_filename.empty() )
+         if( !optionsInfo.debug_filename.empty( ))
          {
             parameters.debug_filename = optionsInfo.debug_filename;
             msg.info("overwriting parameter debug-filename by cmd to {}\n", parameters.debug_filename);
