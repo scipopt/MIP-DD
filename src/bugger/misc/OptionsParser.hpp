@@ -47,6 +47,7 @@ struct OptionsInfo
    std::string solution_file;
    std::vector<std::string> unparsed_options;
    double tlim = std::numeric_limits<double>::max();
+   int mode = -1;
    int nthreads;
    bool is_complete;
 
@@ -119,13 +120,13 @@ struct OptionsInfo
                           value(&solution_file),
                           "filename for solution settings or unknown/infeasible/unbounded");
 
-      desc.add_options( )("threads", value(&nthreads)->default_value(0));
-
       desc.add_options()(
             "tlim", value( &tlim )->default_value( tlim ),
-            "time limit for solver (including presolve time)" );
+            "bugger time limit" );
 
-
+      desc.add_options()(
+            "mode,m", value( &mode )->default_value( mode ),
+            "selective bugger mode (-1: reproduce and reduce, 0: only reproduce, 1: only reduce)" );
 
       if( opts.empty() )
       {

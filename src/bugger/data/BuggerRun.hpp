@@ -76,6 +76,9 @@ namespace bugger {
 
       void apply( const Timer &timer, const OptionsInfo &optionsInfo ) {
 
+         parameters.tlim = std::min( optionsInfo.tlim, parameters.tlim );
+         parameters.mode = std::max( optionsInfo.mode, parameters.mode );
+
          msg.info("\nMIP Solver:\n");
          factory->create_solver(msg)->print_header();
          msg.info("\n");
