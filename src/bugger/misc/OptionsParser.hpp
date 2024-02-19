@@ -45,6 +45,7 @@ struct OptionsInfo
    std::string settings_file;
    std::string target_settings_file;
    std::string solution_file;
+   std::string debug_filename;
    std::vector<std::string> unparsed_options;
    double tlim = std::numeric_limits<double>::signaling_NaN();
    int mode = -2;
@@ -118,6 +119,11 @@ struct OptionsInfo
       desc.add_options( )("solution-file,o",
                           value(&solution_file),
                           "filename for solution settings or unknown/infeasible/unbounded");
+
+      desc.add_options()(
+            "debug-filename,d", value( &debug_filename )->default_value( debug_filename ),
+            "if not empty, current instance is written to this file before every solve (default = "") ]" );
+
 
       desc.add_options()(
             "tlim", value( &tlim )->default_value( tlim ),

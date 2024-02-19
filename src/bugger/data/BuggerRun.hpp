@@ -76,17 +76,7 @@ namespace bugger {
 
       void apply( const Timer &timer, const OptionsInfo &optionsInfo ) {
 
-         if( !isnan(optionsInfo.tlim) && optionsInfo.tlim >= 0)
-         {
-            parameters.tlim = optionsInfo.tlim;
-            msg.info("overwriting parameter tlim by cmd to {}\n", parameters.tlim);
-
-         }
-         if( optionsInfo.mode <= 1 && optionsInfo.mode >= -1)
-         {
-            parameters.mode = optionsInfo.mode;
-            msg.info("overwriting parameter mode by cmd to {}\n", parameters.mode);
-         }
+         overwrite_parameters_by_cmd_options(optionsInfo);
          msg.info("\nMIP Solver:\n");
          factory->create_solver(msg)->print_header();
          msg.info("\n");
@@ -214,7 +204,26 @@ namespace bugger {
          assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModulStatus::kSuccessful );
          printStats( timer.getTime() );
       }
-      
+
+      void overwrite_parameters_by_cmd_options(const OptionsInfo &optionsInfo) {
+         if( !isnan(optionsInfo.tlim) && optionsInfo.tlim >= 0)
+         {
+            parameters.tlim = optionsInfo.tlim;
+            msg.info("overwriting parameter tlim by cmd to {}\n", parameters.tlim);
+
+         }
+         if( optionsInfo.mode <= 1 && optionsInfo.mode >= -1)
+         {
+            parameters.mode = optionsInfo.mode;
+            msg.info("overwriting parameter mode by cmd to {}\n", parameters.mode);
+         }
+         if( !optionsInfo.debug_filename.empty() )
+         {
+            parameters.debug_filename = optionsInfo.debug_filename;
+            msg.info("overwriting parameter debug-filename by cmd to {}\n", parameters.debug_filename);
+         }
+      }
+
       void
       addModul( std::unique_ptr<BuggerModul> module ) {
          modules.emplace_back(std::move(module));
