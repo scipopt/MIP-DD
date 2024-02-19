@@ -46,9 +46,8 @@ struct OptionsInfo
    std::string target_settings_file;
    std::string solution_file;
    std::vector<std::string> unparsed_options;
-   double tlim = std::numeric_limits<double>::max();
-   int mode = -1;
-   int nthreads;
+   double tlim = std::numeric_limits<double>::signaling_NaN();
+   int mode = -2;
    bool is_complete;
 
    bool
