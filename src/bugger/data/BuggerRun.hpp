@@ -211,6 +211,7 @@ namespace bugger {
 
       ParameterSet getParameters( ) {
          ParameterSet paramSet;
+         msg.addParameters(paramSet);
          parameters.addParameters(paramSet);
          for( const auto &module: modules )
             module->addParameters(paramSet);
