@@ -112,18 +112,6 @@ namespace bugger {
                              value(&solution_file),
                              "filename for solution settings or unknown/infeasible/unbounded");
 
-//         desc.add_options( )(
-//               "debug-filename,d", value(&debug_filename)->default_value(debug_filename),
-//               "if not empty, current instance is written to this file before every solve (default = "") ]");
-//
-//
-//         desc.add_options( )(
-//               "tlim", value(&tlim)->default_value(tlim),
-//               "bugger time limit");
-//
-//         desc.add_options( )(
-//               "mode,m", value(&mode)->default_value(mode),
-//               "selective bugger mode (-1: reproduce and reduce, 0: only reproduce, 1: only reduce)");
 
          if( opts.empty( ))
          {
