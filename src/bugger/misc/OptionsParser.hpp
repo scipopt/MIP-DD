@@ -43,10 +43,7 @@ namespace bugger {
       std::string settings_file;
       std::string target_settings_file;
       std::string solution_file;
-//      std::string debug_filename;
       std::vector<std::string> unparsed_options;
-//      double tlim = std::numeric_limits<double>::signaling_NaN( );
-//      int mode = -2;
       bool is_complete;
 
       bool
