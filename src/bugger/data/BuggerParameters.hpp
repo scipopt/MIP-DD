@@ -33,8 +33,6 @@ struct BuggerParameters
 {
    int mode = -1;
 
-   int threads = 0;
-
    int initround = 0;
 
    int initstage = 0;
@@ -63,7 +61,6 @@ public:
    addParameters( ParameterSet& paramSet )
    {
       paramSet.addParameter( "mode", "selective bugger mode (-1: reproduce and reduce, 0: only reproduce, 1: only reduce)", mode, -1, 1 );
-      paramSet.addParameter( "threads", "maximal number of threads to use (0: automatic)", threads, 0 );
       paramSet.addParameter( "initround", "initial bugger round or -1 for last round", initround, -1 );
       paramSet.addParameter( "initstage", "initial bugger stage or -1 for last stage", initstage, -1 );
       paramSet.addParameter( "maxrounds", "the maximum number of bugger rounds or -1 for no limit", maxrounds, -1 );
