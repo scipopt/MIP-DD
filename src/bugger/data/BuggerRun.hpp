@@ -127,16 +127,19 @@ namespace bugger {
          }
 
          check_feasibility_of_solution(problem, solution);
-
-         printOriginalSolveStatus(settings, problem, solution, factory);
-
-         using uptr = std::unique_ptr<bugger::BuggerModul>;
+         if( parameters.mode != 1 )
+         {
+            printOriginalSolveStatus(settings, problem, solution, factory);
+            if( parameters.mode == 0 )
+               return;
+         }
 
          Num<double> num{};
          num.setFeasTol( parameters.feastol );
          num.setEpsilon( parameters.epsilon );
          num.setZeta( parameters.zeta );
 
+         using uptr = std::unique_ptr<bugger::BuggerModul>;
          addModul(uptr(new ConstraintModul(msg, num, parameters, factory)));
          addModul(uptr(new VariableModul(msg, num, parameters, factory)));
          addModul(uptr(new CoefficientModul(msg, num, parameters, factory)));
@@ -200,7 +203,7 @@ namespace bugger {
          assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModulStatus::kSuccessful );
          printStats( timer.getTime() );
       }
-      
+
       void
       addModul( std::unique_ptr<BuggerModul> module ) {
          modules.emplace_back(std::move(module));
@@ -339,7 +342,7 @@ namespace bugger {
          solver->doSetUp(settings, problem, solution);
          Vec<int> empty_passcodes{};
          const std::pair<char, SolverStatus> &pair = solver->solve(empty_passcodes);
-         msg.info("Original solve returned code {} with status {}.\n", (int) pair.first, pair.second);
+         msg.info("Original solve returned code {} with status {}.\n\n", (int) pair.first, pair.second);
       }
 
       std::shared_ptr<SolverFactory>
