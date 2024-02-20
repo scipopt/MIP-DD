@@ -117,7 +117,8 @@ namespace bugger {
             SCIP_PARAM* param = params[ i ];
             String name { param->name };
             // drop interface settings
-            if( ( parameters.set_dual_stop && name == DUAL ) || ( parameters.set_prim_stop && name == PRIM ) )
+            if( ( parameters.set_dual_stop && name == DUAL )
+             || ( parameters.set_prim_stop && name == PRIM ) )
                continue;
             switch( param->paramtype )
             {
@@ -257,7 +258,7 @@ namespace bugger {
 
       bool
       writeInstance(const String& filename, const bool& writesettings) override {
-         if( writesettings || parameters.set_dual_stop || parameters.set_prim_stop )
+         if( writesettings || msg.getVerbosityLevel() >= VerbosityLevel::kDetailed )
             SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
          return SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
       };
@@ -402,7 +403,7 @@ namespace bugger {
 
          char retcode = SCIP_ERROR;
          SolverStatus solverstatus = SolverStatus::kUndefinedError;
-         SCIPsetMessagehdlrQuiet(scip, true);
+         SCIPsetMessagehdlrQuiet(scip, msg.getVerbosityLevel() < VerbosityLevel::kDetailed);
          // optimize
          if( parameters.mode == -1 )
             retcode = SCIPsolve(scip);
