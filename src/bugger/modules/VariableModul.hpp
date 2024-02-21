@@ -3,8 +3,7 @@
 /*               This file is part of the program and library                */
 /*    BUGGER                                                                 */
 /*                                                                           */
-/* Copyright (C) 2023             Konrad-Zuse-Zentrum                        */
-/*                     fuer Informationstechnik Berlin                       */
+/* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
 /* This program is free software: you can redistribute it and/or modify      */
 /* it under the terms of the GNU Lesser General Public License as published  */
@@ -25,17 +24,17 @@
 #define _BUGGER_MODUL_VARIABLE_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
-#include "bugger/interfaces/BuggerStatus.hpp"
+
 
 namespace bugger {
 
    class VariableModul : public BuggerModul {
-   public:
-      VariableModul( const Message &_msg, const Num<double> &_num, std::shared_ptr<SolverFactory>& factory) : BuggerModul(factory) {
-         this->setName("variable");
-         this->msg = _msg;
-         this->num = _num;
 
+   public:
+
+      explicit VariableModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
+                             std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory) {
+         this->setName("variable");
       }
 
       bool
@@ -43,30 +42,29 @@ namespace bugger {
          return false;
       }
 
-      bool isVariableAdmissible(const Problem<double>& problem, int var) {
-         return problem.getColFlags( )[ var ].test(ColFlag::kLbInf)
-             || problem.getColFlags( )[ var ].test(ColFlag::kUbInf)
-             || !num.isZetaEq(problem.getLowerBounds( )[ var ], problem.getUpperBounds( )[ var ]);
+      bool isVariableAdmissible(const Problem<double>& problem, int col) {
+         return problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
+             || problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
+             || !num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double>& solution,
-              const BuggerOptions &options, const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double>& solution, const Timer &timer) override {
 
          if( solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;
 
          int batchsize = 1;
 
-         if( options.nbatches > 0 )
+         if( parameters.nbatches > 0 )
          {
-            batchsize = options.nbatches - 1;
+            batchsize = parameters.nbatches - 1;
             for( int i = problem.getNCols() - 1; i >= 0; --i )
                if( isVariableAdmissible(problem, i) )
                   ++batchsize;
-            if( batchsize == options.nbatches - 1 )
+            if( batchsize == parameters.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
-            batchsize /= options.nbatches;
+            batchsize /= parameters.nbatches;
          }
 
          bool admissible = false;
@@ -75,49 +73,46 @@ namespace bugger {
          Vec<std::pair<int, double>> batches { };
          batches.reserve(batchsize);
 
-         for( int var = copy.getNCols() - 1; var >= 0; --var )
+         for( int col = copy.getNCols() - 1; col >= 0; --col )
          {
-            if( isVariableAdmissible(copy, var) )
+            if( isVariableAdmissible(copy, col) )
             {
                double fixedval;
                admissible = true;
                if( solution.status == SolutionStatus::kFeasible )
                {
-                  fixedval = solution.primal[ var ];
-                  if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
+                  fixedval = solution.primal[ col ];
+                  if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
                      fixedval = num.round(fixedval);
                }
                else
                {
                   fixedval = 0.0;
-                  if( copy.getColFlags( )[ var ].test(ColFlag::kIntegral) )
+                  if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
                   {
-                     if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
-                        fixedval = num.min(fixedval, num.epsFloor(copy.getUpperBounds( )[ var ]));
-                     if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
-                        fixedval = num.max(fixedval, num.epsCeil(copy.getLowerBounds( )[ var ]));
+                     if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
+                        fixedval = num.min(fixedval, num.epsFloor(copy.getUpperBounds( )[ col ]));
+                     if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) )
+                        fixedval = num.max(fixedval, num.epsCeil(copy.getLowerBounds( )[ col ]));
                   }
                   else
                   {
-                     if( !copy.getColFlags( )[ var ].test(ColFlag::kUbInf) )
-                        fixedval = num.min(fixedval, copy.getUpperBounds( )[ var ]);
-                     if( !copy.getColFlags( )[ var ].test(ColFlag::kLbInf) )
-                        fixedval = num.max(fixedval, copy.getLowerBounds( )[ var ]);
+                     if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
+                        fixedval = num.min(fixedval, copy.getUpperBounds( )[ col ]);
+                     if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) )
+                        fixedval = num.max(fixedval, copy.getLowerBounds( )[ col ]);
                   }
                }
-
-               copy.getColFlags( )[ var ].unset(ColFlag::kLbInf);
-               copy.getColFlags( )[ var ].unset(ColFlag::kUbInf);
-               copy.getLowerBounds( )[ var ] = fixedval;
-               copy.getUpperBounds( )[ var ] = fixedval;
-               batches.emplace_back(var, fixedval);
+               copy.getColFlags( )[ col ].unset(ColFlag::kLbInf);
+               copy.getColFlags( )[ col ].unset(ColFlag::kUbInf);
+               copy.getLowerBounds( )[ col ] = fixedval;
+               copy.getUpperBounds( )[ col ] = fixedval;
+               batches.emplace_back(col, fixedval);
             }
 
-            if( !batches.empty() && ( batches.size() >= batchsize || var <= 0 ) )
+            if( !batches.empty() && ( batches.size() >= batchsize || col <= 0 ) )
             {
-               auto solver = createSolver();
-               solver->doSetUp(copy, settings, solution);
-               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+               if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions )
@@ -133,16 +128,14 @@ namespace bugger {
                batches.clear();
             }
          }
-         if(!admissible)
+
+         if( !admissible )
             return ModulStatus::kNotAdmissible;
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
-         else
-         {
-            problem = copy;
-            nfixedvars += applied_reductions.size();
-            return ModulStatus::kSuccessful;
-         }
+         problem = copy;
+         nfixedvars += applied_reductions.size();
+         return ModulStatus::kSuccessful;
       }
    };
 

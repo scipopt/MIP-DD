@@ -1,26 +1,29 @@
-# bugger time limit [Numerical: [0,1.7976931348623157e+308]]
-tlim = 0.0
-      
-# initial bugger round [Integer]
+# selective bugger mode (-1: reproduce and reduce, 0: only reproduce, 1: only reduce)
+mode = -1
+
+# initial bugger round or -1 for last round [Integer]
 initround = 0
- 
-# initial bugger stage [Integer]
+
+# initial bugger stage or -1 for last stage [Integer]
 initstage = 0
 
 # maximum number of bugger rounds or -1 for no limit [Integer]
 maxrounds = -1
 
-# maximum number of bugger stages or -1 for number of included bugger modules [Integer]
+# maximum number of bugger stages or -1 for number of modules [Integer]
 maxstages = -1
 
 # maximum number of batches or 0 for singleton batches [Integer]
 nbatches = 0
 
+# bugger time limit [Numerical: [0,1.7976931348623157e+308]]
+tlim = 0.0
+
 # the feasibility tolerance [Numerical: [0,1e-1]]
-feastol = 1e-9;
+feastol = 1e-6;
 
 # epsilon tolerance to consider two values numerically equal [Numerical: [0,1e-1]]
-epsilon = 1e-6;
+epsilon = 1e-9;
 
 # zeta tolerance to consider two values exactly equal [Numerical: [0,1e-1]]
 zeta = 0;
@@ -28,20 +31,20 @@ zeta = 0;
 # list of ignored return codes (string separated by blanks) example: [passcodes = -1 -2]
 passcodes = ""
 
-# is the Module Coefficient enabled? [Boolean]
-coefficient.enabled = true
-
-# is the Module Constraint Rounding enabled? [Boolean]
-consround.enabled = true
+# if not empty, current instance is written to this file before every solve (default = "")
+debug_filename = ""
 
 # is the Module Constraint enabled? [Boolean]
 constraint.enabled = true
 
+# is the Module Variable enabled? [Boolean]
+variable.enabled = true
+
+# is the Module Coefficient enabled? [Boolean]
+coefficient.enabled = true
+
 # is the Module Fixing enabled? [Boolean]
 fixing.enabled = true
-
-# is the Module Objective enabled? [Boolean]
-objective.enabled = true
 
 # is the Module Setting enabled? [Boolean]
 setting.enabled = true
@@ -49,8 +52,14 @@ setting.enabled = true
 # is the Module Side enabled? [Boolean]
 side.enabled = true
 
-# is the Module Variable enabled? [Boolean]
-variable.enabled = true
+# is the Module Objective enabled? [Boolean]
+objective.enabled = true
 
 # is the Module Variable Rounding enabled? [Boolean]
 varround.enabled = true
+
+# is the Module Constraint Rounding enabled? [Boolean]
+consround.enabled = true
+
+# log verbosity:  verbosity to be used: 0 - quiet, 1 - errors, 2 - warnings, 3 - normal, 4 - detailed
+message.verbosity = 3

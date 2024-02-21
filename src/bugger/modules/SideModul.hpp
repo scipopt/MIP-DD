@@ -3,8 +3,7 @@
 /*               This file is part of the program and library                */
 /*    BUGGER                                                                 */
 /*                                                                           */
-/* Copyright (C) 2023             Konrad-Zuse-Zentrum                        */
-/*                     fuer Informationstechnik Berlin                       */
+/* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
 /* This program is free software: you can redistribute it and/or modify      */
 /* it under the terms of the GNU Lesser General Public License as published  */
@@ -25,17 +24,17 @@
 #define BUGGER_SIDE_VARIABLE_HPP_
 
 #include "bugger/modules/BuggerModul.hpp"
-#include "bugger/interfaces/BuggerStatus.hpp"
+
 
 namespace bugger {
 
    class SideModul : public BuggerModul {
-   public:
-      SideModul(const Message &_msg, const Num<double> &_num, std::shared_ptr<SolverFactory>& factory) : BuggerModul(factory) {
-         this->setName("side");
-         this->msg = _msg;
-         this->num = _num;
 
+   public:
+
+      explicit SideModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
+                         std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory) {
+         this->setName("side");
       }
 
       bool
@@ -52,23 +51,22 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings,  Solution<double> &solution,
-              const BuggerOptions &options, const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) override {
 
          if( solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;
 
          int batchsize = 1;
 
-         if( options.nbatches > 0 )
+         if( parameters.nbatches > 0 )
          {
-            batchsize = options.nbatches - 1;
+            batchsize = parameters.nbatches - 1;
             for( int row = problem.getNRows( ) - 1; row >= 0; --row )
                if( isSideAdmissable(problem, row) )
                   ++batchsize;
-            if( batchsize == options.nbatches - 1 )
+            if( batchsize == parameters.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
-            batchsize /= options.nbatches;
+            batchsize /= parameters.nbatches;
          }
 
          bool admissible = false;
@@ -86,16 +84,14 @@ namespace bugger {
                auto data = matrix.getRowCoefficients(row);
                bool integral = true;
                double fixedval;
-
                for( int index = 0; index < data.getLength( ); ++index )
                {
-                  if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral) || !num.isEpsIntegral(data.getValues( )[ index ]) )
+                  if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral) || !num.isEpsIntegral(data.getValues( )[ index ]) ) )
                   {
                      integral = false;
                      break;
                   }
                }
-
                if( solution.status == SolutionStatus::kFeasible )
                {
                   fixedval = get_linear_activity(data, solution);
@@ -120,7 +116,6 @@ namespace bugger {
                         fixedval = num.max(fixedval, matrix.getLeftHandSides( )[ row ]);
                   }
                }
-
                matrix.modifyLeftHandSide( row, num, fixedval );
                matrix.modifyRightHandSide( row, num, fixedval );
                batches.emplace_back(row, fixedval);
@@ -128,9 +123,7 @@ namespace bugger {
 
             if( !batches.empty() && ( batches.size() >= batchsize || row <= 0 ) )
             {
-               auto solver = createSolver();
-               solver->doSetUp(copy, settings, solution);
-               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+               if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
                   for( const auto &item: applied_reductions )
@@ -144,16 +137,14 @@ namespace bugger {
                batches.clear();
             }
          }
-         if(!admissible)
+
+         if( !admissible )
             return ModulStatus::kNotAdmissible;
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
-         else
-         {
-            problem = copy;
-            nchgsides += 2 * applied_reductions.size();
-            return ModulStatus::kSuccessful;
-         }
+         problem = copy;
+         nchgsides += 2 * applied_reductions.size();
+         return ModulStatus::kSuccessful;
       }
    };
 

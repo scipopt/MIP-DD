@@ -4,6 +4,8 @@ set(BUGGER_VERSION_MAJOR 0)
 set(BUGGER_VERSION_MINOR 1)
 set(BUGGER_VERSION_PATCH 0)
 
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 project(bugger VERSION ${BUGGER_VERSION_MAJOR}.${BUGGER_VERSION_MINOR}.${BUGGER_VERSION_PATCH}.0)
 
 set(BOOST_MIN_VERSION 1.65)
@@ -197,7 +199,7 @@ install(FILES
 
 install(FILES
         ${PROJECT_SOURCE_DIR}/src/bugger/data/BuggerRun.hpp
-        ${PROJECT_SOURCE_DIR}/src/bugger/data/BuggerOptions.hpp
+        ${PROJECT_SOURCE_DIR}/src/bugger/data/BuggerParameters.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/data/ConstraintMatrix.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/data/MatrixBuffer.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/data/Objective.hpp
@@ -223,7 +225,6 @@ install(FILES
         ${PROJECT_SOURCE_DIR}/src/bugger/io/MpsParser.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/io/MpsWriter.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/io/SolParser.hpp
-        ${PROJECT_SOURCE_DIR}/src/bugger/io/SolWriter.hpp
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/io)
 
 install(FILES

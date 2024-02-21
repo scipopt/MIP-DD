@@ -3,8 +3,7 @@
 /*               This file is part of the program and library                */
 /*    BUGGER                                                                 */
 /*                                                                           */
-/* Copyright (C) 2023             Konrad-Zuse-Zentrum                        */
-/*                     fuer Informationstechnik Berlin                       */
+/* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
 /* This program is free software: you can redistribute it and/or modify      */
 /* it under the terms of the GNU Lesser General Public License as published  */
@@ -30,10 +29,9 @@
 namespace bugger
 {
 
-struct BuggerOptions
+struct BuggerParameters
 {
-
-   int threads = 0;
+   int mode = -1;
 
    int initround = 0;
 
@@ -45,32 +43,35 @@ struct BuggerOptions
 
    int nbatches = 0;
 
+   double tlim = std::numeric_limits<double>::max();
+
+   double feastol = 1e-6;
+
    double epsilon = 1e-9;
 
    double zeta = 0;
 
-   double feastol = 1e-6;
-
-   double tlim = std::numeric_limits<double>::max();
-
    Vec<int> passcodes = {};
+
+   std::string debug_filename = "";
 
 public:
 
    void
    addParameters( ParameterSet& paramSet )
    {
-      paramSet.addParameter( "tlim", "bugger time limit", tlim, 0.0 );
-      paramSet.addParameter( "initround", "initial bugger round", initround, 0 );
-      paramSet.addParameter( "initstage", "initial bugger stage", initstage, 0 );
+      paramSet.addParameter( "mode", "selective bugger mode (-1: reproduce and reduce, 0: only reproduce, 1: only reduce)", mode, -1, 1 );
+      paramSet.addParameter( "initround", "initial bugger round or -1 for last round", initround, -1 );
+      paramSet.addParameter( "initstage", "initial bugger stage or -1 for last stage", initstage, -1 );
       paramSet.addParameter( "maxrounds", "the maximum number of bugger rounds or -1 for no limit", maxrounds, -1 );
-      paramSet.addParameter( "maxstages", " maximum number of bugger stages or -1 for number of included bugger modules", maxstages, -1 );
+      paramSet.addParameter( "maxstages", " maximum number of bugger stages or -1 for number of modules", maxstages, -1 );
       paramSet.addParameter( "nbatches", "the maximum number of batches or 0 for singleton batches", nbatches, 0 );
-      paramSet.addParameter( "threads", "maximal number of threads to use (0: automatic)", threads, 0 );
+      paramSet.addParameter( "tlim", "bugger time limit", tlim, 0.0 );
       paramSet.addParameter( "numerics.feastol", "the feasibility tolerance", feastol, 0.0, 1e-1 );
       paramSet.addParameter( "numerics.epsilon", "epsilon tolerance to consider two values numerically equal", epsilon, 0.0, 1e-1 );
       paramSet.addParameter( "numerics.zeta", "zeta tolerance to consider two values exactly equal", zeta, 0.0, 1e-1 );
       paramSet.addParameter( "passcodes", "list of ignored return codes (string separated by blanks) example: [passcodes = -1 -2]", passcodes );
+      paramSet.addParameter( "debug_filename", "if not empty, current instance is written to this file before every solve (default = "") ]", debug_filename );
    }
 
 };

@@ -3,8 +3,7 @@
 /*               This file is part of the program and library                */
 /*    BUGGER                                                                 */
 /*                                                                           */
-/* Copyright (C) 2023             Konrad-Zuse-Zentrum                        */
-/*                     fuer Informationstechnik Berlin                       */
+/* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
 /* This program is free software: you can redistribute it and/or modify      */
 /* it under the terms of the GNU Lesser General Public License as published  */
@@ -26,24 +25,16 @@
 
 #include "bugger/modules/BuggerModul.hpp"
 
-#if BUGGER_HAVE_SCIP
 
-#include "scip/var.h"
-#include "scip/scip_sol.h"
-#include "scip/scip.h"
-#include "scip/scip_numerics.h"
-#include "scip/def.h"
-
-#endif
 namespace bugger {
 
    class ConstraintModul : public BuggerModul {
-   public:
-      explicit ConstraintModul( const Message &_msg, const Num<double> &_num, std::shared_ptr<SolverFactory>& factory) : BuggerModul(factory) {
-         this->setName("constraint");
-         this->msg = _msg;
-         this->num = _num;
 
+   public:
+
+      explicit ConstraintModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
+                               std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory) {
+         this->setName("constraint");
       }
 
       bool
@@ -58,28 +49,27 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution,
-              const BuggerOptions &options, const Timer &timer) override {
+      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) override {
 
          if( solution.status == SolutionStatus::kInfeasible )
             return ModulStatus::kNotAdmissible;
 
          int batchsize = 1;
 
-         if( options.nbatches > 0 )
+         if( parameters.nbatches > 0 )
          {
-            batchsize = options.nbatches - 1;
+            batchsize = parameters.nbatches - 1;
             for( int i = problem.getNRows( ) - 1; i >= 0; --i )
                if( isConstraintAdmissible(problem, i) )
                   ++batchsize;
-            if( batchsize == options.nbatches - 1 )
+            if( batchsize == parameters.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
-            batchsize /= options.nbatches;
+            batchsize /= parameters.nbatches;
          }
 
          bool admissible = false;
          auto copy = Problem<double>(problem);
-         Vec<int> applied_redundant_rows { };
+         Vec<int> applied_reductions { };
          Vec<int> batches { };
          batches.reserve(batchsize);
 
@@ -95,32 +85,28 @@ namespace bugger {
 
             if( !batches.empty() && ( batches.size() >= batchsize || row <= 0 ) )
             {
-               auto solver = createSolver();
-               solver->doSetUp(copy, settings, solution);
-               if( call_solver(solver.get( ), msg, options) == BuggerStatus::kOkay )
+               if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
                   copy = Problem<double>(problem);
-                  for( const auto &item: applied_redundant_rows )
+                  for( const auto &item: applied_reductions )
                   {
                      assert(!copy.getRowFlags( )[ item ].test(RowFlag::kRedundant));
                      copy.getRowFlags( )[ item ].set(RowFlag::kRedundant);
                   }
                }
                else
-                  applied_redundant_rows.insert(applied_redundant_rows.end(), batches.begin(), batches.end());
+                  applied_reductions.insert(applied_reductions.end(), batches.begin(), batches.end());
                batches.clear();
             }
          }
-         if(!admissible)
+
+         if( !admissible )
             return ModulStatus::kNotAdmissible;
-         if( applied_redundant_rows.empty() )
+         if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
-         else
-         {
-            problem = copy;
-            ndeletedrows += applied_redundant_rows.size();
-            return ModulStatus::kSuccessful;
-         }
+         problem = copy;
+         ndeletedrows += applied_reductions.size();
+         return ModulStatus::kSuccessful;
       }
    };
 
