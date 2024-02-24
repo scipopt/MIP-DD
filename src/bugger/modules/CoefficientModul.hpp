@@ -20,8 +20,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef BUGGER_MODUL_COEFFICIENT_HPP_
-#define BUGGER_MODUL_COEFFICIENT_HPP_
+#ifndef __BUGGER_MODULE_COEFFICIENT_HPP__
+#define __BUGGER_MODULE_COEFFICIENT_HPP__
 
 #include "bugger/modules/BuggerModul.hpp"
 
@@ -37,19 +37,18 @@ namespace bugger {
          this->setName("coefficient");
       }
 
-      bool
-      initialize( ) override {
-         return false;
-      }
+   private:
 
-      bool isFixingAdmissible(const Problem<double>& problem, int col) {
+      bool
+      isFixingAdmissible(const Problem<double>& problem, const int& col) const {
          return !problem.getColFlags( )[ col ].test(ColFlag::kFixed)
              && !problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
              && !problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
              && num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
       }
 
-      bool isCoefficientAdmissible(const Problem<double>& problem, int row) {
+      bool
+      isCoefficientAdmissible(const Problem<double>& problem, const int& row) const {
          if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant) )
             return false;
          auto data = problem.getConstraintMatrix( ).getRowCoefficients(row);
@@ -60,7 +59,7 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) override {
+      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override {
 
          int batchsize = 1;
 

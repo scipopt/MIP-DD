@@ -1,0 +1,65 @@
+# selective bugger mode (-1: reproduce and reduce, 0: only reproduce, 1: only reduce) [Integer: [-1,1]]
+mode = -1
+
+# initial bugger round or -1 for last round [Integer: [-1,2147483647]]
+initround = 0
+
+# initial bugger stage or -1 for last stage [Integer: [-1,2147483647]]
+initstage = 0
+
+# maximum number of bugger rounds or -1 for no limit [Integer: [-1,2147483647]]
+maxrounds = -1
+
+# maximum number of bugger stages or -1 for number of modules [Integer: [-1,2147483647]]
+maxstages = -1
+
+# maximum number of batches or 0 for singleton batches [Integer: [0,2147483647]]
+nbatches = 0
+
+# bugger time limit [Numerical: [0.0,1.7976931348623157e+308]]
+tlim = 0.0
+
+# feasibility tolerance to consider constraints satisfied [Numerical: [0.0,1e-1]]
+numerics.feastol = 1e-6
+
+# epsilon tolerance to consider two values numerically equal [Numerical: [0.0,1e-1]]
+numerics.epsilon = 1e-9
+
+# zeta tolerance to consider two values exactly equal [Numerical: [0.0,1e-1]]
+numerics.zeta = 0.0
+
+# ignored return codes separated by blanks (example: 2 3) [List]
+passcodes = 
+
+# enable module constraint [Boolean: {0,1}]
+constraint.enabled = 1
+
+# enable module variable [Boolean: {0,1}]
+variable.enabled = 1
+
+# enable module coefficient [Boolean: {0,1}]
+coefficient.enabled = 1
+
+# enable module fixing [Boolean: {0,1}]
+fixing.enabled = 1
+
+# enable module setting [Boolean: {0,1}]
+setting.enabled = 1
+
+# enable module side [Boolean: {0,1}]
+side.enabled = 1
+
+# enable module objective [Boolean: {0,1}]
+objective.enabled = 1
+
+# enable module varround [Boolean: {0,1}]
+varround.enabled = 1
+
+# enable module consround [Boolean: {0,1}]
+consround.enabled = 1
+
+# verbosity: 0 - quiet, 1 - errors, 2 - warnings, 3 - normal, 4 - detailed [Integer: [0,4]]
+message.verbosity = 3
+
+# if not empty, current instance is written to this file before every solve [String]
+debug_filename = ""

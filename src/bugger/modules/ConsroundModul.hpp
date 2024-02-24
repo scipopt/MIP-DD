@@ -20,8 +20,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef BUGGER_MODUL_CONSROUND_HPP_
-#define BUGGER_MODUL_CONSROUND_HPP_
+#ifndef __BUGGER_MODULE_CONSROUND_HPP__
+#define __BUGGER_MODULE_CONSROUND_HPP__
 
 #include "bugger/modules/BuggerModul.hpp"
 
@@ -37,12 +37,10 @@ namespace bugger {
          this->setName("consround");
       }
 
-      bool
-      initialize( ) override {
-         return false;
-      }
+   private:
 
-      bool isConsroundAdmissible(const Problem<double>& problem, int row) {
+      bool
+      isConsroundAdmissible(const Problem<double>& problem, const int& row) const {
          if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant) )
             return false;
          bool lhsinf = problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf);
@@ -59,7 +57,7 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) override {
+      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override {
 
          if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;

@@ -91,8 +91,7 @@ class Message
    addParameters( ParameterSet& paramSet )
    {
       paramSet.addParameter( "message.verbosity",
-                             "verbosity to be used: 0 - quiet, 1 - errors, 2 - "
-                             "warnings, 3 - normal, 4 - detailed",
+                             "verbosity: 0 - quiet, 1 - errors, 2 - warnings, 3 - normal, 4 - detailed",
                              verbosity, 0, 4 );
    }
 

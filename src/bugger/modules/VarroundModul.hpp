@@ -20,8 +20,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef BUGGER_MODUL_VARROUND_HPP_
-#define BUGGER_MODUL_VARROUND_HPP_
+#ifndef __BUGGER_MODULE_VARROUND_HPP__
+#define __BUGGER_MODULE_VARROUND_HPP__
 
 #include "bugger/modules/BuggerModul.hpp"
 
@@ -37,12 +37,10 @@ namespace bugger {
          this->setName("varround");
       }
 
-      bool
-      initialize( ) override {
-         return false;
-      }
+   private:
 
-      bool isVarroundAdmissible(const Problem<double>& problem, int col) {
+      bool
+      isVarroundAdmissible(const Problem<double>& problem, const int& col) const {
          if( problem.getColFlags( )[ col ].test(ColFlag::kFixed) )
             return false;
          if( !num.isZetaIntegral(problem.getObjective( ).coefficients[ col ]) )
@@ -55,7 +53,7 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) override {
+      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override {
 
          if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;

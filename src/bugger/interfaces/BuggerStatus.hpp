@@ -20,8 +20,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef BUGGER_BUGGERSTATUS_HPP
-#define BUGGER_BUGGERSTATUS_HPP
+#ifndef __BUGGER_INTERFACES_BUGGERSTATUS_HPP__
+#define __BUGGER_INTERFACES_BUGGERSTATUS_HPP__
 
 
 enum class BuggerStatus : int {

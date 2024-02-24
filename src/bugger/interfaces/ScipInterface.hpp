@@ -20,8 +20,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef BUGGER_INTERFACES_SCIP_INTERFACE_HPP_
-#define BUGGER_INTERFACES_SCIP_INTERFACE_HPP_
+#ifndef __BUGGER_INTERFACES_SCIPINTERFACE_HPP__
+#define __BUGGER_INTERFACES_SCIPINTERFACE_HPP__
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
 
@@ -31,7 +31,6 @@
 #include "scip/scip_param.h"
 #include "scip/scipdefplugins.h"
 #include "scip/struct_paramset.h"
-#include "bugger/misc/Vec.hpp"
 #include "bugger/data/Problem.hpp"
 #include "bugger/data/ProblemBuilder.hpp"
 #include "bugger/data/SolverSettings.hpp"

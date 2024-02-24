@@ -20,8 +20,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef BUGGER_STATUS_HPP
-#define BUGGER_STATUS_HPP
+#ifndef __BUGGER_INTERFACES_SOLVERSTATUS_HPP__
+#define __BUGGER_INTERFACES_SOLVERSTATUS_HPP__
 
 
 enum class SolverStatus : int {

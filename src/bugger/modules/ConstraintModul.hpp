@@ -20,8 +20,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef BUGGER_MODUL_CONSTRAINT_HPP_
-#define BUGGER_MODUL_CONSTRAINT_HPP_
+#ifndef __BUGGER_MODULE_CONSTRAINT_HPP__
+#define __BUGGER_MODULE_CONSTRAINT_HPP__
 
 #include "bugger/modules/BuggerModul.hpp"
 
@@ -37,19 +37,17 @@ namespace bugger {
          this->setName("constraint");
       }
 
-      bool
-      initialize( ) override {
-         return false;
-      }
+   private:
 
-      bool isConstraintAdmissible(const Problem<double>& problem, int row) {
+      bool
+      isConstraintAdmissible(const Problem<double>& problem, const int& row) const {
          if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant) )
             return false;
          return true;
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) override {
+      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override {
 
          if( solution.status == SolutionStatus::kInfeasible )
             return ModulStatus::kNotAdmissible;
