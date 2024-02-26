@@ -20,8 +20,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef BUGGER_MODUL_FIXING_HPP_
-#define BUGGER_MODUL_FIXING_HPP_
+#ifndef __BUGGER_MODULE_FIXING_HPP__
+#define __BUGGER_MODULE_FIXING_HPP__
 
 #include "bugger/modules/BuggerModul.hpp"
 
@@ -37,12 +37,10 @@ namespace bugger {
          this->setName("fixing");
       }
 
-      bool
-      initialize( ) override {
-         return false;
-      }
+   private:
 
-      bool isFixingAdmissible(const Problem<double>& problem, int col) {
+      bool
+      isFixingAdmissible(const Problem<double>& problem, const int& col) const {
          return !problem.getColFlags( )[ col ].test(ColFlag::kFixed)
              && !problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
              && !problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
@@ -50,7 +48,7 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) override {
+      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override {
 
          int batchsize = 1;
 

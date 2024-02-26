@@ -20,25 +20,38 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef _BUGGER_RUN__HPP_
-#define _BUGGER_RUN__HPP_
-
-#include <algorithm>
 #include <fstream>
-#include <memory>
+#include <algorithm>
 #include <boost/program_options.hpp>
 
-#include "bugger/data/BuggerParameters.hpp"
 #include "bugger/data/BuggerRun.hpp"
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/misc/OptionsParser.hpp"
 #include "bugger/misc/VersionLogger.hpp"
-#include "bugger/modules/BuggerModul.hpp"
+#include "bugger/modules/ConstraintModul.hpp"
+#include "bugger/modules/VariableModul.hpp"
+#include "bugger/modules/CoefficientModul.hpp"
+#include "bugger/modules/FixingModul.hpp"
+#include "bugger/modules/SettingModul.hpp"
+#include "bugger/modules/SideModul.hpp"
+#include "bugger/modules/ObjectiveModul.hpp"
+#include "bugger/modules/VarroundModul.hpp"
+#include "bugger/modules/ConsroundModul.hpp"
+#include "bugger/interfaces/ScipInterface.hpp"
 
+
+using namespace bugger;
+
+std::shared_ptr<SolverFactory>
+load_solver_factory( ) {
+#ifdef BUGGER_HAVE_SCIP
+   return std::shared_ptr<SolverFactory>(new ScipFactory( ));
+#else
+   msg.error("No solver specified -- aborting ....");
+   return nullptr;
+#endif
+}
 
 int
 main(int argc, char *argv[]) {
-   using namespace bugger;
 
    print_header( );
 
@@ -59,14 +72,33 @@ main(int argc, char *argv[]) {
    if( !optionsInfo.is_complete )
       return 0;
 
-
+   Message msg { };
+   Num<double> num { };
+   BuggerParameters parameters { };
+   std::shared_ptr<SolverFactory> factory { load_solver_factory() };
    Vec<std::unique_ptr<BuggerModul>> modules { };
-   BuggerRun bugger {  modules };
 
-   if( !optionsInfo.param_settings_file.empty( ) || !optionsInfo.unparsed_options.empty( ))
+   modules.emplace_back(new ConstraintModul(msg, num, parameters, factory));
+   modules.emplace_back(new VariableModul(msg, num, parameters, factory));
+   modules.emplace_back(new CoefficientModul(msg, num, parameters, factory));
+   modules.emplace_back(new FixingModul(msg, num, parameters, factory));
+   SettingModul* setting = new SettingModul(msg, num, parameters, factory);
+   modules.emplace_back(setting);
+   modules.emplace_back(new SideModul(msg, num, parameters, factory));
+   modules.emplace_back(new ObjectiveModul(msg, num, parameters, factory));
+   modules.emplace_back(new VarroundModul(msg, num, parameters, factory));
+   modules.emplace_back(new ConsRoundModul(msg, num, parameters, factory));
+
+   if( !optionsInfo.param_settings_file.empty( ) || !optionsInfo.unparsed_options.empty( ) )
    {
-      auto paramSet = bugger.getParameters( );
-      if( !optionsInfo.param_settings_file.empty( ))
+      ParameterSet paramSet { };
+      msg.addParameters(paramSet);
+      parameters.addParameters(paramSet);
+      for( const auto &module: modules )
+         module->addParameters(paramSet);
+      factory->addParameters(paramSet);
+
+      if( !optionsInfo.param_settings_file.empty( ) )
       {
          std::ifstream input(optionsInfo.param_settings_file);
          if( input )
@@ -142,13 +174,21 @@ main(int argc, char *argv[]) {
       }
    }
 
-   double time = 0;
-   Timer timer(time);
+   num.setFeasTol( parameters.feastol );
+   num.setEpsilon( parameters.epsilon );
+   num.setZeta( parameters.zeta );
+   if( parameters.maxrounds < 0 )
+      parameters.maxrounds = INT_MAX;
+   if( parameters.initround < 0 || parameters.initround >= parameters.maxrounds )
+      parameters.initround = parameters.maxrounds-1;
+   if( parameters.maxstages < 0 || parameters.maxstages > modules.size( ) )
+      parameters.maxstages = modules.size( );
+   if( parameters.initstage < 0 || parameters.initstage >= parameters.maxstages )
+      parameters.initstage = parameters.maxstages-1;
+   if( optionsInfo.target_settings_file.empty( ) )
+      setting->setEnabled(false);
 
-   bugger.apply(timer, optionsInfo);
+   BuggerRun( msg, num, parameters, factory, modules ).apply( optionsInfo, setting );
 
    return 0;
 }
-
-
-#endif

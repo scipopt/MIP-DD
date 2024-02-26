@@ -20,8 +20,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef _BUGGER_CONFIG_HPP_
-#define _BUGGER_CONFIG_HPP_
+#ifndef __BUGGER_CONFIG_HPP__
+#define __BUGGER_CONFIG_HPP__
 
 #ifndef BUGGER_NO_CMAKE_CONFIG
 

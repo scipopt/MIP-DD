@@ -20,12 +20,14 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef _BUGGER_INTERFACES_SOLVER_INTERFACE_HPP_
-#define _BUGGER_INTERFACES_SOLVER_INTERFACE_HPP_
+#ifndef __BUGGER_INTERFACES_SOLVERINTERFACE_HPP__
+#define __BUGGER_INTERFACES_SOLVERINTERFACE_HPP__
 
 #include "bugger/data/SolverSettings.hpp"
 #include "bugger/data/Problem.hpp"
 #include "bugger/data/Solution.hpp"
+#include "bugger/misc/Timer.hpp"
+#include "bugger/interfaces/SolverStatus.hpp"
 
 
 namespace bugger {

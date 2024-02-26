@@ -20,8 +20,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef _BUGGER_CORE_SOLVER_SETTINGS_HPP_
-#define _BUGGER_CORE_SOLVER_SETTINGS_HPP_
+#ifndef __BUGGER_DATA_SOLVERSETTINGS_HPP__
+#define __BUGGER_DATA_SOLVERSETTINGS_HPP__
 
 #include "bugger/misc/Vec.hpp"
 

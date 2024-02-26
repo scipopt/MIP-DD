@@ -20,12 +20,12 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef _BUGGER_PRESOLVE_METHOD_HPP_
-#define _BUGGER_PRESOLVE_METHOD_HPP_
+#ifndef __BUGGER_MODULES_BUGGERMODUL_HPP__
+#define __BUGGER_MODULES_BUGGERMODUL_HPP__
 
 #include "bugger/data/BuggerParameters.hpp"
-#include "bugger/io/Message.hpp"
-#include "bugger/misc/Timer.hpp"
+#include "bugger/interfaces/BuggerStatus.hpp"
+#include "bugger/interfaces/SolverInterface.hpp"
 
 #ifdef BUGGER_TBB
 #include "bugger/misc/tbb.hpp"
@@ -97,21 +97,21 @@ namespace bugger {
       }
 
       virtual void
-      addModuleParameters(ParameterSet &paramSet) {
+      addModuleParameters(ParameterSet& paramSet) {
       }
 
       void
-      addParameters(ParameterSet &paramSet) {
+      addParameters(ParameterSet& paramSet) {
          paramSet.addParameter(
                fmt::format("{}.enabled", this->name).c_str( ),
-               fmt::format("is presolver {} enabled", this->name).c_str( ),
+               fmt::format("enable module {}", this->name).c_str( ),
                this->enabled);
 
          addModuleParameters(paramSet);
       }
 
       ModulStatus
-      run(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) {
+      run(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution, const Timer& timer) {
          if( !enabled )
             return ModulStatus::kDidNotRun;
 
@@ -121,7 +121,7 @@ namespace bugger {
 #else
          auto start = std::chrono::steady_clock::now();
 #endif
-         ModulStatus result = execute(problem, settings, solution, timer);
+         ModulStatus result = execute(settings, problem, solution);
 #ifdef BUGGER_TBB
          if( result == ModulStatus::kSuccessful )
             nsuccessCall++;
@@ -141,7 +141,7 @@ namespace bugger {
       }
 
       void
-      printStats(const Message &message) {
+      printStats(const Message& message) {
          double success = ncalls == 0 ? 0.0 : ( double(nsuccessCall) / double(ncalls)) * 100.0;
          int changes = nchgcoefs + nfixedvars + nchgsides + naggrvars + ndeletedrows + nchgsettings;
          message.info(" {:>18} {:>12} {:>12} {:>18.1f} {:>18.3f}\n", name, ncalls, changes, success, execTime);
@@ -153,7 +153,7 @@ namespace bugger {
          return this->enabled;
       }
 
-      const std::string &
+      const std::string&
       getName( ) const {
          return this->name;
       }
@@ -170,7 +170,7 @@ namespace bugger {
 
    protected:
 
-      double get_linear_activity(SparseVectorView<double> &data, Solution<double> &solution) {
+      double get_linear_activity(SparseVectorView<double>& data, Solution<double>& solution) {
          StableSum<double> sum;
          for( int i = 0; i < data.getLength( ); ++i )
             sum.add(solution.primal[ data.getIndices( )[ i ] ] * data.getValues( )[ i ]);
@@ -178,16 +178,16 @@ namespace bugger {
       }
 
       virtual ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) = 0;
+      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) = 0;
 
       void
-      setName(const std::string &value) {
+      setName(const std::string& value) {
          this->name = value;
       }
 
 
       static bool
-      is_time_exceeded(const Timer &timer, double tlim) {
+      is_time_exceeded(const Timer& timer, double tlim) {
          return tlim != std::numeric_limits<double>::max( ) &&
                 timer.getTime( ) >= tlim;
       }
@@ -216,7 +216,7 @@ namespace bugger {
          }
       }
 
-      void apply_changes(Problem<double> &copy, const Vec<MatrixEntry<double>> &entries) const {
+      void apply_changes(Problem<double>& copy, const Vec<MatrixEntry<double>>& entries) const {
          MatrixBuffer<double> matrixBuffer{ };
          for( const auto &entry: entries )
             matrixBuffer.addEntry(entry.row, entry.col, entry.val);

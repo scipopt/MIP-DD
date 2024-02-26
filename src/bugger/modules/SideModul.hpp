@@ -20,8 +20,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef BUGGER_SIDE_VARIABLE_HPP_
-#define BUGGER_SIDE_VARIABLE_HPP_
+#ifndef __BUGGER_MODULE_SIDE_HPP__
+#define __BUGGER_MODULE_SIDE_HPP__
 
 #include "bugger/modules/BuggerModul.hpp"
 
@@ -37,13 +37,10 @@ namespace bugger {
          this->setName("side");
       }
 
-      bool
-      initialize( ) override {
-         return false;
-      }
+   private:
 
-      bool isSideAdmissable(const Problem<double>& problem, int row) const
-      {
+      bool
+      isSideAdmissable(const Problem<double>& problem, const int& row) const {
          return !problem.getRowFlags( )[ row ].test(RowFlag::kRedundant)
            && ( problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
              || problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
@@ -51,7 +48,7 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) override {
+      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override {
 
          if( solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;

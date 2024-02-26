@@ -20,8 +20,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef BUGGER_MODUL_SETTING_HPP_
-#define BUGGER_MODUL_SETTING_HPP_
+#ifndef __BUGGER_MODULE_SETTING_HPP__
+#define __BUGGER_MODULE_SETTING_HPP__
 
 #include "bugger/modules/BuggerModul.hpp"
 
@@ -30,24 +30,19 @@ namespace bugger {
 
    class SettingModul : public BuggerModul {
 
-   private:
-
-      const SolverSettings &target_settings;
-
    public:
 
+      SolverSettings target_settings;
+
       explicit SettingModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
-                            std::shared_ptr<SolverFactory>& _factory, const SolverSettings &_target_settings) : BuggerModul(_msg, _num, _parameters, _factory), target_settings(_target_settings) {
+                            std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory) {
          this->setName("setting");
       }
 
-      bool
-      initialize( ) override {
-         return false;
-      }
+   private:
 
       ModulStatus
-      execute(Problem<double> &problem, SolverSettings& settings, Solution<double> &solution, const Timer &timer) override {
+      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override {
 
          int batchsize = 1;
 
@@ -310,12 +305,11 @@ namespace bugger {
          return ModulStatus::kSuccessful;
       }
 
-   private:
-
       SolverSettings
-      reset(SolverSettings &settings, const Vec <std::pair<int, bool>>& applied_bool, const Vec <std::pair<int, int>>& applied_int,
-            const Vec <std::pair<int, long>>& applied_long, const Vec <std::pair<int, double>>& applied_double,
-            const Vec <std::pair<int, char>>& applied_char, const Vec <std::pair<int, std::string>>& applied_string) {
+      reset(const SolverSettings& settings,
+            const Vec<std::pair<int, bool>>& applied_bool, const Vec<std::pair<int, int>>& applied_int,
+            const Vec<std::pair<int, long>>& applied_long, const Vec<std::pair<int, double>>& applied_double,
+            const Vec<std::pair<int, char>>& applied_char, const Vec<std::pair<int, std::string>>& applied_string) const {
          auto reset = SolverSettings(settings);
          for( const auto &item: applied_bool )
             reset.setBoolSettings(item.first, item.second);
@@ -327,13 +321,11 @@ namespace bugger {
             reset.setDoubleSettings(item.first, item.second);
          for( const auto &item: applied_char )
             reset.setCharSettings(item.first, item.second);
-         for( const auto &item: applied_string)
+         for( const auto &item: applied_string )
             reset.setStringSettings(item.first, item.second);
          return reset;
       }
-
    };
-
 
 } // namespace bugger
 

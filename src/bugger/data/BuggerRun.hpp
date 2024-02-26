@@ -20,34 +20,15 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef BUGGER_BUGGERRUN_HPP
-#define BUGGER_BUGGERRUN_HPP
+#ifndef __BUGGER_DATA_BUGGERRUN_HPP__
+#define __BUGGER_DATA_BUGGERRUN_HPP__
 
-#include <utility>
-#include <memory>
-#include <fstream>
-#include <algorithm>
-#include <boost/program_options.hpp>
-
-#include "bugger/data/BuggerParameters.hpp"
 #include "bugger/io/MpsParser.hpp"
 #include "bugger/io/MpsWriter.hpp"
 #include "bugger/io/SolParser.hpp"
-#include "bugger/misc/VersionLogger.hpp"
 #include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/Vec.hpp"
 #include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/interfaces/ScipInterface.hpp"
-#include "bugger/modules/VarroundModul.hpp"
-#include "bugger/modules/VariableModul.hpp"
-#include "bugger/modules/SideModul.hpp"
 #include "bugger/modules/SettingModul.hpp"
-#include "bugger/modules/ObjectiveModul.hpp"
-#include "bugger/modules/FixingModul.hpp"
-#include "bugger/modules/ConstraintModul.hpp"
-#include "bugger/modules/ConsroundModul.hpp"
-#include "bugger/modules/CoefficientModul.hpp"
-#include "bugger/modules/BuggerModul.hpp"
 
 
 namespace bugger {
@@ -56,31 +37,31 @@ namespace bugger {
 
    private:
 
-      BuggerParameters parameters { };
-      Vec<std::unique_ptr<bugger::BuggerModul>> &modules;
-      Vec<bugger::ModulStatus> results;
-      Message msg { };
-      std::shared_ptr<SolverFactory> factory;
+      const Message& msg;
+      const Num<double>& num;
+      const BuggerParameters& parameters;
+      const std::shared_ptr<SolverFactory>& factory;
+      const Vec<std::unique_ptr<BuggerModul>>& modules;
+      Vec<ModulStatus> results;
 
    public:
 
-      explicit BuggerRun( Vec<std::unique_ptr<BuggerModul>> &_modules )
-            : modules(_modules), factory(load_solver_factory()) { }
+      explicit BuggerRun(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters, const std::shared_ptr<SolverFactory>& _factory, const Vec<std::unique_ptr<BuggerModul>>& _modules)
+            : msg(_msg), num(_num), parameters(_parameters), factory(_factory), modules(_modules), results(_modules.size()) { }
 
       bool
-      is_time_exceeded( const Timer &timer ) const
-      {
-         return parameters.tlim != std::numeric_limits<double>::max() &&
-                timer.getTime() >= parameters.tlim;
+      is_time_exceeded(const Timer& timer) const {
+
+         return parameters.tlim != std::numeric_limits<double>::max() && timer.getTime() >= parameters.tlim;
       }
 
-      void apply( const Timer &timer, const OptionsInfo &optionsInfo ) {
+      void
+      apply(const OptionsInfo& optionsInfo, SettingModul* const setting) {
 
          msg.info("\nMIP Solver:\n");
          factory->create_solver(msg)->print_header();
          msg.info("\n");
-         SolverSettings targets { };
-         if( !optionsInfo.target_settings_file.empty( ) )
+         if( setting->isEnabled() )
          {
             auto target_settings = factory->create_solver(msg)->parseSettings(optionsInfo.target_settings_file);
             if( !target_settings )
@@ -88,7 +69,7 @@ namespace bugger {
                msg.error("error loading targets {}\n", optionsInfo.target_settings_file);
                return;
             }
-            targets = target_settings.get();
+            setting->target_settings = target_settings.get();
          }
          auto instance = factory->create_solver(msg)->readInstance(optionsInfo.settings_file, optionsInfo.problem_file);
          if( !instance.first )
@@ -134,94 +115,55 @@ namespace bugger {
                return;
          }
 
-         Num<double> num{};
-         num.setFeasTol( parameters.feastol );
-         num.setEpsilon( parameters.epsilon );
-         num.setZeta( parameters.zeta );
-
-         using uptr = std::unique_ptr<bugger::BuggerModul>;
-         addModul(uptr(new ConstraintModul(msg, num, parameters, factory)));
-         addModul(uptr(new VariableModul(msg, num, parameters, factory)));
-         addModul(uptr(new CoefficientModul(msg, num, parameters, factory)));
-         addModul(uptr(new FixingModul(msg, num, parameters, factory)));
-         addModul(uptr(new SettingModul(msg, num, parameters, factory, targets)));
-         addModul(uptr(new SideModul(msg, num, parameters, factory)));
-         addModul(uptr(new ObjectiveModul(msg, num, parameters, factory)));
-         addModul(uptr(new VarroundModul(msg, num, parameters, factory)));
-         addModul(uptr(new ConsRoundModul(msg, num, parameters, factory)));
-
-         // disable module setting
-         auto &setting = *modules[4];
-         if( optionsInfo.target_settings_file.empty( ) )
-            setting.setEnabled(false);
-
-         if( parameters.maxrounds < 0 )
-            parameters.maxrounds = INT_MAX;
-         if( parameters.initround < 0 || parameters.initround >= parameters.maxrounds )
-            parameters.initround = parameters.maxrounds-1;
-         if( parameters.maxstages < 0 || parameters.maxstages > modules.size( ) )
-            parameters.maxstages = modules.size( );
-         if( parameters.initstage < 0 || parameters.initstage >= parameters.maxstages )
-            parameters.initstage = parameters.maxstages-1;
-
          int ending = optionsInfo.problem_file.rfind('.');
          if( optionsInfo.problem_file.substr(ending+1) == "gz" || optionsInfo.problem_file.substr(ending+1) == "bz2" )
             ending = optionsInfo.problem_file.rfind('.', ending-1);
          std::string filename = optionsInfo.problem_file.substr(0, ending) + "_";
-         results.resize(modules.size( ));
 
-         for( int round = parameters.initround, stage = parameters.initstage, success = parameters.initstage; round < parameters.maxrounds && stage < parameters.maxstages; ++round )
+         double time = 0.0;
          {
-            //TODO: Clean matrix in each round
-            //TODO: Simplify solver handling
-            //TODO: Free solver afterwards
-            auto solver = factory->create_solver(msg);
-            solver->doSetUp(settings, problem, solution);
-            if( !solver->writeInstance(filename + std::to_string(round), setting.isEnabled()) )
-               MpsWriter<double>::writeProb(filename + std::to_string(round) + ".mps", problem);
+            Timer timer(time);
 
-            if( is_time_exceeded(timer) )
-               break;
-
-            msg.info("Round {} Stage {}\n", round+1, stage+1);
-
-            for( int module = 0; module <= stage && stage < parameters.maxstages; ++module )
+            for( int round = parameters.initround, stage = parameters.initstage, success = parameters.initstage; round < parameters.maxrounds && stage < parameters.maxstages; ++round )
             {
-               results[ module ] = modules[ module ]->run(problem, settings, solution, timer);
+               //TODO: Clean matrix in each round
+               //TODO: Simplify solver handling
+               //TODO: Free solver afterwards
+               auto solver = factory->create_solver(msg);
+               solver->doSetUp(settings, problem, solution);
+               if( !solver->writeInstance(filename + std::to_string(round), setting->isEnabled()) )
+                  MpsWriter<double>::writeProb(filename + std::to_string(round) + ".mps", problem);
 
-               if( results[ module ] == bugger::ModulStatus::kSuccessful )
-                  success = module;
-               else if( success == module )
+               if( is_time_exceeded(timer) )
+                  break;
+
+               msg.info("Round {} Stage {}\n", round+1, stage+1);
+
+               for( int module = 0; module <= stage && stage < parameters.maxstages; ++module )
                {
-                  module = stage;
-                  ++stage;
-                  success = stage;
+                  results[ module ] = modules[ module ]->run(settings, problem, solution, timer);
+
+                  if( results[ module ] == bugger::ModulStatus::kSuccessful )
+                     success = module;
+                  else if( success == module )
+                  {
+                     module = stage;
+                     ++stage;
+                     success = stage;
+                  }
                }
             }
+
+            assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModulStatus::kSuccessful );
          }
-
-         assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModulStatus::kSuccessful );
-         printStats( timer.getTime() );
-      }
-
-      void
-      addModul( std::unique_ptr<BuggerModul> module ) {
-         modules.emplace_back(std::move(module));
-      }
-
-      ParameterSet getParameters( ) {
-         ParameterSet paramSet;
-         msg.addParameters(paramSet);
-         parameters.addParameters(paramSet);
-         for( const auto &module: modules )
-            module->addParameters(paramSet);
-         factory->addParameters(paramSet);
-         return paramSet;
+         printStats( time );
       }
 
    private:
 
-      void check_feasibility_of_solution( const Problem<double> &problem , const Solution<double> &solution ) {
+      void
+      check_feasibility_of_solution(const Problem<double>& problem, const Solution<double>& solution) {
+
          if( solution.status != SolutionStatus::kFeasible )
             return;
          const Vec<double>& ub = problem.getUpperBounds();
@@ -338,7 +280,9 @@ namespace bugger {
          msg.info("\n\n");
       }
 
-      void printOriginalSolveStatus( const SolverSettings &settings, const Problem<double>& problem, Solution<double>& solution, const std::shared_ptr<SolverFactory>& factory ) {
+      void
+      printOriginalSolveStatus(const SolverSettings& settings, const Problem<double>& problem, Solution<double>& solution, const std::shared_ptr<SolverFactory>& factory) {
+
          auto solver = factory->create_solver(msg);
          solver->doSetUp(settings, problem, solution);
          Vec<int> empty_passcodes{};
@@ -346,18 +290,9 @@ namespace bugger {
          msg.info("Original solve returned code {} with status {}.\n\n", (int) pair.first, pair.second);
       }
 
-      std::shared_ptr<SolverFactory>
-      load_solver_factory(){
-#ifdef BUGGER_HAVE_SCIP
-         return std::shared_ptr<SolverFactory>( new ScipFactory( ) );
-#else
-         msg.error("No solver specified -- aborting ....");
-         return nullptr;
-#endif
-      }
-
       bugger::ModulStatus
       evaluateResults( ) {
+
          int largestValue = static_cast<int>( bugger::ModulStatus::kDidNotRun );
 
          for( int module = 0; module < parameters.maxstages; ++module )
@@ -366,13 +301,14 @@ namespace bugger {
          return static_cast<bugger::ModulStatus>( largestValue );
       }
 
-      void printStats( const double &time ) {
+      void
+      printStats(const double& time) {
+
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>18} \n", "modules",
                   "nb calls", "changes", "success calls(%)", "execution time(s)");
          for( const auto &module: modules )
             module->printStats(msg);
          fmt::print( "\nbugging took {:.3} seconds\n", time );
-
       }
    };
 
