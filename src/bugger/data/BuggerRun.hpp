@@ -306,13 +306,13 @@ namespace bugger {
 
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n", "modules",
                   "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
-         int solves = 0;
+         int nsolves = 0;
          for( const auto &module: modules )
          {
             module->printStats(msg);
-            solves += module->getSolves();
+            nsolves += module->getNSolves();
          }
-         fmt::print( "\nbugging took {:.3} seconds with {} solver invocations", time, solves );
+         fmt::print( "\nbugging took {:.3} seconds with {} solver invocations", time, nsolves );
          if( parameters.mode != 1 )
             msg.info(" (excluding original solve)");
          fmt::print("\n");
