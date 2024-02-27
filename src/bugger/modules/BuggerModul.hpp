@@ -98,9 +98,8 @@ namespace bugger {
          return false;
       }
 
-
       int
-      getSolves(){
+      getNSolves( ) {
          return nsolves;
       }
 
