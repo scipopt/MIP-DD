@@ -314,7 +314,7 @@ namespace bugger {
          }
          fmt::print( "\nbugging took {:.3} seconds with {} solver invocations", time, solves );
          if( parameters.mode != 1 )
-            msg.info(" (excluded original solve)");
+            msg.info(" (excluding original solve)");
          fmt::print("\n");
       }
    };
