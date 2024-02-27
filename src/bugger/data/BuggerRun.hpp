@@ -306,8 +306,13 @@ namespace bugger {
 
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>18} \n", "modules",
                   "nb calls", "changes", "success calls(%)", "execution time(s)");
+         int last_fail = 0;
          for( const auto &module: modules )
+         {
             module->printStats(msg);
+            if(module->getLastFail() != 0)
+               last_fail = module->getLastFail();
+         }
          fmt::print( "\nbugging took {:.3} seconds\n", time );
       }
    };

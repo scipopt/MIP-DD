@@ -69,6 +69,7 @@ namespace bugger {
       int naggrvars;
       int nchgsettings;
       int ndeletedrows;
+      int lastfail;
 
    public:
 
@@ -86,6 +87,7 @@ namespace bugger {
          naggrvars = 0;
          nchgsettings = 0;
          ndeletedrows = 0;
+         lastfail = 0;
       }
 
       virtual ~BuggerModul( ) = default;
@@ -112,6 +114,7 @@ namespace bugger {
 
       ModulStatus
       run(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution, const Timer& timer) {
+         lastfail = 0;
          if( !enabled )
             return ModulStatus::kDidNotRun;
 
@@ -159,8 +162,8 @@ namespace bugger {
       }
 
       unsigned int
-      getNCalls( ) const {
-         return ncalls;
+      getLastFail( ) const {
+         return lastfail;
       }
 
       void
@@ -206,6 +209,7 @@ namespace bugger {
          }
          else if( result.first > SolverInterface::OKAY )
          {
+            lastfail = (int) result.first;
             msg.info("\tBug {} - Status {}\n", (int) result.first, result.second);
             return BuggerStatus::kBug;
          }
