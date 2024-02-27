@@ -307,14 +307,15 @@ namespace bugger {
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n", "modules",
                   "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
          int solves = 0;
-         if( parameters.mode != 1 )
-            solves++;
          for( const auto &module: modules )
          {
             module->printStats(msg);
             solves += module->getSolves();
          }
-         fmt::print( "\nbugging took {:.3} seconds with {} solver invocations\n", time, solves );
+         fmt::print( "\nbugging took {:.3} seconds with {} solver invocations", time, solves );
+         if( parameters.mode != 1 )
+            msg.info(" (excluded original solve)");
+         fmt::print("\n");
       }
    };
 
