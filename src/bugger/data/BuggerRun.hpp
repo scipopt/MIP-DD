@@ -147,7 +147,7 @@ namespace bugger {
                   if( results[ module ] == bugger::ModulStatus::kSuccessful )
                   {
                      success = module;
-                     final_result = modules[ module ]->getLastFailedRun( );
+                     final_result = modules[ module ]->getLastFail( );
                   }
                   else if( success == module )
                   {
