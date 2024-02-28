@@ -490,13 +490,19 @@ namespace bugger {
                case SCIP_STATUS_UNKNOWN:
                   solverstatus = SolverStatus::kUnknown;
                   break;
-               case SCIP_STATUS_USERINTERRUPT:
-               case SCIP_STATUS_NODELIMIT:
                case SCIP_STATUS_TOTALNODELIMIT:
                case SCIP_STATUS_STALLNODELIMIT:
+               case SCIP_STATUS_NODELIMIT:
+                  solverstatus = SolverStatus::kNodeLimit;
+                  break;
                case SCIP_STATUS_TIMELIMIT:
-               case SCIP_STATUS_MEMLIMIT:
+                  solverstatus = SolverStatus::kTimeLimit;
+                  break;
                case SCIP_STATUS_GAPLIMIT:
+                  solverstatus = SolverStatus::kGapLimit;
+                  break;
+               case SCIP_STATUS_USERINTERRUPT:
+               case SCIP_STATUS_MEMLIMIT:
                case SCIP_STATUS_SOLLIMIT:
                case SCIP_STATUS_BESTSOLLIMIT:
                case SCIP_STATUS_RESTARTLIMIT:

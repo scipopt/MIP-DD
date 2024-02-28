@@ -89,7 +89,7 @@ namespace bugger {
          nchgsettings = 0;
          ndeletedrows = 0;
          nsolves = 0;
-         last_fail = { SolverInterface::OKAY, SolverStatus::kUnknown };
+         last_fail = { 0, SolverStatus::kUnknown };
       }
 
       virtual ~BuggerModul( ) = default;
