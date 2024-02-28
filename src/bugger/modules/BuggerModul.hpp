@@ -169,7 +169,7 @@ namespace bugger {
       }
 
       std::pair<char, SolverStatus>
-      getLastFailedRun( ) const {
+      getLastFail( ) const {
          return last_fail;
       }
 
