@@ -70,6 +70,7 @@ namespace bugger {
       int nchgsettings;
       int ndeletedrows;
       int lastfail;
+      int nsolves;
 
    public:
 
@@ -87,6 +88,7 @@ namespace bugger {
          naggrvars = 0;
          nchgsettings = 0;
          ndeletedrows = 0;
+         nsolves = 0;
          lastfail = 0;
       }
 
@@ -96,6 +98,11 @@ namespace bugger {
       virtual bool
       initialize( ) {
          return false;
+      }
+
+      int
+      getNSolves( ) {
+         return nsolves;
       }
 
       virtual void
@@ -147,7 +154,7 @@ namespace bugger {
       printStats(const Message& message) {
          double success = ncalls == 0 ? 0.0 : ( double(nsuccessCall) / double(ncalls)) * 100.0;
          int changes = nchgcoefs + nfixedvars + nchgsides + naggrvars + ndeletedrows + nchgsettings;
-         message.info(" {:>18} {:>12} {:>12} {:>18.1f} {:>18.3f}\n", name, ncalls, changes, success, execTime);
+         message.info(" {:>18} {:>12} {:>12} {:>18.1f} {:>12} {:>18.3f}\n", name, ncalls, changes, success, nsolves, execTime);
       }
 
 
@@ -197,6 +204,7 @@ namespace bugger {
 
       BuggerStatus
       call_solver(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) {
+         ++nsolves;
          auto solver = factory->create_solver(msg);
          solver->doSetUp(settings, problem, solution);
          if( !parameters.debug_filename.empty( ) )

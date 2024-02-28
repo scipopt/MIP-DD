@@ -304,16 +304,19 @@ namespace bugger {
       void
       printStats(const double& time) {
 
-         msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>18} \n", "modules",
-                  "nb calls", "changes", "success calls(%)", "execution time(s)");
+         msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n", "modules",
+                  "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
+         int nsolves = 0;
          int last_fail = 0;
          for( const auto &module: modules )
          {
             module->printStats(msg);
-            if(module->getLastFail() != 0)
-               last_fail = module->getLastFail();
+            nsolves += module->getNSolves();
          }
-         fmt::print( "\nbugging took {:.3} seconds\n", time );
+         fmt::print( "\nbugging took {:.3} seconds with {} solver invocations", time, nsolves );
+         if( parameters.mode != 1 )
+            msg.info(" (excluding original solve)");
+         fmt::print("\n");
       }
    };
 
