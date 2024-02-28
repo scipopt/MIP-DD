@@ -120,6 +120,7 @@ namespace bugger {
             ending = optionsInfo.problem_file.rfind('.', ending-1);
          std::string filename = optionsInfo.problem_file.substr(0, ending) + "_";
 
+         int last_fail = 0;
          double time = 0.0;
          {
             Timer timer(time);
@@ -144,7 +145,10 @@ namespace bugger {
                   results[ module ] = modules[ module ]->run(settings, problem, solution, timer);
 
                   if( results[ module ] == bugger::ModulStatus::kSuccessful )
+                  {
                      success = module;
+                     last_fail = modules[module]->getLastFail();
+                  }
                   else if( success == module )
                   {
                      module = stage;
@@ -156,7 +160,7 @@ namespace bugger {
 
             assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModulStatus::kSuccessful );
          }
-         printStats( time );
+         printStats( time, last_fail );
       }
 
    private:
@@ -302,17 +306,17 @@ namespace bugger {
       }
 
       void
-      printStats(const double& time) {
+      printStats(const double& time, int last_fail) {
 
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n", "modules",
                   "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
          int nsolves = 0;
-         int last_fail = 0;
          for( const auto &module: modules )
          {
             module->printStats(msg);
             nsolves += module->getNSolves();
          }
+         fmt::print("\nlast successful instance failed with {}", last_fail);
          fmt::print( "\nbugging took {:.3} seconds with {} solver invocations", time, nsolves );
          if( parameters.mode != 1 )
             msg.info(" (excluding original solve)");
