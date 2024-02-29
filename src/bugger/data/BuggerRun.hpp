@@ -319,7 +319,7 @@ namespace bugger {
          msg.info("\nFinal solve returned code {} with status {}.", (int) final_result
          .first, final_result
          .second);
-         fmt::print( "\nbugging took {} seconds with {} solver invocations", ((int)(time*100+ 0.5f)) *1.0 /100, nsolves );
+         fmt::print( "\nbugging took {:.3f} seconds with {} solver invocations", time, nsolves );
          if( parameters.mode != 1 )
             msg.info(" (excluding original solve)");
          fmt::print("\n");
