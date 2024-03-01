@@ -120,7 +120,7 @@ namespace bugger {
             ending = optionsInfo.problem_file.rfind('.', ending-1);
          std::string filename = optionsInfo.problem_file.substr(0, ending) + "_";
 
-         std::pair<char, SolverStatus> final_result = { 0, SolverStatus::kUnknown };
+         std::pair<char, SolverStatus> final_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
          double time = 0.0;
          {
             Timer timer(time);
