@@ -46,6 +46,10 @@ enum class SolverStatus : int {
 
    kGapLimit = 8,
 
+   kPrimalLimit = 9,
+
+   kDualLimit = 10,
+
 };
 
 std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
@@ -75,6 +79,12 @@ std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
          break;
       case SolverStatus::kGapLimit:
          val = "gaplimit";
+         break;
+      case SolverStatus::kPrimalLimit:
+         val = "primallimit";
+         break;
+      case SolverStatus::kDualLimit:
+         val = "duallimit";
          break;
       case SolverStatus::kUndefinedError:
          val = "ERROR";
