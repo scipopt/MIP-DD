@@ -66,7 +66,7 @@ std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
          val = "optimal";
          break;
       case SolverStatus::kUnbounded:
-         val = "optimal";
+         val = "unbounded";
          break;
       case SolverStatus::kLimit:
          val = "limit";
@@ -91,7 +91,7 @@ std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
          break;
       case SolverStatus::kUnknown:
       default:
-         val = "ERROR";
+         val = "UNKNOWN (ERROR)";
          break;
    }
    return out << val;
