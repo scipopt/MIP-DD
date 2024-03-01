@@ -46,16 +46,16 @@ namespace bugger {
    public:
 
       int mode = -1;
-      bool set_dual_stop = true;
-      bool set_prim_stop = true;
+      bool set_dual_limit = true;
+      bool set_prim_limit = true;
    };
 
    class ScipInterface : public SolverInterface {
 
    public:
 
-      static const String DUAL;
-      static const String PRIM;
+      static String DUAL;
+      static String PRIM;
 
    private:
 
@@ -116,8 +116,8 @@ namespace bugger {
             SCIP_PARAM* param = params[ i ];
             String name { param->name };
             // drop interface settings
-            if( ( parameters.set_dual_stop && name == DUAL )
-             || ( parameters.set_prim_stop && name == PRIM ) )
+            if( ( parameters.set_dual_limit && name == DUAL )
+             || ( parameters.set_prim_limit && name == PRIM ) )
                continue;
             switch( param->paramtype )
             {
@@ -374,9 +374,9 @@ namespace bugger {
 
          if( solution_exists )
          {
-            if( parameters.set_dual_stop )
+            if( parameters.set_dual_limit )
                SCIP_CALL(SCIPsetRealParam(scip, DUAL.c_str(), relax( value, obj.sense, 2.0 * SCIPsumepsilon(scip), SCIPinfinity(scip) )));
-            if( parameters.set_prim_stop )
+            if( parameters.set_prim_limit )
                SCIP_CALL(SCIPsetRealParam(scip, PRIM.c_str(), value));
          }
 
@@ -566,9 +566,8 @@ namespace bugger {
       }
    };
 
-   //TODO: Adapt proof stop setting name
-   const String ScipInterface::DUAL = "limits/proofstop";
-   const String ScipInterface::PRIM = "limits/objectivestop";
+   String ScipInterface::DUAL;
+   String ScipInterface::PRIM;
 
    class ScipFactory : public SolverFactory {
 
@@ -583,8 +582,8 @@ namespace bugger {
       addParameters(ParameterSet& parameterset) override
       {
          parameterset.addParameter("scip.mode", "solve scip mode (-1: optimize, 0: count)", parameters.mode, -1, 0);
-         parameterset.addParameter("scip.setdualstop", "stop when dual bound is worse than reference solution", parameters.set_dual_stop);
-         parameterset.addParameter("scip.setprimstop", "stop when prim bound is as good as reference solution", parameters.set_prim_stop);
+         parameterset.addParameter("scip.setduallimit", "terminate when dual bound is better than reference solution", parameters.set_dual_limit);
+         parameterset.addParameter("scip.setprimlimit", "terminate when prim bound is as good as reference solution", parameters.set_prim_limit);
       }
 
       std::unique_ptr<SolverInterface>
@@ -595,21 +594,37 @@ namespace bugger {
          {
             if( parameters.mode == -1 )
             {
-               if( parameters.set_dual_stop && !scip->has_setting( ScipInterface::DUAL ) )
+               if( parameters.set_dual_limit )
                {
-                  msg.info("Dual stop disabled because {} unavailable.\n", ScipInterface::DUAL);
-                  parameters.set_dual_stop = false;
+                  ScipInterface::DUAL = "limits/dual";
+                  if( !scip->has_setting( ScipInterface::DUAL ) )
+                  {
+                     ScipInterface::DUAL = "limits/proofstop";
+                     if( !scip->has_setting( ScipInterface::DUAL ) )
+                     {
+                        msg.info("Dual limit disabled.\n");
+                        parameters.set_dual_limit = false;
+                     }
+                  }
                }
-               if( parameters.set_prim_stop && !scip->has_setting( ScipInterface::PRIM ) )
+               if( parameters.set_prim_limit )
                {
-                  msg.info("Prim stop disabled because {} unavailable.\n", ScipInterface::PRIM);
-                  parameters.set_prim_stop = false;
+                  ScipInterface::PRIM = "limits/primal";
+                  if( !scip->has_setting( ScipInterface::PRIM ) )
+                  {
+                     ScipInterface::PRIM = "limits/objectivestop";
+                     if( !scip->has_setting( ScipInterface::PRIM ) )
+                     {
+                        msg.info("Primal limit disabled.\n");
+                        parameters.set_prim_limit = false;
+                     }
+                  }
                }
             }
             else
             {
-               parameters.set_dual_stop = false;
-               parameters.set_prim_stop = false;
+               parameters.set_dual_limit = false;
+               parameters.set_prim_limit = false;
             }
             initial = false;
          }
