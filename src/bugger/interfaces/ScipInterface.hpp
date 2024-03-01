@@ -518,11 +518,13 @@ namespace bugger {
                   solverstatus = SolverStatus::kRestartLimit;
                   break;
                case SCIP_STATUS_USERINTERRUPT:
-#if SCIP_VERSION_MAJOR >= 6
-               case SCIP_STATUS_TERMINATE:
-#endif
                   solverstatus = SolverStatus::kInterrupt;
                   break;
+#if SCIP_VERSION_MAJOR >= 6
+               case SCIP_STATUS_TERMINATE:
+                  solverstatus = SolverStatus::kTerminate;
+                  break;
+#endif
                case SCIP_STATUS_INFORUNBD:
                   solverstatus = SolverStatus::kInfeasibleOrUnbounded;
                   break;

@@ -58,11 +58,13 @@ enum class SolverStatus : int {
 
    kRestartLimit = 14,
 
-   kInterrupt = 15,
+   kTerminate = 15,
 
    kStallNodeLimit = 16,
 
    kTotalNodeLimit = 17,
+
+   kInterrupt = 15,
 
 };
 
@@ -113,6 +115,9 @@ std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
          val = "memlimit";
          break;
       case SolverStatus::kInterrupt:
+         val = "Interrupt";
+         break;
+      case SolverStatus::kTerminate:
          val = "Interrupt";
          break;
       case SolverStatus::kRestartLimit:
