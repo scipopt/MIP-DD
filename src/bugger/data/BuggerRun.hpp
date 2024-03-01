@@ -147,7 +147,7 @@ namespace bugger {
                   if( results[ module ] == bugger::ModulStatus::kSuccessful )
                   {
                      success = module;
-                     final_result = modules[ module ]->getLastFail( );
+                     final_result = modules[ module ]->getFinalResult( );
                   }
                   else if( success == module )
                   {
@@ -316,9 +316,7 @@ namespace bugger {
             module->printStats(msg);
             nsolves += module->getNSolves();
          }
-         msg.info("\nFinal solve returned code {} with status {}.", (int) final_result
-         .first, final_result
-         .second);
+         msg.info("\nFinal solve returned code {} with status {}.", (int) final_result.first, final_result.second);
          fmt::print( "\nbugging took {:.3f} seconds with {} solver invocations", time, nsolves );
          if( parameters.mode != 1 )
             msg.info(" (excluding original solve)");
