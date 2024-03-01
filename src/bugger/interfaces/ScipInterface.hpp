@@ -519,8 +519,8 @@ namespace bugger {
                case SCIP_STATUS_PRIMALLIMIT:
                   solverstatus = SolverStatus::kPrimalLimit;
                   break;
-                  case SCIP_STATUS_DUALLIMIT:
-                     solverstatus = SolverStatus::kDualLimit;
+               case SCIP_STATUS_DUALLIMIT:
+                  solverstatus = SolverStatus::kDualLimit;
                   break;
 #endif
                case SCIP_STATUS_RESTARTLIMIT:
@@ -529,7 +529,7 @@ namespace bugger {
                case SCIP_STATUS_USERINTERRUPT:
                   solverstatus = SolverStatus::kInterrupt;
                   break;
-#if SCIP_VERSION_MAJOR >= 6
+#if SCIP_VERSION_API >= 22
                case SCIP_STATUS_TERMINATE:
                   solverstatus = SolverStatus::kTerminate;
                   break;

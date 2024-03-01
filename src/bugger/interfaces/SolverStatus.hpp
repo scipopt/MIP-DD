@@ -109,7 +109,7 @@ std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
          val = "totalnodelimit";
          break;
       case SolverStatus::kStallNodeLimit:
-         val = "stalltotalnodelimit";
+         val = "stallnodelimit";
          break;
       case SolverStatus::kMemLimit:
          val = "memlimit";
