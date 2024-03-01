@@ -130,8 +130,10 @@ std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
          val = "sollimit";
          break;
       case SolverStatus::kUnknown:
+         val = "unknown";
+         break;
       default:
-         val = "UNKNOWN (ERROR)";
+         val = "Error";
          break;
    }
    return out << val;
