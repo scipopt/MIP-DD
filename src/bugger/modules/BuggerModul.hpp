@@ -121,7 +121,7 @@ namespace bugger {
 
       ModulStatus
       run(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution, const Timer& timer) {
-         final_result = { 0, SolverStatus::kOptimal};
+         final_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
          if( !enabled )
             return ModulStatus::kDidNotRun;
 
