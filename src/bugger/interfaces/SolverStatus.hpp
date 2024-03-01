@@ -50,6 +50,20 @@ enum class SolverStatus : int {
 
    kDualLimit = 10,
 
+   kMemLimit = 11,
+
+   kSolLimit = 12,
+
+   kBestSolLimit = 13,
+
+   kRestartLimit = 14,
+
+   kInterrupt = 15,
+
+   kStallNodeLimit = 16,
+
+   kTotalNodeLimit = 17,
+
 };
 
 std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
@@ -88,6 +102,27 @@ std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
          break;
       case SolverStatus::kUndefinedError:
          val = "ERROR";
+         break;
+      case SolverStatus::kTotalNodeLimit:
+         val = "totalnodelimit";
+         break;
+      case SolverStatus::kStallNodeLimit:
+         val = "stalltotalnodelimit";
+         break;
+      case SolverStatus::kMemLimit:
+         val = "memlimit";
+         break;
+      case SolverStatus::kInterrupt:
+         val = "Interrupt";
+         break;
+      case SolverStatus::kRestartLimit:
+         val = "restartlimit";
+         break;
+      case SolverStatus::kBestSolLimit:
+         val = "bestsollimit";
+         break;
+      case SolverStatus::kSolLimit:
+         val = "sollimit";
          break;
       case SolverStatus::kUnknown:
       default:

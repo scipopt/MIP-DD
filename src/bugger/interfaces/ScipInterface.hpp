@@ -491,7 +491,11 @@ namespace bugger {
                   solverstatus = SolverStatus::kUnknown;
                   break;
                case SCIP_STATUS_TOTALNODELIMIT:
+                  solverstatus = SolverStatus::kTotalNodeLimit;
+                  break;
                case SCIP_STATUS_STALLNODELIMIT:
+                  solverstatus = SolverStatus::kStallNodeLimit;
+                  break;
                case SCIP_STATUS_NODELIMIT:
                   solverstatus = SolverStatus::kNodeLimit;
                   break;
@@ -501,15 +505,23 @@ namespace bugger {
                case SCIP_STATUS_GAPLIMIT:
                   solverstatus = SolverStatus::kGapLimit;
                   break;
-               case SCIP_STATUS_USERINTERRUPT:
                case SCIP_STATUS_MEMLIMIT:
+                  solverstatus = SolverStatus::kMemLimit;
+                  break;
                case SCIP_STATUS_SOLLIMIT:
+                  solverstatus = SolverStatus::kSolLimit;
+                  break;
                case SCIP_STATUS_BESTSOLLIMIT:
+                  solverstatus = SolverStatus::kBestSolLimit;
+                  break;
                case SCIP_STATUS_RESTARTLIMIT:
+                  solverstatus = SolverStatus::kRestartLimit;
+                  break;
+               case SCIP_STATUS_USERINTERRUPT:
 #if SCIP_VERSION_MAJOR >= 6
                case SCIP_STATUS_TERMINATE:
 #endif
-                  solverstatus = SolverStatus::kLimit;
+                  solverstatus = SolverStatus::kInterrupt;
                   break;
                case SCIP_STATUS_INFORUNBD:
                   solverstatus = SolverStatus::kInfeasibleOrUnbounded;
