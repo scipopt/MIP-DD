@@ -514,6 +514,15 @@ namespace bugger {
                case SCIP_STATUS_BESTSOLLIMIT:
                   solverstatus = SolverStatus::kBestSolLimit;
                   break;
+                  //TODO: add final names of the primal and dual limit with correct api version
+#if SCIP_VERSION_API >= 115
+               case SCIP_STATUS_PRIMALLIMIT:
+                  solverstatus = SolverStatus::kPrimalLimit;
+                  break;
+                  case SCIP_STATUS_DUALLIMIT:
+                     solverstatus = SolverStatus::kDualLimit;
+                  break;
+#endif
                case SCIP_STATUS_RESTARTLIMIT:
                   solverstatus = SolverStatus::kRestartLimit;
                   break;
