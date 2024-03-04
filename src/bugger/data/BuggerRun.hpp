@@ -321,9 +321,9 @@ namespace bugger {
             module->printStats(msg);
             nsolves += module->getNSolves();
          }
-         if( round_of_final_result == -1 && stage_of_final_result == -1)
+         if( round_of_final_result == -1 && stage_of_final_result == -1 )
          {
-            assert(final_result.second == SolverStatus::kUnknown);
+            assert(parameters.mode != 1 || ( final_result.first == SolverInterface::OKAY && final_result.second == SolverStatus::kUnknown ));
             msg.info("\nNo reductions found by the bugger!");
          }
          else
