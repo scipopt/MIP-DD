@@ -113,8 +113,8 @@ namespace bugger {
          int stage_of_final_result = -1;
          if( parameters.mode != 1 )
          {
-            auto pair = getOriginalSolveStatus(settings, problem, solution, factory);
-            msg.info("Original solve returned code {} with status {}.\n\n", (int) pair.first, pair.second);
+            final_result = getOriginalSolveStatus(settings, problem, solution, factory);
+            msg.info("Original solve returned code {} with status {}.\n\n", (int)final_result.first, final_result.second);
             if( parameters.mode == 0 )
                return;
          }
