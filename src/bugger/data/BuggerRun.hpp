@@ -327,7 +327,7 @@ namespace bugger {
             msg.info("\nNo reductions found by the bugger!");
          }
          else
-            msg.info("\nFinal solve returned code {} with status {} in round {} at stage {}.", (int) final_result.first, final_result.second, final_round, final_stage);
+            msg.info("\nFinal solve returned code {} with status {} in round {} at stage {}.", (int) final_result.first, final_result.second, final_round+1, final_stage+1);
          fmt::print( "\nbugging took {:.3f} seconds with {} solver invocations", time, nsolves );
          if( parameters.mode != 1 )
             msg.info(" (excluding original solve)");
