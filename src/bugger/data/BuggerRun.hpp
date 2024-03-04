@@ -108,19 +108,21 @@ namespace bugger {
          }
 
          check_feasibility_of_solution(problem, solution);
+         std::pair<char, SolverStatus> final_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
          if( parameters.mode != 1 )
          {
-            printOriginalSolveStatus(settings, problem, solution, factory);
+            auto pair = getOriginalSolveStatus(settings, problem, solution, factory);
+            msg.info("Original solve returned code {} with status {}.\n\n", (int) pair.first, pair.second);
             if( parameters.mode == 0 )
                return;
          }
 
          int ending = optionsInfo.problem_file.rfind('.');
-         if( optionsInfo.problem_file.substr(ending+1) == "gz" || optionsInfo.problem_file.substr(ending+1) == "bz2" )
+         if( optionsInfo.problem_file.substr(ending + 1) == "gz" ||
+             optionsInfo.problem_file.substr(ending + 1) == "bz2" )
             ending = optionsInfo.problem_file.rfind('.', ending-1);
          std::string filename = optionsInfo.problem_file.substr(0, ending) + "_";
 
-         std::pair<char, SolverStatus> final_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
          double time = 0.0;
          {
             Timer timer(time);
@@ -284,14 +286,13 @@ namespace bugger {
          msg.info("\n\n");
       }
 
-      void
-      printOriginalSolveStatus(const SolverSettings& settings, const Problem<double>& problem, Solution<double>& solution, const std::shared_ptr<SolverFactory>& factory) {
+      std::pair<char, SolverStatus>
+      getOriginalSolveStatus(const SolverSettings& settings, const Problem<double>& problem, Solution<double>& solution, const std::shared_ptr<SolverFactory>& factory) {
 
          auto solver = factory->create_solver(msg);
          solver->doSetUp(settings, problem, solution);
          Vec<int> empty_passcodes{};
-         const std::pair<char, SolverStatus> &pair = solver->solve(empty_passcodes);
-         msg.info("Original solve returned code {} with status {}.\n\n", (int) pair.first, pair.second);
+         return solver->solve(empty_passcodes);
       }
 
       bugger::ModulStatus
