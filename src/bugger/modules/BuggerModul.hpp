@@ -138,9 +138,8 @@ namespace bugger {
          auto duration = end - start;
          execTime = execTime + duration.seconds( );
 #else
-         auto end = std::chrono::steady_clock::now();
-         execTime = execTime + std::chrono::duration_cast<std::chrono::milliseconds>(
-                                   end- start ).count()/1000.0;
+         auto end = std::chrono::steady_clock::now( );
+         execTime = execTime + std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count( ) / 1000.0;
 #endif
          msg.info("module {} finished\n", name);
          return result;
