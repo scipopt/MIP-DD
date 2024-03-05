@@ -80,8 +80,9 @@ print_header()
                BOOST_VERSION_NUMBER_MAJOR( BOOST_VERSION ) );
 #endif
 
+#ifdef BUGGER_TBB
    fmt::print( "  TBB            \t Thread building block https://github.com/oneapi-src/oneTBB developed by Intel\n" );
-   
+#endif
    fmt::print( "\n" );
 }
 
