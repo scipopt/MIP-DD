@@ -76,9 +76,9 @@ target_include_directories(bugger INTERFACE
    ${GMP_INCLUDE_DIRS}
    )
 
-option(TBB "should TBB be linked if found" ON)
+option(TBB "should TBB be linked if found" OFF)
 
-set(BUGGER_TBB on)
+set(BUGGER_TBB off)
 # on windows we don't want to build tbb
 if(WIN32)
    find_package(TBB 2018 COMPONENTS tbb tbbmalloc REQUIRED)
@@ -101,7 +101,7 @@ target_link_libraries(bugger
 find_package(Threads REQUIRED)
 
 
-target_link_libraries(bugger INTERFACE  ${GMP_LIBRARIES} ${GLOP_LIBRARIES})
+target_link_libraries(bugger INTERFACE  ${GMP_LIBRARIES})
 
 # on raspberry pi, we need to link libatomic, as libtbbmalloc_proxy depends on it
 if((CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "armv7l") AND (CMAKE_SYSTEM_NAME STREQUAL "Linux"))
@@ -119,11 +119,9 @@ write_basic_package_version_file(
 if(MSVC)
    target_compile_definitions(bugger INTERFACE BOOST_ALL_NO_LIB)
    target_compile_options(bugger INTERFACE /bigobj)
-   target_compile_options(bugger
-      INTERFACE ${TBB_CXX_STD_FLAG})
+   target_compile_options(bugger INTERFACE ${TBB_CXX_STD_FLAG})
 else()
-   target_compile_options(bugger
-      INTERFACE ${TBB_CXX_STD_FLAG} -Wno-shadow)
+   target_compile_options(bugger INTERFACE ${TBB_CXX_STD_FLAG} -Wno-shadow)
 endif()
 
 include(CheckCXXSourceCompiles)

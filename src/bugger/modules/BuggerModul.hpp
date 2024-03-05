@@ -129,19 +129,17 @@ namespace bugger {
          auto start = std::chrono::steady_clock::now();
 #endif
          ModulStatus result = execute(settings, problem, solution);
-#ifdef BUGGER_TBB
          if( result == ModulStatus::kSuccessful )
             nsuccessCall++;
          if ( result != ModulStatus::kDidNotRun && result != ModulStatus::kNotAdmissible )
             ncalls++;
-
+#ifdef BUGGER_TBB
          auto end = tbb::tick_count::now( );
          auto duration = end - start;
          execTime = execTime + duration.seconds( );
 #else
-         auto end = std::chrono::steady_clock::now();
-         execTime = execTime + std::chrono::duration_cast<std::chrono::milliseconds>(
-                                   end- start ).count()/1000;
+         auto end = std::chrono::steady_clock::now( );
+         execTime = execTime + std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count( ) / 1000.0;
 #endif
          msg.info("module {} finished\n", name);
          return result;
