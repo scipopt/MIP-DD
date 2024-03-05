@@ -109,8 +109,8 @@ namespace bugger {
 
          check_feasibility_of_solution(problem, solution);
          std::pair<char, SolverStatus> final_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
-         int round_of_final_result = -1;
-         int stage_of_final_result = -1;
+         int final_round = -1;
+         std::string final_module = "";
          if( parameters.mode != 1 )
          {
             final_result = getOriginalSolveStatus(settings, problem, solution, factory);
@@ -152,8 +152,8 @@ namespace bugger {
                   {
                      success = module;
                      final_result = modules[ module ]->getFinalResult( );
-                     round_of_final_result = round;
-                     stage_of_final_result = stage;
+                     final_round = round;
+                     final_module = modules[ module ]->getName( );
                   }
                   else if( success == module )
                   {
@@ -166,7 +166,7 @@ namespace bugger {
 
             assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModulStatus::kSuccessful );
          }
-         printStats( time, final_result, round_of_final_result, stage_of_final_result );
+         printStats(time, final_result, final_round, final_module );
       }
 
    private:
@@ -311,7 +311,7 @@ namespace bugger {
       }
 
       void
-      printStats(const double& time, const std::pair<char, SolverStatus>& final_result, int final_round, int final_stage) {
+      printStats(const double& time, const std::pair<char, SolverStatus>& final_result, int final_round, const std::string& final_module) {
 
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n", "modules",
                   "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
@@ -321,13 +321,13 @@ namespace bugger {
             module->printStats(msg);
             nsolves += module->getNSolves();
          }
-         if( final_round == -1 && final_stage == -1 )
+         if( final_round == -1 )
          {
             assert(parameters.mode != 1 || ( final_result.first == SolverInterface::OKAY && final_result.second == SolverStatus::kUnknown ));
             msg.info("\nNo reductions found by the bugger!");
          }
          else
-            msg.info("\nFinal solve returned code {} with status {} in round {} at stage {}.", (int) final_result.first, final_result.second, final_round+1, final_stage+1);
+            msg.info("\nFinal solve returned code {} with status {} in round {} at module {}.", (int) final_result.first, final_result.second, final_round + 1, final_module);
          fmt::print( "\nbugging took {:.3f} seconds with {} solver invocations", time, nsolves );
          if( parameters.mode != 1 )
             msg.info(" (excluding original solve)");

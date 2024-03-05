@@ -133,6 +133,7 @@ std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
          val = "unknown";
          break;
       default:
+         assert(false);
          val = "Error";
          break;
    }
