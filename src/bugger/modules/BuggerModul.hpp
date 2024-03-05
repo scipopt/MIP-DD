@@ -76,20 +76,9 @@ namespace bugger {
 
       BuggerModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
                   std::shared_ptr<SolverFactory>& _factory) : msg(_msg), num(_num), parameters(_parameters),
-                  factory(_factory) {
-         ncalls = 0;
-         nsuccessCall = 0;
-         name = "unnamed";
-         execTime = 0.0;
-         enabled = true;
-         nchgcoefs = 0;
-         nfixedvars = 0;
-         nchgsides = 0;
-         naggrvars = 0;
-         nchgsettings = 0;
-         ndeletedrows = 0;
-         nsolves = 0;
-         final_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
+                  factory(_factory), ncalls(0), nsuccessCall(0), name("unnamed"), execTime(0), enabled(true),
+                  nchgcoefs(0), nfixedvars(0), nchgsides(0), naggrvars(0), nchgsettings(0), ndeletedrows(0), nsolves(0),
+                  final_result({ SolverInterface::OKAY, SolverStatus::kUnknown }){
       }
 
       virtual ~BuggerModul( ) = default;
