@@ -93,7 +93,7 @@ enum class SolverStatus : int {
 
 };
 
-using SolverStatusCheck = EnumCheck<SolverStatus,
+using SolverStatusCheck = EnumCheck< SolverStatus,
       SolverStatus::kUndefinedError,
       SolverStatus::kUnknown,
       SolverStatus::kOptimal,
