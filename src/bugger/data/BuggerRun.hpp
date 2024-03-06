@@ -110,7 +110,7 @@ namespace bugger {
          check_feasibility_of_solution(problem, solution);
          std::pair<char, SolverStatus> final_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
          int final_round = -1;
-         std::string final_module = "";
+         int final_module = -1;
          if( parameters.mode != 1 )
          {
             final_result = getOriginalSolveStatus(settings, problem, solution, factory);
