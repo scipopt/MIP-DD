@@ -47,8 +47,6 @@ public:
    }
 };
 
-
-
 enum class SolverStatus : int {
 
    kUndefinedError = -1,
