@@ -421,9 +421,10 @@ namespace bugger {
 
             if( parameters.mode == -1 )
             {
-               // declare primal solution and bound
-               Solution<double> solution;
-               double bound;
+               // declare primal solution
+               Vec<Solution<double>> solution;
+               SCIP_SOL** sols = SCIPgetSols(scip);
+               int nsols = SCIPgetNSols(scip);
 
                // check dual by reference solution objective
                if( retcode == OKAY )
@@ -432,44 +433,45 @@ namespace bugger {
                // check primal by generated solution values
                if( retcode == OKAY )
                {
-                  SCIP_SOL** sols = SCIPgetSols(scip);
-                  int nsols = SCIPgetNSols(scip);
-
-                  if( nsols >= 1 )
+                  if( nsols >= 0 )
                   {
-                     solution.status = SolutionStatus::kFeasible;
-                     solution.primal.resize(vars.size());
+                     solution.resize(nsols);
 
-                     for( int i = nsols - 1; i >= 0 && retcode == OKAY; --i )
+                     for( int i = solution.size() - 1; i >= 0; --i )
                      {
-                        for( int col = 0; col < solution.primal.size(); ++col )
-                           solution.primal[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetSolVal(scip, sols[i], vars[col]);
+                        solution[i].status = SolutionStatus::kFeasible;
+                        solution[i].primal.resize(vars.size());
 
-                        if( i <= 0 && SCIPhasPrimalRay(scip) )
-                        {
-                           solution.status = SolutionStatus::kUnbounded;
-                           solution.ray.resize(vars.size());
-
-                           for( int col = 0; col < solution.ray.size(); ++col )
-                              solution.ray[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetPrimalRayVal(scip, vars[col]);
-                        }
-
-                        retcode = check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
+                        for( int col = 0; col < solution[i].primal.size(); ++col )
+                           solution[i].primal[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetSolVal(scip, sols[i], vars[col]);
                      }
-                  }
-                  else
-                  {
-                     solution.status = SolutionStatus::kInfeasible;
+
+                     if( solution.size() >= 1 && SCIPhasPrimalRay(scip) )
+                     {
+                        solution[0].status = SolutionStatus::kUnbounded;
+                        solution[0].ray.resize(vars.size());
+
+                        for( int col = 0; col < solution[0].ray.size(); ++col )
+                           solution[0].ray[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetPrimalRayVal(scip, vars[col]);
+                     }
+
                      retcode = check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
                   }
-
-                  // check solution objective instead of primal bound if no ray is provided
-                  bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
+                  else
+                     retcode = PRIMALFAIL;
                }
 
                // check objective by best solution evaluation
                if( retcode == OKAY )
-                  retcode = check_objective_value( bound, solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
+               {
+                  // check solution objective instead of primal bound if no ray is provided
+                  double bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
+
+                  if( solution.size() == 0 )
+                     solution.emplace_back(SolutionStatus::kInfeasible);
+
+                  retcode = check_objective_value( bound, solution[0], SCIPsumepsilon(scip), SCIPinfinity(scip) );
+               }
             }
             else
             {
