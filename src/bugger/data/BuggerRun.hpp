@@ -153,7 +153,7 @@ namespace bugger {
                      success = module;
                      final_result = modules[ module ]->getFinalResult( );
                      final_round = round;
-                     final_module = modules[ module ]->getName( );
+                     final_module = module;
                   }
                   else if( success == module )
                   {
