@@ -23,6 +23,31 @@
 #ifndef __BUGGER_INTERFACES_SOLVERSTATUS_HPP__
 #define __BUGGER_INTERFACES_SOLVERSTATUS_HPP__
 
+template<typename EnumType, EnumType... Values>
+class EnumCheck;
+
+template<typename EnumType>
+class EnumCheck<EnumType>
+{
+public:
+   template<typename IntType>
+   static bool constexpr is_value(IntType) { return false; }
+};
+
+template<typename EnumType, EnumType V, EnumType... Next>
+class EnumCheck<EnumType, V, Next...> : private EnumCheck<EnumType, Next...>
+{
+   using super = EnumCheck<EnumType, Next...>;
+
+public:
+   template<typename IntType>
+   static bool constexpr is_value(IntType v)
+   {
+      return v == static_cast<IntType>(V) || super::is_value(v);
+   }
+};
+
+
 
 enum class SolverStatus : int {
 
@@ -67,6 +92,28 @@ enum class SolverStatus : int {
    kInterrupt = 18,
 
 };
+
+using SolverStatusCheck = EnumCheck<SolverStatus,
+      SolverStatus::kUndefinedError,
+      SolverStatus::kUnknown,
+      SolverStatus::kOptimal,
+      SolverStatus::kInfeasible,
+      SolverStatus::kInfeasibleOrUnbounded,
+      SolverStatus::kUnbounded,
+      SolverStatus::kLimit,
+      SolverStatus::kNodeLimit,
+      SolverStatus::kTimeLimit,
+      SolverStatus::kGapLimit,
+      SolverStatus::kPrimalLimit,
+      SolverStatus::kDualLimit,
+      SolverStatus::kMemLimit,
+      SolverStatus::kSolLimit,
+      SolverStatus::kBestSolLimit,
+      SolverStatus::kRestartLimit,
+      SolverStatus::kTerminate,
+      SolverStatus::kStallNodeLimit,
+      SolverStatus::kTotalNodeLimit,
+      SolverStatus::kInterrupt >;
 
 std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
    std::string val;
@@ -133,6 +180,7 @@ std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
          val = "unknown";
          break;
       default:
+         // the function call_solver should ensure that only known status are processed
          assert(false);
          val = "Error";
          break;

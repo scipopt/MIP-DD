@@ -199,6 +199,12 @@ namespace bugger {
          if( !parameters.debug_filename.empty( ) )
             solver->writeInstance(parameters.debug_filename, true);
          std::pair<char, SolverStatus> result = solver->solve(parameters.passcodes);
+         if (!SolverStatusCheck::is_value(result.second))
+         {
+            msg.error("Error: Solver returned unknown SolverStatus {}\n", (int) result.second);
+            result.second = SolverStatus::kUndefinedError;
+            return BuggerStatus::kError;
+         }
          if( result.first == SolverInterface::OKAY )
          {
             msg.info("\tOkay  - Status {}\n", result.second);
