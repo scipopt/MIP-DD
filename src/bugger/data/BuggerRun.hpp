@@ -311,7 +311,7 @@ namespace bugger {
       }
 
       void
-      printStats(const double& time, const std::pair<char, SolverStatus>& final_result, int final_round, const std::string& final_module) {
+      printStats(const double& time, const std::pair<char, SolverStatus>& final_result, int final_round, int final_module) {
 
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n", "modules",
                   "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
