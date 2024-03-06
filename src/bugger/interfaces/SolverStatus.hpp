@@ -180,7 +180,7 @@ std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
          val = "unknown";
          break;
       default:
-         // the function call_solver should ensure that only known status are processed
+         // the function call_solver should ensure that only a known status is processed
          assert(false);
          val = "Error";
          break;
