@@ -77,7 +77,6 @@ namespace bugger {
       BuggerModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
                   std::shared_ptr<SolverFactory>& _factory) : msg(_msg), num(_num), parameters(_parameters),
                   factory(_factory) { }
-      }
 
       virtual ~BuggerModul( ) = default;
 
