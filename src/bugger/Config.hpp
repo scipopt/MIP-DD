@@ -23,20 +23,6 @@
 #ifndef __BUGGER_CONFIG_HPP__
 #define __BUGGER_CONFIG_HPP__
 
-#ifndef BUGGER_NO_CMAKE_CONFIG
-
 #include "bugger/CMakeConfig.hpp"
-
-#else
-
-#define BUGGER_VERSION_MAJOR 2
-#define BUGGER_VERSION_MINOR 1
-#define BUGGER_VERSION_PATCH 3
-#define BUGGER_VERSION_TWEAK 0
-
-#undef BUGGER_GITHASH_AVAILABLE
-#undef BUGGER_GITHASH
-
-#endif
 
 #endif

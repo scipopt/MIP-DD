@@ -44,7 +44,7 @@ print_header()
 #ifndef NDEBUG
    mode = "debug";
 #endif
-   fmt::print( "Bugger version {}.{}.{} ", BUGGER_VERSION_MAJOR, BUGGER_VERSION_MINOR, BUGGER_VERSION_PATCH);
+   fmt::print( "MIP-Bugger version {}.{}.{} ", BUGGER_VERSION_MAJOR, BUGGER_VERSION_MINOR, BUGGER_VERSION_PATCH);
 
    #if defined(__INTEL_COMPILER)
    fmt::print("[Compiler: Intel {}]", __INTEL_COMPILER);
