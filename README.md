@@ -22,6 +22,7 @@ cd build
 cmake .. -DSCIP_DIR=PATH_TO_SCIP_BUILD_DIR
 make
 ```
+It is recommended to build the solver in optimized mode since the MIP-bugger can currently not handling assertions and accelerates the solving process.  
 For information on building SCIP please refer to https://scipopt.org/.
 
 # Usage
