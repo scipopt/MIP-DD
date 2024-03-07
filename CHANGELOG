@@ -24,4 +24,4 @@ Fixed bugs
 
 Features
 --------
-TBD
+- provides delta debugging for mixed integer programming solvers
