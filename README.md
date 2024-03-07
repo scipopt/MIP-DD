@@ -76,4 +76,4 @@ Paper will be published soon
 
 [Alexander Hoen](https://www.zib.de/members/hoen)  ([@alexhoen](https://github.com/alexhoen)) &mdash; developer
 
-[Dominik Kamp](https://www.wm.uni-bayreuth.de/de/team/kamp_dominik/index.php) ([@TBD](https://github.com/TBD)) &mdash; developer
+[Dominik Kamp](https://www.wm.uni-bayreuth.de/de/team/kamp_dominik/index.php) ([@DominikKamp](https://github.com/DominikKamp)) &mdash; developer
