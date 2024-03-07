@@ -492,25 +492,49 @@ namespace bugger {
                case SCIP_STATUS_UNKNOWN:
                   solverstatus = SolverStatus::kUnknown;
                   break;
-               case SCIP_STATUS_USERINTERRUPT:
-               case SCIP_STATUS_NODELIMIT:
                case SCIP_STATUS_TOTALNODELIMIT:
-               case SCIP_STATUS_STALLNODELIMIT:
-               case SCIP_STATUS_TIMELIMIT:
-               case SCIP_STATUS_MEMLIMIT:
-               case SCIP_STATUS_GAPLIMIT:
-#if SCIP_VERSION >= 910
-               case SCIP_STATUS_PRIMALLIMIT:
-               case SCIP_STATUS_DUALLIMIT:
-#endif
-               case SCIP_STATUS_SOLLIMIT:
-               case SCIP_STATUS_BESTSOLLIMIT:
-               case SCIP_STATUS_RESTARTLIMIT:
-#if SCIP_VERSION_MAJOR >= 6
-               case SCIP_STATUS_TERMINATE:
-#endif
-                  solverstatus = SolverStatus::kLimit;
+                  solverstatus = SolverStatus::kTotalNodeLimit;
                   break;
+               case SCIP_STATUS_STALLNODELIMIT:
+                  solverstatus = SolverStatus::kStallNodeLimit;
+                  break;
+               case SCIP_STATUS_NODELIMIT:
+                  solverstatus = SolverStatus::kNodeLimit;
+                  break;
+               case SCIP_STATUS_TIMELIMIT:
+                  solverstatus = SolverStatus::kTimeLimit;
+                  break;
+               case SCIP_STATUS_GAPLIMIT:
+                  solverstatus = SolverStatus::kGapLimit;
+                  break;
+               case SCIP_STATUS_MEMLIMIT:
+                  solverstatus = SolverStatus::kMemLimit;
+                  break;
+               case SCIP_STATUS_SOLLIMIT:
+                  solverstatus = SolverStatus::kSolLimit;
+                  break;
+               case SCIP_STATUS_BESTSOLLIMIT:
+                  solverstatus = SolverStatus::kBestSolLimit;
+                  break;
+#if SCIP_VERSION_API >= 115
+               case SCIP_STATUS_PRIMALLIMIT:
+                  solverstatus = SolverStatus::kPrimalLimit;
+                  break;
+               case SCIP_STATUS_DUALLIMIT:
+                  solverstatus = SolverStatus::kDualLimit;
+                  break;
+#endif
+               case SCIP_STATUS_RESTARTLIMIT:
+                  solverstatus = SolverStatus::kRestartLimit;
+                  break;
+               case SCIP_STATUS_USERINTERRUPT:
+                  solverstatus = SolverStatus::kInterrupt;
+                  break;
+#if SCIP_VERSION_API >= 22
+               case SCIP_STATUS_TERMINATE:
+                  solverstatus = SolverStatus::kTerminate;
+                  break;
+#endif
                case SCIP_STATUS_INFORUNBD:
                   solverstatus = SolverStatus::kInfeasibleOrUnbounded;
                   break;

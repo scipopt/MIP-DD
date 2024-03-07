@@ -36,10 +36,12 @@ namespace bugger {
 
    public:
 
-      static const char OKAY = 0;
-      static const char DUALFAIL = 1;
-      static const char PRIMALFAIL = 2;
-      static const char OBJECTIVEFAIL = 3;
+      enum Retcode : char {
+         OKAY          = 0,
+         DUALFAIL      = 1,
+         PRIMALFAIL    = 2,
+         OBJECTIVEFAIL = 3
+      };
 
    protected:
 
