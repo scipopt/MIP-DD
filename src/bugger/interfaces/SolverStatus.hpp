@@ -160,7 +160,7 @@ std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
          val = "memlimit";
          break;
       case SolverStatus::kInterrupt:
-         val = "Interrupt";
+         val = "interrupt";
          break;
       case SolverStatus::kTerminate:
          val = "Terminate";
