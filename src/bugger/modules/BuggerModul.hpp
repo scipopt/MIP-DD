@@ -51,11 +51,11 @@ namespace bugger {
 
    private:
 
-      std::string name;
-      double execTime;
-      bool enabled;
-      unsigned int ncalls;
-      unsigned int nsuccessCall;
+      std::string name { };
+      double execTime = 0.0;
+      bool enabled = true;
+      unsigned int ncalls = 0;
+      unsigned int nsuccessCall = 0;
 
    protected:
 
@@ -63,22 +63,20 @@ namespace bugger {
       const Num<double>& num;
       const BuggerParameters& parameters;
       std::shared_ptr<SolverFactory> factory;
-      int nchgcoefs;
-      int nfixedvars;
-      int nchgsides;
-      int naggrvars;
-      int nchgsettings;
-      int ndeletedrows;
-      std::pair<char, SolverStatus> final_result;
-      int nsolves;
+      int nchgcoefs = 0;
+      int nfixedvars = 0;
+      int nchgsides = 0;
+      int naggrvars = 0;
+      int nchgsettings = 0;
+      int ndeletedrows = 0;
+      int nsolves = 0;
+      std::pair<char, SolverStatus> final_result { SolverInterface::OKAY, SolverStatus::kUnknown };
 
    public:
 
       BuggerModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
                   std::shared_ptr<SolverFactory>& _factory) : msg(_msg), num(_num), parameters(_parameters),
-                  factory(_factory), ncalls(0), nsuccessCall(0), name("unnamed"), execTime(0), enabled(true),
-                  nchgcoefs(0), nfixedvars(0), nchgsides(0), naggrvars(0), nchgsettings(0), ndeletedrows(0), nsolves(0),
-                  final_result({ SolverInterface::OKAY, SolverStatus::kUnknown }){
+                  factory(_factory) { }
       }
 
       virtual ~BuggerModul( ) = default;
