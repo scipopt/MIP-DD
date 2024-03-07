@@ -198,7 +198,7 @@ namespace bugger {
          std::pair<char, SolverStatus> result = solver->solve(parameters.passcodes);
          if( !SolverStatusCheck::is_value(result.second) )
          {
-            msg.error("Error: Solver returned unknown SolverStatus {}\n", (int) result.second);
+            msg.error("Error: Solver returned unknown status {}\n", (int) result.second);
             result.second = SolverStatus::kUndefinedError;
             return BuggerStatus::kError;
          }
