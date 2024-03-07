@@ -24,4 +24,5 @@ Fixed bugs
 
 Features
 --------
+
 - provides delta debugging for mixed integer programming solvers
