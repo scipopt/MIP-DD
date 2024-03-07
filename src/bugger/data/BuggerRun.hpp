@@ -166,7 +166,7 @@ namespace bugger {
 
             assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModulStatus::kSuccessful );
          }
-         printStats(time, final_result, final_round, final_module );
+         printStats(time, final_result, final_round, final_module);
       }
 
    private:
