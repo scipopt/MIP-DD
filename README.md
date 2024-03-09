@@ -6,7 +6,7 @@ The goal is to systematically reduce the size of input problems and the complexi
 
 The MIP-Bugger is guided by a fixed reference solution and consists of several modules that modify the input problem and settings while preserving the feasibility
 (but not necessarily the optimality) of the reference solution. The modules apply reductions such as deleting constraints, fixing variables to their value in the
-reference solution, deleting coefficients, changing settings, modifying the sides of constraints, deleting objective components, and rounding fractional numbers.
+reference solution, deleting coefficients, changing settings to given target values, modifying the sides of constraints, deleting objective components, and rounding fractional numbers.
 The modules are called in an iterative process similar to MIP-presolving.
 
 # Dependencies
