@@ -11,7 +11,7 @@ The modules are called in an iterative process similar to MIP-presolving.
 
 # Dependencies
 
-External dependencies that need to be installed by the user are boost >= 1.65 headers.
+External dependency that need to be installed by the user is boost >= 1.65.
 
 # Building
 
