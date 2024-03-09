@@ -43,7 +43,7 @@ For example please refer to the PAPER (To be published) or to the example folder
 
 # Parameters
 
-please refer to parameters.txt
+Please refer to parameters.txt for the list of default parameters.
 
 # Integrate a MIP-Solver to MIP-Bugger
 
