@@ -31,7 +31,7 @@ For information on building SCIP please refer to README.md inside the source pac
 
 To run the bugger with parameters on a settings-problem-solution instance with respect to target settings, it can be invoked by
 ```
-bin/bugger -p MIP_BUGGER_PARAMETERS -f PROBLEM -o REFERENCE_SOLUTION -s SOLVER_SETTINGS -t TARGET_SETTINGS
+bin/bugger -p BUGGER_PARAMETERS -f PROBLEM -o SOLUTION -s SOLVER_SETTINGS -t TARGET_SETTINGS
 ```
 
 To accelerate the bugger process we recommend to apply the following tipps:
