@@ -22,7 +22,9 @@ cd build
 cmake .. -DSCIP_DIR=PATH_TO_SCIP_BUILD_DIR
 make
 ```
-It is recommended to build the solver in optimized mode since the MIP-bugger can currently not handling assertions and accelerates the solving process.  
+It is necessary to build the solver in optimized mode since the MIP-Bugger is not designed to handle assertions in order to keep the process performant.
+Nevertheless, it is usually easily possible to handle assertion fails by reformulating the solver to return a suitable error code under the negated assertion condition.
+The MIP-Bugger will then identify the formerly failing assertion as solver error.
 For information on building SCIP please refer to https://scipopt.org/.
 
 # Usage
