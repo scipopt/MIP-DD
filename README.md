@@ -2,7 +2,7 @@ MIP-Bugger - Delta-Debugging of MILP-Solvers
 ========================================
 
 MIP-Bugger, a C++14-based software package, applies Delta Debugging, an automated approach to isolate the cause of a software failure driven by a hypothesis-trial-result loop, to mixed-integer linear programming.
-The goal is to systematically reduce the size of input problems that expose incorrect behavior.
+The goal is to systematically reduce the size of input problems and the complexity of the solving process that expose incorrect behaviour.
 
 The MIP-Bugger is guided by a fixed reference solution and consists of several modules that modify the input problem and settings while preserving the feasibility
 (but not necessarily the optimality) of the reference solution. The modules apply reductions such as deleting constraints, fixing variables to their value in the
