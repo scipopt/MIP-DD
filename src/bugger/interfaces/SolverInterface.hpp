@@ -85,7 +85,7 @@ namespace bugger {
 
       /**
        * solves the instance
-       * @param passcodes disabling certain return codes -> these status are not considered a bug anymore (refer to the return function)
+       * @param passcodes suppress certain codes (referring to the returned values) -> these are not considered as bugs
        * @return a pair<char, SolverStatus>: Negative values in the char are reserved for solver internal errors while the remaining ones are declared in SolverInterface::Retcode. The SolverStatus primarily serves to be printed in the log holding the solution status of the solve, for example infeasible, unbounded, optimal, or specific limits reached.
        */
       virtual
