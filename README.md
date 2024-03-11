@@ -75,7 +75,7 @@ For other licensing options we refer to https://scipopt.org/.
 
 # How to cite
 
-Paper will be published soon
+The paper will be published soon.
 
 # Contributors
 
