@@ -39,7 +39,7 @@ Before running the MIP-Bugger we recommend to regard the following hints to obta
 * Add reasonable limits within the bug is reproduced to the original and target settings. This way, reductions for which the bug would be reproduced beyond the limits will be blocked. Usually, this accelerates the process and favours easy instances.
 * Define the number of bugger batches. The more batches, the smaller the changes in each test run, and the more likely the bug is maintained. In practice, it should be set to increasing values for decreasing runtimes until the bug is reproduced.
 
-For example please refer to the PAPER (To be published) or to the example folder.
+For examples please refer to the PAPER (to be published).
 
 # Parameters
 
