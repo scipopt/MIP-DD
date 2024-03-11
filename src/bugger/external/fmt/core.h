@@ -299,14 +299,14 @@ template <typename Char> class basic_string_view {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #endif
-         /**
-           \rst
-           Constructs a string reference object from a C string computing
-           the size with ``std::char_traits<Char>::length``.
-           \endrst
-          */
-         basic_string_view(const Char* s)
-               : data_(s), size_(std::char_traits<Char>::length(s)) {}
+  /**
+    \rst
+    Constructs a string reference object from a C string computing
+    the size with ``std::char_traits<Char>::length``.
+    \endrst
+   */
+  basic_string_view(const Char* s)
+      : data_(s), size_(std::char_traits<Char>::length(s)) {}
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
