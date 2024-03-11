@@ -295,17 +295,21 @@ template <typename Char> class basic_string_view {
         size_(count) {}
 
 //TODO: Update fmt version
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-  /**
-    \rst
-    Constructs a string reference object from a C string computing
-    the size with ``std::char_traits<Char>::length``.
-    \endrst
-   */
-  basic_string_view(const Char* s)
-      : data_(s), size_(std::char_traits<Char>::length(s)) {}
+#endif
+         /**
+           \rst
+           Constructs a string reference object from a C string computing
+           the size with ``std::char_traits<Char>::length``.
+           \endrst
+          */
+         basic_string_view(const Char* s)
+               : data_(s), size_(std::char_traits<Char>::length(s)) {}
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
   /** Constructs a string reference from a ``std::basic_string`` object. */
   template <typename Traits, typename Alloc>
