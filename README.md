@@ -49,7 +49,7 @@ Please refer to parameters.txt for the list of default parameters.
 
 To integrate a solver into the MIP-Bugger's API, a new class has to be created that inherits SolverInterface.
 This SolverInterface interacts with the solver by
-* parsing the settings and instance files as well as loading the data into the internal data structure (`parseSettings`, `readInstance`)
+* parsing the settings and problem files as well as loading the data into the internal data structures (`parseSettings`, `readInstance`)
 * translating and loading the internal settings and problem to the solver (`doSetup`)
 * writing the internal settings and problem to files (`writeInstance`) and
 * solving the problem and checking for bugs (`solve`). The `solve` function returns a pair<char,SolverStatus>. The char is used to encode if the instance could be solved correctly. Negative values are reserved for solver internal erros while 0 means that the problem could be solved correctly, 1 represents a dualfail, 2 a primal fail and 3 an objective fail. The SolverStatus is primarily used to be displayed in the log to provide more information and holds the solve-status for example infeasible, unbounded or timelimit. To deactivate certain passcodes/fail the function has the parameter `passcodes` indicating which char-error codes should be ignored.
