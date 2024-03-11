@@ -37,7 +37,7 @@ bin/bugger -p BUGGER_PARAMETERS -f PROBLEM -o SOLUTION -s SOLVER_SETTINGS -t TAR
 Before running the MIP-Bugger we recommend to regard the following hints to obtain a reasonable workflow:
 * Determine a reference solution that is as feasible as possible. To detect a suboptimality issue, the dual bound claimed by the solver must cut off this solution. For other issues, a reference solution is not required. 
 * Add reasonable limits within the bug is reproduced to the original and target settings. Reductions for which the bug would be reproduced beyond the limits will be blocked. Usually, this accelerates the process and favors easy instances.
-* Select the number of bugger batches. The more batches, the smaller the changes in each test run, and the more likely the bug is maintained. In practice, it should be set to increasing values for decreasing runtimes until the bug is reproduced.
+* Define the number of bugger batches. The more batches, the smaller the changes in each test run, and the more likely the bug is maintained. In practice, it should be set to increasing values for decreasing runtimes until the bug is reproduced.
 
 For example please refer to the PAPER (To be published) or to the example folder.
 
