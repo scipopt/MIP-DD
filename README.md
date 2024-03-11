@@ -48,7 +48,7 @@ Please refer to parameters.txt for the list of default parameters.
 # Integrate a MIP-Solver to MIP-Bugger
 
 To integrate a solver into the MIP-Bugger's API, a new class has to be created that inherits SolverInterface.
-This SolverInterface interacts with the solver by
+This specific SolverInterface interacts with the solver by
 * parsing the settings and problem files as well as loading the data into the internal data structures (`parseSettings`, `readInstance`)
 * translating and loading the internal settings and problem to the solver (`doSetup`)
 * writing the internal settings and problem to files (`writeInstance`) and
