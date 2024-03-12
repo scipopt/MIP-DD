@@ -36,10 +36,12 @@ namespace bugger {
 
    public:
 
-      static const char OKAY = 0;
-      static const char DUALFAIL = 1;
-      static const char PRIMALFAIL = 2;
-      static const char OBJECTIVEFAIL = 3;
+      enum Retcode : char {
+         OKAY          = 0,
+         DUALFAIL      = 1,
+         PRIMALFAIL    = 2,
+         OBJECTIVEFAIL = 3
+      };
 
    protected:
 
@@ -81,6 +83,11 @@ namespace bugger {
       virtual
       void doSetUp(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) = 0;
 
+      /**
+       * solves the instance
+       * @param passcodes suppress certain codes (referring to the returned values) -> these are not considered as bugs
+       * @return a pair<char, SolverStatus>: Negative values in the char are reserved for solver internal errors while the remaining ones are declared in SolverInterface::Retcode. The SolverStatus primarily serves to be printed in the log holding the solution status of the solve, for example infeasible, unbounded, optimal, or specific limits reached.
+       */
       virtual
       std::pair<char, SolverStatus> solve(const Vec<int>& passcodes) = 0;
 
@@ -132,7 +139,10 @@ namespace bugger {
       check_dual_bound(const double& dual, const double& tolerance, const double& infinity)
       {
          if( abs(dual) > infinity )
+         {
+            msg.detailed( "\tDual beyond infinity ({:<3} > {:<3})\n", abs(dual), infinity );
             return DUALFAIL;
+         }
 
          if( reference->status == SolutionStatus::kUnknown )
             return OKAY;
@@ -140,83 +150,106 @@ namespace bugger {
          if( model->getObjective().sense )
          {
             if( dual > relax( value, true, tolerance, infinity ) )
+            {
+               msg.detailed( "\tDual above reference ({:<3} > {:<3})\n", dual, value );
                return DUALFAIL;
+            }
          }
          else
          {
             if( dual < relax( value, false, tolerance, infinity ) )
+            {
+               msg.detailed( "\tDual below reference ({:<3} < {:<3})\n", dual, value );
                return DUALFAIL;
+            }
          }
 
          return OKAY;
       }
 
       char
-      check_primal_solution(const Solution<double>& solution, const double& tolerance, const double& infinity)
+      check_primal_solution(const Vec<Solution<double>>& solution, const double& tolerance, const double& infinity)
       {
-         if( solution.status == SolutionStatus::kUnknown )
-            return OKAY;
-
-         if( solution.status != SolutionStatus::kInfeasible )
+         for( int i = solution.size() - 1; i >= 0; --i )
          {
-            assert(solution.primal.size() == model->getNCols());
+            if( solution[i].status == SolutionStatus::kUnknown )
+               continue;
 
-            for( int col = 0; col < model->getNCols(); ++col )
+            if( solution[i].status != SolutionStatus::kInfeasible )
             {
-               if( model->getColFlags()[col].test( ColFlag::kFixed ) )
-                  continue;
+               assert(solution[i].primal.size() == model->getNCols());
 
-               if( solution.primal[col] < relax( model->getColFlags()[col].test( ColFlag::kLbInf ) ? -infinity : model->getLowerBounds()[col], false, tolerance, infinity )
-                || solution.primal[col] > relax( model->getColFlags()[col].test( ColFlag::kUbInf ) ?  infinity : model->getUpperBounds()[col], true,  tolerance, infinity )
-                || ( model->getColFlags()[col].test( ColFlag::kIntegral ) && abs(solution.primal[col] - rint(solution.primal[col])) > tolerance ) )
-                  return PRIMALFAIL;
+               for( int col = 0; col < model->getNCols(); ++col )
+               {
+                  if( model->getColFlags()[col].test( ColFlag::kFixed ) )
+                     continue;
+
+                  if( solution[i].primal[col] < relax( model->getColFlags()[col].test( ColFlag::kLbInf ) ? -infinity : model->getLowerBounds()[col], false, tolerance, infinity )
+                   || solution[i].primal[col] > relax( model->getColFlags()[col].test( ColFlag::kUbInf ) ?  infinity : model->getUpperBounds()[col], true,  tolerance, infinity )
+                   || ( model->getColFlags()[col].test( ColFlag::kIntegral ) && abs(solution[i].primal[col] - rint(solution[i].primal[col])) > tolerance ) )
+                  {
+                     msg.detailed( "\tColumn {:<3} outside domain (value {:<3}) in solution {:<3}\n", model->getVariableNames()[col], solution[i].primal[col], i );
+                     return PRIMALFAIL;
+                  }
+               }
+
+               for( int row = 0; row < model->getNRows(); ++row )
+               {
+                  if( model->getRowFlags()[row].test( RowFlag::kRedundant ) )
+                     continue;
+
+                  double activity = 0.0;
+                  auto coefficients = model->getConstraintMatrix().getRowCoefficients(row);
+                  for( int j = 0; j < coefficients.getLength(); ++j )
+                     activity += coefficients.getValues()[j] * solution[i].primal[coefficients.getIndices()[j]];
+                  if( ( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < relax( model->getConstraintMatrix().getLeftHandSides()[row],  false, tolerance, infinity ) )
+                   || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity > relax( model->getConstraintMatrix().getRightHandSides()[row], true,  tolerance, infinity ) ) )
+                  {
+                     msg.detailed( "\tRow {:<3} outside range (activity {:<3}) in solution {:<3}\n", model->getConstraintNames()[row], activity, i );
+                     return PRIMALFAIL;
+                  }
+               }
             }
 
-            for( int row = 0; row < model->getNRows(); ++row )
+            if( solution[i].status == SolutionStatus::kUnbounded )
             {
-               if( model->getRowFlags()[row].test( RowFlag::kRedundant ) )
-                  continue;
+               assert(solution[i].ray.size() == model->getNCols());
 
-               double activity = 0.0;
-               auto coefficients = model->getConstraintMatrix().getRowCoefficients(row);
-               for( int i = 0; i < coefficients.getLength(); ++i )
-                  activity += coefficients.getValues()[i] * solution.primal[coefficients.getIndices()[i]];
-               if( ( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < relax( model->getConstraintMatrix().getLeftHandSides()[row],  false, tolerance, infinity ) )
-                || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity > relax( model->getConstraintMatrix().getRightHandSides()[row], true,  tolerance, infinity ) ) )
-                  return PRIMALFAIL;
-            }
-         }
+               double scale = 0.0;
 
-         if( solution.status == SolutionStatus::kUnbounded )
-         {
-            assert(solution.ray.size() == model->getNCols());
+               for( int col = 0; col < model->getNCols(); ++col )
+                  if( !model->getColFlags()[col].test( ColFlag::kFixed ) )
+                     scale = std::max(scale, abs(solution[i].ray[col]));
 
-            double scale = 0.0;
+               scale *= tolerance;
 
-            for( int col = 0; col < model->getNCols(); ++col )
-               if( !model->getColFlags()[col].test( ColFlag::kFixed ) )
-                  scale = std::max(scale, abs(solution.ray[col]));
+               for( int col = 0; col < model->getNCols(); ++col )
+               {
+                  if( !model->getColFlags()[col].test( ColFlag::kFixed )
+                      && ( ( !model->getColFlags()[col].test( ColFlag::kLbInf ) && solution[i].ray[col] < -scale )
+                        || ( !model->getColFlags()[col].test( ColFlag::kUbInf ) && solution[i].ray[col] >  scale ) ) )
+                  {
+                     msg.detailed( "\tColumn {:<3} escaped domain (rayval {:<3}) in solution {:<3}\n", model->getVariableNames()[col], solution[i].ray[col], i );
+                     return PRIMALFAIL;
+                  }
+               }
 
-            scale *= tolerance;
+               for( int row = 0; row < model->getNRows(); ++row )
+               {
+                  if( model->getRowFlags()[row].test( RowFlag::kRedundant ) )
+                     continue;
 
-            for( int col = 0; col < model->getNCols(); ++col )
-               if( !model->getColFlags()[col].test( ColFlag::kFixed )
-                   && ( ( !model->getColFlags()[col].test( ColFlag::kLbInf ) && solution.ray[col] < -scale )
-                     || ( !model->getColFlags()[col].test( ColFlag::kUbInf ) && solution.ray[col] >  scale ) ) )
-                  return PRIMALFAIL;
-
-            for( int row = 0; row < model->getNRows(); ++row )
-            {
-               if( model->getRowFlags()[row].test( RowFlag::kRedundant ) )
-                  continue;
-
-               double activity = 0.0;
-               auto coefficients = model->getConstraintMatrix().getRowCoefficients(row);
-               for( int i = 0; i < coefficients.getLength(); ++i )
-                  activity += coefficients.getValues()[i] * solution.ray[coefficients.getIndices()[i]];
-               if( ( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < -scale )
-                || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity >  scale ) )
-                  return PRIMALFAIL;
+                  double activity = 0.0;
+                  auto coefficients = model->getConstraintMatrix().getRowCoefficients(row);
+                  for( int j = 0; j < coefficients.getLength(); ++j )
+                     activity += coefficients.getValues()[j] * solution[i].ray[coefficients.getIndices()[j]];
+                  if( ( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < -scale )
+                   || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity >  scale ) )
+                  {
+                     msg.detailed( "\tRow {:<3} escaped range (rayact {:<3}) in solution {:<3}\n", model->getConstraintNames()[row], activity, i );
+                     return PRIMALFAIL;
+                  }
+               }
             }
          }
 
@@ -227,7 +260,10 @@ namespace bugger {
       check_objective_value(const double& primal, const Solution<double>& solution, const double& tolerance, const double& infinity)
       {
          if( abs(primal) > infinity )
+         {
+            msg.detailed( "\tPrimal beyond infinity ({:<3} > {:<3})\n", abs(primal), infinity );
             return OBJECTIVEFAIL;
+         }
 
          if( solution.status == SolutionStatus::kUnknown )
             return OKAY;
@@ -272,12 +308,18 @@ namespace bugger {
          if( model->getObjective().sense )
          {
             if( primal < relax( result, false, tolerance, infinity ) )
+            {
+               msg.detailed( "\tPrimal below reference ({:<3} < {:<3})\n", primal, result );
                return OBJECTIVEFAIL;
+            }
          }
          else
          {
             if( primal > relax( result, true, tolerance, infinity ) )
+            {
+               msg.detailed( "\tPrimal above reference ({:<3} > {:<3})\n", primal, result );
                return OBJECTIVEFAIL;
+            }
          }
 
          return OKAY;
@@ -289,7 +331,10 @@ namespace bugger {
          assert(infinity > 1.0);
 
          if( abs(dual) > infinity || (model->getObjective().sense ? primal : -primal) != infinity || count < -1 )
+         {
+            msg.detailed( "\tResult not consistent (dual {:<3}, primal {:<3}, count {:<3}, infinity {:<3})\n", dual, primal, count, infinity );
             return OBJECTIVEFAIL;
+         }
 
          if( reference->status == SolutionStatus::kUnknown )
             return OKAY;
@@ -297,12 +342,18 @@ namespace bugger {
          if( reference->status == SolutionStatus::kInfeasible )
          {
             if( count != 0 )
+            {
+               msg.detailed( "\tInfeasibility not respected (dual {:<3}, primal {:<3}, count {:<3}, infinity {:<3})\n", dual, primal, count, infinity );
                return PRIMALFAIL;
+            }
          }
          else if( abs(value) < infinity && (model->getObjective().sense ? dual : -dual) == infinity )
          {
             if( count == 0 )
+            {
+               msg.detailed( "\tFeasibility not respected (dual {:<3}, primal {:<3}, count {:<3}, infinity {:<3})\n", dual, primal, count, infinity );
                return DUALFAIL;
+            }
          }
 
          return OKAY;

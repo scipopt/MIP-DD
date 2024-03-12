@@ -1,0 +1,7 @@
+@section Release Notes MIP-Bugger 1.0
+***************************
+
+Features
+--------
+
+- provides delta debugging for mixed integer programming solvers

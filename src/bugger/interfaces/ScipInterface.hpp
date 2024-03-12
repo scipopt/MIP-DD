@@ -46,16 +46,16 @@ namespace bugger {
    public:
 
       int mode = -1;
-      bool set_dual_stop = true;
-      bool set_prim_stop = true;
+      bool set_dual_limit = true;
+      bool set_prim_limit = true;
    };
 
    class ScipInterface : public SolverInterface {
 
    public:
 
-      static const String DUAL;
-      static const String PRIM;
+      static String DUAL;
+      static String PRIM;
 
    private:
 
@@ -116,8 +116,8 @@ namespace bugger {
             SCIP_PARAM* param = params[ i ];
             String name { param->name };
             // drop interface settings
-            if( ( parameters.set_dual_stop && name == DUAL )
-             || ( parameters.set_prim_stop && name == PRIM ) )
+            if( ( parameters.set_dual_limit && name == DUAL )
+             || ( parameters.set_prim_limit && name == PRIM ) )
                continue;
             switch( param->paramtype )
             {
@@ -374,9 +374,9 @@ namespace bugger {
 
          if( solution_exists )
          {
-            if( parameters.set_dual_stop )
+            if( parameters.set_dual_limit )
                SCIP_CALL(SCIPsetRealParam(scip, DUAL.c_str(), relax( value, obj.sense, 2.0 * SCIPsumepsilon(scip), SCIPinfinity(scip) )));
-            if( parameters.set_prim_stop )
+            if( parameters.set_prim_limit )
                SCIP_CALL(SCIPsetRealParam(scip, PRIM.c_str(), value));
          }
 
@@ -421,9 +421,10 @@ namespace bugger {
 
             if( parameters.mode == -1 )
             {
-               // declare primal solution and bound
-               Solution<double> solution;
-               double bound;
+               // declare primal solution
+               Vec<Solution<double>> solution;
+               SCIP_SOL** sols = SCIPgetSols(scip);
+               int nsols = SCIPgetNSols(scip);
 
                // check dual by reference solution objective
                if( retcode == OKAY )
@@ -432,44 +433,45 @@ namespace bugger {
                // check primal by generated solution values
                if( retcode == OKAY )
                {
-                  SCIP_SOL** sols = SCIPgetSols(scip);
-                  int nsols = SCIPgetNSols(scip);
-
-                  if( nsols >= 1 )
+                  if( nsols >= 0 )
                   {
-                     solution.status = SolutionStatus::kFeasible;
-                     solution.primal.resize(vars.size());
+                     solution.resize(nsols);
 
-                     for( int i = nsols - 1; i >= 0 && retcode == OKAY; --i )
+                     for( int i = solution.size() - 1; i >= 0; --i )
                      {
-                        for( int col = 0; col < solution.primal.size(); ++col )
-                           solution.primal[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetSolVal(scip, sols[i], vars[col]);
+                        solution[i].status = SolutionStatus::kFeasible;
+                        solution[i].primal.resize(vars.size());
 
-                        if( i <= 0 && SCIPhasPrimalRay(scip) )
-                        {
-                           solution.status = SolutionStatus::kUnbounded;
-                           solution.ray.resize(vars.size());
-
-                           for( int col = 0; col < solution.ray.size(); ++col )
-                              solution.ray[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetPrimalRayVal(scip, vars[col]);
-                        }
-
-                        retcode = check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
+                        for( int col = 0; col < solution[i].primal.size(); ++col )
+                           solution[i].primal[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetSolVal(scip, sols[i], vars[col]);
                      }
-                  }
-                  else
-                  {
-                     solution.status = SolutionStatus::kInfeasible;
+
+                     if( solution.size() >= 1 && SCIPhasPrimalRay(scip) )
+                     {
+                        solution[0].status = SolutionStatus::kUnbounded;
+                        solution[0].ray.resize(vars.size());
+
+                        for( int col = 0; col < solution[0].ray.size(); ++col )
+                           solution[0].ray[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetPrimalRayVal(scip, vars[col]);
+                     }
+
                      retcode = check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
                   }
-
-                  // check solution objective instead of primal bound if no ray is provided
-                  bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
+                  else
+                     retcode = PRIMALFAIL;
                }
 
                // check objective by best solution evaluation
                if( retcode == OKAY )
-                  retcode = check_objective_value( bound, solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
+               {
+                  // check solution objective instead of primal bound if no ray is provided
+                  double bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
+
+                  if( solution.size() == 0 )
+                     solution.emplace_back(SolutionStatus::kInfeasible);
+
+                  retcode = check_objective_value( bound, solution[0], SCIPsumepsilon(scip), SCIPinfinity(scip) );
+               }
             }
             else
             {
@@ -490,21 +492,49 @@ namespace bugger {
                case SCIP_STATUS_UNKNOWN:
                   solverstatus = SolverStatus::kUnknown;
                   break;
-               case SCIP_STATUS_USERINTERRUPT:
-               case SCIP_STATUS_NODELIMIT:
                case SCIP_STATUS_TOTALNODELIMIT:
-               case SCIP_STATUS_STALLNODELIMIT:
-               case SCIP_STATUS_TIMELIMIT:
-               case SCIP_STATUS_MEMLIMIT:
-               case SCIP_STATUS_GAPLIMIT:
-               case SCIP_STATUS_SOLLIMIT:
-               case SCIP_STATUS_BESTSOLLIMIT:
-               case SCIP_STATUS_RESTARTLIMIT:
-#if SCIP_VERSION_MAJOR >= 6
-               case SCIP_STATUS_TERMINATE:
-#endif
-                  solverstatus = SolverStatus::kLimit;
+                  solverstatus = SolverStatus::kTotalNodeLimit;
                   break;
+               case SCIP_STATUS_STALLNODELIMIT:
+                  solverstatus = SolverStatus::kStallNodeLimit;
+                  break;
+               case SCIP_STATUS_NODELIMIT:
+                  solverstatus = SolverStatus::kNodeLimit;
+                  break;
+               case SCIP_STATUS_TIMELIMIT:
+                  solverstatus = SolverStatus::kTimeLimit;
+                  break;
+               case SCIP_STATUS_GAPLIMIT:
+                  solverstatus = SolverStatus::kGapLimit;
+                  break;
+               case SCIP_STATUS_MEMLIMIT:
+                  solverstatus = SolverStatus::kMemLimit;
+                  break;
+               case SCIP_STATUS_SOLLIMIT:
+                  solverstatus = SolverStatus::kSolLimit;
+                  break;
+               case SCIP_STATUS_BESTSOLLIMIT:
+                  solverstatus = SolverStatus::kBestSolLimit;
+                  break;
+#if SCIP_VERSION_API >= 115
+               case SCIP_STATUS_PRIMALLIMIT:
+                  solverstatus = SolverStatus::kPrimalLimit;
+                  break;
+               case SCIP_STATUS_DUALLIMIT:
+                  solverstatus = SolverStatus::kDualLimit;
+                  break;
+#endif
+               case SCIP_STATUS_RESTARTLIMIT:
+                  solverstatus = SolverStatus::kRestartLimit;
+                  break;
+               case SCIP_STATUS_USERINTERRUPT:
+                  solverstatus = SolverStatus::kInterrupt;
+                  break;
+#if SCIP_VERSION_API >= 22
+               case SCIP_STATUS_TERMINATE:
+                  solverstatus = SolverStatus::kTerminate;
+                  break;
+#endif
                case SCIP_STATUS_INFORUNBD:
                   solverstatus = SolverStatus::kInfeasibleOrUnbounded;
                   break;
@@ -537,9 +567,8 @@ namespace bugger {
       }
    };
 
-   //TODO: Adapt proof stop setting name
-   const String ScipInterface::DUAL = "limits/proofstop";
-   const String ScipInterface::PRIM = "limits/objectivestop";
+   String ScipInterface::DUAL;
+   String ScipInterface::PRIM;
 
    class ScipFactory : public SolverFactory {
 
@@ -554,8 +583,8 @@ namespace bugger {
       addParameters(ParameterSet& parameterset) override
       {
          parameterset.addParameter("scip.mode", "solve scip mode (-1: optimize, 0: count)", parameters.mode, -1, 0);
-         parameterset.addParameter("scip.setdualstop", "stop when dual bound is worse than reference solution", parameters.set_dual_stop);
-         parameterset.addParameter("scip.setprimstop", "stop when prim bound is as good as reference solution", parameters.set_prim_stop);
+         parameterset.addParameter("scip.setduallimit", "terminate when dual bound is better than reference solution", parameters.set_dual_limit);
+         parameterset.addParameter("scip.setprimlimit", "terminate when prim bound is as good as reference solution", parameters.set_prim_limit);
       }
 
       std::unique_ptr<SolverInterface>
@@ -566,21 +595,37 @@ namespace bugger {
          {
             if( parameters.mode == -1 )
             {
-               if( parameters.set_dual_stop && !scip->has_setting( ScipInterface::DUAL ) )
+               if( parameters.set_dual_limit )
                {
-                  msg.info("Dual stop disabled because {} unavailable.\n", ScipInterface::DUAL);
-                  parameters.set_dual_stop = false;
+                  ScipInterface::DUAL = "limits/dual";
+                  if( !scip->has_setting( ScipInterface::DUAL ) )
+                  {
+                     ScipInterface::DUAL = "limits/proofstop";
+                     if( !scip->has_setting( ScipInterface::DUAL ) )
+                     {
+                        msg.info("Dual limit disabled.\n");
+                        parameters.set_dual_limit = false;
+                     }
+                  }
                }
-               if( parameters.set_prim_stop && !scip->has_setting( ScipInterface::PRIM ) )
+               if( parameters.set_prim_limit )
                {
-                  msg.info("Prim stop disabled because {} unavailable.\n", ScipInterface::PRIM);
-                  parameters.set_prim_stop = false;
+                  ScipInterface::PRIM = "limits/primal";
+                  if( !scip->has_setting( ScipInterface::PRIM ) )
+                  {
+                     ScipInterface::PRIM = "limits/objectivestop";
+                     if( !scip->has_setting( ScipInterface::PRIM ) )
+                     {
+                        msg.info("Primal limit disabled.\n");
+                        parameters.set_prim_limit = false;
+                     }
+                  }
                }
             }
             else
             {
-               parameters.set_dual_stop = false;
-               parameters.set_prim_stop = false;
+               parameters.set_dual_limit = false;
+               parameters.set_prim_limit = false;
             }
             initial = false;
          }

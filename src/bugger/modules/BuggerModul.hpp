@@ -51,11 +51,11 @@ namespace bugger {
 
    private:
 
-      std::string name;
-      double execTime;
-      bool enabled;
-      unsigned int ncalls;
-      unsigned int nsuccessCall;
+      std::string name { };
+      double execTime = 0.0;
+      bool enabled = true;
+      unsigned int ncalls = 0;
+      unsigned int nsuccessCall = 0;
 
    protected:
 
@@ -63,30 +63,20 @@ namespace bugger {
       const Num<double>& num;
       const BuggerParameters& parameters;
       std::shared_ptr<SolverFactory> factory;
-      int nchgcoefs;
-      int nfixedvars;
-      int nchgsides;
-      int naggrvars;
-      int nchgsettings;
-      int ndeletedrows;
+      int nchgcoefs = 0;
+      int nfixedvars = 0;
+      int nchgsides = 0;
+      int naggrvars = 0;
+      int nchgsettings = 0;
+      int ndeletedrows = 0;
+      int nsolves = 0;
+      std::pair<char, SolverStatus> final_result { SolverInterface::OKAY, SolverStatus::kUnknown };
 
    public:
 
       BuggerModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
                   std::shared_ptr<SolverFactory>& _factory) : msg(_msg), num(_num), parameters(_parameters),
-                  factory(_factory) {
-         ncalls = 0;
-         nsuccessCall = 0;
-         name = "unnamed";
-         execTime = 0.0;
-         enabled = true;
-         nchgcoefs = 0;
-         nfixedvars = 0;
-         nchgsides = 0;
-         naggrvars = 0;
-         nchgsettings = 0;
-         ndeletedrows = 0;
-      }
+                  factory(_factory) { }
 
       virtual ~BuggerModul( ) = default;
 
@@ -94,6 +84,11 @@ namespace bugger {
       virtual bool
       initialize( ) {
          return false;
+      }
+
+      int
+      getNSolves( ) {
+         return nsolves;
       }
 
       virtual void
@@ -112,6 +107,7 @@ namespace bugger {
 
       ModulStatus
       run(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution, const Timer& timer) {
+         final_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
          if( !enabled )
             return ModulStatus::kDidNotRun;
 
@@ -122,19 +118,17 @@ namespace bugger {
          auto start = std::chrono::steady_clock::now();
 #endif
          ModulStatus result = execute(settings, problem, solution);
-#ifdef BUGGER_TBB
          if( result == ModulStatus::kSuccessful )
             nsuccessCall++;
          if ( result != ModulStatus::kDidNotRun && result != ModulStatus::kNotAdmissible )
             ncalls++;
-
+#ifdef BUGGER_TBB
          auto end = tbb::tick_count::now( );
          auto duration = end - start;
          execTime = execTime + duration.seconds( );
 #else
-         auto end = std::chrono::steady_clock::now();
-         execTime = execTime + std::chrono::duration_cast<std::chrono::milliseconds>(
-                                   end- start ).count()/1000;
+         auto end = std::chrono::steady_clock::now( );
+         execTime = execTime + std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count( ) / 1000.0;
 #endif
          msg.info("module {} finished\n", name);
          return result;
@@ -144,7 +138,7 @@ namespace bugger {
       printStats(const Message& message) {
          double success = ncalls == 0 ? 0.0 : ( double(nsuccessCall) / double(ncalls)) * 100.0;
          int changes = nchgcoefs + nfixedvars + nchgsides + naggrvars + ndeletedrows + nchgsettings;
-         message.info(" {:>18} {:>12} {:>12} {:>18.1f} {:>18.3f}\n", name, ncalls, changes, success, execTime);
+         message.info(" {:>18} {:>12} {:>12} {:>18.1f} {:>12} {:>18.3f}\n", name, ncalls, changes, success, nsolves, execTime);
       }
 
 
@@ -158,9 +152,9 @@ namespace bugger {
          return this->name;
       }
 
-      unsigned int
-      getNCalls( ) const {
-         return ncalls;
+      std::pair<char, SolverStatus>
+      getFinalResult( ) const {
+         return final_result;
       }
 
       void
@@ -194,11 +188,18 @@ namespace bugger {
 
       BuggerStatus
       call_solver(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) {
+         ++nsolves;
          auto solver = factory->create_solver(msg);
          solver->doSetUp(settings, problem, solution);
          if( !parameters.debug_filename.empty( ) )
             solver->writeInstance(parameters.debug_filename, true);
          std::pair<char, SolverStatus> result = solver->solve(parameters.passcodes);
+         if( !SolverStatusCheck::is_value(result.second) )
+         {
+            msg.error("Error: Solver returned unknown status {}\n", (int) result.second);
+            result.second = SolverStatus::kUndefinedError;
+            return BuggerStatus::kError;
+         }
          if( result.first == SolverInterface::OKAY )
          {
             msg.info("\tOkay  - Status {}\n", result.second);
@@ -206,11 +207,13 @@ namespace bugger {
          }
          else if( result.first > SolverInterface::OKAY )
          {
+            final_result = result;
             msg.info("\tBug {} - Status {}\n", (int) result.first, result.second);
             return BuggerStatus::kBug;
          }
          else
          {
+            final_result = result;
             msg.info("\tError {}\n", (int) result.first);
             return BuggerStatus::kError;
          }

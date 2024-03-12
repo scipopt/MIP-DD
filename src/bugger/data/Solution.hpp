@@ -25,31 +25,31 @@
 
 #include "bugger/misc/Vec.hpp"
 
-namespace bugger
-{
+namespace bugger {
 
-enum class SolutionStatus
-{
-   kInfeasible,
-   kUnbounded,
-   kFeasible,
-   kUnknown,
-};
+   enum class SolutionStatus {
 
-template <typename REAL>
-class Solution
-{
- public:
-   SolutionStatus status;
-   Vec<REAL> primal;
-   Vec<REAL> ray;
+      kInfeasible,
+      kUnbounded,
+      kFeasible,
+      kUnknown,
+   };
 
-   explicit Solution() : status( SolutionStatus::kUnknown ) {}
+   template <typename REAL>
+   class Solution {
 
-   Solution(const SolutionStatus& _status) : status( _status ) {}
+   public:
 
-   Solution(const Vec<REAL>& _primal) : status( SolutionStatus::kFeasible ), primal( _primal ) {}
-};
+      SolutionStatus status;
+      Vec<REAL> primal;
+      Vec<REAL> ray;
+
+      explicit Solution( ) : status(SolutionStatus::kUnknown) { }
+
+      Solution(const SolutionStatus& _status) : status(_status) { }
+
+      Solution(const Vec<REAL>& _primal) : status(SolutionStatus::kFeasible), primal(_primal) { }
+   };
 
 } // namespace bugger
 
