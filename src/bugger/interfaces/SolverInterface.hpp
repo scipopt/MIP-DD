@@ -83,6 +83,11 @@ namespace bugger {
       virtual
       void doSetUp(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) = 0;
 
+      /**
+       * solves the instance
+       * @param passcodes suppress certain codes (referring to the returned values) -> these are not considered as bugs
+       * @return a pair<char, SolverStatus>: Negative values in the char are reserved for solver internal errors while the remaining ones are declared in SolverInterface::Retcode. The SolverStatus primarily serves to be printed in the log holding the solution status of the solve, for example infeasible, unbounded, optimal, or specific limits reached.
+       */
       virtual
       std::pair<char, SolverStatus> solve(const Vec<int>& passcodes) = 0;
 
