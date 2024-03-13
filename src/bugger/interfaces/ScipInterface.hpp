@@ -452,11 +452,11 @@ namespace bugger {
                   retcode = check_dual_bound( SCIPgetDualbound(scip), SCIPsumepsilon(scip), SCIPinfinity(scip) );
 
                // check primal by generated solution values
-               if( retcode == OKAY && primal )
+               if( retcode == OKAY )
                {
                   if( nsols >= 0 )
                   {
-                     solution.resize(nsols);
+                     solution.resize(primal ? nsols : objective ? std::min(1, nsols) : 0);
 
                      for( int i = solution.size() - 1; i >= 0; --i )
                      {
@@ -476,9 +476,10 @@ namespace bugger {
                            solution[0].ray[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetPrimalRayVal(scip, vars[col]);
                      }
 
-                     retcode = check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
+                     if( primal )
+                        retcode = check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
                   }
-                  else
+                  else if( primal )
                      retcode = PRIMALFAIL;
                }
 
