@@ -427,11 +427,11 @@ namespace bugger {
                int nsols = SCIPgetNSols(scip);
 
                // check dual by reference solution objective
-               if( retcode == OKAY )
+               if( retcode == OKAY && std::find(passcodes.begin(), passcodes.end(), DUALFAIL) == passcodes.end() )
                   retcode = check_dual_bound( SCIPgetDualbound(scip), SCIPsumepsilon(scip), SCIPinfinity(scip) );
 
                // check primal by generated solution values
-               if( retcode == OKAY )
+               if( retcode == OKAY && std::find(passcodes.begin(), passcodes.end(), PRIMALFAIL) == passcodes.end() )
                {
                   if( nsols >= 0 )
                   {
@@ -462,7 +462,7 @@ namespace bugger {
                }
 
                // check objective by best solution evaluation
-               if( retcode == OKAY )
+               if( retcode == OKAY && std::find(passcodes.begin(), passcodes.end(), OBJECTIVEFAIL) == passcodes.end() )
                {
                   // check solution objective instead of primal bound if no ray is provided
                   double bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
