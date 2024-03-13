@@ -421,17 +421,38 @@ namespace bugger {
 
             if( parameters.mode == -1 )
             {
+               // retrieve enabled checks
+               bool dual = true;
+               bool primal = true;
+               bool objective = true;
+
+               for( int passcode: passcodes )
+               {
+                  switch( passcode )
+                  {
+                  case DUALFAIL:
+                     dual = false;
+                     break;
+                  case PRIMALFAIL:
+                     primal = false;
+                     break;
+                  case OBJECTIVEFAIL:
+                     objective = false;
+                     break;
+                  }
+               }
+
                // declare primal solution
                Vec<Solution<double>> solution;
                SCIP_SOL** sols = SCIPgetSols(scip);
                int nsols = SCIPgetNSols(scip);
 
                // check dual by reference solution objective
-               if( retcode == OKAY && std::find(passcodes.begin(), passcodes.end(), DUALFAIL) == passcodes.end() )
+               if( retcode == OKAY && dual )
                   retcode = check_dual_bound( SCIPgetDualbound(scip), SCIPsumepsilon(scip), SCIPinfinity(scip) );
 
                // check primal by generated solution values
-               if( retcode == OKAY && std::find(passcodes.begin(), passcodes.end(), PRIMALFAIL) == passcodes.end() )
+               if( retcode == OKAY && primal )
                {
                   if( nsols >= 0 )
                   {
@@ -462,7 +483,7 @@ namespace bugger {
                }
 
                // check objective by best solution evaluation
-               if( retcode == OKAY && std::find(passcodes.begin(), passcodes.end(), OBJECTIVEFAIL) == passcodes.end() )
+               if( retcode == OKAY && objective )
                {
                   // check solution objective instead of primal bound if no ray is provided
                   double bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
