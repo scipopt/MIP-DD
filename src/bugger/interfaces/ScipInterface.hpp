@@ -454,9 +454,9 @@ namespace bugger {
                // check primal by generated solution values
                if( retcode == OKAY )
                {
-                  if( nsols >= 0 )
+                  if( nsols >= 1 )
                   {
-                     solution.resize(primal ? nsols : objective ? std::min(1, nsols) : 0);
+                     solution.resize(primal ? nsols : objective ? 1 : 0);
 
                      for( int i = solution.size() - 1; i >= 0; --i )
                      {
@@ -479,7 +479,7 @@ namespace bugger {
                      if( primal )
                         retcode = check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
                   }
-                  else if( primal )
+                  else if( nsols != 0 && primal )
                      retcode = PRIMALFAIL;
                }
 
