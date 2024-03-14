@@ -37,9 +37,9 @@ bin/bugger -p BUGGER_PARAMETERS -f PROBLEM -o SOLUTION -s SOLVER_SETTINGS -t TAR
 Before running the MIP-Bugger we recommend to regard the following hints to obtain a reasonable workflow:
 * Determine a reference solution that is as feasible as possible. To detect a suboptimality issue, the dual bound claimed by the solver must cut off this solution. For other issues, a reference solution is not required but helps to guide the process.
 * Define limits for the solver, for example time and node limits. This way, reductions for which the bug would be reproduced beyond the limits will be blocked and discarded. Usually, this accelerates the process and favors easy instances.
-* Define the solve invocations per module by setting the batch parameter. Each module roughly estimates the amount of modifications and then calculates the batch size to invoke the solver exactly as many times as specified by the batch parameter. Hence, the more batches, the smaller the changes in each test run, and the more likely the bug is maintained but this also leads an increase the runtime.
+* Define the solve invocations per module by setting the batch parameter. Each module roughly estimates the number of modifications and then calculates the batch size to invoke the solver at most as many times as specified by the batch parameter. Hence, the more batches, the smaller the changes in each test run, and the more likely the bug is maintained but this also leads an increase the runtime.
 
-For examples please refer to the PAPER (to be published).
+For examples and further details please refer to the PAPER (to be published).
 
 # Parameters
 
