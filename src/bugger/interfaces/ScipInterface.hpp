@@ -421,21 +421,42 @@ namespace bugger {
 
             if( parameters.mode == -1 )
             {
+               // retrieve enabled checks
+               bool dual = true;
+               bool primal = true;
+               bool objective = true;
+
+               for( int passcode: passcodes )
+               {
+                  switch( passcode )
+                  {
+                  case DUALFAIL:
+                     dual = false;
+                     break;
+                  case PRIMALFAIL:
+                     primal = false;
+                     break;
+                  case OBJECTIVEFAIL:
+                     objective = false;
+                     break;
+                  }
+               }
+
                // declare primal solution
                Vec<Solution<double>> solution;
                SCIP_SOL** sols = SCIPgetSols(scip);
                int nsols = SCIPgetNSols(scip);
 
                // check dual by reference solution objective
-               if( retcode == OKAY )
+               if( retcode == OKAY && dual )
                   retcode = check_dual_bound( SCIPgetDualbound(scip), SCIPsumepsilon(scip), SCIPinfinity(scip) );
 
                // check primal by generated solution values
                if( retcode == OKAY )
                {
-                  if( nsols >= 0 )
+                  if( nsols >= 1 )
                   {
-                     solution.resize(nsols);
+                     solution.resize(primal ? nsols : objective ? 1 : 0);
 
                      for( int i = solution.size() - 1; i >= 0; --i )
                      {
@@ -455,14 +476,15 @@ namespace bugger {
                            solution[0].ray[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetPrimalRayVal(scip, vars[col]);
                      }
 
-                     retcode = check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
+                     if( primal )
+                        retcode = check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
                   }
-                  else
+                  else if( nsols != 0 && primal )
                      retcode = PRIMALFAIL;
                }
 
                // check objective by best solution evaluation
-               if( retcode == OKAY )
+               if( retcode == OKAY && objective )
                {
                   // check solution objective instead of primal bound if no ray is provided
                   double bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
