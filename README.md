@@ -36,10 +36,10 @@ bin/bugger -p BUGGER_PARAMETERS -f PROBLEM -o SOLUTION -s SOLVER_SETTINGS -t TAR
 
 Before running the MIP-Bugger we recommend to regard the following hints to obtain a reasonable workflow:
 * Determine a reference solution that is as feasible as possible. To detect a suboptimality issue, the dual bound claimed by the solver must cut off this solution. For other issues, a reference solution is not required but helps to guide the process.
-* Define limits for the solver, for example time and node limits. This way, reductions for which the bug would be reproduced beyond the limits will be blocked and discarded. Usually, this accelerates the process and favors easy instances.
-* Define the solve invocations per module by setting the batch parameter. Each module roughly estimates the number of modifications and then calculates the batch size to invoke the solver at most as many times as specified by the batch parameter. Hence, the more batches, the smaller the changes in each test run, and the more likely the bug is maintained but this also leads an increase the runtime.
+* Define limits for the solver, for example time and node limits, so that the bug of interest is still reproducible. This way, reductions for which the bug would be reproduced beyond these limits, will be discarded. Usually, this accelerates the process and favors easy instances.
+* Define the parameter nbatches to limit the solve invocations per module. Each module determines the number of elementary modifications and then calculates the batch size to invoke the solver at most as many times as specified by parameter nbatches. Hence, the more batches, the smaller the changes in each test run. This makes acceptance of a reduction batch more likely at the cost of an increased runtime.
 
-For examples and further details please refer to the PAPER (to be published).
+For further details please refer to the PAPER (to be published).
 
 # Parameters
 
@@ -70,7 +70,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-For other licensing options, we refer to https://scipopt.org/index.php#license.
+For further information please refer to https://scipopt.org/index.php#license.
 
 # How to cite
 
