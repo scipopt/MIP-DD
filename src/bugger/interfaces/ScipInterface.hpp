@@ -529,6 +529,14 @@ namespace bugger {
                case SCIP_STATUS_GAPLIMIT:
                   solverstatus = SolverStatus::kGapLimit;
                   break;
+#if SCIP_VERSION_API >= 115
+               case SCIP_STATUS_PRIMALLIMIT:
+                  solverstatus = SolverStatus::kPrimalLimit;
+                  break;
+               case SCIP_STATUS_DUALLIMIT:
+                  solverstatus = SolverStatus::kDualLimit;
+                  break;
+#endif
                case SCIP_STATUS_MEMLIMIT:
                   solverstatus = SolverStatus::kMemLimit;
                   break;
@@ -538,14 +546,6 @@ namespace bugger {
                case SCIP_STATUS_BESTSOLLIMIT:
                   solverstatus = SolverStatus::kBestSolLimit;
                   break;
-#if SCIP_VERSION_API >= 115
-               case SCIP_STATUS_PRIMALLIMIT:
-                  solverstatus = SolverStatus::kPrimalLimit;
-                  break;
-               case SCIP_STATUS_DUALLIMIT:
-                  solverstatus = SolverStatus::kDualLimit;
-                  break;
-#endif
                case SCIP_STATUS_RESTARTLIMIT:
                   solverstatus = SolverStatus::kRestartLimit;
                   break;

@@ -249,9 +249,10 @@ install(FILES
 install(FILES
         ${PROJECT_SOURCE_DIR}/src/bugger/modules/BuggerModul.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/modules/VariableModul.hpp
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/modules)
+   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/modules)
 
 install(FILES
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/args.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/chrono.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/color.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/compile.h
@@ -259,13 +260,12 @@ install(FILES
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/format.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/format-inl.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/locale.h
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/os.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/ostream.h
-        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/posix.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/printf.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/ranges.h
-        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/format.cc
-        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/posix.cc
- DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/external/fmt)
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/xchar.h
+   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/external/fmt)
 
 install(FILES
         ${PROJECT_SOURCE_DIR}/src/bugger/external/pdqsort/pdqsort.h
