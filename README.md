@@ -2,7 +2,7 @@ MIP-Bugger - Delta-Debugging of MILP-Solvers
 ========================================
 
 MIP-Bugger, a C++14-based software package, applies Delta Debugging, an automated approach to isolate the cause of a software failure driven by a hypothesis-trial-result loop, to mixed-integer linear programming.
-The goal is to systematically reduce the size of input problems and the complexity of the solving process that expose incorrect behaviour.
+The goal is to systematically reduce the size of input problems and the complexity of the solving process that exposes incorrect behavior.
 
 The MIP-Bugger is guided by a fixed reference solution and consists of several modules that modify the input problem and settings while preserving the feasibility
 (but not necessarily the optimality) of the reference solution. The modules apply reductions such as deleting constraints, fixing variables to their value in the
@@ -11,11 +11,11 @@ The modules are called in an iterative process similar to MIP-presolving.
 
 # Dependencies
 
-External dependency that need to be installed by the user is boost >= 1.65.
+The external dependency that needs to be installed by the user is boost >= 1.65.
 
 # Building
 
-Building the bugger with SCIP as examined solver, works with the standard cmake workflow:
+Building the bugger with SCIP as examined solver works with the standard cmake workflow:
 ```
 mkdir build
 cd build
@@ -24,7 +24,7 @@ make
 ```
 It is necessary to build the solver in optimized mode since the MIP-Bugger is not designed to handle assertions in order to keep the process performant.
 Nevertheless, it is usually easily possible to handle assertion fails by reformulating the solver to return a suitable error code under the negated assertion condition.
-The MIP-Bugger will then identify the formerly failing assertion as solver error.
+The MIP-Bugger will then identify the formerly failing assertion as a solver error.
 For information on building SCIP please refer to README.md inside the source packages available at https://scipopt.org/index.php#download.
 
 # Usage
@@ -36,10 +36,10 @@ bin/bugger -p BUGGER_PARAMETERS -f PROBLEM -o SOLUTION -s SOLVER_SETTINGS -t TAR
 
 Before running the MIP-Bugger we recommend to regard the following hints to obtain a reasonable workflow:
 * Determine a reference solution that is as feasible as possible. To detect a suboptimality issue, the dual bound claimed by the solver must cut off this solution. For other issues, a reference solution is not required but helps to guide the process.
-* Add reasonable limits within the bug is reproduced to the original and target settings. This way, reductions for which the bug would be reproduced beyond the limits will be blocked. Usually, this accelerates the process and favours easy instances.
-* Define the number of bugger batches. The more batches, the smaller the changes in each test run, and the more likely the bug is maintained. In practice, it should be set to increasing values for decreasing runtimes until the bug is reproduced.
+* Define limits for the solver, for example time and node limits, so that the bug of interest is still reproducible. This way, reductions for which the bug would be reproduced beyond these limits, will be discarded. Usually, this accelerates the process and favors easy instances.
+* Define the parameter nbatches to limit the solve invocations per module. Each module determines the number of elementary modifications and then calculates the batch size to invoke the solver at most as many times as specified by parameter nbatches. Hence, the more batches, the smaller the changes in each test run. This makes acceptance of a reduction batch more likely at the cost of an increased runtime.
 
-For examples please refer to the PAPER (to be published).
+For further details please refer to the PAPER (to be published).
 
 # Parameters
 
@@ -53,8 +53,8 @@ This specific SolverInterface interacts with the solver by
 * loading the internal settings and problem into the solver (`doSetup`)
 * writing the internal settings and problem to files (`writeInstance`) and
 * solving the instance and checking for bugs (`solve`).
-The `solve` function returns a pair<char, SolverStatus>. The signed char encodes the validity of the solving process. Negative values are reserved for solver internal errors, 0 means that no bug is detected, while positive values represent externally detected issues identifying 1 as dual fail, 2 as primal fail and 3 as objective fail. The SolverStatus primarily serves to provide additional information about the solution status in the log for example infeasible, unbounded, optimal, or that a specific limit is reached. To suppress certain fails, the parameter `passcodes` is the vector of codes which must not be interpreted as bugs.
-The general SolverInterface already provides functions to detect dual, primal, and objective fails based on the resulting solution information to be supplied in the 'solve' function.
+  The `solve` function returns a pair<char, SolverStatus>. The signed char encodes the validity of the solving process. Negative values are reserved for solver internal errors, 0 means that no bug is detected, while positive values represent externally detected issues identifying 1 as dual fail, 2 as primal fail, and 3 as objective fail. The SolverStatus primarily serves to provide additional information about the solution status in the log for example infeasible, unbounded, optimal, or that a specific limit is reached. To suppress certain fails, the parameter `passcodes` is the vector of codes that must not be interpreted as bugs.
+  The general SolverInterface already provides functions to detect dual, primal, and objective fails based on the resulting solution information to be supplied in the 'solve' function.
 
 # Licensing
 
@@ -70,7 +70,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-For other licensing options we refer to https://scipopt.org/index.php#license.
+For further information please refer to https://scipopt.org/index.php#license.
 
 # How to cite
 

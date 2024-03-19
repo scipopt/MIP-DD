@@ -58,7 +58,7 @@ varround.enabled = 1
 # enable module consround [Boolean: {0,1}]
 consround.enabled = 1
 
-# verbosity: 0 - quiet, 1 - errors, 2 - warnings, 3 - normal, 4 - detailed [Integer: [0,4]]
+# verbosity to be used: 0 - quiet, 1 - errors, 2 - warnings, 3 - normal, 4 - detailed [Integer: [0,4]]
 message.verbosity = 3
 
 # if not empty, current instance is written to this file before every solve [String]
