@@ -12,12 +12,11 @@ Fixed bugs
 
 Build system
 ------------
-
+- update c++ standard from 14 to 17 to accommodate fmt 8
 
 @section Release Notes MIP-Bugger 1.0
 ***************************
 
 Features
 --------
-
 - provides delta debugging for mixed integer programming solvers

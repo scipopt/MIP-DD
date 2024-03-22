@@ -3,8 +3,7 @@ include(GenerateExportHeader)
 find_package(SCIP REQUIRED)
 set(BUGGER_HAVE_SCIP 1)
 
-
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 include_directories(${SCIP_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
 find_package(Boost REQUIRED iostreams serialization program_options)
