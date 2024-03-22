@@ -70,8 +70,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-For further information please refer to https://scipopt.org/index.php#license.
-
 # How to cite
 
 The paper will be published soon.
