@@ -1,7 +1,7 @@
 MIP-DD - Delta-Debugging of MIP-Solvers
 ========================================
 
-MIP-DD, a C++14-based software package, applies Delta Debugging, an automated approach to isolate the cause of a software failure driven by a hypothesis-trial-result loop, to mixed-integer linear programming.
+MIP-DD, a C++17-based software package, applies Delta Debugging, an automated approach to isolate the cause of a software failure driven by a hypothesis-trial-result loop, to mixed-integer linear programming.
 The goal is to systematically reduce the size of input problems and the complexity of the solving process that exposes incorrect behavior.
 
 The MIP-DD is guided by a fixed reference solution and consists of several modules that modify the input problem and settings while preserving the feasibility

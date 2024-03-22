@@ -8,19 +8,13 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 project(bugger VERSION ${BUGGER_VERSION_MAJOR}.${BUGGER_VERSION_MINOR}.${BUGGER_VERSION_PATCH}.0)
 
+set(CMAKE_CXX_STANDARD 17)
+
 set(BOOST_MIN_VERSION 1.65)
 if(APPLE)
    set(BOOST_MIN_VERSION 1.81)
 endif()
-set(CMAKE_CXX_STANDARD 14)
-set(CXX_STANDARD_REQUIRED ON)
-# set(CMAKE_CXX_EXTENSIONS OFF) # use -std=c++... instead of -std=gnu++...
-# required for gcc if set(CMAKE_CXX_EXTENSIONS OFF) is used
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fext-numeric-literals")
 
-# if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")
-# endif()
 if(MSVC)
    add_compile_options(/permissive)
 endif()
@@ -128,9 +122,9 @@ include(CheckCXXSourceCompiles)
 include(CheckCXXCompilerFlag)
 
 if(NOT MSVC)
-   check_cxx_compiler_flag(-std=c++14 HAVE_FLAG_STD_CXX14)
-   if(HAVE_FLAG_STD_CXX14)
-      set(CMAKE_REQUIRED_FLAGS "-std=c++14")
+   check_cxx_compiler_flag(-std=c++17 HAVE_FLAG_STD_CXX17)
+   if(HAVE_FLAG_STD_CXX17)
+      set(CMAKE_REQUIRED_FLAGS "-std=c++17")
    else()
       check_cxx_compiler_flag(-std=c++1y HAVE_FLAG_STD_CXX1Y)
       if(HAVE_FLAG_STD_CXX1Y)
