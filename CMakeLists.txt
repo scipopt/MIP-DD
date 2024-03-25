@@ -8,7 +8,7 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 project(bugger VERSION ${BUGGER_VERSION_MAJOR}.${BUGGER_VERSION_MINOR}.${BUGGER_VERSION_PATCH}.0)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 14)
 
 set(BOOST_MIN_VERSION 1.65)
 if(APPLE)
@@ -122,9 +122,9 @@ include(CheckCXXSourceCompiles)
 include(CheckCXXCompilerFlag)
 
 if(NOT MSVC)
-   check_cxx_compiler_flag(-std=c++17 HAVE_FLAG_STD_CXX17)
-   if(HAVE_FLAG_STD_CXX17)
-      set(CMAKE_REQUIRED_FLAGS "-std=c++17")
+   check_cxx_compiler_flag(-std=c++14 HAVE_FLAG_STD_CXX14)
+   if(HAVE_FLAG_STD_CXX14)
+      set(CMAKE_REQUIRED_FLAGS "-std=c++14")
    else()
       check_cxx_compiler_flag(-std=c++1y HAVE_FLAG_STD_CXX1Y)
       if(HAVE_FLAG_STD_CXX1Y)
@@ -246,19 +246,18 @@ install(FILES
    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/modules)
 
 install(FILES
-        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/args.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/chrono.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/color.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/compile.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/core.h
-        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/format.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/format-inl.h
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/format.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/locale.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/os.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/ostream.h
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/posix.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/printf.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/ranges.h
-        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/xchar.h
    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/external/fmt)
 
 install(FILES
