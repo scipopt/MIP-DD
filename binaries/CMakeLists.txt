@@ -3,7 +3,6 @@ include(GenerateExportHeader)
 find_package(SCIP REQUIRED)
 set(BUGGER_HAVE_SCIP 1)
 
-
 set(CMAKE_CXX_STANDARD 14)
 
 include_directories(${SCIP_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})

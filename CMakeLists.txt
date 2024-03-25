@@ -8,19 +8,13 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 project(bugger VERSION ${BUGGER_VERSION_MAJOR}.${BUGGER_VERSION_MINOR}.${BUGGER_VERSION_PATCH}.0)
 
+set(CMAKE_CXX_STANDARD 14)
+
 set(BOOST_MIN_VERSION 1.65)
 if(APPLE)
    set(BOOST_MIN_VERSION 1.81)
 endif()
-set(CMAKE_CXX_STANDARD 14)
-set(CXX_STANDARD_REQUIRED ON)
-# set(CMAKE_CXX_EXTENSIONS OFF) # use -std=c++... instead of -std=gnu++...
-# required for gcc if set(CMAKE_CXX_EXTENSIONS OFF) is used
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fext-numeric-literals")
 
-# if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")
-# endif()
 if(MSVC)
    add_compile_options(/permissive)
 endif()
@@ -252,19 +246,18 @@ install(FILES
    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/modules)
 
 install(FILES
-        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/args.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/chrono.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/color.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/compile.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/core.h
-        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/format.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/format-inl.h
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/format.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/locale.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/os.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/ostream.h
+        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/posix.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/printf.h
         ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/ranges.h
-        ${PROJECT_SOURCE_DIR}/src/bugger/external/fmt/xchar.h
    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/external/fmt)
 
 install(FILES
