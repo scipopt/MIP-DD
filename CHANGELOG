@@ -12,7 +12,7 @@ Fixed bugs
 
 Build system
 ------------
-- update c++ standard from 14 to 17 to accommodate fmt 8
+- backdate fmt from 8 to 7 to conform c++ standard 14
 
 @section Release Notes MIP-Bugger 1.0
 ***************************
