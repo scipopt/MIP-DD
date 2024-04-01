@@ -12,11 +12,15 @@ Fixed bugs
 
 Build system
 ------------
+
 - backdate fmt from 8 to 7 to conform c++ standard 14
+- add compile option -ffp-contract=off or /fp:precise to enhance reproducibility across different systems
+
 
 @section Release Notes MIP-Bugger 1.0
 ***************************
 
 Features
 --------
+
 - provides delta debugging for mixed integer programming solvers
