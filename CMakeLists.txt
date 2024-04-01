@@ -15,10 +15,6 @@ if(APPLE)
    set(BOOST_MIN_VERSION 1.81)
 endif()
 
-if(MSVC)
-   add_compile_options(/permissive)
-endif()
-
 include(GNUInstallDirs)
 
 # path to e.g. findGMP module
@@ -26,6 +22,15 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules/)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+# disable fused floating point contraction to enhance reproducibility across compilers and architectures
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+    add_compile_options(/fp:precise)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+    add_compile_options(-fp-model=precise)
+elseif((CMAKE_CXX_COMPILER_ID MATCHES "GNU") OR (CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
+    add_compile_options(-ffp-contract=off)
+endif()
 
 option(GMP "should gmp be linked" ON)
 option(INSTALL_TBB "should the TBB library be installed" OFF)
