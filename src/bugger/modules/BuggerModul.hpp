@@ -71,6 +71,7 @@ namespace bugger {
       int ndeletedrows = 0;
       int nsolves = 0;
       std::pair<char, SolverStatus> final_result { SolverInterface::OKAY, SolverStatus::kUnknown };
+      long long final_complexity = -1;
 
    public:
 
@@ -79,7 +80,6 @@ namespace bugger {
                   factory(_factory) { }
 
       virtual ~BuggerModul( ) = default;
-
 
       virtual bool
       initialize( ) {
@@ -108,6 +108,7 @@ namespace bugger {
       ModulStatus
       run(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution, const Timer& timer) {
          final_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
+         final_complexity = -1;
          if( !enabled )
             return ModulStatus::kDidNotRun;
 
@@ -141,7 +142,6 @@ namespace bugger {
          message.info(" {:>18} {:>12} {:>12} {:>18.1f} {:>12} {:>18.3f}\n", name, ncalls, changes, success, nsolves, execTime);
       }
 
-
       bool
       isEnabled( ) const {
          return this->enabled;
@@ -155,6 +155,11 @@ namespace bugger {
       std::pair<char, SolverStatus>
       getFinalResult( ) const {
          return final_result;
+      }
+
+      long long
+      getFinalComplexity( ) const {
+         return final_complexity;
       }
 
       void
@@ -205,17 +210,20 @@ namespace bugger {
             msg.info("\tOkay  - Status {}\n", result.second);
             return BuggerStatus::kOkay;
          }
-         else if( result.first > SolverInterface::OKAY )
-         {
-            final_result = result;
-            msg.info("\tBug {} - Status {}\n", (int) result.first, result.second);
-            return BuggerStatus::kBug;
-         }
          else
          {
             final_result = result;
-            msg.info("\tError {}\n", (int) result.first);
-            return BuggerStatus::kError;
+            final_complexity = solver->getComplexity();
+            if( result.first > SolverInterface::OKAY )
+            {
+               msg.info("\tBug {} - Status {}\n", (int) result.first, result.second);
+               return BuggerStatus::kBug;
+            }
+            else
+            {
+               msg.info("\tError {}\n", (int) result.first);
+               return BuggerStatus::kError;
+            }
          }
       }
 

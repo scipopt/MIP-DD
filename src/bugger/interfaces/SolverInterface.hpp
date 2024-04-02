@@ -92,6 +92,16 @@ namespace bugger {
       std::pair<char, SolverStatus> solve(const Vec<int>& passcodes) = 0;
 
       /**
+       * provides complexity measure to adapt batch number
+       * @return a long long int: Non-negative value proportional to complexity of the last solve or -1 if unknown
+       */
+      virtual
+      long long getComplexity( )
+      {
+         return -1;
+      }
+
+      /**
        * read setting-problem pair from files
        * @param settings_filename
        * @param problem_filename

@@ -587,6 +587,11 @@ namespace bugger {
          }
          return { retcode, solverstatus };
       }
+
+      long long getComplexity( ) override {
+
+         return SCIPgetStage(scip) == SCIP_STAGE_INIT ? -1 : SCIPgetNTotalNodes(scip);
+      }
    };
 
    String ScipInterface::DUAL;

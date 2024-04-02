@@ -31,6 +31,7 @@ namespace bugger {
    struct BuggerParameters
    {
       int mode = -1;
+      bool adaptbatch = true;
       int initround = 0;
       int initstage = 0;
       int maxrounds = -1;
@@ -49,6 +50,7 @@ namespace bugger {
       addParameters( ParameterSet& paramSet )
       {
          paramSet.addParameter( "mode", "selective bugger mode (-1: reproduce and reduce, 0: only reproduce, 1: only reduce)", mode, -1, 1 );
+         paramSet.addParameter( "adaptbatch", "adapt number of batches in every round to maintain expected expenditure (mode -1 only)", adaptbatch);
          paramSet.addParameter( "initround", "initial bugger round or -1 for last round", initround, -1 );
          paramSet.addParameter( "initstage", "initial bugger stage or -1 for last stage", initstage, -1 );
          paramSet.addParameter( "maxrounds", "maximum number of bugger rounds or -1 for no limit", maxrounds, -1 );

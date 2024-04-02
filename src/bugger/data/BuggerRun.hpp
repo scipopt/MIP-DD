@@ -39,14 +39,14 @@ namespace bugger {
 
       const Message& msg;
       const Num<double>& num;
-      const BuggerParameters& parameters;
+      BuggerParameters& parameters;
       const std::shared_ptr<SolverFactory>& factory;
       const Vec<std::unique_ptr<BuggerModul>>& modules;
       Vec<ModulStatus> results;
 
    public:
 
-      explicit BuggerRun(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters, const std::shared_ptr<SolverFactory>& _factory, const Vec<std::unique_ptr<BuggerModul>>& _modules)
+      explicit BuggerRun(const Message& _msg, const Num<double>& _num, BuggerParameters& _parameters, const std::shared_ptr<SolverFactory>& _factory, const Vec<std::unique_ptr<BuggerModul>>& _modules)
             : msg(_msg), num(_num), parameters(_parameters), factory(_factory), modules(_modules), results(_modules.size()) { }
 
       bool
@@ -108,15 +108,22 @@ namespace bugger {
          }
 
          check_feasibility_of_solution(problem, solution);
+         unsigned long long expenditure = 0;
+         long long complexity = -1;
          std::pair<char, SolverStatus> final_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
          int final_round = -1;
          int final_module = -1;
          if( parameters.mode != 1 )
          {
-            final_result = getOriginalSolveStatus(settings, problem, solution, factory);
+            auto solver = factory->create_solver(msg);
+            solver->doSetUp(settings, problem, solution);
+            final_result = solver->solve(Vec<int>{ });
             msg.info("Original solve returned code {} with status {}.\n\n", (int)final_result.first, final_result.second);
             if( parameters.mode == 0 )
                return;
+            complexity = solver->getComplexity( );
+            if( parameters.adaptbatch && parameters.nbatches >= 1 && complexity >= 1 )
+               expenditure = parameters.nbatches * complexity;
          }
 
          int ending = optionsInfo.problem_file.rfind('.');
@@ -142,7 +149,11 @@ namespace bugger {
                if( is_time_exceeded(timer) )
                   break;
 
-               msg.info("Round {} Stage {}\n", round+1, stage+1);
+               // adapt batch number
+               if( expenditure >= 1 && complexity >= 0 )
+                  parameters.nbatches = complexity >= 1 ? (expenditure - 1) / complexity + 1 : 0;
+
+               msg.info("Round {} Stage {} Batch {}\n", round+1, stage+1, parameters.nbatches);
 
                for( int module = 0; module <= stage && stage < parameters.maxstages; ++module )
                {
@@ -151,6 +162,7 @@ namespace bugger {
                   if( results[ module ] == bugger::ModulStatus::kSuccessful )
                   {
                      success = module;
+                     complexity = modules[ module ]->getFinalComplexity( );
                      final_result = modules[ module ]->getFinalResult( );
                      final_round = round;
                      final_module = module;
@@ -288,15 +300,6 @@ namespace bugger {
          else
             msg.info("Solution is feasible.\nNo violations detected.");
          msg.info("\n\n");
-      }
-
-      std::pair<char, SolverStatus>
-      getOriginalSolveStatus(const SolverSettings& settings, const Problem<double>& problem, Solution<double>& solution, const std::shared_ptr<SolverFactory>& factory) {
-
-         auto solver = factory->create_solver(msg);
-         solver->doSetUp(settings, problem, solution);
-         Vec<int> empty_passcodes{};
-         return solver->solve(empty_passcodes);
       }
 
       bugger::ModulStatus
