@@ -291,7 +291,7 @@ namespace bugger {
       }
 
       std::pair<char, SolverStatus>
-      getOriginalSolveStatus(const SolverSettings& settings, const Problem<double>& problem, Solution<double>& solution, const std::shared_ptr<SolverFactory>& factory) {
+      getOriginalSolveStatus(SolverSettings& settings, const Problem<double>& problem, Solution<double>& solution, const std::shared_ptr<SolverFactory>& factory) {
 
          auto solver = factory->create_solver(msg);
          solver->doSetUp(settings, problem, solution);

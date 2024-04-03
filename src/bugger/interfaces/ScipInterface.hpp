@@ -46,14 +46,13 @@ namespace bugger {
    public:
 
       int mode = -1;
+      double limitspace = 1.0;
       bool set_dual_limit = true;
       bool set_prim_limit = true;
-      bool set_best_limit = false;
-      bool set_solu_limit = false;
-      bool set_rest_limit = false;
-      bool set_node_limit = false;
-      bool set_tota_limit = false;
-      bool set_stal_limit = false;
+      bool set_best_limit = true;
+      bool set_solu_limit = true;
+      bool set_rest_limit = true;
+      bool set_tota_limit = true;
    };
 
    class ScipInterface : public SolverInterface {
@@ -66,9 +65,7 @@ namespace bugger {
          BEST = 3,
          SOLU = 4,
          REST = 5,
-         NODE = 6,
-         TOTA = 7,
-         STAL = 8
+         TOTA = 6
       };
 
    private:
@@ -94,7 +91,7 @@ namespace bugger {
          int length = SCIPgetNExternalCodes(scip);
          auto description = SCIPgetExternalCodeDescriptions(scip);
          auto names = SCIPgetExternalCodeNames(scip);
-         for( int i= 0; i < length; i++)
+         for( int i = 0; i < length; ++i )
          {
             String n { names[i] };
             String d { description[i] };
@@ -147,9 +144,7 @@ namespace bugger {
                                                    ? param->data.intparam.curvalue
                                                    : *param->data.intparam.valueptr );
                   break;
-               case NODE:
                case TOTA:
-               case STAL:
                   limit_settings.emplace_back( name, param->data.longintparam.valueptr == nullptr
                                                    ? param->data.longintparam.curvalue
                                                    : *param->data.longintparam.valueptr );
@@ -202,7 +197,7 @@ namespace bugger {
       }
 
       void
-      doSetUp(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) override {
+      doSetUp(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) override {
          auto retcode = setup(settings, problem, solution);
          assert(retcode == SCIP_OKAY);
       }
@@ -316,8 +311,9 @@ namespace bugger {
    private:
 
       SCIP_RETCODE
-      setup(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) {
+      setup(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) {
 
+         adjustment = &settings;
          model = &problem;
          reference = &solution;
          bool solution_exists = reference->status == SolutionStatus::kFeasible;
@@ -332,7 +328,7 @@ namespace bugger {
          const auto &rhs_values = consMatrix.getRightHandSides( );
          const auto &rflags = model->getRowFlags( );
 
-         set_parameters(settings);
+         set_parameters( );
          SCIP_CALL(SCIPcreateProbBasic(scip, model->getName( ).c_str( )));
          SCIP_CALL(SCIPaddOrigObjoffset(scip, SCIP_Real(obj.offset)));
          SCIP_CALL(SCIPsetObjsense(scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
@@ -416,7 +412,7 @@ namespace bugger {
 
          if( solution_exists && ( parameters.set_dual_limit || parameters.set_prim_limit ) )
          {
-            for(const auto& pair : limits)
+            for( const auto& pair : limits )
             {
                switch( pair.second )
                {
@@ -433,20 +429,21 @@ namespace bugger {
          return SCIP_OKAY;
       }
 
-      void set_parameters(const SolverSettings &settings) const {
-         for(const auto& pair : settings.getBoolSettings())
+      void
+      set_parameters( ) const {
+         for( const auto& pair : adjustment->getBoolSettings( ) )
             SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getIntSettings())
+         for( const auto& pair : adjustment->getIntSettings( ) )
             SCIPsetIntParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getLongSettings())
+         for( const auto& pair : adjustment->getLongSettings( ) )
             SCIPsetLongintParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getDoubleSettings())
+         for( const auto& pair : adjustment->getDoubleSettings( ) )
             SCIPsetRealParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getCharSettings())
+         for( const auto& pair : adjustment->getCharSettings( ) )
             SCIPsetCharParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getStringSettings())
+         for( const auto& pair : adjustment->getStringSettings( ) )
             SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
-         for(const auto& pair : settings.getLimitSettings())
+         for( const auto& pair : adjustment->getLimitSettings( ) )
          {
             switch( limits.find(pair.first)->second )
             {
@@ -455,9 +452,7 @@ namespace bugger {
             case REST:
                SCIPsetIntParam(scip, pair.first.c_str(), pair.second);
                break;
-            case NODE:
             case TOTA:
-            case STAL:
                SCIPsetLongintParam(scip, pair.first.c_str(), pair.second);
                break;
             case DUAL:
@@ -468,7 +463,8 @@ namespace bugger {
          }
       }
 
-      std::pair<char, SolverStatus> solve(const Vec<int>& passcodes) override {
+      std::pair<char, SolverStatus>
+      solve(const Vec<int>& passcodes) override {
 
          char retcode = SCIP_ERROR;
          SolverStatus solverstatus = SolverStatus::kUndefinedError;
@@ -655,6 +651,58 @@ namespace bugger {
                break;
             }
          }
+         // restrict limit settings
+         if( retcode != OKAY && parameters.limitspace >= 0.0 )
+         {
+            const auto& limitsettings = adjustment->getLimitSettings( );
+            for( int index = 0; index < limitsettings.size( ); ++index )
+            {
+               if( limitsettings[index].second != 0 )
+               {
+                  double bound;
+                  switch( limits.find(limitsettings[index].first)->second )
+                  {
+                  case BEST:
+                     // incremented to continue after finding the last best solution
+                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetNBestSolsFound(scip) + 1.0, 0.0));
+                     if( bound > INT_MAX )
+                        continue;
+                     else
+                        break;
+                  case SOLU:
+                     // incremented to continue after finding the last solution
+                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetNSolsFound(scip) + 1.0, 0.0));
+                     if( bound > INT_MAX )
+                        continue;
+                     else
+                        break;
+                  case REST:
+                     // decremented from runs to restarts
+                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * (SCIPgetNRuns(scip) - 1.0), 0.0));
+                     if( bound > INT_MAX )
+                        continue;
+                     else
+                        break;
+                  case TOTA:
+                     // assumes last node is processed
+                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetNTotalNodes(scip), 0.0));
+                     if( bound > LONG_MAX )
+                        continue;
+                     else
+                        break;
+                  case DUAL:
+                  case PRIM:
+                  default:
+                     SCIPerrorMessage("unknown limit type\n");
+                  }
+                  if( limitsettings[index].second < 0 || bound < limitsettings[index].second )
+                  {
+                     msg.info("\t\t{} = {}\n", limitsettings[index].first, (long long)bound);
+                     adjustment->setLimitSettings(index, bound);
+                  }
+               }
+            }
+         }
          return { retcode, solverstatus };
       }
    };
@@ -673,14 +721,14 @@ namespace bugger {
       addParameters(ParameterSet& parameterset) override
       {
          parameterset.addParameter("scip.mode", "solve scip mode (-1: optimize, 0: count)", parameters.mode, -1, 0);
+         parameterset.addParameter("scip.limitspace", "relative margin when restricting limits or -1 for no restriction", parameters.limitspace, -1.0);
          parameterset.addParameter("scip.setduallimit", "terminate when dual bound is better than reference solution", parameters.set_dual_limit);
          parameterset.addParameter("scip.setprimlimit", "terminate when prim bound is as good as reference solution", parameters.set_prim_limit);
          parameterset.addParameter("scip.setbestlimit", "restrict best number of solutions automatically", parameters.set_best_limit);
          parameterset.addParameter("scip.setsolulimit", "restrict total number of solutions automatically", parameters.set_solu_limit);
          parameterset.addParameter("scip.setrestlimit", "restrict number of restarts automatically", parameters.set_rest_limit);
-         parameterset.addParameter("scip.setnodelimit", "restrict run number of nodes automatically", parameters.set_node_limit);
          parameterset.addParameter("scip.settotalimit", "restrict total number of nodes automatically", parameters.set_tota_limit);
-         parameterset.addParameter("scip.setstallimit", "restrict stalling number of nodes automatically", parameters.set_stal_limit);
+         // run and stalling number of nodes are unrestrictable because they are unmonotonous
       }
 
       std::unique_ptr<SolverInterface>
@@ -751,16 +799,6 @@ namespace bugger {
                   }
                }
             }
-            if( parameters.set_node_limit )
-            {
-               if( scip->has_setting(name = "limits/nodes") )
-                  limits[name] = ScipInterface::NODE;
-               else
-               {
-                  msg.info("Node limit disabled.\n");
-                  parameters.set_node_limit = false;
-               }
-            }
             if( parameters.set_tota_limit )
             {
                if( scip->has_setting(name = "limits/totalnodes") )
@@ -769,16 +807,6 @@ namespace bugger {
                {
                   msg.info("Totalnode limit disabled.\n");
                   parameters.set_tota_limit = false;
-               }
-            }
-            if( parameters.set_stal_limit )
-            {
-               if( scip->has_setting(name = "limits/stallnodes") )
-                  limits[name] = ScipInterface::STAL;
-               else
-               {
-                  msg.info("Stallnode limit disabled.\n");
-                  parameters.set_stal_limit = false;
                }
             }
             initial = false;
