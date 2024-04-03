@@ -667,42 +667,42 @@ namespace bugger {
             const auto& limitsettings = adjustment->getLimitSettings( );
             for( int index = 0; index < limitsettings.size( ); ++index )
             {
-               if( limitsettings[index].second != 0 )
+               if( limitsettings[index].second < 0 || limitsettings[index].second > 1 )
                {
                   double bound;
                   switch( limits.find(limitsettings[index].first)->second )
                   {
                   case BEST:
                      // incremented to continue after finding the last best solution
-                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetNBestSolsFound(scip) + 1.0, 0.0));
+                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetNBestSolsFound(scip) + 1.0, 1.0));
                      if( bound > INT_MAX )
                         continue;
                      else
                         break;
                   case SOLU:
                      // incremented to continue after finding the last solution
-                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetNSolsFound(scip) + 1.0, 0.0));
+                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetNSolsFound(scip) + 1.0, 1.0));
                      if( bound > INT_MAX )
                         continue;
                      else
                         break;
                   case REST:
                      // decremented from runs to restarts
-                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * (SCIPgetNRuns(scip) - 1.0), 0.0));
+                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * (SCIPgetNRuns(scip) - 1.0), 1.0));
                      if( bound > INT_MAX )
                         continue;
                      else
                         break;
                   case TOTA:
                      // assumes last node is processed
-                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetNTotalNodes(scip), 0.0));
+                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetNTotalNodes(scip), 1.0));
                      if( bound > LONG_MAX )
                         continue;
                      else
                         break;
                   case TIME:
                      // sensitive to processor speed variability
-                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetSolvingTime(scip), 0.0));
+                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetSolvingTime(scip), 1.0));
                      if( bound > LLONG_MAX )
                         continue;
                      else
