@@ -53,6 +53,7 @@ namespace bugger {
       bool set_solu_limit = true;
       bool set_rest_limit = true;
       bool set_tota_limit = true;
+      bool set_time_limit = false;
    };
 
    class ScipInterface : public SolverInterface {
@@ -65,7 +66,8 @@ namespace bugger {
          BEST = 3,
          SOLU = 4,
          REST = 5,
-         TOTA = 6
+         TOTA = 6,
+         TIME = 7
       };
 
    private:
@@ -148,6 +150,11 @@ namespace bugger {
                   limit_settings.emplace_back( name, param->data.longintparam.valueptr == nullptr
                                                    ? param->data.longintparam.curvalue
                                                    : *param->data.longintparam.valueptr );
+                  break;
+               case TIME:
+                  limit_settings.emplace_back( name, std::min(std::ceil(param->data.realparam.valueptr == nullptr
+                                                                      ? param->data.realparam.curvalue
+                                                                      : *param->data.realparam.valueptr), (SCIP_Real)LLONG_MAX) );
                   break;
                default:
                   SCIPerrorMessage("unknown limit type\n");
@@ -455,6 +462,9 @@ namespace bugger {
             case TOTA:
                SCIPsetLongintParam(scip, pair.first.c_str(), pair.second);
                break;
+            case TIME:
+               SCIPsetRealParam(scip, pair.first.c_str(), pair.second);
+               break;
             case DUAL:
             case PRIM:
             default:
@@ -690,6 +700,13 @@ namespace bugger {
                         continue;
                      else
                         break;
+                  case TIME:
+                     // sensitive to processor speed variability
+                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetSolvingTime(scip), 0.0));
+                     if( bound > LLONG_MAX )
+                        continue;
+                     else
+                        break;
                   case DUAL:
                   case PRIM:
                   default:
@@ -728,7 +745,8 @@ namespace bugger {
          parameterset.addParameter("scip.setsolulimit", "restrict total number of solutions automatically", parameters.set_solu_limit);
          parameterset.addParameter("scip.setrestlimit", "restrict number of restarts automatically", parameters.set_rest_limit);
          parameterset.addParameter("scip.settotalimit", "restrict total number of nodes automatically", parameters.set_tota_limit);
-         // run and stalling number of nodes are unrestrictable because they are unmonotonous
+         parameterset.addParameter("scip.settimelimit", "restrict time automatically (unreproducible)", parameters.set_time_limit);
+         // run and stalling number of nodes, memory, and gap are unrestrictable because they are not monotonously increasing
       }
 
       std::unique_ptr<SolverInterface>
@@ -807,6 +825,16 @@ namespace bugger {
                {
                   msg.info("Totalnode limit disabled.\n");
                   parameters.set_tota_limit = false;
+               }
+            }
+            if( parameters.set_time_limit )
+            {
+               if( scip->has_setting(name = "limits/time") )
+                  limits[name] = ScipInterface::TIME;
+               else
+               {
+                  msg.info("Time limit disabled.\n");
+                  parameters.set_time_limit = false;
                }
             }
             initial = false;
