@@ -30,62 +30,70 @@ namespace bugger {
    class SolverSettings {
 
    private:
-      Vec<std::pair<std::string, bool>> bool_settings;
-      Vec<std::pair<std::string, int>> int_settings;
-      Vec<std::pair<std::string, long>> long_settings;
-      Vec<std::pair<std::string, double>> double_settings;
-      Vec<std::pair<std::string, char>> char_settings;
-      Vec<std::pair<std::string, std::string>> string_settings;
+
+      Vec<std::pair<String, bool>> bool_settings;
+      Vec<std::pair<String, int>> int_settings;
+      Vec<std::pair<String, long>> long_settings;
+      Vec<std::pair<String, double>> double_settings;
+      Vec<std::pair<String, char>> char_settings;
+      Vec<std::pair<String, String>> string_settings;
+      Vec<std::pair<String, long long>> limit_settings;
 
    public:
 
-      SolverSettings()            :
-            bool_settings( { } ),
-            int_settings( { } ),
-            long_settings( { }),
-            double_settings( { }),
-            char_settings( { }),
-            string_settings( { } ) {
-      };
+      SolverSettings() :
+         bool_settings( ),
+         int_settings( ),
+         long_settings( ),
+         double_settings( ),
+         char_settings( ),
+         string_settings( ),
+         limit_settings( )
+      { };
 
-      SolverSettings(Vec<std::pair<std::string, bool>> &_bool_settings,
-                     Vec<std::pair<std::string, int>> &_int_settings,
-                     Vec<std::pair<std::string, long>> &_long_settings,
-                     Vec<std::pair<std::string, double>> &_double_settings,
-                     Vec<std::pair<std::string, char>> &_char_settings,
-                     Vec<std::pair<std::string, std::string>> &_string_settings
-      )
-            :
-            bool_settings(_bool_settings),
-            int_settings(_int_settings),
-            long_settings(_long_settings),
-            double_settings(_double_settings),
-            char_settings(_char_settings),
-            string_settings(_string_settings) {
-      };
+      SolverSettings(Vec<std::pair<String, bool>>& _bool_settings,
+                     Vec<std::pair<String, int>>& _int_settings,
+                     Vec<std::pair<String, long>>& _long_settings,
+                     Vec<std::pair<String, double>>& _double_settings,
+                     Vec<std::pair<String, char>>& _char_settings,
+                     Vec<std::pair<String, String>>& _string_settings,
+                     Vec<std::pair<String, long long>>& _limit_settings
+      ) :
+         bool_settings(_bool_settings),
+         int_settings(_int_settings),
+         long_settings(_long_settings),
+         double_settings(_double_settings),
+         char_settings(_char_settings),
+         string_settings(_string_settings),
+         limit_settings(_limit_settings)
+      { };
 
-      const Vec<std::pair<std::string, bool>> &getBoolSettings( ) const {
+      const Vec<std::pair<String, bool>>& getBoolSettings( ) const {
          return bool_settings;
       }
 
-      const Vec<std::pair<std::string, int>> &getIntSettings( ) const {
+      const Vec<std::pair<String, int>>& getIntSettings( ) const {
          return int_settings;
       }
 
-      const Vec<std::pair<std::string, long>> &getLongSettings( ) const {
+      const Vec<std::pair<String, long>>& getLongSettings( ) const {
          return long_settings;
       }
 
-      const Vec<std::pair<std::string, double>> &getDoubleSettings( ) const {
+      const Vec<std::pair<String, double>>& getDoubleSettings( ) const {
          return double_settings;
       }
 
-      const Vec<std::pair<std::string, char>> &getCharSettings( ) const {
+      const Vec<std::pair<String, char>>& getCharSettings( ) const {
          return char_settings;
       }
 
-      const Vec<std::pair<std::string, std::string>> &getStringSettings( ) const {
+      const Vec<std::pair<String, String>>& getStringSettings( ) const {
          return string_settings;
+      }
+
+      const Vec<std::pair<String, long long>>& getLimitSettings( ) const {
+         return limit_settings;
       }
 
       void setBoolSettings(int index, bool value) {
@@ -108,8 +116,12 @@ namespace bugger {
          char_settings[ index ].second = value;
       }
 
-      void setStringSettings(int index, std::string value) {
+      void setStringSettings(int index, String value) {
          string_settings[ index ].second = value;
+      }
+
+      void setLimitSettings(int index, long long value) {
+         limit_settings[ index ].second = value;
       }
    };
 
