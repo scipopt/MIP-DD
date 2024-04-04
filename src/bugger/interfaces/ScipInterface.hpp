@@ -590,7 +590,7 @@ namespace bugger {
 
       long long getSolvingEffort( ) override {
 
-         return SCIPgetStage(scip) == SCIP_STAGE_INIT ? -1 : SCIPgetNTotalNodes(scip);
+         return SCIPgetStage(scip) == SCIP_STAGE_INIT ? -1 : SCIPgetNLPIterations(scip);
       }
    };
 
