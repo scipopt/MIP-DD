@@ -110,15 +110,15 @@ namespace bugger {
          check_feasibility_of_solution(problem, solution);
          unsigned long long expenditure = 0;
          long long complexity = -1;
-         std::pair<char, SolverStatus> final_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
+         std::pair<char, SolverStatus> last_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
          int final_round = -1;
          int final_module = -1;
          if( parameters.mode != 1 )
          {
             auto solver = factory->create_solver(msg);
             solver->doSetUp(settings, problem, solution);
-            final_result = solver->solve(Vec<int>{ });
-            msg.info("Original solve returned code {} with status {}.\n\n", (int)final_result.first, final_result.second);
+            last_result = solver->solve(Vec<int>{ });
+            msg.info("Original solve returned code {} with status {}.\n\n", (int)last_result.first, last_result.second);
             if( parameters.mode == 0 )
                return;
             complexity = solver->getComplexity( );
@@ -162,8 +162,8 @@ namespace bugger {
                   if( results[ module ] == bugger::ModulStatus::kSuccessful )
                   {
                      success = module;
-                     complexity = modules[ module ]->getFinalComplexity( );
-                     final_result = modules[ module ]->getFinalResult( );
+                     complexity = modules[ module ]->getLastComplexity( );
+                     last_result = modules[ module ]->getLastResult( );
                      final_round = round;
                      final_module = module;
                   }
@@ -178,7 +178,7 @@ namespace bugger {
 
             assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModulStatus::kSuccessful );
          }
-         printStats(time, final_result, final_round, final_module);
+         printStats(time, last_result, final_round, final_module);
       }
 
    private:
