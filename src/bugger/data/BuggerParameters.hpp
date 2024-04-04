@@ -50,7 +50,7 @@ namespace bugger {
       addParameters( ParameterSet& paramSet )
       {
          paramSet.addParameter( "mode", "selective bugger mode (-1: reproduce and reduce, 0: only reproduce, 1: only reduce)", mode, -1, 1 );
-         paramSet.addParameter( "expenditure", "product of batches and complexity to adapt (-1: use original, 0: keep batches)", expenditure, -1);
+         paramSet.addParameter( "expenditure", "if activated used to calculate the batch size by dividing by the solving effort (see SolverInterface) (-1: deactivated, 0: keep batches) ", expenditure, -1);
          paramSet.addParameter( "initround", "initial bugger round or -1 for last round", initround, -1 );
          paramSet.addParameter( "initstage", "initial bugger stage or -1 for last stage", initstage, -1 );
          paramSet.addParameter( "maxrounds", "maximum number of bugger rounds or -1 for no limit", maxrounds, -1 );

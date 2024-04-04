@@ -11,7 +11,7 @@ Performance improvements
 
 New parameters:
 ----------
-- expenditure = -1 : product of batches and complexity to adapt (-1: use original, 0: keep batches)
+- expenditure = -1 : if activated used to calculate the batch size by dividing by the solving effort (see SolverInterface) (-1: deactivated, 0: keep batches)
 
 
 Fixed bugs
