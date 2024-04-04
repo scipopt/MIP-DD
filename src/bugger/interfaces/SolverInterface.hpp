@@ -96,7 +96,7 @@ namespace bugger {
        * @return a long long int: Non-negative value proportional to complexity of the last solve or -1 if unknown
        */
       virtual
-      long long getComplexity( )
+      long long getSolvingEffort( )
       {
          return -1;
       }

@@ -110,8 +110,8 @@ namespace bugger {
          check_feasibility_of_solution(problem, solution);
          long long last_complexity = -1;
          std::pair<char, SolverStatus> last_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
-         int final_round = -1;
-         int final_module = -1;
+         int last_round = -1;
+         int last_module = -1;
          if( parameters.mode == 1 )
          {
             if( parameters.expenditure < 0 )
@@ -125,7 +125,7 @@ namespace bugger {
             msg.info("Original solve returned code {} with status {}.\n\n", (int)last_result.first, last_result.second);
             if( parameters.mode == 0 )
                return;
-            long long complexity = solver->getComplexity( );
+            long long complexity = solver->getSolvingEffort( );
             if( parameters.expenditure > 0 )
                last_complexity = complexity;
             else if( parameters.expenditure < 0 && ( parameters.nbatches <= 0 || complexity <= 0 || (parameters.expenditure = parameters.nbatches * complexity) / complexity != parameters.nbatches ) )
@@ -177,8 +177,8 @@ namespace bugger {
                      if( complexity >= 0 )
                         last_complexity = complexity;
                      last_result = modules[ module ]->getLastResult( );
-                     final_round = round;
-                     final_module = module;
+                     last_round = round;
+                     last_module = module;
                      success = module;
                   }
                   else if( success == module )
@@ -192,7 +192,7 @@ namespace bugger {
 
             assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModulStatus::kSuccessful );
          }
-         printStats(time, last_result, final_round, final_module);
+         printStats(time, last_result, last_round, last_module);
       }
 
    private:

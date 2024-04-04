@@ -588,7 +588,7 @@ namespace bugger {
          return { retcode, solverstatus };
       }
 
-      long long getComplexity( ) override {
+      long long getSolvingEffort( ) override {
 
          return SCIPgetStage(scip) == SCIP_STAGE_INIT ? -1 : SCIPgetNTotalNodes(scip);
       }
