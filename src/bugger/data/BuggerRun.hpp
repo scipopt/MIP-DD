@@ -328,7 +328,7 @@ namespace bugger {
       }
 
       void
-      printStats(const double& time, const std::pair<char, SolverStatus>& final_result, int final_round, int final_module) {
+      printStats(const double& time, const std::pair<char, SolverStatus>& last_result, int last_round, int last_module) {
 
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n", "modules",
                   "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
@@ -338,15 +338,15 @@ namespace bugger {
             module->printStats(msg);
             nsolves += module->getNSolves();
          }
-         if( final_round == -1 )
+         if( last_round == -1 )
          {
-            assert(parameters.mode != 1 || ( final_result.first == SolverInterface::OKAY && final_result.second == SolverStatus::kUnknown ));
+            assert(parameters.mode != 1 || ( last_result.first == SolverInterface::OKAY && last_result.second == SolverStatus::kUnknown ));
             msg.info("\nNo reductions found by the bugger!");
          }
          else
          {
-            assert(final_module != -1);
-            msg.info("\nFinal solve returned code {} with status {} in round {} by module {}.", (int)final_result.first, final_result.second, final_round + 1, modules[ final_module ]->getName( ));
+            assert(last_module != -1);
+            msg.info("\nFinal solve returned code {} with status {} in round {} by module {}.", (int)last_result.first, last_result.second, last_round + 1, modules[ last_module ]->getName( ));
          }
          msg.info( "\nbugging took {:.3f} seconds with {} solver invocations", time, nsolves );
          if( parameters.mode != 1 )
