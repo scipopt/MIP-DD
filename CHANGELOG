@@ -6,9 +6,17 @@ Features
 
 Performance improvements
 ------------------------
+- batch size can be adjust per expenditure
+
+
+New parameters:
+----------
+- expenditure = -1 : product of batches and complexity to adapt (-1: use original, 0: keep batches)
+
 
 Fixed bugs
 ----------
+
 
 Build system
 ------------
