@@ -173,7 +173,7 @@ namespace bugger {
 
                   if( results[ module ] == bugger::ModulStatus::kSuccessful )
                   {
-                     long long complexity = modules[ module ]->getLastComplexity( );
+                     long long complexity = modules[ module ]->getLastSolvingEffort( );
                      if( complexity >= 0 )
                         last_complexity = complexity;
                      last_result = modules[ module ]->getLastResult( );

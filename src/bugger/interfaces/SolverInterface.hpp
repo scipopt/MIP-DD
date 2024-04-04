@@ -92,8 +92,8 @@ namespace bugger {
       std::pair<char, SolverStatus> solve(const Vec<int>& passcodes) = 0;
 
       /**
-       * provides complexity measure to adapt batch number
-       * @return a long long int: Non-negative value proportional to complexity of the last solve or -1 if unknown
+       * provides measure for the solving effort to adapt batch number
+       * @return a long long int: Non-negative value proportional to solving effort of the solve or -1 if unknown
        */
       virtual
       long long getSolvingEffort( )

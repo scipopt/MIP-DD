@@ -71,7 +71,7 @@ namespace bugger {
       int ndeletedrows = 0;
       int nsolves = 0;
       std::pair<char, SolverStatus> last_result { SolverInterface::OKAY, SolverStatus::kUnknown };
-      long long last_complexity = -1;
+      long long last_solving_effort = -1;
 
    public:
 
@@ -108,7 +108,7 @@ namespace bugger {
       ModulStatus
       run(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution, const Timer& timer) {
          last_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
-         last_complexity = -1;
+         last_solving_effort = -1;
          if( !enabled )
             return ModulStatus::kDidNotRun;
 
@@ -158,8 +158,8 @@ namespace bugger {
       }
 
       long long
-      getLastComplexity( ) const {
-         return last_complexity;
+      getLastSolvingEffort( ) const {
+         return last_solving_effort;
       }
 
       void
@@ -212,9 +212,9 @@ namespace bugger {
          }
          else
          {
-            long long complexity = solver->getSolvingEffort( );
-            if( complexity >= 0 )
-               last_complexity = complexity;
+            long long solving_effort = solver->getSolvingEffort( );
+            if( solving_effort >= 0 )
+               last_solving_effort = solving_effort;
             last_result = result;
             if( result.first > SolverInterface::OKAY )
             {
