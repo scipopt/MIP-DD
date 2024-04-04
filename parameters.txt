@@ -1,8 +1,8 @@
 # selective bugger mode (-1: reproduce and reduce, 0: only reproduce, 1: only reduce) [Integer: [-1,1]]
 mode = -1
 
-# adapt number of batches in every round to maintain anticipated expenditure (mode -1 only) [Boolean: {0,1}]
-adaptbatch = 1
+# product of batches and complexity to adapt (-1: use original, 0: keep batches) [Integer: [-1,9223372036854775807]]
+expenditure = -1
 
 # initial bugger round or -1 for last round [Integer: [-1,2147483647]]
 initround = 0

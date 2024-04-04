@@ -108,13 +108,15 @@ namespace bugger {
          }
 
          check_feasibility_of_solution(problem, solution);
-         unsigned long long expenditure = 0;
          long long last_complexity = -1;
          std::pair<char, SolverStatus> last_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
          int final_round = -1;
          int final_module = -1;
          if( parameters.mode == 1 )
-            parameters.adaptbatch = false;
+         {
+            if( parameters.expenditure < 0 )
+               parameters.expenditure = 0;
+         }
          else
          {
             auto solver = factory->create_solver(msg);
@@ -124,10 +126,12 @@ namespace bugger {
             if( parameters.mode == 0 )
                return;
             long long complexity = solver->getComplexity( );
-            if( parameters.adaptbatch && ( parameters.nbatches <= 0 || complexity <= 0 || (expenditure = parameters.nbatches * complexity) / complexity != parameters.nbatches ) )
+            if( parameters.expenditure > 0 )
+               last_complexity = complexity;
+            else if( parameters.expenditure < 0 && ( parameters.nbatches <= 0 || complexity <= 0 || (parameters.expenditure = parameters.nbatches * complexity) / complexity != parameters.nbatches ) )
             {
                msg.info("Batch adaption disabled.\n");
-               parameters.adaptbatch = false;
+               parameters.expenditure = 0;
             }
          }
 
@@ -155,9 +159,9 @@ namespace bugger {
                   break;
 
                // adapt batch number
-               if( parameters.adaptbatch && last_complexity >= 0 )
+               if( parameters.expenditure > 0 && last_complexity >= 0 )
                {
-                  parameters.nbatches = last_complexity >= 1 ? (expenditure - 1) / last_complexity + 1 : 0;
+                  parameters.nbatches = last_complexity >= 1 ? (parameters.expenditure - 1) / last_complexity + 1 : 0;
                   last_complexity = -1;
                }
 
