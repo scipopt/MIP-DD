@@ -212,8 +212,10 @@ namespace bugger {
          }
          else
          {
+            long long complexity = solver->getComplexity();
+            if( complexity >= 0 )
+               last_complexity = complexity;
             final_result = result;
-            last_complexity = solver->getComplexity();
             if( result.first > SolverInterface::OKAY )
             {
                msg.info("\tBug {} - Status {}\n", (int) result.first, result.second);

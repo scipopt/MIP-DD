@@ -109,7 +109,7 @@ namespace bugger {
 
          check_feasibility_of_solution(problem, solution);
          unsigned long long expenditure = 0;
-         long long complexity = -1;
+         long long last_complexity = -1;
          std::pair<char, SolverStatus> last_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
          int final_round = -1;
          int final_module = -1;
@@ -123,7 +123,7 @@ namespace bugger {
             msg.info("Original solve returned code {} with status {}.\n\n", (int)last_result.first, last_result.second);
             if( parameters.mode == 0 )
                return;
-            complexity = solver->getComplexity( );
+            long long complexity = solver->getComplexity( );
             if( parameters.adaptbatch && ( parameters.nbatches <= 0 || complexity <= 0 || (expenditure = parameters.nbatches * complexity) / complexity != parameters.nbatches ) )
             {
                msg.info("Batch adaption disabled.\n");
@@ -155,8 +155,11 @@ namespace bugger {
                   break;
 
                // adapt batch number
-               if( parameters.adaptbatch && complexity >= 0 )
-                  parameters.nbatches = complexity >= 1 ? (expenditure - 1) / complexity + 1 : 0;
+               if( parameters.adaptbatch && last_complexity >= 0 )
+               {
+                  parameters.nbatches = last_complexity >= 1 ? (expenditure - 1) / last_complexity + 1 : 0;
+                  last_complexity = -1;
+               }
 
                msg.info("Round {} Stage {} Batch {}\n", round+1, stage+1, parameters.nbatches);
 
@@ -166,11 +169,13 @@ namespace bugger {
 
                   if( results[ module ] == bugger::ModulStatus::kSuccessful )
                   {
-                     success = module;
-                     complexity = modules[ module ]->getLastComplexity( );
+                     long long complexity = modules[ module ]->getLastComplexity( );
+                     if( complexity >= 0 )
+                        last_complexity = complexity;
                      last_result = modules[ module ]->getLastResult( );
                      final_round = round;
                      final_module = module;
+                     success = module;
                   }
                   else if( success == module )
                   {
