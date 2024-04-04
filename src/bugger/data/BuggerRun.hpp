@@ -113,7 +113,9 @@ namespace bugger {
          std::pair<char, SolverStatus> last_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
          int final_round = -1;
          int final_module = -1;
-         if( parameters.mode != 1 )
+         if( parameters.mode == 1 )
+            parameters.adaptbatch = false;
+         else
          {
             auto solver = factory->create_solver(msg);
             solver->doSetUp(settings, problem, solution);
@@ -122,8 +124,11 @@ namespace bugger {
             if( parameters.mode == 0 )
                return;
             complexity = solver->getComplexity( );
-            if( parameters.adaptbatch && parameters.nbatches >= 1 && complexity >= 1 )
-               expenditure = parameters.nbatches * complexity;
+            if( parameters.adaptbatch && ( parameters.nbatches <= 0 || complexity <= 0 || (expenditure = parameters.nbatches * complexity) / complexity != parameters.nbatches ) )
+            {
+               msg.info("Batch adaption disabled.\n");
+               parameters.adaptbatch = false;
+            }
          }
 
          int ending = optionsInfo.problem_file.rfind('.');
@@ -150,7 +155,7 @@ namespace bugger {
                   break;
 
                // adapt batch number
-               if( expenditure >= 1 && complexity >= 0 )
+               if( parameters.adaptbatch && complexity >= 0 )
                   parameters.nbatches = complexity >= 1 ? (expenditure - 1) / complexity + 1 : 0;
 
                msg.info("Round {} Stage {} Batch {}\n", round+1, stage+1, parameters.nbatches);
