@@ -93,7 +93,7 @@ namespace bugger {
 
       /**
        * provides measure for the solving effort to adapt batch number
-       * @return a long long int: Non-negative value proportional to solving effort of the solve or -1 if unknown
+       * @return a long long int: Non-negative value proportional to effort of the solve or -1 if unknown
        */
       virtual
       long long getSolvingEffort( )
