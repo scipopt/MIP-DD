@@ -17,7 +17,6 @@ New parameters:
 Fixed bugs
 ----------
 
-
 Build system
 ------------
 - backdate fmt from 8 to 7 to conform c++ standard 14
