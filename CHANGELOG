@@ -6,8 +6,8 @@ Features
 
 Performance improvements
 ------------------------
-- batch size can be adjust per expenditure
 
+- adjust number of batches to maintain original expenditure
 
 New parameters:
 ----------
