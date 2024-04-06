@@ -165,7 +165,7 @@ namespace bugger {
                   last_solving_effort = -1;
                }
 
-               msg.info("Round {} Stage {} Batch {} Solving Effort {}\n", round+1, stage+1, parameters.nbatches, last_solving_effort);
+               msg.info("Round {} Stage {} Batch {}\n", round+1, stage+1, parameters.nbatches);
 
                for( int module = 0; module <= stage && stage < parameters.maxstages; ++module )
                {
