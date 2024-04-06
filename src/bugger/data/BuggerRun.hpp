@@ -325,8 +325,8 @@ namespace bugger {
       void
       printStats(const double& time, const std::pair<char, SolverStatus>& last_result, int last_round, int last_module, long long last_effort) {
 
-         msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n", "modules",
-                  "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
+         msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n",
+                  "modules", "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
          int nsolves = 0;
          for( const auto &module: modules )
          {
@@ -335,8 +335,13 @@ namespace bugger {
          }
          if( last_round == -1 )
          {
-            assert(parameters.mode != 1 || ( last_result.first == SolverInterface::OKAY && last_result.second == SolverStatus::kUnknown ));
-            assert(parameters.mode != 1 || last_effort == -1);
+            assert(last_module == -1);
+            if( parameters.mode == 1 )
+            {
+               assert(last_result.first == SolverInterface::OKAY);
+               assert(last_result.second == SolverStatus::kUnknown);
+               assert(last_effort == -1);
+            }
             msg.info("\nNo reductions found by the bugger!");
          }
          else
