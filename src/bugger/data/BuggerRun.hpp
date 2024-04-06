@@ -122,13 +122,11 @@ namespace bugger {
             auto solver = factory->create_solver(msg);
             solver->doSetUp(settings, problem, solution);
             last_result = solver->solve(Vec<int>{ });
-            long long effort = solver->getSolvingEffort( );
-            msg.info("Original solve returned code {} with status {} and effort {}.\n\n", (int)last_result.first, last_result.second, effort);
+            last_effort = solver->getSolvingEffort( );
+            msg.info("Original solve returned code {} with status {} and effort {}.\n\n", (int)last_result.first, last_result.second, last_effort);
             if( parameters.mode == 0 )
                return;
-            if( parameters.expenditure > 0 )
-               last_effort = effort;
-            else if( parameters.expenditure < 0 && ( parameters.nbatches <= 0 || effort <= 0 || ( parameters.expenditure = parameters.nbatches * effort) / effort != parameters.nbatches ) )
+            if( parameters.expenditure < 0 && ( parameters.nbatches <= 0 || last_effort <= 0 || (parameters.expenditure = parameters.nbatches * last_effort) / last_effort != parameters.nbatches ) )
             {
                msg.info("Batch adaption disabled.\n");
                parameters.expenditure = 0;
@@ -160,10 +158,7 @@ namespace bugger {
 
                // adapt batch number
                if( parameters.expenditure > 0 && last_effort >= 0 )
-               {
                   parameters.nbatches = last_effort >= 1 ? ( parameters.expenditure - 1) / last_effort + 1 : 0;
-                  last_effort = -1;
-               }
 
                msg.info("Round {} Stage {} Batch {}\n", round+1, stage+1, parameters.nbatches);
 
@@ -192,7 +187,7 @@ namespace bugger {
 
             assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModulStatus::kSuccessful );
          }
-         printStats(time, last_result, last_round, last_module);
+         printStats(time, last_result, last_round, last_module, last_effort);
       }
 
    private:
@@ -328,7 +323,7 @@ namespace bugger {
       }
 
       void
-      printStats(const double& time, const std::pair<char, SolverStatus>& last_result, int last_round, int last_module) {
+      printStats(const double& time, const std::pair<char, SolverStatus>& last_result, int last_round, int last_module, long long last_effort) {
 
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n", "modules",
                   "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
@@ -341,12 +336,13 @@ namespace bugger {
          if( last_round == -1 )
          {
             assert(parameters.mode != 1 || ( last_result.first == SolverInterface::OKAY && last_result.second == SolverStatus::kUnknown ));
+            assert(parameters.mode != 1 || last_effort == -1);
             msg.info("\nNo reductions found by the bugger!");
          }
          else
          {
             assert(last_module != -1);
-            msg.info("\nFinal solve returned code {} with status {} in round {} by module {}.", (int)last_result.first, last_result.second, last_round + 1, modules[ last_module ]->getName( ));
+            msg.info("\nFinal solve returned code {} with status {} and effort {} in round {} by module {}.", (int)last_result.first, last_result.second, last_effort, last_round + 1, modules[ last_module ]->getName( ));
          }
          msg.info( "\nbugging took {:.3f} seconds with {} solver invocations", time, nsolves );
          if( parameters.mode != 1 )

@@ -205,25 +205,25 @@ namespace bugger {
             result.second = SolverStatus::kUndefinedError;
             return BuggerStatus::kError;
          }
+         long long effort = solver->getSolvingEffort( );
          if( result.first == SolverInterface::OKAY )
          {
-            msg.info("\tOkay  - Status {}\n", result.second);
+            msg.info("\tOkay  - Status {:<23} - Effort {}\n", result.second, effort);
             return BuggerStatus::kOkay;
          }
          else
          {
-            long long effort = solver->getSolvingEffort( );
             if( effort >= 0 )
                last_effort = effort;
             last_result = result;
             if( result.first > SolverInterface::OKAY )
             {
-               msg.info("\tBug {} - Status {}\n", (int) result.first, result.second);
+               msg.info("\tBug {} - Status {:<23} - Effort {}\n", (int)result.first, result.second, effort);
                return BuggerStatus::kBug;
             }
             else
             {
-               msg.info("\tError {}\n", (int) result.first);
+               msg.info("\tErr {} - Status {:<23} - Effort {}\n", (int)result.first, result.second, effort);
                return BuggerStatus::kError;
             }
          }
