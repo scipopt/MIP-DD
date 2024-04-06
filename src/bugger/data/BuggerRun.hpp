@@ -108,7 +108,7 @@ namespace bugger {
          }
 
          check_feasibility_of_solution(problem, solution);
-         long long last_solving_effort = -1;
+         long long last_effort = -1;
          std::pair<char, SolverStatus> last_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
          int last_round = -1;
          int last_module = -1;
@@ -122,13 +122,13 @@ namespace bugger {
             auto solver = factory->create_solver(msg);
             solver->doSetUp(settings, problem, solution);
             last_result = solver->solve(Vec<int>{ });
-            long long solving_effort = solver->getSolvingEffort( );
-            msg.info("Original solve returned code {} with status {} and solving effort {}.\n\n", (int)last_result.first, last_result.second, solving_effort);
+            long long effort = solver->getSolvingEffort( );
+            msg.info("Original solve returned code {} with status {} and effort {}.\n\n", (int)last_result.first, last_result.second, effort);
             if( parameters.mode == 0 )
                return;
             if( parameters.expenditure > 0 )
-               last_solving_effort = solving_effort;
-            else if( parameters.expenditure < 0 && ( parameters.nbatches <= 0 || solving_effort <= 0 || ( parameters.expenditure = parameters.nbatches * solving_effort) / solving_effort != parameters.nbatches ) )
+               last_effort = effort;
+            else if( parameters.expenditure < 0 && ( parameters.nbatches <= 0 || effort <= 0 || ( parameters.expenditure = parameters.nbatches * effort) / effort != parameters.nbatches ) )
             {
                msg.info("Batch adaption disabled.\n");
                parameters.expenditure = 0;
@@ -159,10 +159,10 @@ namespace bugger {
                   break;
 
                // adapt batch number
-               if( parameters.expenditure > 0 && last_solving_effort >= 0 )
+               if( parameters.expenditure > 0 && last_effort >= 0 )
                {
-                  parameters.nbatches = last_solving_effort >= 1 ? ( parameters.expenditure - 1) / last_solving_effort + 1 : 0;
-                  last_solving_effort = -1;
+                  parameters.nbatches = last_effort >= 1 ? ( parameters.expenditure - 1) / last_effort + 1 : 0;
+                  last_effort = -1;
                }
 
                msg.info("Round {} Stage {} Batch {}\n", round+1, stage+1, parameters.nbatches);
@@ -173,9 +173,9 @@ namespace bugger {
 
                   if( results[ module ] == bugger::ModulStatus::kSuccessful )
                   {
-                     long long solving_effort = modules[ module ]->getLastSolvingEffort( );
-                     if( solving_effort >= 0 )
-                        last_solving_effort = solving_effort;
+                     long long effort = modules[ module ]->getLastSolvingEffort( );
+                     if( effort >= 0 )
+                        last_effort = effort;
                      last_result = modules[ module ]->getLastResult( );
                      last_round = round;
                      last_module = module;
