@@ -67,6 +67,7 @@ namespace bugger
       bool set_rest_limit = true;
       bool set_tota_limit = true;
       bool set_time_limit = false;
+      bool exact_certificate = false;
    };
 
    const String ScipParameters::VERB { "display/verblevel" };
@@ -224,6 +225,12 @@ namespace bugger
             SCIPsetMessagehdlrQuiet(scip, TRUE);
          else
             SCIPsetIntParam(scip, ScipParameters::VERB.c_str(), 5);
+
+         if(parameters.exact_certificate)
+         {
+            // TODO: call solve and check certificate
+            return { 0, SolverStatus::kUnknown};
+         }
 
          // optimize
          if( parameters.mode == -1 )
@@ -806,6 +813,11 @@ namespace bugger
             }
          }
 
+         if(parameters.exact_certificate)
+         {
+            // TODO: set parameters to execute exactly
+         }
+
          return SCIP_OKAY;
       }
 
@@ -873,6 +885,7 @@ namespace bugger
          parameterset.addParameter("scip.settotalimit", "restrict total number of nodes automatically", parameters.set_tota_limit);
          parameterset.addParameter("scip.settimelimit", "restrict time automatically (unreproducible)", parameters.set_time_limit);
          // run and stalling number of nodes, memory, and gap are unrestrictable because they are not monotonously increasing
+         parameterset.addParameter("scip.exact_certificate", "TBD", parameters.exact_certificate);
       }
 
       std::unique_ptr<SolverInterface<REAL>>

@@ -91,6 +91,8 @@ enum class SolverStatus : int {
 
    kInterrupt = 18,
 
+   kCertificateCouldNotBeValidated = -19,
+
 };
 
 using SolverStatusCheck = EnumCheck< SolverStatus,
@@ -113,7 +115,9 @@ using SolverStatusCheck = EnumCheck< SolverStatus,
       SolverStatus::kTerminate,
       SolverStatus::kStallNodeLimit,
       SolverStatus::kTotalNodeLimit,
-      SolverStatus::kInterrupt >;
+      SolverStatus::kInterrupt,
+      SolverStatus::kCertificateCouldNotBeValidated
+      >;
 
 std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
    std::string val;
