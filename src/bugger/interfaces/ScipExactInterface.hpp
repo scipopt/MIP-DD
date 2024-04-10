@@ -20,8 +20,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BUGGER_INTERFACES_SCIPINTERFACE_HPP__
-#define __BUGGER_INTERFACES_SCIPINTERFACE_HPP__
+#ifndef __BUGGER_INTERFACES_SCIPEXACTINTERFACE_HPP__
+#define __BUGGER_INTERFACES_SCIPEXACTINTERFACE_HPP__
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
 
@@ -41,7 +41,7 @@
 
 namespace bugger {
 
-   class ScipParameters {
+   class ScipExactParameters {
 
    public:
 
@@ -51,7 +51,7 @@ namespace bugger {
       bool exact_certificate = true;
    };
 
-   class ScipInterface : public SolverInterface {
+   class ScipExactInterface : public SolverInterface {
 
    public:
 
@@ -60,13 +60,13 @@ namespace bugger {
 
    private:
 
-      const ScipParameters& parameters;
+      const ScipExactParameters& parameters;
       SCIP* scip = nullptr;
       Vec<SCIP_VAR*> vars;
 
    public:
 
-      explicit ScipInterface(const Message& _msg, const ScipParameters& _parameters) : SolverInterface(_msg),
+      explicit ScipExactInterface(const Message& _msg, const ScipExactParameters& _parameters) : SolverInterface(_msg),
                              parameters(_parameters) {
          if( SCIPcreate(&scip) != SCIP_OKAY || SCIPincludeDefaultPlugins(scip) != SCIP_OKAY )
             throw std::runtime_error("could not create SCIP");
@@ -263,7 +263,7 @@ namespace bugger {
          return SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
       };
 
-      ~ScipInterface( ) override {
+      ~ScipExactInterface( ) override {
          if( scip != nullptr )
          {
             auto retcode = SCIPfree(&scip);
@@ -645,14 +645,14 @@ namespace bugger {
       }
    };
 
-   String ScipInterface::DUAL;
-   String ScipInterface::PRIM;
+   String ScipExactInterface::DUAL;
+   String ScipExactInterface::PRIM;
 
-   class ScipFactory : public SolverFactory {
+   class ScipExactFactory : public SolverFactory {
 
    private:
 
-      ScipParameters parameters { };
+      ScipExactParameters parameters { };
       bool initial = true;
 
    public:
@@ -669,18 +669,18 @@ namespace bugger {
       std::unique_ptr<SolverInterface>
       create_solver(const Message& msg) override
       {
-         auto scip = std::unique_ptr<SolverInterface>( new ScipInterface( msg, parameters ) );
+         auto scip = std::unique_ptr<SolverInterface>( new ScipExactInterface( msg, parameters ) );
          if( initial )
          {
             if( parameters.mode == -1 )
             {
                if( parameters.set_dual_limit )
                {
-                  ScipInterface::DUAL = "limits/dual";
-                  if( !scip->has_setting( ScipInterface::DUAL ) )
+                  ScipExactInterface::DUAL = "limits/dual";
+                  if( !scip->has_setting( ScipExactInterface::DUAL ) )
                   {
-                     ScipInterface::DUAL = "limits/proofstop";
-                     if( !scip->has_setting( ScipInterface::DUAL ) )
+                     ScipExactInterface::DUAL = "limits/proofstop";
+                     if( !scip->has_setting( ScipExactInterface::DUAL ) )
                      {
                         msg.info("Dual limit disabled.\n");
                         parameters.set_dual_limit = false;
@@ -689,11 +689,11 @@ namespace bugger {
                }
                if( parameters.set_prim_limit )
                {
-                  ScipInterface::PRIM = "limits/primal";
-                  if( !scip->has_setting( ScipInterface::PRIM ) )
+                  ScipExactInterface::PRIM = "limits/primal";
+                  if( !scip->has_setting( ScipExactInterface::PRIM ) )
                   {
-                     ScipInterface::PRIM = "limits/objectivestop";
-                     if( !scip->has_setting( ScipInterface::PRIM ) )
+                     ScipExactInterface::PRIM = "limits/objectivestop";
+                     if( !scip->has_setting( ScipExactInterface::PRIM ) )
                      {
                         msg.info("Primal limit disabled.\n");
                         parameters.set_prim_limit = false;

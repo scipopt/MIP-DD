@@ -183,6 +183,9 @@ std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
       case SolverStatus::kUnknown:
          val = "unknown";
          break;
+      case SolverStatus::kCertificateCouldNotBeValidated:
+         val = "certificate could not be validated";
+         break;
       default:
          // the function call_solver should ensure that only a known status is processed
          assert(false);
