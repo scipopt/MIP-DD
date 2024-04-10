@@ -39,6 +39,7 @@
 #include "bugger/modules/ConsroundModul.hpp"
 #if   defined(BUGGER_WITH_SCIP)
 #include "bugger/interfaces/ScipInterface.hpp"
+#include "bugger/interfaces/ScipExactInterface.hpp"
 #elif defined(BUGGER_WITH_SOPLEX)
 #include "bugger/interfaces/SoplexInterface.hpp"
 #endif
