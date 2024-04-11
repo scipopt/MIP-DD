@@ -454,30 +454,34 @@ namespace bugger {
          {
             // TODO: call solve and check certificate
             retcode = SCIPsolve(scip);
-            SCIPfreeTransform(scip);
 
             if( retcode == SCIP_OKAY )
             {
                int viprcompcode = 0;
                int viprcheckcode = 0;
-               std::string compcommand = "viprcomp bugger" + std::to_string(this->count());
-               std::string checkcommand = "viprchk bugger" + std::to_string(this->count()) + "_complete.vipr";
+               std::string compcommand = "viprcomp bugger" + std::to_string(this->count()) +  " >/dev/null";
+               std::string checkcommand = "viprchk bugger" + std::to_string(this->count()) + "_complete.vipr >/dev/null";
 
                retcode = OKAY;
 
                solverstatus = SolverStatus::kOptimal;
 
-               viprcompcode = system(compcommand.c_str());
-               if( viprcompcode )
+               // only do certificate stuff if problem was not solved in presolving
+               if( SCIPgetNNodes(scip) > 0 )
                {
-                  solverstatus = SolverStatus::kCertificateCouldNotBeValidated;
-                  retcode = PRIMALFAIL;
-               }
-               viprcheckcode = system(checkcommand.c_str());
-               if( viprcheckcode )
-               {
-                  solverstatus = SolverStatus::kCertificateCouldNotBeValidated;
-                  retcode = PRIMALFAIL;
+                  SCIPfreeTransform(scip);
+                  viprcompcode = system(compcommand.c_str());
+                  if( viprcompcode )
+                  {
+                     solverstatus = SolverStatus::kCertificateCouldNotBeValidated;
+                     retcode = PRIMALFAIL;
+                  }
+                  viprcheckcode = system(checkcommand.c_str());
+                  if( viprcheckcode )
+                  {
+                     solverstatus = SolverStatus::kCertificateCouldNotBeValidated;
+                     retcode = PRIMALFAIL;
+                  }
                }
             }
             return { retcode, solverstatus};
