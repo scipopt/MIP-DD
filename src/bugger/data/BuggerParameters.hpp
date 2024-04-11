@@ -31,7 +31,7 @@ namespace bugger {
    struct BuggerParameters
    {
       int mode = -1;
-      long long expenditure = -1;
+      int64_t expenditure = -1;
       int initround = 0;
       int initstage = 0;
       int maxrounds = -1;
