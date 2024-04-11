@@ -31,15 +31,34 @@
 #include "scip/scip_param.h"
 #include "scip/scipdefplugins.h"
 #include "scip/struct_paramset.h"
+#include "scip/certificate.h"
 #include "bugger/data/Problem.hpp"
 #include "bugger/data/ProblemBuilder.hpp"
 #include "bugger/data/SolverSettings.hpp"
 #include "bugger/interfaces/BuggerStatus.hpp"
 #include "bugger/interfaces/SolverStatus.hpp"
 #include "bugger/interfaces/SolverInterface.hpp"
+#include "boost/detail/atomic_count.hpp"
 
 
 namespace bugger {
+
+
+   template <typename T>
+   class Countable
+   {
+      static boost::detail::atomic_count cs_count_;
+   protected:
+      ~Countable() { --cs_count_; }
+   public:
+      Countable() { ++cs_count_; }
+      Countable( Countable const& ) { ++cs_count_; }
+      static unsigned count() { return cs_count_; }
+   };
+
+
+   template <typename T>
+   boost::detail::atomic_count Countable<T>::cs_count_(0);
 
    class ScipExactParameters {
 
@@ -51,7 +70,7 @@ namespace bugger {
       bool exact_certificate = true;
    };
 
-   class ScipExactInterface : public SolverInterface {
+   class ScipExactInterface : public SolverInterface, public Countable<ScipExactInterface> {
 
    public:
 
@@ -395,8 +414,9 @@ namespace bugger {
 
          if(parameters.exact_certificate)
          {
+            std::string filename = "bugger" + std::to_string(this->count());
             SCIP_CALL(SCIPsetBoolParam(scip, "exact/enabled", TRUE));
-            SCIP_CALL(SCIPsetStringParam(scip, "certificate/filename", "bugger.vipr"));
+            SCIP_CALL(SCIPsetStringParam(scip, "certificate/filename", filename.c_str()));
          }
 
          for (size_t i = 0; i < consvals.size(); i++)
@@ -434,22 +454,26 @@ namespace bugger {
          {
             // TODO: call solve and check certificate
             retcode = SCIPsolve(scip);
+            SCIPfreeTransform(scip);
+
             if( retcode == SCIP_OKAY )
             {
                int viprcompcode = 0;
                int viprcheckcode = 0;
+               std::string compcommand = "viprcomp bugger" + std::to_string(this->count());
+               std::string checkcommand = "viprchk bugger" + std::to_string(this->count()) + "_complete.vipr";
 
                retcode = OKAY;
 
                solverstatus = SolverStatus::kOptimal;
 
-               viprcompcode = system("viprcomp bugger.vipr");
+               viprcompcode = system(compcommand.c_str());
                if( viprcompcode )
                {
                   solverstatus = SolverStatus::kCertificateCouldNotBeValidated;
                   retcode = PRIMALFAIL;
                }
-               viprcheckcode = system("viprchk bugger_complete.vipr");
+               viprcheckcode = system(checkcommand.c_str());
                if( viprcheckcode )
                {
                   solverstatus = SolverStatus::kCertificateCouldNotBeValidated;
