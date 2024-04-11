@@ -662,7 +662,7 @@ namespace bugger {
             }
          }
          // restrict limit settings
-         if( retcode != OKAY && parameters.limitspace >= 0.0 )
+         if( retcode != OKAY )
          {
             const auto& limitsettings = adjustment->getLimitSettings( );
             for( int index = 0; index < limitsettings.size( ); ++index )
@@ -786,55 +786,72 @@ namespace bugger {
                      parameters.set_prim_limit = false;
                   }
                }
-               if( parameters.set_best_limit )
+               if( parameters.limitspace < 0.0 )
                {
-                  if( scip->has_setting(name = "limits/bestsol") )
-                     limits[name] = ScipInterface::BEST;
-                  else
-                  {
-                     msg.info("Bestsolution limit disabled.\n");
-                     parameters.set_best_limit = false;
-                  }
+                  parameters.set_best_limit = false;
+                  parameters.set_solu_limit = false;
+                  parameters.set_rest_limit = false;
                }
-               if( parameters.set_solu_limit )
+               else
                {
-                  if( scip->has_setting(name = "limits/solutions") )
-                     limits[name] = ScipInterface::SOLU;
-                  else
+                  if( parameters.set_best_limit )
                   {
-                     msg.info("Solution limit disabled.\n");
-                     parameters.set_solu_limit = false;
+                     if( scip->has_setting(name = "limits/bestsol") )
+                        limits[name] = ScipInterface::BEST;
+                     else
+                     {
+                        msg.info("Bestsolution limit disabled.\n");
+                        parameters.set_best_limit = false;
+                     }
                   }
-               }
-               if( parameters.set_rest_limit )
-               {
-                  if( scip->has_setting(name = "limits/restarts") )
-                     limits[name] = ScipInterface::REST;
-                  else
+                  if( parameters.set_solu_limit )
                   {
-                     msg.info("Restart limit disabled.\n");
-                     parameters.set_rest_limit = false;
+                     if( scip->has_setting(name = "limits/solutions") )
+                        limits[name] = ScipInterface::SOLU;
+                     else
+                     {
+                        msg.info("Solution limit disabled.\n");
+                        parameters.set_solu_limit = false;
+                     }
+                  }
+                  if( parameters.set_rest_limit )
+                  {
+                     if( scip->has_setting(name = "limits/restarts") )
+                        limits[name] = ScipInterface::REST;
+                     else
+                     {
+                        msg.info("Restart limit disabled.\n");
+                        parameters.set_rest_limit = false;
+                     }
                   }
                }
             }
-            if( parameters.set_tota_limit )
+            if( parameters.limitspace < 0.0 )
             {
-               if( scip->has_setting(name = "limits/totalnodes") )
-                  limits[name] = ScipInterface::TOTA;
-               else
-               {
-                  msg.info("Totalnode limit disabled.\n");
-                  parameters.set_tota_limit = false;
-               }
+               parameters.set_tota_limit = false;
+               parameters.set_time_limit = false;
             }
-            if( parameters.set_time_limit )
+            else
             {
-               if( scip->has_setting(name = "limits/time") )
-                  limits[name] = ScipInterface::TIME;
-               else
+               if( parameters.set_tota_limit )
                {
-                  msg.info("Time limit disabled.\n");
-                  parameters.set_time_limit = false;
+                  if( scip->has_setting(name = "limits/totalnodes") )
+                     limits[name] = ScipInterface::TOTA;
+                  else
+                  {
+                     msg.info("Totalnode limit disabled.\n");
+                     parameters.set_tota_limit = false;
+                  }
+               }
+               if( parameters.set_time_limit )
+               {
+                  if( scip->has_setting(name = "limits/time") )
+                     limits[name] = ScipInterface::TIME;
+                  else
+                  {
+                     msg.info("Time limit disabled.\n");
+                     parameters.set_time_limit = false;
+                  }
                }
             }
             initial = false;
