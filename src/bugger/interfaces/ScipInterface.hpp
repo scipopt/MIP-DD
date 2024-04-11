@@ -301,7 +301,7 @@ namespace bugger {
 
       bool
       writeInstance(const String& filename, const bool& writesettings) override {
-         if( writesettings || msg.getVerbosityLevel() >= VerbosityLevel::kDetailed )
+         if( writesettings || limits.size() >= 1 )
             SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
          return SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
       };
