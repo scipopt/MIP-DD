@@ -185,7 +185,7 @@ namespace bugger {
       }
 
       BuggerStatus
-      call_solver(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) {
+      call_solver(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) {
          ++nsolves;
          auto solver = factory->create_solver(msg);
          solver->doSetUp(settings, problem, solution);

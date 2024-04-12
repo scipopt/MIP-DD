@@ -46,6 +46,7 @@ namespace bugger {
    protected:
 
       const Message& msg;
+      SolverSettings* adjustment = nullptr;
       const Problem<double>* model = nullptr;
       const Solution<double>* reference = nullptr;
       double value = std::numeric_limits<double>::signaling_NaN();
@@ -81,7 +82,7 @@ namespace bugger {
        * @param solution
        */
       virtual
-      void doSetUp(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) = 0;
+      void doSetUp(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) = 0;
 
       /**
        * solves the instance
