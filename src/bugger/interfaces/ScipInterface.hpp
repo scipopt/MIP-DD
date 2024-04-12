@@ -78,7 +78,7 @@ namespace bugger {
          int length = SCIPgetNExternalCodes(scip);
          auto description = SCIPgetExternalCodeDescriptions(scip);
          auto names = SCIPgetExternalCodeNames(scip);
-         for( int i= 0; i < length; i++)
+         for( int i = 0; i < length; ++i )
          {
             String n { names[i] };
             String d { description[i] };
@@ -109,7 +109,7 @@ namespace bugger {
          Vec<std::pair<String, char>> char_settings;
          Vec<std::pair<String, String>> string_settings;
          int nparams = SCIPgetNParams(scip);
-         SCIP_PARAM **params = SCIPgetParams(scip);
+         SCIP_PARAM** params = SCIPgetParams(scip);
 
          for( int i = 0; i < nparams; ++i )
          {
@@ -152,7 +152,7 @@ namespace bugger {
                                                     : *param->data.stringparam.valueptr );
                   break;
                default:
-                  SCIPerrorMessage("unknown parameter type\n");
+                  SCIPerrorMessage("unknown setting type\n");
             }
          }
 
@@ -257,7 +257,7 @@ namespace bugger {
 
       bool
       writeInstance(const String& filename, const bool& writesettings) override {
-         if( writesettings || msg.getVerbosityLevel() >= VerbosityLevel::kDetailed )
+         if( writesettings || parameters.set_dual_limit || parameters.set_prim_limit )
             SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
          return SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
       };
@@ -383,22 +383,24 @@ namespace bugger {
          return SCIP_OKAY;
       }
 
-      void set_parameters(const SolverSettings &settings) const {
-         for(const auto& pair : settings.getBoolSettings())
+      void
+      set_parameters(const SolverSettings &settings) const {
+         for( const auto& pair : settings.getBoolSettings( ) )
             SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getIntSettings())
+         for( const auto& pair : settings.getIntSettings( ) )
             SCIPsetIntParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getLongSettings())
+         for( const auto& pair : settings.getLongSettings( ) )
             SCIPsetLongintParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getDoubleSettings())
+         for( const auto& pair : settings.getDoubleSettings( ) )
             SCIPsetRealParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getCharSettings())
+         for( const auto& pair : settings.getCharSettings( ) )
             SCIPsetCharParam(scip, pair.first.c_str(), pair.second);
-         for(const auto& pair : settings.getStringSettings())
+         for( const auto& pair : settings.getStringSettings( ) )
             SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
       }
 
-      std::pair<char, SolverStatus> solve(const Vec<int>& passcodes) override {
+      std::pair<char, SolverStatus>
+      solve(const Vec<int>& passcodes) override {
 
          char retcode = SCIP_ERROR;
          SolverStatus solverstatus = SolverStatus::kUndefinedError;
@@ -615,39 +617,25 @@ namespace bugger {
          auto scip = std::unique_ptr<SolverInterface>( new ScipInterface( msg, parameters ) );
          if( initial )
          {
-            if( parameters.mode == -1 )
-            {
-               if( parameters.set_dual_limit )
-               {
-                  ScipInterface::DUAL = "limits/dual";
-                  if( !scip->has_setting( ScipInterface::DUAL ) )
-                  {
-                     ScipInterface::DUAL = "limits/proofstop";
-                     if( !scip->has_setting( ScipInterface::DUAL ) )
-                     {
-                        msg.info("Dual limit disabled.\n");
-                        parameters.set_dual_limit = false;
-                     }
-                  }
-               }
-               if( parameters.set_prim_limit )
-               {
-                  ScipInterface::PRIM = "limits/primal";
-                  if( !scip->has_setting( ScipInterface::PRIM ) )
-                  {
-                     ScipInterface::PRIM = "limits/objectivestop";
-                     if( !scip->has_setting( ScipInterface::PRIM ) )
-                     {
-                        msg.info("Primal limit disabled.\n");
-                        parameters.set_prim_limit = false;
-                     }
-                  }
-               }
-            }
-            else
+            if( parameters.mode != -1 )
             {
                parameters.set_dual_limit = false;
                parameters.set_prim_limit = false;
+            }
+            else
+            {
+               if( parameters.set_dual_limit && !scip->has_setting(ScipInterface::DUAL = "limits/dual") && !scip->has_setting(ScipInterface::DUAL = "limits/proofstop") )
+               {
+                  msg.info("Dual limit disabled.\n");
+                  parameters.set_dual_limit = false;
+                  ScipInterface::DUAL = "";
+               }
+               if( parameters.set_prim_limit && !scip->has_setting(ScipInterface::PRIM = "limits/primal") && !scip->has_setting(ScipInterface::PRIM = "limits/objectivestop") )
+               {
+                  msg.info("Primal limit disabled.\n");
+                  parameters.set_prim_limit = false;
+                  ScipInterface::PRIM = "";
+               }
             }
             initial = false;
          }
