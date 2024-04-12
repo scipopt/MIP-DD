@@ -479,6 +479,7 @@ namespace bugger {
          case SCIP_STAGE_EXITSOLVE:
          case SCIP_STAGE_FREETRANS:
          case SCIP_STAGE_FREE:
+         default:
             return -1;
          }
       }
