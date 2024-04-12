@@ -32,11 +32,11 @@ namespace bugger {
    {
       int mode = -1;
       long long expenditure = -1;
+      long long nbatches = 0;
       int initround = 0;
       int initstage = 0;
       int maxrounds = -1;
       int maxstages = -1;
-      int nbatches = 0;
       double tlim = std::numeric_limits<double>::max();
       double feastol = 1e-6;
       double epsilon = 1e-9;
@@ -51,11 +51,11 @@ namespace bugger {
       {
          paramSet.addParameter( "mode", "selective bugger mode (-1: reproduce and reduce, 0: only reproduce, 1: only reduce)", mode, -1, 1 );
          paramSet.addParameter( "expenditure", "calculate the number of batches by ceiled division of the solving effort defined in the solver interface (-1: use original, 0: keep batches)", expenditure, -1 );
+         paramSet.addParameter( "nbatches", "maximum number of batches or 0 for singleton batches", nbatches, 0 );
          paramSet.addParameter( "initround", "initial bugger round or -1 for last round", initround, -1 );
          paramSet.addParameter( "initstage", "initial bugger stage or -1 for last stage", initstage, -1 );
          paramSet.addParameter( "maxrounds", "maximum number of bugger rounds or -1 for no limit", maxrounds, -1 );
          paramSet.addParameter( "maxstages", "maximum number of bugger stages or -1 for number of modules", maxstages, -1 );
-         paramSet.addParameter( "nbatches", "maximum number of batches or 0 for singleton batches", nbatches, 0 );
          paramSet.addParameter( "tlim", "bugger time limit", tlim, 0.0 );
          paramSet.addParameter( "numerics.feastol", "feasibility tolerance to consider constraints satisfied", feastol, 0.0, 1e-1 );
          paramSet.addParameter( "numerics.epsilon", "epsilon tolerance to consider two values numerically equal", epsilon, 0.0, 1e-1 );

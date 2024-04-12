@@ -4,6 +4,9 @@ mode = -1
 # calculate the number of batches by ceiled division of the solving effort defined in the solver interface (-1: use original, 0: keep batches) [Integer: [-1,9223372036854775807]]
 expenditure = -1
 
+# maximum number of batches or 0 for singleton batches [Integer: [0,9223372036854775807]]
+nbatches = 0
+
 # initial bugger round or -1 for last round [Integer: [-1,2147483647]]
 initround = 0
 
@@ -15,9 +18,6 @@ maxrounds = -1
 
 # maximum number of bugger stages or -1 for number of modules [Integer: [-1,2147483647]]
 maxstages = -1
-
-# maximum number of batches or 0 for singleton batches [Integer: [0,2147483647]]
-nbatches = 0
 
 # bugger time limit [Numerical: [0.0,1.7976931348623157e+308]]
 tlim = 0.0
