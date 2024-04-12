@@ -462,7 +462,25 @@ namespace bugger {
       long long
       getSolvingEffort( ) override {
 
-         return SCIPgetStage(scip) == SCIP_STAGE_INIT ? -1 : SCIPgetNLPIterations(scip);
+         switch( SCIPgetStage(scip) )
+         {
+         case SCIP_STAGE_PRESOLVING:
+         case SCIP_STAGE_PRESOLVED:
+         case SCIP_STAGE_SOLVING:
+         case SCIP_STAGE_SOLVED:
+            return SCIPgetNLPIterations(scip);
+         case SCIP_STAGE_INIT:
+         case SCIP_STAGE_PROBLEM:
+         case SCIP_STAGE_TRANSFORMING:
+         case SCIP_STAGE_TRANSFORMED:
+         case SCIP_STAGE_INITPRESOLVE:
+         case SCIP_STAGE_EXITPRESOLVE:
+         case SCIP_STAGE_INITSOLVE:
+         case SCIP_STAGE_EXITSOLVE:
+         case SCIP_STAGE_FREETRANS:
+         case SCIP_STAGE_FREE:
+            return -1;
+         }
       }
 
       std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>>
