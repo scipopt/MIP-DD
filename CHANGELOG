@@ -10,7 +10,7 @@ Performance improvements
 ------------------------
 
 - restrict solver limit settings automatically in order to accelerate the process by default
-- adjust number of batches to maintain original expenditure
+- adjust number of batches every round automatically in order to maintain expenditure by default
 
 New parameters:
 ----------
