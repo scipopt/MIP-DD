@@ -459,6 +459,12 @@ namespace bugger {
          return { retcode, solverstatus };
       }
 
+      long long
+      getSolvingEffort( ) override {
+
+         return SCIPgetStage(scip) == SCIP_STAGE_INIT ? -1 : SCIPgetNLPIterations(scip);
+      }
+
       std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>>
       readInstance(const String& settings_filename, const String& problem_filename) override {
 
@@ -556,11 +562,6 @@ namespace bugger {
          return SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
       };
 
-      long long getSolvingEffort( ) override {
-
-         return SCIPgetStage(scip) == SCIP_STAGE_INIT ? -1 : SCIPgetNLPIterations(scip);
-      }
-
       ~ScipInterface( ) override {
          if( scip != nullptr )
          {
@@ -569,8 +570,6 @@ namespace bugger {
             assert(retcode == SCIP_OKAY);
          }
       }
-
-
 
    private:
 
