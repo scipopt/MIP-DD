@@ -51,7 +51,7 @@ namespace bugger {
 
    private:
 
-      std::string name { };
+      String name { };
       double execTime = 0.0;
       bool enabled = true;
       unsigned int ncalls = 0;
@@ -79,7 +79,6 @@ namespace bugger {
                   factory(_factory) { }
 
       virtual ~BuggerModul( ) = default;
-
 
       virtual bool
       initialize( ) {
@@ -141,13 +140,12 @@ namespace bugger {
          message.info(" {:>18} {:>12} {:>12} {:>18.1f} {:>12} {:>18.3f}\n", name, ncalls, changes, success, nsolves, execTime);
       }
 
-
       bool
       isEnabled( ) const {
          return this->enabled;
       }
 
-      const std::string&
+      const String&
       getName( ) const {
          return this->name;
       }
@@ -175,7 +173,7 @@ namespace bugger {
       execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) = 0;
 
       void
-      setName(const std::string& value) {
+      setName(const String& value) {
          this->name = value;
       }
 
@@ -196,7 +194,7 @@ namespace bugger {
          std::pair<char, SolverStatus> result = solver->solve(parameters.passcodes);
          if( !SolverStatusCheck::is_value(result.second) )
          {
-            msg.error("Error: Solver returned unknown status {}\n", (int) result.second);
+            msg.error("Error: Solver returned unknown status {}\n", (int)result.second);
             result.second = SolverStatus::kUndefinedError;
             return BuggerStatus::kError;
          }
@@ -205,17 +203,19 @@ namespace bugger {
             msg.info("\tOkay  - Status {}\n", result.second);
             return BuggerStatus::kOkay;
          }
-         else if( result.first > SolverInterface::OKAY )
-         {
-            final_result = result;
-            msg.info("\tBug {} - Status {}\n", (int) result.first, result.second);
-            return BuggerStatus::kBug;
-         }
          else
          {
             final_result = result;
-            msg.info("\tError {}\n", (int) result.first);
-            return BuggerStatus::kError;
+            if( result.first > SolverInterface::OKAY )
+            {
+               msg.info("\tBug {} - Status {}\n", (int)result.first, result.second);
+               return BuggerStatus::kBug;
+            }
+            else
+            {
+               msg.info("\tErr {} - Status {}\n", (int)result.first, result.second);
+               return BuggerStatus::kError;
+            }
          }
       }
 
