@@ -51,7 +51,7 @@ namespace bugger {
 
    private:
 
-      std::string name { };
+      String name { };
       double execTime = 0.0;
       bool enabled = true;
       unsigned int ncalls = 0;
@@ -147,7 +147,7 @@ namespace bugger {
          return this->enabled;
       }
 
-      const std::string&
+      const String&
       getName( ) const {
          return this->name;
       }
@@ -180,7 +180,7 @@ namespace bugger {
       execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) = 0;
 
       void
-      setName(const std::string& value) {
+      setName(const String& value) {
          this->name = value;
       }
 
@@ -192,7 +192,7 @@ namespace bugger {
       }
 
       BuggerStatus
-      call_solver(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) {
+      call_solver(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) {
          ++nsolves;
          auto solver = factory->create_solver(msg);
          solver->doSetUp(settings, problem, solution);
@@ -201,7 +201,7 @@ namespace bugger {
          std::pair<char, SolverStatus> result = solver->solve(parameters.passcodes);
          if( !SolverStatusCheck::is_value(result.second) )
          {
-            msg.error("Error: Solver returned unknown status {}\n", (int) result.second);
+            msg.error("Error: Solver returned unknown status {}\n", (int)result.second);
             result.second = SolverStatus::kUndefinedError;
             return BuggerStatus::kError;
          }

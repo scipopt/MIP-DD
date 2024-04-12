@@ -283,10 +283,14 @@ class ParameterSet
    struct Parameter
    {
       String description;
-      boost::variant<StringOption, BoolOption, NumericalOption<int>,
+      boost::variant<StringOption,
+                     BoolOption,
+                     NumericalOption<int>,
                      NumericalOption<unsigned int>,
-                     NumericalOption<std::int64_t>, NumericalOption<double>,
-                     IntVectorOption, CategoricalOption>
+                     NumericalOption<long long>,
+                     NumericalOption<double>,
+                     IntVectorOption,
+                     CategoricalOption>
           value;
    };
 
@@ -353,7 +357,7 @@ class ParameterSet
    {
       if( parameters.count( key ) != 0 )
          throw std::invalid_argument(
-             "tried to add parameter that already exists" );
+               "tried to add parameter that already exists" );
 
       parameters.emplace( key, Parameter{ description, StringOption{ &val } } );
    }
@@ -363,7 +367,7 @@ class ParameterSet
    {
       if( parameters.count( key ) != 0 )
          throw std::invalid_argument(
-             "tried to add parameter that already exists" );
+               "tried to add parameter that already exists" );
 
       parameters.emplace( key, Parameter{ description, BoolOption{ &val } } );
    }
@@ -385,7 +389,7 @@ class ParameterSet
    {
       if( parameters.count( key ) != 0 )
          throw std::invalid_argument(
-             "tried to add parameter that already exists" );
+               "tried to add parameter that already exists" );
 
       parameters.emplace( key, Parameter{ description, NumericalOption<int>{
                                                            &val, min, max } } );
@@ -398,7 +402,7 @@ class ParameterSet
    {
       if( parameters.count( key ) != 0 )
          throw std::invalid_argument(
-             "tried to add parameter that already exists" );
+               "tried to add parameter that already exists" );
 
       parameters.emplace(
           key, Parameter{ description,
@@ -406,17 +410,16 @@ class ParameterSet
    }
 
    void
-   addParameter( const char* key, const char* description, std::int64_t& val,
-                 std::int64_t min = std::numeric_limits<std::int64_t>::min(),
-                 std::int64_t max = std::numeric_limits<std::int64_t>::max() )
+   addParameter( const char* key, const char* description, long long& val,
+                 long long min = std::numeric_limits<long long>::min(),
+                 long long max = std::numeric_limits<long long>::max() )
    {
       if( parameters.count( key ) != 0 )
          throw std::invalid_argument(
-             "tried to add parameter that already exists" );
+               "tried to add parameter that already exists" );
 
-      parameters.emplace(
-          key, Parameter{ description,
-                          NumericalOption<std::int64_t>{ &val, min, max } } );
+      parameters.emplace( key, Parameter{ description,
+                          NumericalOption<long long>{ &val, min, max } } );
    }
 
    void
@@ -426,7 +429,7 @@ class ParameterSet
    {
       if( parameters.count( key ) != 0 )
          throw std::invalid_argument(
-             "tried to add parameter that already exists" );
+               "tried to add parameter that already exists" );
 
       parameters.emplace( key, Parameter{ description, NumericalOption<double>{
                                                            &val, min, max } } );
@@ -438,7 +441,7 @@ class ParameterSet
    {
       if( parameters.count( key ) != 0 )
          throw std::invalid_argument(
-             "tried to add parameter that already exists" );
+               "tried to add parameter that already exists" );
 
       parameters.emplace(
           key, Parameter{ description,
@@ -451,7 +454,7 @@ class ParameterSet
    {
       if( parameters.count( key ) == 0 )
          throw std::invalid_argument(
-             "tried to set parameter that does not exist" );
+               "tried to set parameter that does not exist" );
 
       SetParameterVisitor<T> visitor( val );
       boost::apply_visitor( visitor, parameters[key].value );
@@ -462,7 +465,7 @@ class ParameterSet
    {
       if( parameters.count( key ) == 0 )
          throw std::invalid_argument(
-             "tried to set parameter that does not exist" );
+               "tried to set parameter that does not exist" );
 
       ParseParameterVisitor visitor( val );
       boost::apply_visitor( visitor, parameters[key].value );

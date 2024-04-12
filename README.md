@@ -36,7 +36,7 @@ bin/bugger -p BUGGER_PARAMETERS -f PROBLEM -o SOLUTION -s SOLVER_SETTINGS -t TAR
 
 Before running the MIP-DD we recommend to regard the following hints to obtain a reasonable workflow:
 * Determine a reference solution that is as feasible as possible. To detect a suboptimality issue, the dual bound claimed by the solver must cut off this solution. For other issues, a reference solution is not required but helps to guide the process.
-* Define limits for the solver, for example time and node limits, so that the bug of interest is still reproducible. This way, reductions for which the bug would be reproduced beyond these limits, will be discarded. Usually, this accelerates the process and favors easy instances.
+* Define initial limits for the solver, for example on the total number of nodes in the branching tree, so that the bug of interest is still reproducible. This way, reductions for which the bug would be reproduced beyond these limits, will be discarded. The solver interface may restrict limits automatically with respect to some variability margin in order to accelerate the process and favor easy instances.
 * Define the parameter nbatches to limit the solve invocations per module. Each module determines the number of elementary modifications and then calculates the batch size to invoke the solver at most as many times as specified by parameter nbatches. Hence, the more batches, the smaller the changes in each test run. This makes acceptance of a reduction batch more likely at the cost of an increased runtime.
 
 For further details please refer to the PAPER (to be published).
