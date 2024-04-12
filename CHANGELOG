@@ -10,6 +10,8 @@ Performance improvements
 Fixed bugs
 ----------
 
+- replace parameter type std::int64_t by long long to avert integral inconsistencies
+
 Build system
 ------------
 
