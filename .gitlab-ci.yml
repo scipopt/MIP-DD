@@ -1,0 +1,58 @@
+variables:
+  SOPLEX_REVISION: bugfix-70
+  SCIP_REVISION: v90-bugfix
+
+stages:
+  - test
+
+.ctest:
+  stage: test
+  image:
+    name: gcc:10
+  tags:
+    - compile
+  before_script:
+    - apt-get update
+    - apt-get install -y cmake libtbb-dev
+  script:
+    # download, build and install boost
+    - wget https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_$(echo ${BOOST_VERSION} | tr . _).tar.gz
+    - tar -xzf boost_$(echo ${BOOST_VERSION} | tr . _).tar.gz
+    - cd boost_$(echo ${BOOST_VERSION} | tr . _)
+    - ./bootstrap.sh --with-libraries=program_options,serialization,iostreams,regex
+    - ./b2 -j6 install
+
+    # clone, build and install soplex
+    - git clone https://github.com/scipopt/soplex.git ${CI_PROJECT_DIR}/soplex
+    - cd ${CI_PROJECT_DIR}/soplex && git checkout ${SOPLEX_REVISION}
+    - mkdir -p $CI_PROJECT_DIR/soplex/build
+    - cd $CI_PROJECT_DIR/soplex/build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release
+    - make -j && make install
+
+    # clone, build and install scip
+    - git clone https://github.com/scipopt/scip.git ${CI_PROJECT_DIR}/scip
+    - cd ${CI_PROJECT_DIR}/scip && git checkout ${SCIP_REVISION}
+    - mkdir -p $CI_PROJECT_DIR/scip/build
+    - cd $CI_PROJECT_DIR/scip/build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release -DZIMPL=off -DREADLINE=off -DGMP=off -DPAPILO=off -DIPOPT=off
+    - make -j && make install
+
+    - mkdir -p $CI_PROJECT_DIR/builds/MIP-DD
+    - cd $CI_PROJECT_DIR/builds/MIP-DD
+    - export CFLAGS="-Werror"
+    - export CXXFLAGS="-Werror"
+    - export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+    - cmake $CI_PROJECT_DIR ${CMAKE_FLAGS_DEBUG} -DSCIP_DIR=/usr/local/lib/cmake/scip
+    - make -j6
+    - bin/bugger --help
+    - cmake $CI_PROJECT_DIR ${CMAKE_FLAGS_RELEASE} -DSCIP_DIR=/usr/local/lib/cmake/scip
+    - make -j6
+    - bin/bugger --help
+
+"build":
+  extends: .ctest
+  variables:
+    CMAKE_FLAGS_DEBUG: "-DCMAKE_BUILD_TYPE=Debug"
+    CMAKE_FLAGS_RELEASE: "-DCMAKE_BUILD_TYPE=Release"
+    BOOST_VERSION: 1.80.0
