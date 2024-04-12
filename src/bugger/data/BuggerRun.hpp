@@ -150,10 +150,10 @@ namespace bugger {
 
                   if( results[ module ] == bugger::ModulStatus::kSuccessful )
                   {
-                     success = module;
                      final_result = modules[ module ]->getFinalResult( );
                      final_round = round;
                      final_module = module;
+                     success = module;
                   }
                   else if( success == module )
                   {
@@ -313,8 +313,8 @@ namespace bugger {
       void
       printStats(const double& time, const std::pair<char, SolverStatus>& final_result, int final_round, int final_module) {
 
-         msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n", "modules",
-                  "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
+         msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n",
+                  "modules", "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
          int nsolves = 0;
          for( const auto &module: modules )
          {
@@ -323,7 +323,12 @@ namespace bugger {
          }
          if( final_round == -1 )
          {
-            assert(parameters.mode != 1 || ( final_result.first == SolverInterface::OKAY && final_result.second == SolverStatus::kUnknown ));
+            assert(final_module == -1);
+            if( parameters.mode == 1 )
+            {
+               assert(final_result.first == SolverInterface::OKAY);
+               assert(final_result.second == SolverStatus::kUnknown);
+            }
             msg.info("\nNo reductions found by the bugger!");
          }
          else
