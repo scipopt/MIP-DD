@@ -19,9 +19,10 @@ Building the bugger with SCIP as examined solver works with the standard cmake w
 ```
 mkdir build
 cd build
-cmake .. -DSCIP_DIR=PATH_TO_SCIP_BUILD_DIR
+cmake .. -DSCIP_DIR=PATH_TO_SCIP
 make
 ```
+Here, PATH_TO_SCIP represents the path to the SCIP installation subdirectory containing scip-targets.cmake required to link SCIP as shared library.
 It is necessary to build the solver in optimized mode since the MIP-DD is not designed to handle assertions in order to keep the process performant.
 Nevertheless, it is usually easily possible to handle assertion fails by reformulating the solver to return a suitable error code under the negated assertion condition.
 The MIP-DD will then identify the formerly failing assertion as a solver error.
