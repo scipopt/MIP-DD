@@ -208,7 +208,7 @@ namespace bugger {
          long long effort = solver->getSolvingEffort( );
          if( result.first == SolverInterface::OKAY )
          {
-            msg.info("\tOkay  - Status {:<23} - Effort {}\n", result.second, effort);
+            msg.info("\tOkay  - Status {:<23} - Effort {:>19}\n", result.second, effort);
             return BuggerStatus::kOkay;
          }
          else
@@ -218,12 +218,12 @@ namespace bugger {
             last_result = result;
             if( result.first > SolverInterface::OKAY )
             {
-               msg.info("\tBug {} - Status {:<23} - Effort {}\n", (int)result.first, result.second, effort);
+               msg.info("\tBug {} - Status {:<23} - Effort {:>19}\n", (int)result.first, result.second, effort);
                return BuggerStatus::kBug;
             }
             else
             {
-               msg.info("\tErr {} - Status {:<23} - Effort {}\n", (int)result.first, result.second, effort);
+               msg.info("\tErr {} - Status {:<23} - Effort {:>19}\n", (int)result.first, result.second, effort);
                return BuggerStatus::kError;
             }
          }
