@@ -123,7 +123,7 @@ namespace bugger {
             solver->doSetUp(settings, problem, solution);
             last_result = solver->solve(Vec<int>{ });
             last_effort = solver->getSolvingEffort( );
-            msg.info("Original solve returned code {} with status {} and effort {}.\n\n", (int)last_result.first, last_result.second, last_effort);
+            msg.info("Original solve returned code {} with status {} and effort {}.\n", (int)last_result.first, last_result.second, last_effort);
             if( parameters.mode == 0 )
                return;
             if( parameters.expenditure < 0 && ( parameters.nbatches <= 0 || last_effort <= 0 || (parameters.expenditure = parameters.nbatches * last_effort) / last_effort != parameters.nbatches ) )
@@ -131,6 +131,7 @@ namespace bugger {
                msg.info("Batch adaption disabled.\n");
                parameters.expenditure = 0;
             }
+            msg.info("\n");
          }
 
          int ending = optionsInfo.problem_file.rfind('.');
