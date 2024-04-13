@@ -32,7 +32,7 @@ namespace bugger {
    {
       int mode = -1;
       long long expenditure = -1;
-      long long nbatches = 0;
+      long long nbatches = 2;
       int initround = 0;
       int initstage = 0;
       int maxrounds = -1;

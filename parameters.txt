@@ -5,7 +5,7 @@ mode = -1
 expenditure = -1
 
 # maximum number of batches or 0 for singleton batches [Integer: [0,9223372036854775807]]
-nbatches = 0
+nbatches = 2
 
 # initial bugger round or -1 for last round [Integer: [-1,2147483647]]
 initround = 0
