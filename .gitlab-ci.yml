@@ -53,7 +53,9 @@ stages:
 "build":
   extends: .ctest
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_MERGE_REQUEST_TITLE =~ /^Draft:/
+      when: manual
+    - if: $CI_MERGE_REQUEST_ID
   variables:
     CMAKE_FLAGS_DEBUG: "-DCMAKE_BUILD_TYPE=Debug"
     CMAKE_FLAGS_RELEASE: "-DCMAKE_BUILD_TYPE=Release"
