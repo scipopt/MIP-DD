@@ -200,7 +200,7 @@ namespace bugger {
          }
          if( result.first == SolverInterface::OKAY )
          {
-            msg.info("\tOkay  - Status {}\n", result.second);
+            msg.info("\tOkay    - Status {}\n", result.second);
             return BuggerStatus::kOkay;
          }
          else
@@ -208,12 +208,12 @@ namespace bugger {
             final_result = result;
             if( result.first > SolverInterface::OKAY )
             {
-               msg.info("\tBug{:>2} - Status {}\n", (int)result.first, result.second);
+               msg.info("\tBug{:>4} - Status {}\n", (int)result.first, result.second);
                return BuggerStatus::kBug;
             }
             else
             {
-               msg.info("\tErr{:>2} - Status {}\n", (int)result.first, result.second);
+               msg.info("\tErr{:>4} - Status {}\n", (int)result.first, result.second);
                return BuggerStatus::kError;
             }
          }
