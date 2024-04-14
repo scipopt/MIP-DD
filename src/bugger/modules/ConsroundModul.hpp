@@ -62,7 +62,7 @@ namespace bugger {
          if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;
 
-         int batchsize = 1;
+         long long batchsize = 1;
 
          if( parameters.nbatches > 0 )
          {

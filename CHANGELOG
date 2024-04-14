@@ -10,6 +10,13 @@ Performance improvements
 ------------------------
 
 - restrict solver limit settings automatically in order to accelerate the process by default
+- adjust number of batches every round automatically in order to maintain expenditure by default
+
+New parameters:
+----------
+
+- expenditure = -1 : calculate the number of batches by ceiled division of the solving effort defined in the solver interface (-1: use original, 0: keep batches)
+- default value nbatches = 2 in order to try bisection initially
 
 Fixed bugs
 ----------

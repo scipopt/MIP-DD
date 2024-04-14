@@ -70,7 +70,8 @@ namespace bugger {
       int nchgsettings = 0;
       int ndeletedrows = 0;
       int nsolves = 0;
-      std::pair<char, SolverStatus> final_result { SolverInterface::OKAY, SolverStatus::kUnknown };
+      std::pair<char, SolverStatus> last_result { SolverInterface::OKAY, SolverStatus::kUnknown };
+      long long last_effort = -1;
 
    public:
 
@@ -106,7 +107,8 @@ namespace bugger {
 
       ModulStatus
       run(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution, const Timer& timer) {
-         final_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
+         last_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
+         last_effort = -1;
          if( !enabled )
             return ModulStatus::kDidNotRun;
 
@@ -151,8 +153,13 @@ namespace bugger {
       }
 
       std::pair<char, SolverStatus>
-      getFinalResult( ) const {
-         return final_result;
+      getLastResult( ) const {
+         return last_result;
+      }
+
+      long long
+      getLastSolvingEffort( ) const {
+         return last_effort;
       }
 
       void
@@ -198,22 +205,25 @@ namespace bugger {
             result.second = SolverStatus::kUndefinedError;
             return BuggerStatus::kError;
          }
+         long long effort = solver->getSolvingEffort( );
          if( result.first == SolverInterface::OKAY )
          {
-            msg.info("\tOkay  - Status {}\n", result.second);
+            msg.info("\tOkay  - Status {:<23} - Effort {:>19}\n", result.second, effort);
             return BuggerStatus::kOkay;
          }
          else
          {
-            final_result = result;
+            if( effort >= 0 )
+               last_effort = effort;
+            last_result = result;
             if( result.first > SolverInterface::OKAY )
             {
-               msg.info("\tBug {} - Status {}\n", (int)result.first, result.second);
+               msg.info("\tBug {} - Status {:<23} - Effort {:>19}\n", (int)result.first, result.second, effort);
                return BuggerStatus::kBug;
             }
             else
             {
-               msg.info("\tErr {} - Status {}\n", (int)result.first, result.second);
+               msg.info("\tErr {} - Status {:<23} - Effort {:>19}\n", (int)result.first, result.second, effort);
                return BuggerStatus::kError;
             }
          }
