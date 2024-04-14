@@ -20,7 +20,7 @@ maxrounds = -1
 maxstages = -1
 
 # bugger time limit [Numerical: [0.0,1.7976931348623157e+308]]
-tlim = 0.0
+tlim = 1.7976931348623157e+308
 
 # feasibility tolerance to consider constraints satisfied [Numerical: [0.0,1e-1]]
 numerics.feastol = 1e-6

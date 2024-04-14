@@ -40,7 +40,7 @@ namespace bugger {
       double tlim = std::numeric_limits<double>::max();
       double feastol = 1e-6;
       double epsilon = 1e-9;
-      double zeta = 0;
+      double zeta = 0.0;
       Vec<int> passcodes = {};
       String debug_filename = "";
 
