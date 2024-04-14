@@ -52,7 +52,7 @@ namespace bugger {
       bool
       is_time_exceeded(const Timer& timer) const {
 
-         return parameters.tlim != std::numeric_limits<double>::max() && timer.getTime() >= parameters.tlim;
+         return timer.getTime() >= parameters.tlim;
       }
 
       void
