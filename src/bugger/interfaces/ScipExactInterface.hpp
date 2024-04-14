@@ -259,13 +259,13 @@ namespace bugger {
                   viprcompcode = system(compcommand.c_str());
                   if( viprcompcode )
                   {
-                     solverstatus = SolverStatus::kCertificateCouldNotBeValidated;
+                     solverstatus = SolverStatus::kUncertified;
                      retcode = PRIMALFAIL;
                   }
                   viprcheckcode = system(checkcommand.c_str());
                   if( viprcheckcode )
                   {
-                     solverstatus = SolverStatus::kCertificateCouldNotBeValidated;
+                     solverstatus = SolverStatus::kUncertified;
                      retcode = PRIMALFAIL;
                   }
                }
