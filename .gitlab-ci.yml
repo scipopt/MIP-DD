@@ -1,12 +1,14 @@
 variables:
   BOOST_VERSION: 1.80.0
   SOPLEX_REVISION: bugfix-70
+  VIPR_REVISION: master
   SCIP_REVISION: exact-rational
   SETUP_DIR: ${CI_PROJECT_DIR}/setups
   INSTALL_DIR: ${CI_PROJECT_DIR}/../installs
   BUILD_DIR: ${CI_PROJECT_DIR}/builds
   BOOST_DIR: ${SETUP_DIR}/boost
   SOPLEX_DIR: ${SETUP_DIR}/soplex
+  VIPR_DIR: ${SETUP_DIR}/vipr
   SCIP_DIR: ${SETUP_DIR}/scip
 
 stages:
@@ -54,6 +56,12 @@ boost-soplex-scip:
     - git clone https://github.com/scipopt/soplex.git ${SOPLEX_DIR}
     - cd ${SOPLEX_DIR}
     - git checkout ${SOPLEX_REVISION}
+    - cmake . -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
+    - make -j$(nproc) install
+    # vipr
+    - git clone https://github.com/ambros-gleixner/VIPR.git ${VIPR_DIR}
+    - cd ${VIPR_DIR}
+    - git checkout ${VIPR_REVISION}
     - cmake . -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
     - make -j$(nproc) install
     # scip
