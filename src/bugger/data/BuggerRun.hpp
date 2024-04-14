@@ -305,11 +305,12 @@ namespace bugger {
             }
          }
 
+         msg.info("Solution is {}.\n", num.isEpsGT(maxviol, 0.0) ? "infeasible" : num.isZetaGT(maxviol, 0.0) ? "tolerable" : "feasible");
          if( maxindex >= 0 )
-            msg.info("Solution is infeasible.\nMaximum violation {:<3} of {} {:<3} {}.", maxviol, maxrow ? "row" : "column", (maxrow ? problem.getConstraintNames() : problem.getVariableNames())[maxindex], maxintegral ? "integral" : (maxrow ? (maxupper ? "right" : "left") : (maxupper ? "upper" : "lower")));
+            msg.info("Maximum violation {:<3} of {} {:<3} {}.\n", maxviol, maxrow ? "row" : "column", (maxrow ? problem.getConstraintNames() : problem.getVariableNames())[maxindex], maxintegral ? "integral" : (maxrow ? (maxupper ? "right" : "left") : (maxupper ? "upper" : "lower")));
          else
-            msg.info("Solution is feasible.\nNo violations detected.");
-         msg.info("\n\n");
+            msg.info("No violations detected.\n");
+         msg.info("\n");
       }
 
       bugger::ModulStatus
