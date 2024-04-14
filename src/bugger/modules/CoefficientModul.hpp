@@ -61,7 +61,7 @@ namespace bugger {
       ModulStatus
       execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override {
 
-         int batchsize = 1;
+         long long batchsize = 1;
 
          if( parameters.nbatches > 0 )
          {
