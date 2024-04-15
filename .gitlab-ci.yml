@@ -60,14 +60,15 @@ boost-soplex-scip:
     - make -j$(nproc) install
     # vipr
     - git clone https://github.com/ambros-gleixner/VIPR.git ${VIPR_DIR}
-    - cd ${VIPR_DIR}
+    - cd ${VIPR_DIR}/code
     - git checkout ${VIPR_REVISION}
+    - cmake .
+    - make -j$(nproc)
+    - export PATH=${VIPR_DIR}/code:${PATH}
     # scip
     - git clone https://github.com/scipopt/scip.git ${SCIP_DIR}
     - cd ${SCIP_DIR}
     - git checkout ${SCIP_REVISION}
-    - cmake ${VIPR_DIR}/code
-    - make -j$(nproc)
     - cmake . -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DZIMPL=off -DREADLINE=off -DGMP=off -DPAPILO=off -DIPOPT=off
     - make -j$(nproc) install
 
