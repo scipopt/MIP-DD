@@ -885,6 +885,11 @@ namespace bugger {
       }
    };
 
+   std::shared_ptr<SolverFactory>
+   load_solver_factory( ) {
+      return std::shared_ptr<SolverFactory>(new ScipFactory( ));
+   }
+
 } // namespace bugger
 
 #endif
