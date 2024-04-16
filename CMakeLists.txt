@@ -220,7 +220,6 @@ install(FILES
    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/data)
 
 install(FILES
-        ${PROJECT_SOURCE_DIR}/src/bugger/interfaces/ScipInterface.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/interfaces/BuggerStatus.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/interfaces/SolverStatus.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/interfaces/SolverInterface.hpp
