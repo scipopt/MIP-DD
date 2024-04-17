@@ -113,7 +113,7 @@ using SolverStatusCheck = EnumCheck< SolverStatus,
       SolverStatus::kTotalNodeLimit,
       SolverStatus::kInterrupt >;
 
-std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
+inline std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
    std::string val;
    switch( status )
    {
