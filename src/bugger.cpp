@@ -72,9 +72,16 @@ main(int argc, char *argv[]) {
    if( !optionsInfo.is_complete )
       return 0;
 
+/*
+ * TODO: since the parameters need to be loaded after the modules are created (and the type initialized)
+ *       the arithmetic type can not be a parameter. So the best solution is to add a cmd parameter and extract the below to a new function
+ *       For exact-scip I would then check the arithmetic type and state a warning if it is not rational.
+ */
+
    Message msg { };
    Num<double> num { };
    BuggerParameters parameters { };
+
    std::shared_ptr<SolverFactory<double>> factory { load_solver_factory() };
    Vec<std::unique_ptr<BuggerModul<double>>> modules { };
 
