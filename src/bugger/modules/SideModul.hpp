@@ -33,7 +33,7 @@ namespace bugger {
 
    public:
 
-      explicit SideModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
+      explicit SideModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
                          std::shared_ptr<SolverFactory<REAL>>& _factory)
                          : BuggerModul<REAL>(_msg, _num, _parameters, _factory) {
          this->setName("side");
@@ -63,9 +63,9 @@ namespace bugger {
             for( int row = problem.getNRows( ) - 1; row >= 0; --row )
                if( isSideAdmissable(problem, row) )
                   ++batchsize;
-            if( batchsize == parameters.nbatches - 1 )
+            if( batchsize == this->parameters.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
-            batchsize /= parameters.nbatches;
+            batchsize /= this->parameters.nbatches;
          }
 
          bool admissible = false;
@@ -85,7 +85,7 @@ namespace bugger {
                REAL fixedval;
                for( int index = 0; index < data.getLength( ); ++index )
                {
-                  if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral) || !num.isEpsIntegral(data.getValues( )[ index ]) ) )
+                  if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral) || !this->num.isEpsIntegral(data.getValues( )[ index ]) ) )
                   {
                      integral = false;
                      break;
@@ -103,9 +103,9 @@ namespace bugger {
                   if( integral )
                   {
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
-                        fixedval = this->num.min(fixedval, num.epsFloor(matrix.getRightHandSides( )[ row ]));
+                        fixedval = this->num.min(fixedval, this->num.epsFloor(matrix.getRightHandSides( )[ row ]));
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
-                        fixedval = this->num.max(fixedval, num.epsCeil(matrix.getLeftHandSides( )[ row ]));
+                        fixedval = this->num.max(fixedval, this->num.epsCeil(matrix.getLeftHandSides( )[ row ]));
                   }
                   else
                   {
@@ -122,13 +122,13 @@ namespace bugger {
 
             if( !batches.empty() && ( batches.size() >= batchsize || row <= 0 ) )
             {
-               if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
+               if( this->call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
                   copy = Problem<REAL>(problem);
                   for( const auto &item: applied_reductions )
                   {
                      matrix.modifyLeftHandSide( item.first, this->num, item.second );
-                     matrix.modifyRightHandSide( item.first, num, item.second );
+                     matrix.modifyRightHandSide( item.first, this->num, item.second );
                   }
                }
                else

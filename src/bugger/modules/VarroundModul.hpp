@@ -51,7 +51,7 @@ namespace bugger {
          bool ubinf = problem.getColFlags( )[ col ].test(ColFlag::kUbInf);
          REAL lb = problem.getLowerBounds( )[ col ];
          REAL ub = problem.getUpperBounds( )[ col ];
-         return ( lbinf || ubinf || !this->num.isZetaEq(lb, ub) ) && ( ( !lbinf && !num.isZetaIntegral(lb) ) || ( !ubinf && !num.isZetaIntegral(ub) ) );
+         return ( lbinf || ubinf || !this->num.isZetaEq(lb, ub) ) && ( ( !lbinf && !this->num.isZetaIntegral(lb) ) || ( !ubinf && !this->num.isZetaIntegral(ub) ) );
       }
 
       ModulStatus
@@ -64,13 +64,13 @@ namespace bugger {
 
          if( this->parameters.nbatches > 0 )
          {
-            batchsize = parameters.nbatches - 1;
+            batchsize = this->parameters.nbatches - 1;
             for( int i = 0; i < problem.getNCols( ); ++i )
                if( isVarroundAdmissible(problem, i) )
                   ++batchsize;
-            if( batchsize == parameters.nbatches - 1 )
+            if( batchsize == this->parameters.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
-            batchsize /= parameters.nbatches;
+            batchsize /= this->parameters.nbatches;
          }
 
          bool admissible = false;
@@ -96,21 +96,21 @@ namespace bugger {
                if( solution.status == SolutionStatus::kFeasible )
                {
                   REAL value = solution.primal[ col ];
-                  lb = this->num.min(lb, num.epsFloor(value));
-                  ub = this->num.max(ub, num.epsCeil(value));
+                  lb = this->num.min(lb, this->num.epsFloor(value));
+                  ub = this->num.max(ub, this->num.epsCeil(value));
                }
-               if( !num.isZetaIntegral(copy.getObjective( ).coefficients[ col ]) )
+               if( !this->num.isZetaIntegral(copy.getObjective( ).coefficients[ col ]) )
                {
-                  REAL obj = num.round(copy.getObjective( ).coefficients[ col ]);
+                  REAL obj = this->num.round(copy.getObjective( ).coefficients[ col ]);
                   copy.getObjective( ).coefficients[ col ] = obj;
                   batches_obj.emplace_back(col, obj);
                }
-               if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) && !num.isZetaEq(copy.getLowerBounds( )[ col ], lb) )
+               if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) && !this->num.isZetaEq(copy.getLowerBounds( )[ col ], lb) )
                {
                   copy.getLowerBounds( )[ col ] = lb;
                   batches_lb.emplace_back(col, lb);
                }
-               if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) && !num.isZetaEq(copy.getUpperBounds( )[ col ], ub) )
+               if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) && !this->num.isZetaEq(copy.getUpperBounds( )[ col ], ub) )
                {
                   copy.getUpperBounds( )[ col ] = ub;
                   batches_ub.emplace_back(col, ub);

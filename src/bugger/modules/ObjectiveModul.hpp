@@ -43,10 +43,10 @@ namespace bugger {
 
       bool
       isObjectiveAdmissible(const Problem<REAL>& problem, const int& col) const {
-         return !num.isZetaZero(problem.getObjective( ).coefficients[ col ])
+         return !this->num.isZetaZero(problem.getObjective( ).coefficients[ col ])
            && ( problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
              || problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
-             || !num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) );
+             || !this->num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) );
       }
 
       ModulStatus
@@ -85,7 +85,7 @@ namespace bugger {
 
             if( !batches.empty() && ( batches.size() >= batchsize || col <= 0 ) )
             {
-               if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
+               if( this->call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
                   copy = Problem<REAL>(problem);
                   for( const auto &item: applied_reductions )

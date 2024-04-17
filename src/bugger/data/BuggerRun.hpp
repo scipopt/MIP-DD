@@ -40,13 +40,13 @@ namespace bugger {
       const Message& msg;
       const Num<double>& num;
       BuggerParameters& parameters;
-      const std::shared_ptr<SolverFactory>& factory;
-      const Vec<std::unique_ptr<BuggerModul>>& modules;
+      const std::shared_ptr<SolverFactory<double>>& factory;
+      const Vec<std::unique_ptr<BuggerModul<double>>>& modules;
       Vec<ModulStatus> results;
 
    public:
 
-      explicit BuggerRun(const Message& _msg, const Num<double>& _num, BuggerParameters& _parameters, const std::shared_ptr<SolverFactory>& _factory, const Vec<std::unique_ptr<BuggerModul>>& _modules)
+      explicit BuggerRun(const Message& _msg, const Num<double>& _num, BuggerParameters& _parameters, const std::shared_ptr<SolverFactory<double>>& _factory, const Vec<std::unique_ptr<BuggerModul<double>>>& _modules)
             : msg(_msg), num(_num), parameters(_parameters), factory(_factory), modules(_modules), results(_modules.size()) { }
 
       bool
@@ -56,7 +56,7 @@ namespace bugger {
       }
 
       void
-      apply(const OptionsInfo& optionsInfo, SettingModul* const setting) {
+      apply(const OptionsInfo& optionsInfo, SettingModul<double>* const setting) {
 
          msg.info("\nMIP Solver:\n");
          factory->create_solver(msg)->print_header();
@@ -109,7 +109,7 @@ namespace bugger {
 
          check_feasibility_of_solution(problem, solution);
          long long last_effort = -1;
-         std::pair<char, SolverStatus> last_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
+         std::pair<char, SolverStatus> last_result = { SolverInterface<double>::OKAY, SolverStatus::kUnknown };
          int last_round = -1;
          int last_module = -1;
          if( parameters.mode == 1 )
@@ -340,7 +340,7 @@ namespace bugger {
             assert(last_module == -1);
             if( parameters.mode == 1 )
             {
-               assert(last_result.first == SolverInterface::OKAY);
+               assert(last_result.first == SolverInterface<double>::OKAY);
                assert(last_result.second == SolverStatus::kUnknown);
                assert(last_effort == -1);
             }

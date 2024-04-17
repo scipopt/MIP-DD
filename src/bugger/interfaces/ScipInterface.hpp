@@ -56,7 +56,8 @@ namespace bugger {
       bool set_time_limit = false;
    };
 
-   class ScipInterface : public SolverInterface {
+   template <typename REAL>
+   class ScipInterface : public SolverInterface<REAL> {
 
    public:
 
@@ -80,7 +81,7 @@ namespace bugger {
    public:
 
       explicit ScipInterface(const Message& _msg, const ScipParameters& _parameters,
-                             const HashMap<String, char>& _limits) : SolverInterface(_msg), parameters(_parameters),
+                             const HashMap<String, char>& _limits) : SolverInterface<REAL>(_msg), parameters(_parameters),
                              limits(_limits) {
          if( SCIPcreate(&scip) != SCIP_OKAY || SCIPincludeDefaultPlugins(scip) != SCIP_OKAY )
             throw std::runtime_error("could not create SCIP");
@@ -97,7 +98,7 @@ namespace bugger {
          {
             String n { names[i] };
             String d { description[i] };
-            msg.info("\t{:20} {}\n", n,d);
+            this->msg.info("\t{:20} {}\n", n,d);
          }
       }
 
@@ -214,7 +215,7 @@ namespace bugger {
 
          char retcode = SCIP_ERROR;
          SolverStatus solverstatus = SolverStatus::kUndefinedError;
-         SCIPsetMessagehdlrQuiet(scip, msg.getVerbosityLevel() < VerbosityLevel::kDetailed);
+         SCIPsetMessagehdlrQuiet(scip, this->msg.getVerbosityLevel() < VerbosityLevel::kDetailed);
          // optimize
          if( parameters.mode == -1 )
             retcode = SCIPsolve(scip);
@@ -229,7 +230,7 @@ namespace bugger {
          if( retcode == SCIP_OKAY )
          {
             // reset return code
-            retcode = OKAY;
+            retcode = this->OKAY;
 
             if( parameters.mode == -1 )
             {
@@ -242,13 +243,13 @@ namespace bugger {
                {
                   switch( passcode )
                   {
-                  case DUALFAIL:
+                  case this->DUALFAIL:
                      dual = false;
                      break;
-                  case PRIMALFAIL:
+                  case this->PRIMALFAIL:
                      primal = false;
                      break;
-                  case OBJECTIVEFAIL:
+                  case this->OBJECTIVEFAIL:
                      objective = false;
                      break;
                   }
@@ -260,11 +261,11 @@ namespace bugger {
                int nsols = SCIPgetNSols(scip);
 
                // check dual by reference solution objective
-               if( retcode == OKAY && dual )
-                  retcode = check_dual_bound( SCIPgetDualbound(scip), SCIPsumepsilon(scip), SCIPinfinity(scip) );
+               if( retcode == this->OKAY && dual )
+                  retcode = this->check_dual_bound( SCIPgetDualbound(scip), SCIPsumepsilon(scip), SCIPinfinity(scip) );
 
                // check primal by generated solution values
-               if( retcode == OKAY )
+               if( retcode == this->OKAY )
                {
                   if( nsols >= 1 )
                   {
@@ -276,7 +277,7 @@ namespace bugger {
                         solution[i].primal.resize(vars.size());
 
                         for( int col = 0; col < solution[i].primal.size(); ++col )
-                           solution[i].primal[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetSolVal(scip, sols[i], vars[col]);
+                           solution[i].primal[col] = this->model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetSolVal(scip, sols[i], vars[col]);
                      }
 
                      if( solution.size() >= 1 && SCIPhasPrimalRay(scip) )
@@ -285,18 +286,18 @@ namespace bugger {
                         solution[0].ray.resize(vars.size());
 
                         for( int col = 0; col < solution[0].ray.size(); ++col )
-                           solution[0].ray[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetPrimalRayVal(scip, vars[col]);
+                           solution[0].ray[col] = this->model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetPrimalRayVal(scip, vars[col]);
                      }
 
                      if( primal )
-                        retcode = check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
+                        retcode = this->check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
                   }
                   else if( nsols != 0 && primal )
-                     retcode = PRIMALFAIL;
+                     retcode = this->PRIMALFAIL;
                }
 
                // check objective by best solution evaluation
-               if( retcode == OKAY && objective )
+               if( retcode == this->OKAY && objective )
                {
                   // check solution objective instead of primal bound if no ray is provided
                   double bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
@@ -304,19 +305,19 @@ namespace bugger {
                   if( solution.size() == 0 )
                      solution.emplace_back(SolutionStatus::kInfeasible);
 
-                  retcode = check_objective_value( bound, solution[0], SCIPsumepsilon(scip), SCIPinfinity(scip) );
+                  retcode = this->check_objective_value( bound, solution[0], SCIPsumepsilon(scip), SCIPinfinity(scip) );
                }
             }
             else
             {
                // check count by primal solution existence
-               if( retcode == OKAY )
+               if( retcode == this->OKAY )
                {
                   long long int count;
                   unsigned int valid;
 
                   count = SCIPgetNCountedSols(scip, &valid);
-                  retcode = check_count_number( SCIPgetDualbound(scip), SCIPgetPrimalbound(scip), (valid ? count : -1), SCIPinfinity(scip) );
+                  retcode = this->check_count_number( SCIPgetDualbound(scip), SCIPgetPrimalbound(scip), (valid ? count : -1), SCIPinfinity(scip) );
                }
             }
 
@@ -393,14 +394,14 @@ namespace bugger {
          {
             if( passcode == retcode )
             {
-               retcode = OKAY;
+               retcode = this->OKAY;
                break;
             }
          }
          // restrict limit settings
-         if( retcode != OKAY )
+         if( retcode != this->OKAY )
          {
-            const auto& limitsettings = adjustment->getLimitSettings( );
+            const auto& limitsettings = this->adjustment->getLimitSettings( );
             for( int index = 0; index < limitsettings.size( ); ++index )
             {
                if( limitsettings[index].second < 0 || limitsettings[index].second > 1 )
@@ -450,8 +451,8 @@ namespace bugger {
                   }
                   if( limitsettings[index].second < 0 || bound < limitsettings[index].second )
                   {
-                     msg.info("\t\t{} = {}\n", limitsettings[index].first, (long long)bound);
-                     adjustment->setLimitSettings(index, bound);
+                     this->msg.info("\t\t{} = {}\n", limitsettings[index].first, (long long)bound);
+                     this->adjustment->setLimitSettings(index, bound);
                   }
                }
             }
@@ -595,32 +596,32 @@ namespace bugger {
       SCIP_RETCODE
       setup(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) {
 
-         adjustment = &settings;
-         model = &problem;
-         reference = &solution;
-         bool solution_exists = reference->status == SolutionStatus::kFeasible;
-         int ncols = model->getNCols( );
-         int nrows = model->getNRows( );
-         const Vec<String> &varNames = model->getVariableNames( );
-         const Vec<String> &consNames = model->getConstraintNames( );
-         const VariableDomains<double> &domains = model->getVariableDomains( );
-         const Objective<double> &obj = model->getObjective( );
-         const auto &consMatrix = model->getConstraintMatrix( );
+         this->adjustment = &settings;
+         this->model = &problem;
+         this->reference = &solution;
+         bool solution_exists = this->reference->status == SolutionStatus::kFeasible;
+         int ncols = this->model->getNCols( );
+         int nrows = this->model->getNRows( );
+         const Vec<String> &varNames = this->model->getVariableNames( );
+         const Vec<String> &consNames = this->model->getConstraintNames( );
+         const VariableDomains<double> &domains = this->model->getVariableDomains( );
+         const Objective<double> &obj = this->model->getObjective( );
+         const auto &consMatrix = this->model->getConstraintMatrix( );
          const auto &lhs_values = consMatrix.getLeftHandSides( );
          const auto &rhs_values = consMatrix.getRightHandSides( );
-         const auto &rflags = model->getRowFlags( );
+         const auto &rflags = this->model->getRowFlags( );
 
          set_parameters( );
-         SCIP_CALL(SCIPcreateProbBasic(scip, model->getName( ).c_str( )));
+         SCIP_CALL(SCIPcreateProbBasic(scip, this->model->getName( ).c_str( )));
          SCIP_CALL(SCIPaddOrigObjoffset(scip, SCIP_Real(obj.offset)));
          SCIP_CALL(SCIPsetObjsense(scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
-         vars.resize(model->getNCols( ));
+         vars.resize(this->model->getNCols( ));
          if( solution_exists )
-            value = obj.offset;
-         else if( reference->status == SolutionStatus::kUnbounded )
-            value = obj.sense ? -SCIPinfinity(scip) : SCIPinfinity(scip);
-         else if( reference->status == SolutionStatus::kInfeasible )
-            value = obj.sense ? SCIPinfinity(scip) : -SCIPinfinity(scip);
+            this->value = obj.offset;
+         else if( this->reference->status == SolutionStatus::kUnbounded )
+            this->value = obj.sense ? -SCIPinfinity(scip) : SCIPinfinity(scip);
+         else if( this->reference->status == SolutionStatus::kInfeasible )
+            this->value = obj.sense ? SCIPinfinity(scip) : -SCIPinfinity(scip);
 
          for( int col = 0; col < ncols; ++col )
          {
@@ -652,18 +653,18 @@ namespace bugger {
                      scip, &var, varNames[ col ].c_str( ), lb, ub,
                      SCIP_Real(obj.coefficients[ col ]), type));
                if( solution_exists )
-                  value += obj.coefficients[ col ] * reference->primal[ col ];
+                  this->value += obj.coefficients[ col ] * this->reference->primal[ col ];
                SCIP_CALL(SCIPaddVar(scip, var));
                vars[ col ] = var;
                SCIP_CALL(SCIPreleaseVar(scip, &var));
             }
          }
 
-         Vec<SCIP_VAR*> consvars(model->getNCols( ));
-         Vec<SCIP_Real> consvals(model->getNCols( ));
+         Vec<SCIP_VAR*> consvars(this->model->getNCols( ));
+         Vec<SCIP_Real> consvals(this->model->getNCols( ));
          for( int row = 0; row < nrows; ++row )
          {
-            if( model->getRowFlags( )[ row ].test(RowFlag::kRedundant) )
+            if( this->model->getRowFlags( )[ row ].test(RowFlag::kRedundant) )
                continue;
             assert(!rflags[ row ].test(RowFlag::kLhsInf) || !rflags[ row ].test(RowFlag::kRhsInf));
 
@@ -676,7 +677,7 @@ namespace bugger {
             int length = 0;
             for( int k = 0; k != rowvec.getLength( ); ++k )
             {
-               assert(!model->getColFlags( )[ inds[ k ] ].test(ColFlag::kFixed));
+               assert(!this->model->getColFlags( )[ inds[ k ] ].test(ColFlag::kFixed));
                assert(vals[ k ] != 0.0);
                consvars[ length ] = vars[ inds[ k ] ];
                consvals[ length ] = SCIP_Real(vals[ k ]);
@@ -699,10 +700,10 @@ namespace bugger {
                switch( pair.second )
                {
                case DUAL:
-                  SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), relax( value, obj.sense, 2.0 * SCIPsumepsilon(scip), SCIPinfinity(scip) )));
+                  SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), this->relax( this->value, obj.sense, 2.0 * SCIPsumepsilon(scip), SCIPinfinity(scip) )));
                   break;
                case PRIM:
-                  SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), value));
+                  SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), this->value));
                   break;
                }
             }
@@ -713,19 +714,19 @@ namespace bugger {
 
       void
       set_parameters( ) const {
-         for( const auto& pair : adjustment->getBoolSettings( ) )
+         for( const auto& pair : this->adjustment->getBoolSettings( ) )
             SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);
-         for( const auto& pair : adjustment->getIntSettings( ) )
+         for( const auto& pair : this->adjustment->getIntSettings( ) )
             SCIPsetIntParam(scip, pair.first.c_str(), pair.second);
-         for( const auto& pair : adjustment->getLongSettings( ) )
+         for( const auto& pair : this->adjustment->getLongSettings( ) )
             SCIPsetLongintParam(scip, pair.first.c_str(), pair.second);
-         for( const auto& pair : adjustment->getDoubleSettings( ) )
+         for( const auto& pair : this->adjustment->getDoubleSettings( ) )
             SCIPsetRealParam(scip, pair.first.c_str(), pair.second);
-         for( const auto& pair : adjustment->getCharSettings( ) )
+         for( const auto& pair : this->adjustment->getCharSettings( ) )
             SCIPsetCharParam(scip, pair.first.c_str(), pair.second);
-         for( const auto& pair : adjustment->getStringSettings( ) )
+         for( const auto& pair : this->adjustment->getStringSettings( ) )
             SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
-         for( const auto& pair : adjustment->getLimitSettings( ) )
+         for( const auto& pair : this->adjustment->getLimitSettings( ) )
          {
             switch( limits.find(pair.first)->second )
             {
@@ -749,7 +750,8 @@ namespace bugger {
       }
    };
 
-   class ScipFactory : public SolverFactory {
+   template <typename REAL>
+   class ScipFactory : public SolverFactory<REAL> {
 
    private:
 
@@ -774,10 +776,10 @@ namespace bugger {
          // run and stalling number of nodes, memory, and gap are unrestrictable because they are not monotonously increasing
       }
 
-      std::unique_ptr<SolverInterface>
+      std::unique_ptr<SolverInterface<REAL>>
       create_solver(const Message& msg) override
       {
-         auto scip = std::unique_ptr<SolverInterface>( new ScipInterface( msg, parameters, limits ) );
+         auto scip = std::unique_ptr<SolverInterface<REAL>>( new ScipInterface<REAL>( msg, parameters, limits ) );
          if( initial )
          {
             String name;
@@ -794,7 +796,7 @@ namespace bugger {
                if( parameters.set_dual_limit )
                {
                   if( scip->has_setting(name = "limits/dual") || scip->has_setting(name = "limits/proofstop") )
-                     limits[name] = ScipInterface::DUAL;
+                     limits[name] = ScipInterface<REAL>::DUAL;
                   else
                   {
                      msg.info("Dual limit disabled.\n");
@@ -804,7 +806,7 @@ namespace bugger {
                if( parameters.set_prim_limit )
                {
                   if( scip->has_setting(name = "limits/primal") || scip->has_setting(name = "limits/objectivestop") )
-                     limits[name] = ScipInterface::PRIM;
+                     limits[name] = ScipInterface<REAL>::PRIM;
                   else
                   {
                      msg.info("Primal limit disabled.\n");
@@ -822,7 +824,7 @@ namespace bugger {
                   if( parameters.set_best_limit )
                   {
                      if( scip->has_setting(name = "limits/bestsol") )
-                        limits[name] = ScipInterface::BEST;
+                        limits[name] = ScipInterface<REAL>::BEST;
                      else
                      {
                         msg.info("Bestsolution limit disabled.\n");
@@ -832,7 +834,7 @@ namespace bugger {
                   if( parameters.set_solu_limit )
                   {
                      if( scip->has_setting(name = "limits/solutions") )
-                        limits[name] = ScipInterface::SOLU;
+                        limits[name] = ScipInterface<REAL>::SOLU;
                      else
                      {
                         msg.info("Solution limit disabled.\n");
@@ -842,7 +844,7 @@ namespace bugger {
                   if( parameters.set_rest_limit )
                   {
                      if( scip->has_setting(name = "limits/restarts") )
-                        limits[name] = ScipInterface::REST;
+                        limits[name] = ScipInterface<REAL>::REST;
                      else
                      {
                         msg.info("Restart limit disabled.\n");
@@ -861,7 +863,7 @@ namespace bugger {
                if( parameters.set_tota_limit )
                {
                   if( scip->has_setting(name = "limits/totalnodes") )
-                     limits[name] = ScipInterface::TOTA;
+                     limits[name] = ScipInterface<REAL>::TOTA;
                   else
                   {
                      msg.info("Totalnode limit disabled.\n");
@@ -871,7 +873,7 @@ namespace bugger {
                if( parameters.set_time_limit )
                {
                   if( scip->has_setting(name = "limits/time") )
-                     limits[name] = ScipInterface::TIME;
+                     limits[name] = ScipInterface<REAL>::TIME;
                   else
                   {
                      msg.info("Time limit disabled.\n");

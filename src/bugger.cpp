@@ -40,10 +40,10 @@
 
 using namespace bugger;
 
-std::shared_ptr<SolverFactory>
+std::shared_ptr<SolverFactory<double>>
 load_solver_factory( ) {
 #ifdef BUGGER_HAVE_SCIP
-   return std::shared_ptr<SolverFactory>(new ScipFactory( ));
+   return std::shared_ptr<SolverFactory<double>>(new ScipFactory<double>( ));
 #else
    msg.error("No solver specified -- aborting ....");
    return nullptr;
@@ -75,7 +75,7 @@ main(int argc, char *argv[]) {
    Message msg { };
    Num<double> num { };
    BuggerParameters parameters { };
-   std::shared_ptr<SolverFactory> factory { load_solver_factory() };
+   std::shared_ptr<SolverFactory<double>> factory { load_solver_factory() };
    Vec<std::unique_ptr<BuggerModul<double>>> modules { };
 
    modules.emplace_back(new ConstraintModul<double>(msg, num, parameters, factory));

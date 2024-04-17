@@ -35,7 +35,7 @@ namespace bugger {
 
       explicit FixingModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
                            std::shared_ptr<SolverFactory<REAL>>& _factory)
-                           : BuggerModul(_msg, _num, _parameters, _factory) {
+                           : BuggerModul<REAL>(_msg, _num, _parameters, _factory) {
          this->setName("fixing");
       }
 
@@ -124,7 +124,7 @@ namespace bugger {
                      {
                         int index = row_data.getIndices( )[ col_index ];
                         REAL value = row_data.getValues( )[ col_index ];
-                        if( !copy.getColFlags( )[ index ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ index ].test(ColFlag::kIntegral) || !num.isEpsIntegral(value) ) )
+                        if( !copy.getColFlags( )[ index ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ index ].test(ColFlag::kIntegral) || !this->num.isEpsIntegral(value) ) )
                         {
                            integral = false;
                            break;
@@ -159,8 +159,8 @@ namespace bugger {
 
             if( !batches_vars.empty() && ( batches_vars.size() >= batchsize || col <= 0 ) )
             {
-               apply_changes(copy, batches_coeff);
-               if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
+               this->apply_changes(copy, batches_coeff);
+               if( this->call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
                   copy = Problem<REAL>(problem);
                   for( const auto &item: applied_reductions )
@@ -168,7 +168,7 @@ namespace bugger {
                      assert(!copy.getColFlags( )[ item ].test(ColFlag::kFixed));
                      copy.getColFlags( )[ item ].set(ColFlag::kFixed);
                   }
-                  apply_changes(copy, applied_entries);
+                  this->apply_changes(copy, applied_entries);
                   for( const auto &item: applied_lefts )
                      copy.getConstraintMatrix( ).modifyLeftHandSide( item.first, this->num, item.second );
                   for( const auto &item: applied_rights )
