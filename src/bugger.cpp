@@ -76,18 +76,18 @@ main(int argc, char *argv[]) {
    Num<double> num { };
    BuggerParameters parameters { };
    std::shared_ptr<SolverFactory> factory { load_solver_factory() };
-   Vec<std::unique_ptr<BuggerModul>> modules { };
+   Vec<std::unique_ptr<BuggerModul<double>>> modules { };
 
-   modules.emplace_back(new ConstraintModul(msg, num, parameters, factory));
-   modules.emplace_back(new VariableModul(msg, num, parameters, factory));
-   modules.emplace_back(new CoefficientModul(msg, num, parameters, factory));
-   modules.emplace_back(new FixingModul(msg, num, parameters, factory));
-   SettingModul* setting = new SettingModul(msg, num, parameters, factory);
+   modules.emplace_back(new ConstraintModul<double>(msg, num, parameters, factory));
+   modules.emplace_back(new VariableModul<double>(msg, num, parameters, factory));
+   modules.emplace_back(new CoefficientModul<double>(msg, num, parameters, factory));
+   modules.emplace_back(new FixingModul<double>(msg, num, parameters, factory));
+   SettingModul<double>* setting = new SettingModul<double>(msg, num, parameters, factory);
    modules.emplace_back(setting);
-   modules.emplace_back(new SideModul(msg, num, parameters, factory));
-   modules.emplace_back(new ObjectiveModul(msg, num, parameters, factory));
-   modules.emplace_back(new VarroundModul(msg, num, parameters, factory));
-   modules.emplace_back(new ConsRoundModul(msg, num, parameters, factory));
+   modules.emplace_back(new SideModul<double>(msg, num, parameters, factory));
+   modules.emplace_back(new ObjectiveModul<double>(msg, num, parameters, factory));
+   modules.emplace_back(new VarroundModul<double>(msg, num, parameters, factory));
+   modules.emplace_back(new ConsRoundModul<double>(msg, num, parameters, factory));
 
    if( !optionsInfo.param_settings_file.empty( ) || !optionsInfo.unparsed_options.empty( ) )
    {

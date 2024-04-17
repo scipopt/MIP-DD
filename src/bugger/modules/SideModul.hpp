@@ -28,36 +28,38 @@
 
 namespace bugger {
 
-   class SideModul : public BuggerModul {
+   template <typename REAL>
+   class SideModul : public BuggerModul<REAL> {
 
    public:
 
       explicit SideModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
-                         std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory) {
+                         std::shared_ptr<SolverFactory<REAL>>& _factory)
+                         : BuggerModul<REAL>(_msg, _num, _parameters, _factory) {
          this->setName("side");
       }
 
    private:
 
       bool
-      isSideAdmissable(const Problem<double>& problem, const int& row) const {
+      isSideAdmissable(const Problem<REAL>& problem, const int& row) const {
          return !problem.getRowFlags( )[ row ].test(RowFlag::kRedundant)
            && ( problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
              || problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
-             || !num.isZetaEq(problem.getConstraintMatrix( ).getLeftHandSides( )[ row ], problem.getConstraintMatrix( ).getRightHandSides( )[ row ]) );
+             || !this->num.isZetaEq(problem.getConstraintMatrix( ).getLeftHandSides( )[ row ], problem.getConstraintMatrix( ).getRightHandSides( )[ row ]) );
       }
 
       ModulStatus
-      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override {
+      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override {
 
          if( solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;
 
          long long batchsize = 1;
 
-         if( parameters.nbatches > 0 )
+         if( this->parameters.nbatches > 0 )
          {
-            batchsize = parameters.nbatches - 1;
+            batchsize = this->parameters.nbatches - 1;
             for( int row = problem.getNRows( ) - 1; row >= 0; --row )
                if( isSideAdmissable(problem, row) )
                   ++batchsize;
@@ -67,10 +69,10 @@ namespace bugger {
          }
 
          bool admissible = false;
-         auto copy = Problem<double>(problem);
-         ConstraintMatrix<double>& matrix = copy.getConstraintMatrix( );
-         Vec<std::pair<int, double>> applied_reductions { };
-         Vec<std::pair<int, double>> batches { };
+         auto copy = Problem<REAL>(problem);
+         ConstraintMatrix<REAL>& matrix = copy.getConstraintMatrix( );
+         Vec<std::pair<int, REAL>> applied_reductions { };
+         Vec<std::pair<int, REAL>> batches { };
          batches.reserve(batchsize);
 
          for( int row = copy.getNRows( ) - 1; row >= 0; --row )
@@ -80,7 +82,7 @@ namespace bugger {
                admissible = true;
                auto data = matrix.getRowCoefficients(row);
                bool integral = true;
-               double fixedval;
+               REAL fixedval;
                for( int index = 0; index < data.getLength( ); ++index )
                {
                   if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral) || !num.isEpsIntegral(data.getValues( )[ index ]) ) )
@@ -91,9 +93,9 @@ namespace bugger {
                }
                if( solution.status == SolutionStatus::kFeasible )
                {
-                  fixedval = get_linear_activity(data, solution);
+                  fixedval = this->get_linear_activity(data, solution);
                   if( integral )
-                     fixedval = num.round(fixedval);
+                     fixedval = this->num.round(fixedval);
                }
                else
                {
@@ -101,20 +103,20 @@ namespace bugger {
                   if( integral )
                   {
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
-                        fixedval = num.min(fixedval, num.epsFloor(matrix.getRightHandSides( )[ row ]));
+                        fixedval = this->num.min(fixedval, num.epsFloor(matrix.getRightHandSides( )[ row ]));
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
-                        fixedval = num.max(fixedval, num.epsCeil(matrix.getLeftHandSides( )[ row ]));
+                        fixedval = this->num.max(fixedval, num.epsCeil(matrix.getLeftHandSides( )[ row ]));
                   }
                   else
                   {
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
-                        fixedval = num.min(fixedval, matrix.getRightHandSides( )[ row ]);
+                        fixedval = this->num.min(fixedval, matrix.getRightHandSides( )[ row ]);
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
-                        fixedval = num.max(fixedval, matrix.getLeftHandSides( )[ row ]);
+                        fixedval = this->num.max(fixedval, matrix.getLeftHandSides( )[ row ]);
                   }
                }
-               matrix.modifyLeftHandSide( row, num, fixedval );
-               matrix.modifyRightHandSide( row, num, fixedval );
+               matrix.modifyLeftHandSide( row, this->num, fixedval );
+               matrix.modifyRightHandSide( row, this->num, fixedval );
                batches.emplace_back(row, fixedval);
             }
 
@@ -122,10 +124,10 @@ namespace bugger {
             {
                if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
-                  copy = Problem<double>(problem);
+                  copy = Problem<REAL>(problem);
                   for( const auto &item: applied_reductions )
                   {
-                     matrix.modifyLeftHandSide( item.first, num, item.second );
+                     matrix.modifyLeftHandSide( item.first, this->num, item.second );
                      matrix.modifyRightHandSide( item.first, num, item.second );
                   }
                }
@@ -140,10 +142,14 @@ namespace bugger {
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
          problem = copy;
-         nchgsides += 2 * applied_reductions.size();
+         this->nchgsides += 2 * applied_reductions.size();
          return ModulStatus::kSuccessful;
       }
    };
+
+   extern template class SideModul<double>;
+   extern template class SideModul<Quad>;
+   extern template class SideModul<Rational>;
 
 } // namespace bugger
 
