@@ -109,7 +109,7 @@ namespace bugger {
 
          check_feasibility_of_solution(problem, solution);
          long long last_effort = -1;
-         std::pair<char, SolverStatus> last_result = { SolverInterface<double>::OKAY, SolverStatus::kUnknown };
+         std::pair<char, SolverStatus> last_result = { Retcode::OKAY, SolverStatus::kUnknown };
          int last_round = -1;
          int last_module = -1;
          if( parameters.mode == 1 )
@@ -340,7 +340,7 @@ namespace bugger {
             assert(last_module == -1);
             if( parameters.mode == 1 )
             {
-               assert(last_result.first == SolverInterface<double>::OKAY);
+               assert(last_result.first == Retcode::OKAY);
                assert(last_result.second == SolverStatus::kUnknown);
                assert(last_effort == -1);
             }

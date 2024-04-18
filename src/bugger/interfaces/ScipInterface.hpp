@@ -230,7 +230,7 @@ namespace bugger {
          if( retcode == SCIP_OKAY )
          {
             // reset return code
-            retcode = this->OKAY;
+            retcode = Retcode::OKAY;
 
             if( parameters.mode == -1 )
             {
@@ -243,13 +243,13 @@ namespace bugger {
                {
                   switch( passcode )
                   {
-                  case this->DUALFAIL:
+                  case Retcode::DUALFAIL:
                      dual = false;
                      break;
-                  case this->PRIMALFAIL:
+                  case Retcode::PRIMALFAIL:
                      primal = false;
                      break;
-                  case this->OBJECTIVEFAIL:
+                  case Retcode::OBJECTIVEFAIL:
                      objective = false;
                      break;
                   }
@@ -261,11 +261,11 @@ namespace bugger {
                int nsols = SCIPgetNSols(scip);
 
                // check dual by reference solution objective
-               if( retcode == this->OKAY && dual )
+               if( retcode == Retcode::OKAY && dual )
                   retcode = this->check_dual_bound( SCIPgetDualbound(scip), SCIPsumepsilon(scip), SCIPinfinity(scip) );
 
                // check primal by generated solution values
-               if( retcode == this->OKAY )
+               if( retcode == Retcode::OKAY )
                {
                   if( nsols >= 1 )
                   {
@@ -293,11 +293,11 @@ namespace bugger {
                         retcode = this->check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
                   }
                   else if( nsols != 0 && primal )
-                     retcode = this->PRIMALFAIL;
+                     retcode = Retcode::PRIMALFAIL;
                }
 
                // check objective by best solution evaluation
-               if( retcode == this->OKAY && objective )
+               if( retcode == Retcode::OKAY && objective )
                {
                   // check solution objective instead of primal bound if no ray is provided
                   double bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
@@ -311,7 +311,7 @@ namespace bugger {
             else
             {
                // check count by primal solution existence
-               if( retcode == this->OKAY )
+               if( retcode == Retcode::OKAY )
                {
                   long long int count;
                   unsigned int valid;
@@ -394,12 +394,12 @@ namespace bugger {
          {
             if( passcode == retcode )
             {
-               retcode = this->OKAY;
+               retcode = Retcode::OKAY;
                break;
             }
          }
          // restrict limit settings
-         if( retcode != this->OKAY )
+         if( retcode != Retcode::OKAY )
          {
             const auto& limitsettings = this->adjustment->getLimitSettings( );
             for( int index = 0; index < limitsettings.size( ); ++index )

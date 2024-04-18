@@ -33,17 +33,15 @@
 
 namespace bugger {
 
+   enum Retcode : char {
+      OKAY          = 0,
+      DUALFAIL      = 1,
+      PRIMALFAIL    = 2,
+      OBJECTIVEFAIL = 3
+   };
+
    template <typename REAL>
    class SolverInterface {
-
-   public:
-
-      enum Retcode : char {
-         OKAY          = 0,
-         DUALFAIL      = 1,
-         PRIMALFAIL    = 2,
-         OBJECTIVEFAIL = 3
-      };
 
    protected:
 
