@@ -41,6 +41,16 @@
 
 namespace bugger {
 
+   enum ScipLimit : char {
+      DUAL = 1,
+      PRIM = 2,
+      BEST = 3,
+      SOLU = 4,
+      REST = 5,
+      TOTA = 6,
+      TIME = 7
+   };
+
    class ScipParameters {
 
    public:
@@ -61,15 +71,7 @@ namespace bugger {
 
    public:
 
-      enum Limit : char {
-         DUAL = 1,
-         PRIM = 2,
-         BEST = 3,
-         SOLU = 4,
-         REST = 5,
-         TOTA = 6,
-         TIME = 7
-      };
+
 
    private:
 
@@ -230,7 +232,7 @@ namespace bugger {
          if( retcode == SCIP_OKAY )
          {
             // reset return code
-            retcode = Retcode::OKAY;
+            retcode = SolverRetcode::OKAY;
 
             if( parameters.mode == -1 )
             {
@@ -243,13 +245,13 @@ namespace bugger {
                {
                   switch( passcode )
                   {
-                  case Retcode::DUALFAIL:
+                  case SolverRetcode::DUALFAIL:
                      dual = false;
                      break;
-                  case Retcode::PRIMALFAIL:
+                  case SolverRetcode::PRIMALFAIL:
                      primal = false;
                      break;
-                  case Retcode::OBJECTIVEFAIL:
+                  case SolverRetcode::OBJECTIVEFAIL:
                      objective = false;
                      break;
                   }
@@ -261,11 +263,11 @@ namespace bugger {
                int nsols = SCIPgetNSols(scip);
 
                // check dual by reference solution objective
-               if( retcode == Retcode::OKAY && dual )
+               if( retcode == SolverRetcode::OKAY && dual )
                   retcode = this->check_dual_bound( SCIPgetDualbound(scip), SCIPsumepsilon(scip), SCIPinfinity(scip) );
 
                // check primal by generated solution values
-               if( retcode == Retcode::OKAY )
+               if( retcode == SolverRetcode::OKAY )
                {
                   if( nsols >= 1 )
                   {
@@ -293,11 +295,11 @@ namespace bugger {
                         retcode = this->check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
                   }
                   else if( nsols != 0 && primal )
-                     retcode = Retcode::PRIMALFAIL;
+                     retcode = SolverRetcode::PRIMALFAIL;
                }
 
                // check objective by best solution evaluation
-               if( retcode == Retcode::OKAY && objective )
+               if( retcode == SolverRetcode::OKAY && objective )
                {
                   // check solution objective instead of primal bound if no ray is provided
                   double bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
@@ -311,7 +313,7 @@ namespace bugger {
             else
             {
                // check count by primal solution existence
-               if( retcode == Retcode::OKAY )
+               if( retcode == SolverRetcode::OKAY )
                {
                   long long int count;
                   unsigned int valid;
@@ -394,12 +396,12 @@ namespace bugger {
          {
             if( passcode == retcode )
             {
-               retcode = Retcode::OKAY;
+               retcode = SolverRetcode::OKAY;
                break;
             }
          }
          // restrict limit settings
-         if( retcode != Retcode::OKAY )
+         if( retcode != SolverRetcode::OKAY )
          {
             const auto& limitsettings = this->adjustment->getLimitSettings( );
             for( int index = 0; index < limitsettings.size( ); ++index )
@@ -796,7 +798,7 @@ namespace bugger {
                if( parameters.set_dual_limit )
                {
                   if( scip->has_setting(name = "limits/dual") || scip->has_setting(name = "limits/proofstop") )
-                     limits[name] = ScipInterface<REAL>::DUAL;
+                     limits[name] = ScipLimit::DUAL;
                   else
                   {
                      msg.info("Dual limit disabled.\n");
@@ -806,7 +808,7 @@ namespace bugger {
                if( parameters.set_prim_limit )
                {
                   if( scip->has_setting(name = "limits/primal") || scip->has_setting(name = "limits/objectivestop") )
-                     limits[name] = ScipInterface<REAL>::PRIM;
+                     limits[name] = ScipLimit::PRIM;
                   else
                   {
                      msg.info("Primal limit disabled.\n");
@@ -824,7 +826,7 @@ namespace bugger {
                   if( parameters.set_best_limit )
                   {
                      if( scip->has_setting(name = "limits/bestsol") )
-                        limits[name] = ScipInterface<REAL>::BEST;
+                        limits[name] = ScipLimit::BEST;
                      else
                      {
                         msg.info("Bestsolution limit disabled.\n");
@@ -834,7 +836,7 @@ namespace bugger {
                   if( parameters.set_solu_limit )
                   {
                      if( scip->has_setting(name = "limits/solutions") )
-                        limits[name] = ScipInterface<REAL>::SOLU;
+                        limits[name] = ScipLimit::SOLU;
                      else
                      {
                         msg.info("Solution limit disabled.\n");
@@ -844,7 +846,7 @@ namespace bugger {
                   if( parameters.set_rest_limit )
                   {
                      if( scip->has_setting(name = "limits/restarts") )
-                        limits[name] = ScipInterface<REAL>::REST;
+                        limits[name] = ScipLimit::REST;
                      else
                      {
                         msg.info("Restart limit disabled.\n");
@@ -863,7 +865,7 @@ namespace bugger {
                if( parameters.set_tota_limit )
                {
                   if( scip->has_setting(name = "limits/totalnodes") )
-                     limits[name] = ScipInterface<REAL>::TOTA;
+                     limits[name] = ScipLimit::TOTA;
                   else
                   {
                      msg.info("Totalnode limit disabled.\n");
@@ -873,7 +875,7 @@ namespace bugger {
                if( parameters.set_time_limit )
                {
                   if( scip->has_setting(name = "limits/time") )
-                     limits[name] = ScipInterface<REAL>::TIME;
+                     limits[name] = ScipLimit::TIME;
                   else
                   {
                      msg.info("Time limit disabled.\n");

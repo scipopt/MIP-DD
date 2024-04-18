@@ -33,7 +33,7 @@
 
 namespace bugger {
 
-   enum Retcode : char {
+   enum SolverRetcode : char {
       OKAY          = 0,
       DUALFAIL      = 1,
       PRIMALFAIL    = 2,

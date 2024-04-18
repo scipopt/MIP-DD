@@ -71,7 +71,7 @@ namespace bugger {
       int nchgsettings = 0;
       int ndeletedrows = 0;
       int nsolves = 0;
-      std::pair<char, SolverStatus> last_result { Retcode::OKAY, SolverStatus::kUnknown };
+      std::pair<char, SolverStatus> last_result { SolverRetcode::OKAY, SolverStatus::kUnknown };
       long long last_effort = -1;
 
    public:
@@ -108,7 +108,7 @@ namespace bugger {
 
       ModulStatus
       run(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution, const Timer& timer) {
-         last_result = { Retcode::OKAY, SolverStatus::kUnknown };
+         last_result = { SolverRetcode::OKAY, SolverStatus::kUnknown };
          last_effort = -1;
          if( !enabled )
             return ModulStatus::kDidNotRun;
@@ -207,7 +207,7 @@ namespace bugger {
             return BuggerStatus::kError;
          }
          long long effort = solver->getSolvingEffort( );
-         if( result.first == Retcode::OKAY )
+         if( result.first == SolverRetcode::OKAY )
          {
             msg.info("\tOkay    - Status {:<23} - Effort{:>20}\n", result.second, effort);
             return BuggerStatus::kOkay;
@@ -217,7 +217,7 @@ namespace bugger {
             if( effort >= 0 )
                last_effort = effort;
             last_result = result;
-            if( result.first > Retcode::OKAY )
+            if( result.first > SolverRetcode::OKAY )
             {
                msg.info("\tBug{:>4} - Status {:<23} - Effort{:>20}\n", (int)result.first, result.second, effort);
                return BuggerStatus::kBug;
