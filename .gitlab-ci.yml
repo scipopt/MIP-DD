@@ -49,6 +49,13 @@ stages:
     - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_RELEASE} -DSCIP_DIR=/usr/local/lib/cmake/scip
     - make -j6
     - bin/bugger --help
+    - rm CMakeCache.txt
+    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_DEBUG} -DSOPLEX_DIR=/usr/local/lib/cmake/soplex
+    - make -j6
+    - bin/bugger --help
+    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_RELEASE} -DSOPLEX_DIR=/usr/local/lib/cmake/soplex
+    - make -j6
+    - bin/bugger --help
 
 "build":
   extends: .ctest
