@@ -39,9 +39,11 @@
 #include "bugger/interfaces/SolverInterface.hpp"
 
 
-namespace bugger {
+namespace bugger
+{
 
-   class ScipParameters {
+   class ScipParameters
+   {
 
    public:
 
@@ -56,11 +58,13 @@ namespace bugger {
       bool set_time_limit = false;
    };
 
-   class ScipInterface : public SolverInterface {
+   class ScipInterface : public SolverInterface
+   {
 
    public:
 
-      enum Limit : char {
+      enum Limit : char
+      {
          DUAL = 1,
          PRIM = 2,
          BEST = 3,
@@ -81,7 +85,8 @@ namespace bugger {
 
       explicit ScipInterface(const Message& _msg, const ScipParameters& _parameters,
                              const HashMap<String, char>& _limits) : SolverInterface(_msg), parameters(_parameters),
-                             limits(_limits) {
+                             limits(_limits)
+      {
          if( SCIPcreate(&scip) != SCIP_OKAY || SCIPincludeDefaultPlugins(scip) != SCIP_OKAY )
             throw std::runtime_error("could not create SCIP");
       }
@@ -204,14 +209,15 @@ namespace bugger {
       }
 
       void
-      doSetUp(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) override {
+      doSetUp(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) override
+      {
          auto retcode = setup(settings, problem, solution);
          assert(retcode == SCIP_OKAY);
       }
 
       std::pair<char, SolverStatus>
-      solve(const Vec<int>& passcodes) override {
-
+      solve(const Vec<int>& passcodes) override
+      {
          char retcode = SCIP_ERROR;
          SolverStatus solverstatus = SolverStatus::kUndefinedError;
          SCIPsetMessagehdlrQuiet(scip, msg.getVerbosityLevel() < VerbosityLevel::kDetailed);
@@ -460,8 +466,8 @@ namespace bugger {
       }
 
       long long
-      getSolvingEffort( ) override {
-
+      getSolvingEffort( ) override
+      {
          switch( SCIPgetStage(scip) )
          {
          case SCIP_STAGE_PRESOLVING:
@@ -485,8 +491,8 @@ namespace bugger {
       }
 
       std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>>
-      readInstance(const String& settings_filename, const String& problem_filename) override {
-
+      readInstance(const String& settings_filename, const String& problem_filename) override
+      {
          auto settings = parseSettings(settings_filename);
          SCIP_RETCODE retcode = SCIPreadProb(scip, problem_filename.c_str(), nullptr);
          if( retcode != SCIP_OKAY )
@@ -575,13 +581,15 @@ namespace bugger {
       }
 
       bool
-      writeInstance(const String& filename, const bool& writesettings) override {
+      writeInstance(const String& filename, const bool& writesettings) override
+      {
          if( writesettings || limits.size() >= 1 )
             SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
          return SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
-      };
+      }
 
-      ~ScipInterface( ) override {
+      ~ScipInterface( ) override
+      {
          if( scip != nullptr )
          {
             auto retcode = SCIPfree(&scip);
@@ -593,22 +601,22 @@ namespace bugger {
    private:
 
       SCIP_RETCODE
-      setup(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) {
-
+      setup(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution)
+      {
          adjustment = &settings;
          model = &problem;
          reference = &solution;
          bool solution_exists = reference->status == SolutionStatus::kFeasible;
          int ncols = model->getNCols( );
          int nrows = model->getNRows( );
-         const Vec<String> &varNames = model->getVariableNames( );
-         const Vec<String> &consNames = model->getConstraintNames( );
-         const VariableDomains<double> &domains = model->getVariableDomains( );
-         const Objective<double> &obj = model->getObjective( );
-         const auto &consMatrix = model->getConstraintMatrix( );
-         const auto &lhs_values = consMatrix.getLeftHandSides( );
-         const auto &rhs_values = consMatrix.getRightHandSides( );
-         const auto &rflags = model->getRowFlags( );
+         const auto& varNames = model->getVariableNames( );
+         const auto& consNames = model->getConstraintNames( );
+         const auto& domains = model->getVariableDomains( );
+         const auto& obj = model->getObjective( );
+         const auto& consMatrix = model->getConstraintMatrix( );
+         const auto& lhs_values = consMatrix.getLeftHandSides( );
+         const auto& rhs_values = consMatrix.getRightHandSides( );
+         const auto& rflags = model->getRowFlags( );
 
          set_parameters( );
          SCIP_CALL(SCIPcreateProbBasic(scip, model->getName( ).c_str( )));
@@ -663,7 +671,7 @@ namespace bugger {
          Vec<SCIP_Real> consvals(model->getNCols( ));
          for( int row = 0; row < nrows; ++row )
          {
-            if( model->getRowFlags( )[ row ].test(RowFlag::kRedundant) )
+            if( rflags[ row ].test(RowFlag::kRedundant) )
                continue;
             assert(!rflags[ row ].test(RowFlag::kLhsInf) || !rflags[ row ].test(RowFlag::kRhsInf));
 
@@ -712,7 +720,8 @@ namespace bugger {
       }
 
       void
-      set_parameters( ) const {
+      set_parameters( ) const
+      {
          for( const auto& pair : adjustment->getBoolSettings( ) )
             SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);
          for( const auto& pair : adjustment->getIntSettings( ) )
@@ -749,7 +758,8 @@ namespace bugger {
       }
    };
 
-   class ScipFactory : public SolverFactory {
+   class ScipFactory : public SolverFactory
+   {
 
    private:
 
@@ -886,7 +896,8 @@ namespace bugger {
    };
 
    std::shared_ptr<SolverFactory>
-   load_solver_factory( ) {
+   load_solver_factory( )
+   {
       return std::shared_ptr<SolverFactory>(new ScipFactory( ));
    }
 
