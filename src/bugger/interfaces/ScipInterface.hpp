@@ -505,13 +505,13 @@ namespace bugger {
          int ncols = SCIPgetNVars(scip);
          int nrows = SCIPgetNConss(scip);
          int nnz = 0;
-         SCIP_VAR **vars = SCIPgetVars(scip);
-         SCIP_CONS **conss = SCIPgetConss(scip);
+         SCIP_VAR **probvars = SCIPgetVars(scip);
+         SCIP_CONS **probconss = SCIPgetConss(scip);
          for( int i = 0; i < nrows; ++i )
          {
             int nconsvars = 0;
             SCIP_Bool success = FALSE;
-            SCIPgetConsNVars(scip, conss[ i ], &nconsvars, &success);
+            SCIPgetConsNVars(scip, probconss[ i ], &nconsvars, &success);
             if( !success )
                return { settings, boost::none };
             nnz += nconsvars;
@@ -522,7 +522,7 @@ namespace bugger {
          builder.setNumCols(ncols);
          for( int i = 0; i < ncols; ++i )
          {
-            SCIP_VAR *var = vars[ i ];
+            SCIP_VAR *var = probvars[ i ];
             SCIP_Real lb = SCIPvarGetLbGlobal(var);
             SCIP_Real ub = SCIPvarGetUbGlobal(var);
             SCIP_VARTYPE vartype = SCIPvarGetType(var);
@@ -545,7 +545,7 @@ namespace bugger {
          {
             int nconsvars = 0;
             SCIP_Bool success = FALSE;
-            SCIP_CONS *cons = conss[ i ];
+            SCIP_CONS *cons = probconss[ i ];
             SCIPgetConsNVars(scip, cons, &nconsvars, &success);
             SCIPgetConsVars(scip, cons, consvars.data(), ncols, &success);
             if( !success )
@@ -556,7 +556,7 @@ namespace bugger {
             for( int j = 0; j < nconsvars; ++j )
             {
                indices[ j ] = SCIPvarGetProbindex(consvars[ j ]);
-               assert(strcmp(SCIPvarGetName(consvars[ j ]), SCIPvarGetName(vars[ indices[ j ] ])) == 0);
+               assert(strcmp(SCIPvarGetName(consvars[ j ]), SCIPvarGetName(probvars[ indices[ j ] ])) == 0);
             }
             builder.addRowEntries(i, nconsvars, indices.data(), consvals.data());
             SCIP_Real lhs = SCIPconsGetLhs(scip, cons, &success);
