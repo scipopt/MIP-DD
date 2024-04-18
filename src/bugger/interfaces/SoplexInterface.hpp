@@ -25,6 +25,7 @@
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
 
+#include "soplex.h"
 #include "bugger/data/Problem.hpp"
 #include "bugger/data/ProblemBuilder.hpp"
 #include "bugger/data/SolverSettings.hpp"
@@ -32,83 +33,115 @@
 #include "bugger/interfaces/SolverStatus.hpp"
 #include "bugger/interfaces/SolverInterface.hpp"
 
+using namespace soplex;
 
-namespace bugger {
+namespace bugger
+{
 
-   class SoplexParameters {
+   class SoplexParameters
+   {
 
    public:
 
       int mode = -1;
       double limitspace = 1.0;
-      bool set_dual_limit = true;
-      bool set_prim_limit = true;
-      bool set_best_limit = true;
-      bool set_solu_limit = true;
-      bool set_rest_limit = true;
-      bool set_tota_limit = true;
+      bool set_dual_limit = false;
+      bool set_prim_limit = false;
+      bool set_iter_limit = false;
       bool set_time_limit = false;
    };
 
-   class SoplexInterface : public SolverInterface {
+   class SoplexInterface : public SolverInterface
+   {
 
    public:
 
-      enum Limit : char {
+      enum Limit : char
+      {
          DUAL = 1,
          PRIM = 2,
-         BEST = 3,
-         SOLU = 4,
-         REST = 5,
-         TOTA = 6,
-         TIME = 7
+         ITER = 3,
+         TIME = 4
       };
 
    private:
 
-      const SoplexParameters& parameters;
-      const HashMap<String, char>& limits;
-      SCIP* scip = nullptr;
-      Vec<SCIP_VAR*> vars;
+      SoplexParameters& parameters;
+      HashMap<String, char>& limits;
+      SoPlex* soplex;
+      NameSet colNames { };
+      NameSet rowNames { };
+      Vec<int> inds;
 
    public:
 
-      explicit SoplexInterface(const Message& _msg, const SoplexParameters& _parameters,
-                             const HashMap<String, char>& _limits) : SolverInterface(_msg), parameters(_parameters),
-                             limits(_limits) {
-         if( SCIPcreate(&scip) != SCIP_OKAY || SCIPincludeDefaultPlugins(scip) != SCIP_OKAY )
-            throw std::runtime_error("could not create SCIP");
+      explicit SoplexInterface(const Message& _msg, SoplexParameters& _parameters, HashMap<String, char>& _limits) :
+                               SolverInterface(_msg), parameters(_parameters), limits(_limits)
+      {
+         soplex = new SoPlex();
       }
 
       void
       print_header( ) const override
       {
-         SCIPprintVersion(scip, nullptr);
-         int length = SCIPgetNExternalCodes(scip);
-         auto description = SCIPgetExternalCodeDescriptions(scip);
-         auto names = SCIPgetExternalCodeNames(scip);
-         for( int i = 0; i < length; ++i )
-         {
-            String n { names[i] };
-            String d { description[i] };
-            msg.info("\t{:20} {}\n", n,d);
-         }
+         soplex->printVersion();
       }
 
       bool
       has_setting(const String& name) const override
       {
-         return SCIPgetParam(scip, name.c_str()) != nullptr;
+         switch( (unsigned char)name.front() )
+         {
+         case 0:
+            return (unsigned char)name.back() < SoPlex::BOOLPARAM_COUNT;
+            break;
+         case 1:
+            return (unsigned char)name.back() < SoPlex::INTPARAM_COUNT;
+            break;
+         case 2:
+            return (unsigned char)name.back() < SoPlex::REALPARAM_COUNT;
+            break;
+         default:
+            return false;
+         }
       }
 
       boost::optional<SolverSettings>
       parseSettings(const String& filename) const override
       {
-         if( !filename.empty() )
+         if( !filename.empty() && !soplex->loadSettingsFile(filename.c_str()) )
+            return boost::none;
+
+         // include objective limits
+         if( parameters.mode != -1 )
          {
-            SCIP_RETCODE retcode = SCIPreadParams(scip, filename.c_str());
-            if( retcode != SCIP_OKAY )
-               return boost::none;
+            parameters.set_dual_limit = false;
+            parameters.set_prim_limit = false;
+         }
+         else
+         {
+            if( parameters.set_dual_limit )
+            {
+               String name { 2, (char)(soplex->intParam(SoPlex::OBJSENSE) == SoPlex::OBJSENSE_MINIMIZE ? SoPlex::OBJLIMIT_UPPER : SoPlex::OBJLIMIT_LOWER) };
+               if( has_setting(name) )
+                  limits[name] = SoplexInterface::DUAL;
+               else
+               {
+                  msg.info("Dual limit disabled.\n");
+                  parameters.set_dual_limit = false;
+               }
+            }
+            if( parameters.set_prim_limit )
+            {
+               String name { 2, (char)(soplex->intParam(SoPlex::OBJSENSE) == SoPlex::OBJSENSE_MINIMIZE ? SoPlex::OBJLIMIT_LOWER : SoPlex::OBJLIMIT_UPPER) };
+               if( has_setting(name) )
+                  limits[name] = SoplexInterface::PRIM;
+               else
+               {
+                  msg.info("Primal limit disabled.\n");
+                  parameters.set_prim_limit = false;
+               }
+            }
          }
 
          Vec<std::pair<String, bool>> bool_settings;
@@ -118,13 +151,52 @@ namespace bugger {
          Vec<std::pair<String, char>> char_settings;
          Vec<std::pair<String, String>> string_settings;
          Vec<std::pair<String, long long>> limit_settings;
-         int nparams = SCIPgetNParams(scip);
-         SCIP_PARAM** params = SCIPgetParams(scip);
 
-         for( int i = 0; i < nparams; ++i )
+         for( int i = 0; i < SoPlex::BOOLPARAM_COUNT; ++i )
          {
-            SCIP_PARAM* param = params[ i ];
-            String name { param->name };
+            String name { 0, (char)i };
+            auto limit = limits.find(name);
+            if( limit != limits.end() )
+            {
+               switch( limit->second )
+               {
+               case DUAL:
+               case PRIM:
+               case ITER:
+               case TIME:
+               default:
+                  SPX_MSG_ERROR(soplex->spxout << "unknown limit type\n");
+               }
+            }
+            else
+               bool_settings.emplace_back( name, soplex->boolParam(SoPlex::BoolParam(i)) );
+         }
+
+         for( int i = 0; i < SoPlex::INTPARAM_COUNT; ++i )
+         {
+            String name { 1, (char)i };
+            auto limit = limits.find(name);
+            if( limit != limits.end() )
+            {
+               switch( limit->second )
+               {
+               case ITER:
+                  limit_settings.emplace_back( name, soplex->intParam(SoPlex::IntParam(i)) );
+                  break;
+               case DUAL:
+               case PRIM:
+               case TIME:
+               default:
+                  SPX_MSG_ERROR(soplex->spxout << "unknown limit type\n");
+               }
+            }
+            else
+               int_settings.emplace_back( name, soplex->intParam(SoPlex::IntParam(i)) );
+         }
+
+         for( int i = 0; i < SoPlex::REALPARAM_COUNT; ++i )
+         {
+            String name { 2, (char)i };
             auto limit = limits.find(name);
             if( limit != limits.end() )
             {
@@ -133,95 +205,77 @@ namespace bugger {
                case DUAL:
                case PRIM:
                   break;
-               case BEST:
-               case SOLU:
-               case REST:
-                  limit_settings.emplace_back( name, param->data.intparam.valueptr == nullptr
-                                                   ? param->data.intparam.curvalue
-                                                   : *param->data.intparam.valueptr );
-                  break;
-               case TOTA:
-                  limit_settings.emplace_back( name, param->data.longintparam.valueptr == nullptr
-                                                   ? param->data.longintparam.curvalue
-                                                   : *param->data.longintparam.valueptr );
-                  break;
                case TIME:
-                  limit_settings.emplace_back( name, std::min(std::ceil(param->data.realparam.valueptr == nullptr
-                                                                      ? param->data.realparam.curvalue
-                                                                      : *param->data.realparam.valueptr), (SCIP_Real)LLONG_MAX) );
+                  limit_settings.emplace_back( name, std::min(soplex->realParam(SoPlex::RealParam(i)), (double)LLONG_MAX) );
                   break;
+               case ITER:
                default:
-                  SCIPerrorMessage("unknown limit type\n");
+                  SPX_MSG_ERROR(soplex->spxout << "unknown limit type\n");
                }
             }
             else
-            {
-               switch( param->paramtype )
-               {
-               case SCIP_PARAMTYPE_BOOL:
-                  bool_settings.emplace_back( name, param->data.boolparam.valueptr == nullptr
-                                                  ? param->data.boolparam.curvalue
-                                                  : *param->data.boolparam.valueptr );
-                  break;
-               case SCIP_PARAMTYPE_INT:
-                  int_settings.emplace_back( name, param->data.intparam.valueptr == nullptr
-                                                 ? param->data.intparam.curvalue
-                                                 : *param->data.intparam.valueptr );
-                  break;
-               case SCIP_PARAMTYPE_LONGINT:
-                  long_settings.emplace_back( name, param->data.longintparam.valueptr == nullptr
-                                                  ? param->data.longintparam.curvalue
-                                                  : *param->data.longintparam.valueptr );
-                  break;
-               case SCIP_PARAMTYPE_REAL:
-                  double_settings.emplace_back( name, param->data.realparam.valueptr == nullptr
-                                                    ? param->data.realparam.curvalue
-                                                    : *param->data.realparam.valueptr );
-                  break;
-               case SCIP_PARAMTYPE_CHAR:
-                  char_settings.emplace_back( name, param->data.charparam.valueptr == nullptr
-                                                  ? param->data.charparam.curvalue
-                                                  : *param->data.charparam.valueptr );
-                  break;
-               case SCIP_PARAMTYPE_STRING:
-                  string_settings.emplace_back( name, param->data.stringparam.valueptr == nullptr
-                                                    ? param->data.stringparam.curvalue
-                                                    : *param->data.stringparam.valueptr );
-                  break;
-               default:
-                  SCIPerrorMessage("unknown setting type\n");
-               }
-            }
+               double_settings.emplace_back( name, soplex->realParam(SoPlex::RealParam(i)) );
          }
 
          return SolverSettings(bool_settings, int_settings, long_settings, double_settings,char_settings, string_settings, limit_settings);
       }
 
       void
-      doSetUp(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) override {
-         auto retcode = setup(settings, problem, solution);
-         assert(retcode == SCIP_OKAY);
+      doSetUp(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) override
+      {
+         setup(settings, problem, solution);
       }
 
       std::pair<char, SolverStatus>
-      solve(const Vec<int>& passcodes) override {
-
-         char retcode = SCIP_ERROR;
+      solve(const Vec<int>& passcodes) override
+      {
+         char retcode = SPxSolver::ERROR;
          SolverStatus solverstatus = SolverStatus::kUndefinedError;
-         SCIPsetMessagehdlrQuiet(scip, msg.getVerbosityLevel() < VerbosityLevel::kDetailed);
+         if( msg.getVerbosityLevel() < VerbosityLevel::kDetailed )
+            soplex->setIntParam(SoPlex::VERBOSITY, SoPlex::VERBOSITY_ERROR);
          // optimize
          if( parameters.mode == -1 )
-            retcode = SCIPsolve(scip);
-         // count
-         else
-         {
-            retcode = SCIPsetParamsCountsols(scip);
-            if( retcode == SCIP_OKAY )
-               retcode = SCIPcount(scip);
-         }
+            retcode = soplex->optimize();
 
-         if( retcode == SCIP_OKAY )
+         if( retcode > SPxSolver::NOT_INIT )
          {
+            // translate solver status
+            switch( retcode )
+            {
+               case SPxSolver::SINGULAR:
+               case SPxSolver::NO_PROBLEM:
+               case SPxSolver::REGULAR:
+               case SPxSolver::RUNNING:
+               case SPxSolver::UNKNOWN:
+               case SPxSolver::OPTIMAL_UNSCALED_VIOLATIONS:
+                  solverstatus = SolverStatus::kUnknown;
+                  break;
+               case SPxSolver::ABORT_CYCLING:
+                  solverstatus = SolverStatus::kTerminate;
+                  break;
+               case SPxSolver::ABORT_TIME:
+                  solverstatus = SolverStatus::kTimeLimit;
+                  break;
+               case SPxSolver::ABORT_ITER:
+                  solverstatus = SolverStatus::kLimit;
+                  break;
+               case SPxSolver::ABORT_VALUE:
+                  solverstatus = SolverStatus::kGapLimit;
+                  break;
+               case SPxSolver::OPTIMAL:
+                  solverstatus = SolverStatus::kOptimal;
+                  break;
+               case SPxSolver::UNBOUNDED:
+                  solverstatus = SolverStatus::kUnbounded;
+                  break;
+               case SPxSolver::INFEASIBLE:
+                  solverstatus = SolverStatus::kInfeasible;
+                  break;
+               case SPxSolver::INForUNBD:
+                  solverstatus = SolverStatus::kInfeasibleOrUnbounded;
+                  break;
+            }
+
             // reset return code
             retcode = OKAY;
 
@@ -250,139 +304,53 @@ namespace bugger {
 
                // declare primal solution
                Vec<Solution<double>> solution;
-               SCIP_SOL** sols = SCIPgetSols(scip);
-               int nsols = SCIPgetNSols(scip);
 
                // check dual by reference solution objective
-               if( retcode == OKAY && dual )
-                  retcode = check_dual_bound( SCIPgetDualbound(scip), SCIPsumepsilon(scip), SCIPinfinity(scip) );
+               if( retcode == OKAY && dual && soplex->isDualFeasible() )
+                  retcode = check_dual_bound( soplex->objValueReal(), soplex->realParam(SoPlex::EPSILON_FACTORIZATION), soplex->realParam(SoPlex::INFTY) );
 
                // check primal by generated solution values
-               if( retcode == OKAY )
+               if( retcode == OKAY && ( primal && soplex->isPrimalFeasible() || objective ) )
                {
-                  if( nsols >= 1 )
+                  Vector sol;
+                  solution.resize(1);
+                  soplex->getPrimal(sol);
+                  solution[0].status = SolutionStatus::kFeasible;
+                  solution[0].primal.resize(inds.size());
+
+                  for( int col = 0, var = -1; col < solution[0].primal.size(); ++col )
+                     solution[0].primal[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : sol[++var];
+
+                  if( soplex->hasPrimalRay() )
                   {
-                     solution.resize(primal ? nsols : objective ? 1 : 0);
+                     soplex->getPrimalRay(sol);
+                     solution[0].status = SolutionStatus::kUnbounded;
+                     solution[0].ray.resize(inds.size());
 
-                     for( int i = solution.size() - 1; i >= 0; --i )
-                     {
-                        solution[i].status = SolutionStatus::kFeasible;
-                        solution[i].primal.resize(vars.size());
-
-                        for( int col = 0; col < solution[i].primal.size(); ++col )
-                           solution[i].primal[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetSolVal(scip, sols[i], vars[col]);
-                     }
-
-                     if( solution.size() >= 1 && SCIPhasPrimalRay(scip) )
-                     {
-                        solution[0].status = SolutionStatus::kUnbounded;
-                        solution[0].ray.resize(vars.size());
-
-                        for( int col = 0; col < solution[0].ray.size(); ++col )
-                           solution[0].ray[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetPrimalRayVal(scip, vars[col]);
-                     }
-
-                     if( primal )
-                        retcode = check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
+                     for( int col = 0, var = -1; col < solution[0].ray.size(); ++col )
+                        solution[0].ray[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : sol[++var];
                   }
-                  else if( nsols != 0 && primal )
-                     retcode = PRIMALFAIL;
+
+                  if( primal )
+                     retcode = check_primal_solution( solution, soplex->realParam(SoPlex::EPSILON_FACTORIZATION), soplex->realParam(SoPlex::INFTY) );
                }
 
                // check objective by best solution evaluation
                if( retcode == OKAY && objective )
                {
-                  // check solution objective instead of primal bound if no ray is provided
-                  double bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
-
                   if( solution.size() == 0 )
                      solution.emplace_back(SolutionStatus::kInfeasible);
 
-                  retcode = check_objective_value( bound, solution[0], SCIPsumepsilon(scip), SCIPinfinity(scip) );
+                  retcode = check_objective_value( soplex->objValueReal(), solution[0], soplex->realParam(SoPlex::EPSILON_FACTORIZATION), soplex->realParam(SoPlex::INFTY) );
                }
-            }
-            else
-            {
-               // check count by primal solution existence
-               if( retcode == OKAY )
-               {
-                  long long int count;
-                  unsigned int valid;
-
-                  count = SCIPgetNCountedSols(scip, &valid);
-                  retcode = check_count_number( SCIPgetDualbound(scip), SCIPgetPrimalbound(scip), (valid ? count : -1), SCIPinfinity(scip) );
-               }
-            }
-
-            // translate solver status
-            switch( SCIPgetStatus(scip) )
-            {
-               case SCIP_STATUS_UNKNOWN:
-                  solverstatus = SolverStatus::kUnknown;
-                  break;
-               case SCIP_STATUS_TOTALNODELIMIT:
-                  solverstatus = SolverStatus::kTotalNodeLimit;
-                  break;
-               case SCIP_STATUS_STALLNODELIMIT:
-                  solverstatus = SolverStatus::kStallNodeLimit;
-                  break;
-               case SCIP_STATUS_NODELIMIT:
-                  solverstatus = SolverStatus::kNodeLimit;
-                  break;
-               case SCIP_STATUS_TIMELIMIT:
-                  solverstatus = SolverStatus::kTimeLimit;
-                  break;
-               case SCIP_STATUS_GAPLIMIT:
-                  solverstatus = SolverStatus::kGapLimit;
-                  break;
-#if SCIP_VERSION_API >= 115
-               case SCIP_STATUS_PRIMALLIMIT:
-                  solverstatus = SolverStatus::kPrimalLimit;
-                  break;
-               case SCIP_STATUS_DUALLIMIT:
-                  solverstatus = SolverStatus::kDualLimit;
-                  break;
-#endif
-               case SCIP_STATUS_MEMLIMIT:
-                  solverstatus = SolverStatus::kMemLimit;
-                  break;
-               case SCIP_STATUS_SOLLIMIT:
-                  solverstatus = SolverStatus::kSolLimit;
-                  break;
-               case SCIP_STATUS_BESTSOLLIMIT:
-                  solverstatus = SolverStatus::kBestSolLimit;
-                  break;
-               case SCIP_STATUS_RESTARTLIMIT:
-                  solverstatus = SolverStatus::kRestartLimit;
-                  break;
-               case SCIP_STATUS_USERINTERRUPT:
-                  solverstatus = SolverStatus::kInterrupt;
-                  break;
-#if SCIP_VERSION_API >= 22
-               case SCIP_STATUS_TERMINATE:
-                  solverstatus = SolverStatus::kTerminate;
-                  break;
-#endif
-               case SCIP_STATUS_INFORUNBD:
-                  solverstatus = SolverStatus::kInfeasibleOrUnbounded;
-                  break;
-               case SCIP_STATUS_INFEASIBLE:
-                  solverstatus = SolverStatus::kInfeasible;
-                  break;
-               case SCIP_STATUS_UNBOUNDED:
-                  solverstatus = SolverStatus::kUnbounded;
-                  break;
-               case SCIP_STATUS_OPTIMAL:
-                  solverstatus = SolverStatus::kOptimal;
-                  break;
             }
          }
          else
          {
             // shift retcodes so that all errors have negative values
-            --retcode;
+            retcode -= SPxSolver::NOT_INIT + 1;
          }
-         // progess certain passcodes as OKAY based on the user preferences
+         // interpret certain passcodes as OKAY based on the user preferences
          for( int passcode: passcodes )
          {
             if( passcode == retcode )
@@ -400,39 +368,21 @@ namespace bugger {
                if( limitsettings[index].second < 0 || limitsettings[index].second > 1 )
                {
                   double bound;
+                  const char* name;
                   switch( limits.find(limitsettings[index].first)->second )
                   {
-                  case BEST:
-                     // incremented to continue after finding the last best solution
-                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetNBestSolsFound(scip) + 1.0, 1.0));
+                  case ITER:
+                     // assumes last iteration is finished
+                     name = soplex->settings().intParam.name[(unsigned char)limitsettings[index].first.back()].data();
+                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * soplex->numIterations(), 1.0));
                      if( bound > INT_MAX )
-                        continue;
-                     else
-                        break;
-                  case SOLU:
-                     // incremented to continue after finding the last solution
-                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetNSolsFound(scip) + 1.0, 1.0));
-                     if( bound > INT_MAX )
-                        continue;
-                     else
-                        break;
-                  case REST:
-                     // decremented from runs to restarts
-                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * (SCIPgetNRuns(scip) - 1.0), 1.0));
-                     if( bound > INT_MAX )
-                        continue;
-                     else
-                        break;
-                  case TOTA:
-                     // assumes last node is processed
-                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetNTotalNodes(scip), 1.0));
-                     if( bound > LONG_MAX )
                         continue;
                      else
                         break;
                   case TIME:
                      // sensitive to processor speed variability
-                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetSolvingTime(scip), 1.0));
+                     name = soplex->settings().realParam.name[(unsigned char)limitsettings[index].first.back()].data();
+                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * soplex->solveTime(), 1.0));
                      if( bound > LLONG_MAX )
                         continue;
                      else
@@ -440,11 +390,11 @@ namespace bugger {
                   case DUAL:
                   case PRIM:
                   default:
-                     SCIPerrorMessage("unknown limit type\n");
+                     SPX_MSG_ERROR(soplex->spxout << "unknown limit type\n");
                   }
                   if( limitsettings[index].second < 0 || bound < limitsettings[index].second )
                   {
-                     msg.info("\t\t{} = {}\n", limitsettings[index].first, (long long)bound);
+                     msg.info("\t\t{} = {}\n", name, (long long)bound);
                      adjustment->setLimitSettings(index, bound);
                   }
                }
@@ -454,236 +404,169 @@ namespace bugger {
       }
 
       long long
-      getSolvingEffort( ) override {
-
-         switch( SCIPgetStage(scip) )
-         {
-         case SCIP_STAGE_PRESOLVING:
-         case SCIP_STAGE_PRESOLVED:
-         case SCIP_STAGE_SOLVING:
-         case SCIP_STAGE_SOLVED:
-            return SCIPgetNLPIterations(scip);
-         case SCIP_STAGE_INIT:
-         case SCIP_STAGE_PROBLEM:
-         case SCIP_STAGE_TRANSFORMING:
-         case SCIP_STAGE_TRANSFORMED:
-         case SCIP_STAGE_INITPRESOLVE:
-         case SCIP_STAGE_EXITPRESOLVE:
-         case SCIP_STAGE_INITSOLVE:
-         case SCIP_STAGE_EXITSOLVE:
-         case SCIP_STAGE_FREETRANS:
-         case SCIP_STAGE_FREE:
-         default:
+      getSolvingEffort( ) override
+      {
+         if( soplex->status() != SPxSolver::NOT_INIT )
+            return soplex->numIterations();
+         else
             return -1;
-         }
       }
 
       std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>>
-      readInstance(const String& settings_filename, const String& problem_filename) override {
-
+      readInstance(const String& settings_filename, const String& problem_filename) override
+      {
          auto settings = parseSettings(settings_filename);
-         SCIP_RETCODE retcode = SCIPreadProb(scip, problem_filename.c_str(), nullptr);
-         if( retcode != SCIP_OKAY )
+         if( !soplex->readFile(problem_filename.c_str(), &rowNames, &colNames) )
             return { settings, boost::none };
-         ProblemBuilder<SCIP_Real> builder;
+         ProblemBuilder<double> builder;
 
-         // set problem name
-         builder.setProblemName(String(SCIPgetProbName(scip)));
+         //TODO: Set problem name
+
          // set objective offset
-         builder.setObjOffset(SCIPgetOrigObjoffset(scip));
+         builder.setObjOffset(soplex->realParam(SoPlex::OBJ_OFFSET));
          // set objective sense
-         builder.setObjSense(SCIPgetObjsense(scip) == SCIP_OBJSENSE_MINIMIZE);
+         builder.setObjSense(soplex->intParam(SoPlex::OBJSENSE) == SoPlex::OBJSENSE_MINIMIZE);
 
          // reserve problem memory
-         int ncols = SCIPgetNVars(scip);
-         int nrows = SCIPgetNConss(scip);
-         int nnz = 0;
-         SCIP_VAR **vars = SCIPgetVars(scip);
-         SCIP_CONS **conss = SCIPgetConss(scip);
-         for( int i = 0; i < nrows; ++i )
-         {
-            int nconsvars = 0;
-            SCIP_Bool success = FALSE;
-            SCIPgetConsNVars(scip, conss[ i ], &nconsvars, &success);
-            if( !success )
-               return { settings, boost::none };
-            nnz += nconsvars;
-         }
+         int ncols = soplex->numCols();
+         int nrows = soplex->numRows();
+         int nnz = soplex->numNonzeros();
          builder.reserve(nnz, nrows, ncols);
 
          // set up columns
          builder.setNumCols(ncols);
          for( int i = 0; i < ncols; ++i )
          {
-            SCIP_VAR *var = vars[ i ];
-            SCIP_Real lb = SCIPvarGetLbGlobal(var);
-            SCIP_Real ub = SCIPvarGetUbGlobal(var);
-            SCIP_VARTYPE vartype = SCIPvarGetType(var);
+            double lb = soplex->lowerReal(i);
+            double ub = soplex->upperReal(i);
             builder.setColLb(i, lb);
             builder.setColUb(i, ub);
-            builder.setColLbInf(i, SCIPisInfinity(scip, -lb));
-            builder.setColUbInf(i, SCIPisInfinity(scip, ub));
-            builder.setColIntegral(i, vartype == SCIP_VARTYPE_BINARY || vartype == SCIP_VARTYPE_INTEGER);
-            builder.setColImplInt(i, vartype != SCIP_VARTYPE_CONTINUOUS);
-            builder.setColName(i, SCIPvarGetName(var));
-            builder.setObj(i, SCIPvarGetObj(var));
+            builder.setColLbInf(i, -lb >= soplex->realParam(SoPlex::INFTY));
+            builder.setColUbInf(i, ub >= soplex->realParam(SoPlex::INFTY));
+            builder.setObj(i, soplex->objReal(i));
+            builder.setColName(i, colNames[i]);
          }
 
          // set up rows
-         Vec<SCIP_VAR*> consvars(ncols);
-         Vec<SCIP_Real> consvals(ncols);
-         Vec<int> indices(ncols);
          builder.setNumRows(nrows);
+         Vec<int> consinds(ncols);
+         Vec<double> consvals(ncols);
          for( int i = 0; i < nrows; ++i )
          {
-            int nconsvars = 0;
-            SCIP_Bool success = FALSE;
-            SCIP_CONS *cons = conss[ i ];
-            SCIPgetConsNVars(scip, cons, &nconsvars, &success);
-            SCIPgetConsVars(scip, cons, consvars.data(), ncols, &success);
-            if( !success )
-               return { settings, boost::none };
-            SCIPgetConsVals(scip, cons, consvals.data(), ncols, &success);
-            if( !success )
-               return { settings, boost::none };
-            for( int j = 0; j < nconsvars; ++j )
-            {
-               indices[ j ] = SCIPvarGetProbindex(consvars[ j ]);
-               assert(strcmp(SCIPvarGetName(consvars[ j ]), SCIPvarGetName(vars[ indices[ j ] ])) == 0);
-            }
-            builder.addRowEntries(i, nconsvars, indices.data(), consvals.data());
-            SCIP_Real lhs = SCIPconsGetLhs(scip, cons, &success);
-            if( !success )
-               return { settings, boost::none };
-            SCIP_Real rhs = SCIPconsGetRhs(scip, cons, &success);
-            if( !success )
-               return { settings, boost::none };
+            double lhs = soplex->lhsReal(i);
+            double rhs = soplex->rhsReal(i);
             builder.setRowLhs(i, lhs);
             builder.setRowRhs(i, rhs);
-            builder.setRowLhsInf(i, SCIPisInfinity(scip, -lhs));
-            builder.setRowRhsInf(i, SCIPisInfinity(scip, rhs));
-            builder.setRowName(i, SCIPconsGetName(cons));
+            builder.setRowLhsInf(i, -lhs >= soplex->realParam(SoPlex::INFTY));
+            builder.setRowRhsInf(i, rhs >= soplex->realParam(SoPlex::INFTY));
+            DSVector cons;
+            soplex->getRowVectorReal(i, cons);
+            for( int j = 0; j < cons.size(); ++j )
+            {
+               consinds[ j ] = cons.index(j);
+               consvals[ j ] = cons.value(j);
+            }
+            builder.addRowEntries(i, cons.size(), consinds.data(), consvals.data());
+            builder.setRowName(i, rowNames[i]);
          }
 
          return { settings, builder.build() };
       }
 
       bool
-      writeInstance(const String& filename, const bool& writesettings) override {
+      writeInstance(const String& filename, const bool& writesettings) override
+      {
          if( writesettings || limits.size() >= 1 )
-            SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
-         return SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
+            soplex->saveSettingsFile((filename + ".set").c_str(), true);
+         return soplex->writeFile((filename + ".mps").c_str(), &rowNames, &colNames);
       };
 
-      ~SoplexInterface( ) override {
-         if( scip != nullptr )
-         {
-            auto retcode = SCIPfree(&scip);
-            UNUSED(retcode);
-            assert(retcode == SCIP_OKAY);
-         }
+      ~SoplexInterface( ) override
+      {
+         delete soplex;
       }
 
    private:
 
-      SCIP_RETCODE
-      setup(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) {
-
+      void
+      setup(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution)
+      {
          adjustment = &settings;
          model = &problem;
          reference = &solution;
          bool solution_exists = reference->status == SolutionStatus::kFeasible;
          int ncols = model->getNCols( );
          int nrows = model->getNRows( );
-         const Vec<String> &varNames = model->getVariableNames( );
-         const Vec<String> &consNames = model->getConstraintNames( );
-         const VariableDomains<double> &domains = model->getVariableDomains( );
-         const Objective<double> &obj = model->getObjective( );
-         const auto &consMatrix = model->getConstraintMatrix( );
-         const auto &lhs_values = consMatrix.getLeftHandSides( );
-         const auto &rhs_values = consMatrix.getRightHandSides( );
-         const auto &rflags = model->getRowFlags( );
+         const auto& varNames = model->getVariableNames( );
+         const auto& consNames = model->getConstraintNames( );
+         const auto& domains = model->getVariableDomains( );
+         const auto& obj = model->getObjective( );
+         const auto& consMatrix = model->getConstraintMatrix( );
+         const auto& lhs_values = consMatrix.getLeftHandSides( );
+         const auto& rhs_values = consMatrix.getRightHandSides( );
+         const auto& rflags = model->getRowFlags( );
+
+         //TODO: Get problem name
 
          set_parameters( );
-         SCIP_CALL(SCIPcreateProbBasic(scip, model->getName( ).c_str( )));
-         SCIP_CALL(SCIPaddOrigObjoffset(scip, SCIP_Real(obj.offset)));
-         SCIP_CALL(SCIPsetObjsense(scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
-         vars.resize(model->getNCols( ));
+         soplex->setRealParam(SoPlex::OBJ_OFFSET, obj.offset);
+         soplex->setIntParam(SoPlex::OBJSENSE, obj.sense ? SoPlex::OBJSENSE_MINIMIZE : SoPlex::OBJSENSE_MAXIMIZE);
+         colNames.reMax(model->getNCols( ));
+         rowNames.reMax(model->getNRows( ));
+         inds.resize(model->getNCols( ));
          if( solution_exists )
             value = obj.offset;
          else if( reference->status == SolutionStatus::kUnbounded )
-            value = obj.sense ? -SCIPinfinity(scip) : SCIPinfinity(scip);
+            value = obj.sense ? -soplex->realParam(SoPlex::INFTY) : soplex->realParam(SoPlex::INFTY);
          else if( reference->status == SolutionStatus::kInfeasible )
-            value = obj.sense ? SCIPinfinity(scip) : -SCIPinfinity(scip);
+            value = obj.sense ? soplex->realParam(SoPlex::INFTY) : -soplex->realParam(SoPlex::INFTY);
 
          for( int col = 0; col < ncols; ++col )
          {
             if( domains.flags[ col ].test(ColFlag::kFixed) )
-               vars[ col ] = nullptr;
+               inds[col] = -1;
             else
             {
-               SCIP_VAR *var;
-               SCIP_Real lb = domains.flags[ col ].test(ColFlag::kLbInf)
-                              ? -SCIPinfinity(scip)
-                              : SCIP_Real(domains.lower_bounds[ col ]);
-               SCIP_Real ub = domains.flags[ col ].test(ColFlag::kUbInf)
-                              ? SCIPinfinity(scip)
-                              : SCIP_Real(domains.upper_bounds[ col ]);
+               LPCol var { };
+               double lb = domains.flags[ col ].test(ColFlag::kLbInf)
+                           ? -soplex->realParam(SoPlex::INFTY)
+                           : domains.lower_bounds[ col ];
+               double ub = domains.flags[ col ].test(ColFlag::kUbInf)
+                           ? soplex->realParam(SoPlex::INFTY)
+                           : domains.upper_bounds[ col ];
                assert(!domains.flags[ col ].test(ColFlag::kInactive) || ( lb == ub ));
-               SCIP_VARTYPE type;
-               if( domains.flags[ col ].test(ColFlag::kIntegral) )
-               {
-                  if( lb == 0 && ub == 1 )
-                     type = SCIP_VARTYPE_BINARY;
-                  else
-                     type = SCIP_VARTYPE_INTEGER;
-               }
-               else if( domains.flags[ col ].test(ColFlag::kImplInt) )
-                  type = SCIP_VARTYPE_IMPLINT;
-               else
-                  type = SCIP_VARTYPE_CONTINUOUS;
-               SCIP_CALL(SCIPcreateVarBasic(
-                     scip, &var, varNames[ col ].c_str( ), lb, ub,
-                     SCIP_Real(obj.coefficients[ col ]), type));
+               var.setLower(lb);
+               var.setUpper(ub);
+               var.setObj(obj.coefficients[ col ]);
+               inds[col] = soplex->numCols();
+               soplex->addColReal(var);
+               colNames.add(varNames[col].c_str());
                if( solution_exists )
                   value += obj.coefficients[ col ] * reference->primal[ col ];
-               SCIP_CALL(SCIPaddVar(scip, var));
-               vars[ col ] = var;
-               SCIP_CALL(SCIPreleaseVar(scip, &var));
             }
          }
 
-         Vec<SCIP_VAR*> consvars(model->getNCols( ));
-         Vec<SCIP_Real> consvals(model->getNCols( ));
          for( int row = 0; row < nrows; ++row )
          {
-            if( model->getRowFlags( )[ row ].test(RowFlag::kRedundant) )
+            if( rflags[ row ].test(RowFlag::kRedundant) )
                continue;
             assert(!rflags[ row ].test(RowFlag::kLhsInf) || !rflags[ row ].test(RowFlag::kRhsInf));
 
             auto rowvec = consMatrix.getRowCoefficients(row);
-            const double *vals = rowvec.getValues( );
-            const int *inds = rowvec.getIndices( );
-            SCIP_CONS *cons;
-
-            // the first length entries of consvars/-vals are the entries of the current constraint
-            int length = 0;
-            for( int k = 0; k != rowvec.getLength( ); ++k )
+            const int* rowinds = rowvec.getIndices( );
+            const double* rowvals = rowvec.getValues( );
+            DSVector cons(rowvec.getLength( ));
+            for( int k = 0; k < rowvec.getLength( ); ++k )
             {
-               assert(!model->getColFlags( )[ inds[ k ] ].test(ColFlag::kFixed));
-               assert(vals[ k ] != 0.0);
-               consvars[ length ] = vars[ inds[ k ] ];
-               consvals[ length ] = SCIP_Real(vals[ k ]);
-               ++length;
+               assert(!model->getColFlags( )[ rowinds[ k ] ].test(ColFlag::kFixed));
+               assert(rowvals[ k ] != 0.0);
+               cons.add(inds[ rowinds[ k ] ], rowvals[ k ]);
             }
-
-            SCIP_CALL(SCIPcreateConsBasicLinear(
-                  scip, &cons, consNames[ row ].c_str( ), length,
-                  consvars.data( ), consvals.data( ),
-                  rflags[ row ].test(RowFlag::kLhsInf) ? -SCIPinfinity(scip) : SCIP_Real(lhs_values[ row ]),
-                  rflags[ row ].test(RowFlag::kRhsInf) ? SCIPinfinity(scip) : SCIP_Real(rhs_values[ row ])));
-            SCIP_CALL(SCIPaddCons(scip, cons));
-            SCIP_CALL(SCIPreleaseCons(scip, &cons));
+            soplex->addRowReal(LPRow(
+                  rflags[ row ].test(RowFlag::kLhsInf) ? -soplex->realParam(SoPlex::INFTY) : lhs_values[ row ],
+                  cons,
+                  rflags[ row ].test(RowFlag::kRhsInf) ? soplex->realParam(SoPlex::INFTY) : rhs_values[ row ]));
+            rowNames.add(consNames[row].c_str());
          }
 
          if( solution_exists && ( parameters.set_dual_limit || parameters.set_prim_limit ) )
@@ -693,57 +576,46 @@ namespace bugger {
                switch( pair.second )
                {
                case DUAL:
-                  SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), relax( value, obj.sense, 2.0 * SCIPsumepsilon(scip), SCIPinfinity(scip) )));
+                  soplex->setRealParam(SoPlex::RealParam(pair.first.back()), relax( value, obj.sense, 2.0 * soplex->realParam(SoPlex::EPSILON_FACTORIZATION), soplex->realParam(SoPlex::INFTY) ));
                   break;
                case PRIM:
-                  SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), value));
+                  soplex->setRealParam(SoPlex::RealParam(pair.first.back()), value);
                   break;
                }
             }
          }
-
-         return SCIP_OKAY;
       }
 
       void
-      set_parameters( ) const {
+      set_parameters( ) const
+      {
          for( const auto& pair : adjustment->getBoolSettings( ) )
-            SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);
+            soplex->setBoolParam(SoPlex::BoolParam(pair.first.back()), pair.second);
          for( const auto& pair : adjustment->getIntSettings( ) )
-            SCIPsetIntParam(scip, pair.first.c_str(), pair.second);
-         for( const auto& pair : adjustment->getLongSettings( ) )
-            SCIPsetLongintParam(scip, pair.first.c_str(), pair.second);
+            soplex->setIntParam(SoPlex::IntParam(pair.first.back()), pair.second);
          for( const auto& pair : adjustment->getDoubleSettings( ) )
-            SCIPsetRealParam(scip, pair.first.c_str(), pair.second);
-         for( const auto& pair : adjustment->getCharSettings( ) )
-            SCIPsetCharParam(scip, pair.first.c_str(), pair.second);
-         for( const auto& pair : adjustment->getStringSettings( ) )
-            SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
+            soplex->setRealParam(SoPlex::RealParam(pair.first.back()), pair.second);
          for( const auto& pair : adjustment->getLimitSettings( ) )
          {
             switch( limits.find(pair.first)->second )
             {
-            case BEST:
-            case SOLU:
-            case REST:
-               SCIPsetIntParam(scip, pair.first.c_str(), pair.second);
-               break;
-            case TOTA:
-               SCIPsetLongintParam(scip, pair.first.c_str(), pair.second);
+            case ITER:
+               soplex->setIntParam(SoPlex::IntParam(pair.first.back()), pair.second);
                break;
             case TIME:
-               SCIPsetRealParam(scip, pair.first.c_str(), pair.second);
+               soplex->setRealParam(SoPlex::RealParam(pair.first.back()), pair.second);
                break;
             case DUAL:
             case PRIM:
             default:
-               SCIPerrorMessage("unknown limit type\n");
+               SPX_MSG_ERROR(soplex->spxout << "unknown limit type\n");
             }
          }
       }
    };
 
-   class SoplexFactory : public SolverFactory {
+   class SoplexFactory : public SolverFactory
+   {
 
    private:
 
@@ -756,16 +628,13 @@ namespace bugger {
       void
       addParameters(ParameterSet& parameterset) override
       {
-         parameterset.addParameter("soplex.mode", "solve scip mode (-1: optimize, 0: count)", parameters.mode, -1, 0);
+         parameterset.addParameter("soplex.mode", "solve soplex mode (-1: optimize)", parameters.mode, -1, -1);
          parameterset.addParameter("soplex.limitspace", "relative margin when restricting limits or -1 for no restriction", parameters.limitspace, -1.0);
-         parameterset.addParameter("soplex.setduallimit", "terminate when dual bound is better than reference solution", parameters.set_dual_limit);
-         parameterset.addParameter("soplex.setprimlimit", "terminate when prim bound is as good as reference solution", parameters.set_prim_limit);
-         parameterset.addParameter("soplex.setbestlimit", "restrict best number of solutions automatically", parameters.set_best_limit);
-         parameterset.addParameter("soplex.setsolulimit", "restrict total number of solutions automatically", parameters.set_solu_limit);
-         parameterset.addParameter("soplex.setrestlimit", "restrict number of restarts automatically", parameters.set_rest_limit);
-         parameterset.addParameter("soplex.settotalimit", "restrict total number of nodes automatically", parameters.set_tota_limit);
+         parameterset.addParameter("soplex.setduallimit", "terminate when dual solution is better than reference solution (affecting)", parameters.set_dual_limit);
+         parameterset.addParameter("soplex.setprimlimit", "terminate when prim solution is as good as reference solution (affecting)", parameters.set_prim_limit);
+         parameterset.addParameter("soplex.setiterlimit", "restrict number of iterations automatically (effortbounding)", parameters.set_iter_limit);
          parameterset.addParameter("soplex.settimelimit", "restrict time automatically (unreproducible)", parameters.set_time_limit);
-         // run and stalling number of nodes, memory, and gap are unrestrictable because they are not monotonously increasing
+         //TODO: Restrict monotonous limits by default
       }
 
       std::unique_ptr<SolverInterface>
@@ -774,97 +643,29 @@ namespace bugger {
          auto soplex = std::unique_ptr<SolverInterface>( new SoplexInterface( msg, parameters, limits ) );
          if( initial )
          {
-            String name;
-            if( parameters.mode != -1 )
-            {
-               parameters.set_dual_limit = false;
-               parameters.set_prim_limit = false;
-               parameters.set_best_limit = false;
-               parameters.set_solu_limit = false;
-               parameters.set_rest_limit = false;
-            }
-            else
-            {
-               if( parameters.set_dual_limit )
-               {
-                  if( soplex->has_setting(name = "limits/dual") || soplex->has_setting(name = "limits/proofstop") )
-                     limits[name] = SoplexInterface::DUAL;
-                  else
-                  {
-                     msg.info("Dual limit disabled.\n");
-                     parameters.set_dual_limit = false;
-                  }
-               }
-               if( parameters.set_prim_limit )
-               {
-                  if( soplex->has_setting(name = "limits/primal") || soplex->has_setting(name = "limits/objectivestop") )
-                     limits[name] = SoplexInterface::PRIM;
-                  else
-                  {
-                     msg.info("Primal limit disabled.\n");
-                     parameters.set_prim_limit = false;
-                  }
-               }
-               if( parameters.limitspace < 0.0 )
-               {
-                  parameters.set_best_limit = false;
-                  parameters.set_solu_limit = false;
-                  parameters.set_rest_limit = false;
-               }
-               else
-               {
-                  if( parameters.set_best_limit )
-                  {
-                     if( soplex->has_setting(name = "limits/bestsol") )
-                        limits[name] = SoplexInterface::BEST;
-                     else
-                     {
-                        msg.info("Bestsolution limit disabled.\n");
-                        parameters.set_best_limit = false;
-                     }
-                  }
-                  if( parameters.set_solu_limit )
-                  {
-                     if( soplex->has_setting(name = "limits/solutions") )
-                        limits[name] = SoplexInterface::SOLU;
-                     else
-                     {
-                        msg.info("Solution limit disabled.\n");
-                        parameters.set_solu_limit = false;
-                     }
-                  }
-                  if( parameters.set_rest_limit )
-                  {
-                     if( soplex->has_setting(name = "limits/restarts") )
-                        limits[name] = SoplexInterface::REST;
-                     else
-                     {
-                        msg.info("Restart limit disabled.\n");
-                        parameters.set_rest_limit = false;
-                     }
-                  }
-               }
-            }
+            // objective limits will be included in parseSettings() where sense is revealed
             if( parameters.limitspace < 0.0 )
             {
-               parameters.set_tota_limit = false;
+               parameters.set_iter_limit = false;
                parameters.set_time_limit = false;
             }
             else
             {
-               if( parameters.set_tota_limit )
+               if( parameters.set_iter_limit )
                {
-                  if( soplex->has_setting(name = "limits/totalnodes") )
-                     limits[name] = SoplexInterface::TOTA;
+                  String name { 1, (char)SoPlex::ITERLIMIT };
+                  if( soplex->has_setting(name) )
+                     limits[name] = SoplexInterface::ITER;
                   else
                   {
-                     msg.info("Totalnode limit disabled.\n");
-                     parameters.set_tota_limit = false;
+                     msg.info("Iteration limit disabled.\n");
+                     parameters.set_iter_limit = false;
                   }
                }
                if( parameters.set_time_limit )
                {
-                  if( soplex->has_setting(name = "limits/time") )
+                  String name { 2, (char)SoPlex::TIMELIMIT };
+                  if( soplex->has_setting(name) )
                      limits[name] = SoplexInterface::TIME;
                   else
                   {
@@ -880,7 +681,8 @@ namespace bugger {
    };
 
    std::shared_ptr<SolverFactory>
-   load_solver_factory( ) {
+   load_solver_factory( )
+   {
       return std::shared_ptr<SolverFactory>(new SoplexFactory( ));
    }
 
