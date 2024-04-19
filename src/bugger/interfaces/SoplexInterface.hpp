@@ -373,7 +373,7 @@ namespace bugger
                   {
                   case ITER:
                      // assumes last iteration is finished
-                     name = soplex->settings().intParam.name[(unsigned char)limitsettings[index].first.back()].data();
+                     name = soplex->settings().intParam.name[SoPlex::IntParam(limitsettings[index].first.back())].data();
                      bound = std::ceil(std::max((1.0 + parameters.limitspace) * soplex->numIterations(), 1.0));
                      if( bound > INT_MAX )
                         continue;
@@ -381,7 +381,7 @@ namespace bugger
                         break;
                   case TIME:
                      // sensitive to processor speed variability
-                     name = soplex->settings().realParam.name[(unsigned char)limitsettings[index].first.back()].data();
+                     name = soplex->settings().realParam.name[SoPlex::RealParam(limitsettings[index].first.back())].data();
                      bound = std::ceil(std::max((1.0 + parameters.limitspace) * soplex->solveTime(), 1.0));
                      if( bound > LLONG_MAX )
                         continue;
