@@ -314,18 +314,18 @@ namespace bugger
                if( retcode == OKAY && ( primal && soplex->isPrimalFeasible() || objective ) )
                {
                   solution.resize(1);
-                  soplex->getPrimalReal(solution[0].primal.data(), solution[0].primal.size());
                   solution[0].status = SolutionStatus::kFeasible;
                   solution[0].primal.resize(inds.size());
+                  soplex->getPrimalReal(solution[0].primal.data(), solution[0].primal.size());
 
                   for( int col = solution[0].primal.size() - 1, var = soplex->numCols(); col >= var; --col )
                      solution[0].primal[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : solution[0].primal[--var];
 
                   if( soplex->hasPrimalRay() )
                   {
-                     soplex->getPrimalRayReal(solution[0].ray.data(), solution[0].ray.size());
                      solution[0].status = SolutionStatus::kUnbounded;
                      solution[0].ray.resize(inds.size());
+                     soplex->getPrimalRayReal(solution[0].ray.data(), solution[0].ray.size());
 
                      for( int col = solution[0].ray.size() - 1, var = soplex->numCols(); col >= var; --col )
                         solution[0].ray[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : solution[0].ray[--var];
