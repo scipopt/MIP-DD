@@ -33,6 +33,7 @@
 #include "bugger/interfaces/SolverStatus.hpp"
 #include "bugger/interfaces/SolverInterface.hpp"
 
+
 using namespace soplex;
 
 namespace bugger
@@ -312,23 +313,22 @@ namespace bugger
                // check primal by generated solution values
                if( retcode == OKAY && ( primal && soplex->isPrimalFeasible() || objective ) )
                {
-                  Vector sol;
                   solution.resize(1);
-                  soplex->getPrimal(sol);
+                  soplex->getPrimalReal(solution[0].primal.data(), solution[0].primal.size());
                   solution[0].status = SolutionStatus::kFeasible;
                   solution[0].primal.resize(inds.size());
 
-                  for( int col = 0, var = -1; col < solution[0].primal.size(); ++col )
-                     solution[0].primal[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : sol[++var];
+                  for( int col = solution[0].primal.size() - 1, var = soplex->numCols(); col >= var; --col )
+                     solution[0].primal[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : solution[0].primal[--var];
 
                   if( soplex->hasPrimalRay() )
                   {
-                     soplex->getPrimalRay(sol);
+                     soplex->getPrimalRayReal(solution[0].ray.data(), solution[0].ray.size());
                      solution[0].status = SolutionStatus::kUnbounded;
                      solution[0].ray.resize(inds.size());
 
-                     for( int col = 0, var = -1; col < solution[0].ray.size(); ++col )
-                        solution[0].ray[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : sol[++var];
+                     for( int col = solution[0].ray.size() - 1, var = soplex->numCols(); col >= var; --col )
+                        solution[0].ray[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : solution[0].ray[--var];
                   }
 
                   if( primal )
