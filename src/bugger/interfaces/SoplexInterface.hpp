@@ -175,6 +175,8 @@ namespace bugger
 
          for( int i = 0; i < SoPlex::INTPARAM_COUNT; ++i )
          {
+            if( i == SoPlex::OBJSENSE )
+               continue;
             String name { 1, (char)i };
             auto limit = limits.find(name);
             if( limit != limits.end() )
@@ -197,6 +199,8 @@ namespace bugger
 
          for( int i = 0; i < SoPlex::REALPARAM_COUNT; ++i )
          {
+            if( i == SoPlex::OBJ_OFFSET )
+               continue;
             String name { 2, (char)i };
             auto limit = limits.find(name);
             if( limit != limits.end() )
