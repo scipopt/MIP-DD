@@ -308,7 +308,7 @@ namespace bugger
 
                // check dual by reference solution objective
                if( retcode == OKAY && dual && soplex->isDualFeasible() )
-                  retcode = check_dual_bound( soplex->objValueReal(), soplex->realParam(SoPlex::EPSILON_FACTORIZATION), soplex->realParam(SoPlex::INFTY) );
+                  retcode = check_dual_bound( soplex->objValueReal(), std::max(soplex->realParam(SoPlex::FEASTOL), soplex->realParam(SoPlex::OPTTOL)), soplex->realParam(SoPlex::INFTY) );
 
                // check primal by generated solution values
                if( retcode == OKAY && ( primal && soplex->isPrimalFeasible() || objective ) )
@@ -332,7 +332,7 @@ namespace bugger
                   }
 
                   if( primal )
-                     retcode = check_primal_solution( solution, soplex->realParam(SoPlex::EPSILON_FACTORIZATION), soplex->realParam(SoPlex::INFTY) );
+                     retcode = check_primal_solution( solution, std::max(soplex->realParam(SoPlex::FEASTOL), soplex->realParam(SoPlex::OPTTOL)), soplex->realParam(SoPlex::INFTY) );
                }
 
                // check objective by best solution evaluation
@@ -341,7 +341,7 @@ namespace bugger
                   if( solution.size() == 0 )
                      solution.emplace_back(SolutionStatus::kInfeasible);
 
-                  retcode = check_objective_value( soplex->objValueReal(), solution[0], soplex->realParam(SoPlex::EPSILON_FACTORIZATION), soplex->realParam(SoPlex::INFTY) );
+                  retcode = check_objective_value( soplex->objValueReal(), solution[0], std::max(soplex->realParam(SoPlex::FEASTOL), soplex->realParam(SoPlex::OPTTOL)), soplex->realParam(SoPlex::INFTY) );
                }
             }
          }
@@ -576,7 +576,7 @@ namespace bugger
                switch( pair.second )
                {
                case DUAL:
-                  soplex->setRealParam(SoPlex::RealParam(pair.first.back()), relax( value, obj.sense, 2.0 * soplex->realParam(SoPlex::EPSILON_FACTORIZATION), soplex->realParam(SoPlex::INFTY) ));
+                  soplex->setRealParam(SoPlex::RealParam(pair.first.back()), relax( value, obj.sense, 2.0 * std::max(soplex->realParam(SoPlex::FEASTOL), soplex->realParam(SoPlex::OPTTOL)), soplex->realParam(SoPlex::INFTY) ));
                   break;
                case PRIM:
                   soplex->setRealParam(SoPlex::RealParam(pair.first.back()), value);
