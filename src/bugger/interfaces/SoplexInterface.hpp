@@ -478,7 +478,7 @@ namespace bugger
       {
          if( writesettings || limits.size() >= 1 )
             soplex->saveSettingsFile((filename + ".set").c_str(), true);
-         return soplex->writeFile((filename + ".mps").c_str(), &rowNames, &colNames);
+         return soplex->writeFile((filename + ".lp").c_str(), &rowNames, &colNames);
       };
 
       ~SoplexInterface( ) override
