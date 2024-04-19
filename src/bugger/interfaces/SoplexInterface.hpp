@@ -67,6 +67,7 @@ namespace bugger
 
    private:
 
+      static const SoPlex::IntParam VERB = SoPlex::VERBOSITY;
       SoplexParameters& parameters;
       HashMap<String, char>& limits;
       SoPlex* soplex;
@@ -80,12 +81,16 @@ namespace bugger
                                SolverInterface(_msg), parameters(_parameters), limits(_limits)
       {
          soplex = new SoPlex();
+         // suppress setting messages
+         soplex->setIntParam(VERB, SoPlex::VERBOSITY_DEBUG);
       }
 
       void
       print_header( ) const override
       {
+         soplex->setIntParam(VERB, SoPlex::VERBOSITY_NORMAL);
          soplex->printVersion();
+         soplex->setIntParam(VERB, SoPlex::VERBOSITY_DEBUG);
       }
 
       bool
@@ -175,7 +180,7 @@ namespace bugger
 
          for( int i = 0; i < SoPlex::INTPARAM_COUNT; ++i )
          {
-            if( i == SoPlex::OBJSENSE )
+            if( i == VERB || i == SoPlex::OBJSENSE )
                continue;
             String name { 1, (char)i };
             auto limit = limits.find(name);
@@ -236,8 +241,8 @@ namespace bugger
       {
          char retcode = SPxSolver::ERROR;
          SolverStatus solverstatus = SolverStatus::kUndefinedError;
-         if( msg.getVerbosityLevel() < VerbosityLevel::kDetailed )
-            soplex->setIntParam(SoPlex::VERBOSITY, SoPlex::VERBOSITY_ERROR);
+         soplex->setIntParam(VERB, msg.getVerbosityLevel() < VerbosityLevel::kDetailed ? SoPlex::VERBOSITY_ERROR : SoPlex::VERBOSITY_FULL);
+
          // optimize
          if( parameters.mode == -1 )
             retcode = soplex->optimize();

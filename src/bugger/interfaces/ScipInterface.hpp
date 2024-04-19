@@ -76,6 +76,7 @@ namespace bugger
 
    private:
 
+      static const String VERB = "display/verblevel";
       const ScipParameters& parameters;
       const HashMap<String, char>& limits;
       SCIP* scip = nullptr;
@@ -136,6 +137,8 @@ namespace bugger
          {
             SCIP_PARAM* param = params[ i ];
             String name { param->name };
+            if( name == VERB )
+               continue;
             auto limit = limits.find(name);
             if( limit != limits.end() )
             {
@@ -220,7 +223,11 @@ namespace bugger
       {
          char retcode = SCIP_ERROR;
          SolverStatus solverstatus = SolverStatus::kUndefinedError;
-         SCIPsetMessagehdlrQuiet(scip, msg.getVerbosityLevel() < VerbosityLevel::kDetailed);
+         if( msg.getVerbosityLevel() < VerbosityLevel::kDetailed )
+            SCIPsetMessagehdlrQuiet(scip, TRUE);
+         else
+            SCIPsetIntParam(scip, VERB.c_str(), 5);
+
          // optimize
          if( parameters.mode == -1 )
             retcode = SCIPsolve(scip);
