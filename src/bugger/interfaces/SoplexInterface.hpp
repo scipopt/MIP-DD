@@ -68,6 +68,7 @@ namespace bugger
    private:
 
       static const SoPlex::IntParam VERB;
+      static bool initial;
       SoplexParameters& parameters;
       HashMap<String, char>& limits;
       SoPlex* soplex;
@@ -119,33 +120,36 @@ namespace bugger
             return boost::none;
 
          // include objective limits
-         if( parameters.mode != -1 )
+         if( initial )
          {
-            parameters.set_dual_limit = false;
-            parameters.set_prim_limit = false;
-         }
-         else
-         {
-            if( parameters.set_dual_limit )
+            if( parameters.mode != -1 )
             {
-               String name { 2, (char)(soplex->intParam(SoPlex::OBJSENSE) == SoPlex::OBJSENSE_MINIMIZE ? SoPlex::OBJLIMIT_UPPER : SoPlex::OBJLIMIT_LOWER) };
-               if( has_setting(name) )
-                  limits[name] = SoplexInterface::DUAL;
-               else
-               {
-                  msg.info("Dual limit disabled.\n");
-                  parameters.set_dual_limit = false;
-               }
+               parameters.set_dual_limit = false;
+               parameters.set_prim_limit = false;
             }
-            if( parameters.set_prim_limit )
+            else
             {
-               String name { 2, (char)(soplex->intParam(SoPlex::OBJSENSE) == SoPlex::OBJSENSE_MINIMIZE ? SoPlex::OBJLIMIT_LOWER : SoPlex::OBJLIMIT_UPPER) };
-               if( has_setting(name) )
-                  limits[name] = SoplexInterface::PRIM;
-               else
+               if( parameters.set_dual_limit )
                {
-                  msg.info("Primal limit disabled.\n");
-                  parameters.set_prim_limit = false;
+                  String name { 2, (char)(soplex->intParam(SoPlex::OBJSENSE) == SoPlex::OBJSENSE_MINIMIZE ? SoPlex::OBJLIMIT_UPPER : SoPlex::OBJLIMIT_LOWER) };
+                  if( has_setting(name) )
+                     limits[name] = SoplexInterface::DUAL;
+                  else
+                  {
+                     msg.info("Dual limit disabled.\n");
+                     parameters.set_dual_limit = false;
+                  }
+               }
+               if( parameters.set_prim_limit )
+               {
+                  String name { 2, (char)(soplex->intParam(SoPlex::OBJSENSE) == SoPlex::OBJSENSE_MINIMIZE ? SoPlex::OBJLIMIT_LOWER : SoPlex::OBJLIMIT_UPPER) };
+                  if( has_setting(name) )
+                     limits[name] = SoplexInterface::PRIM;
+                  else
+                  {
+                     msg.info("Primal limit disabled.\n");
+                     parameters.set_prim_limit = false;
+                  }
                }
             }
          }
@@ -488,7 +492,7 @@ namespace bugger
          if( writesettings || limits.size() >= 1 )
             soplex->saveSettingsFile((filename + ".set").c_str(), true);
          return soplex->writeFile((filename + ".lp").c_str(), &rowNames, &colNames);
-      };
+      }
 
       ~SoplexInterface( ) override
       {
@@ -578,18 +582,44 @@ namespace bugger
             rowNames.add(consNames[row].c_str());
          }
 
-         if( solution_exists && ( parameters.set_dual_limit || parameters.set_prim_limit ) )
+         // initialize objective differences
+         if( initial )
          {
-            for( const auto& pair : limits )
+            if( solution_exists )
             {
-               switch( pair.second )
+               const auto& doublesettings = adjustment->getDoubleSettings( );
+               for( int index = 0; index < doublesettings.size( ); ++index )
                {
-               case DUAL:
-                  soplex->setRealParam(SoPlex::RealParam(pair.first.back()), relax( value, obj.sense, 2.0 * std::max(soplex->realParam(SoPlex::FEASTOL), soplex->realParam(SoPlex::OPTTOL)), soplex->realParam(SoPlex::INFTY) ));
-                  break;
-               case PRIM:
-                  soplex->setRealParam(SoPlex::RealParam(pair.first.back()), value);
-                  break;
+                  SoPlex::RealParam param = SoPlex::RealParam(doublesettings[index].first.back());
+                  if( ( param == SoPlex::OBJLIMIT_LOWER || param == SoPlex::OBJLIMIT_UPPER ) && abs(soplex->realParam(param)) < soplex->realParam(SoPlex::INFTY) )
+                  {
+                     soplex->setRealParam(param, std::max(std::min(soplex->realParam(param) - value, soplex->realParam(SoPlex::INFTY)), -soplex->realParam(SoPlex::INFTY)));
+                     adjustment->setDoubleSettings(index, soplex->realParam(param));
+                  }
+               }
+            }
+            initial = false;
+         }
+
+         if( solution_exists )
+         {
+            if( abs(soplex->realParam(SoPlex::OBJLIMIT_LOWER)) < soplex->realParam(SoPlex::INFTY) )
+               soplex->setRealParam(SoPlex::OBJLIMIT_LOWER, std::max(std::min(soplex->realParam(SoPlex::OBJLIMIT_LOWER) + value, soplex->realParam(SoPlex::INFTY)), -soplex->realParam(SoPlex::INFTY)));
+            if( abs(soplex->realParam(SoPlex::OBJLIMIT_UPPER)) < soplex->realParam(SoPlex::INFTY) )
+               soplex->setRealParam(SoPlex::OBJLIMIT_UPPER, std::max(std::min(soplex->realParam(SoPlex::OBJLIMIT_UPPER) + value, soplex->realParam(SoPlex::INFTY)), -soplex->realParam(SoPlex::INFTY)));
+            if( parameters.set_dual_limit || parameters.set_prim_limit )
+            {
+               for( const auto& pair : limits )
+               {
+                  switch( pair.second )
+                  {
+                  case DUAL:
+                     soplex->setRealParam(SoPlex::RealParam(pair.first.back()), relax( value, obj.sense, 2.0 * std::max(soplex->realParam(SoPlex::FEASTOL), soplex->realParam(SoPlex::OPTTOL)), soplex->realParam(SoPlex::INFTY) ));
+                     break;
+                  case PRIM:
+                     soplex->setRealParam(SoPlex::RealParam(pair.first.back()), value);
+                     break;
+                  }
                }
             }
          }
@@ -624,6 +654,7 @@ namespace bugger
    };
 
    const SoPlex::IntParam SoplexInterface::VERB = SoPlex::VERBOSITY;
+   bool SoplexInterface::initial = true;
 
    class SoplexFactory : public SolverFactory
    {

@@ -30,13 +30,16 @@
 #include "bugger/interfaces/SolverStatus.hpp"
 
 
-namespace bugger {
+namespace bugger
+{
 
-   class SolverInterface {
+   class SolverInterface
+   {
 
    public:
 
-      enum Retcode : char {
+      enum Retcode : char
+      {
          OKAY          = 0,
          DUALFAIL      = 1,
          PRIMALFAIL    = 2,
@@ -371,7 +374,8 @@ namespace bugger {
       }
    };
 
-   class SolverFactory {
+   class SolverFactory
+   {
 
    public:
 

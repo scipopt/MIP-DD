@@ -112,6 +112,8 @@ namespace bugger {
          std::pair<char, SolverStatus> last_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
          int last_round = -1;
          int last_module = -1;
+         auto solver = factory->create_solver(msg);
+         solver->doSetUp(settings, problem, solution);
          if( parameters.mode == 1 )
          {
             if( parameters.expenditure < 0 )
@@ -119,8 +121,6 @@ namespace bugger {
          }
          else
          {
-            auto solver = factory->create_solver(msg);
-            solver->doSetUp(settings, problem, solution);
             last_result = solver->solve(Vec<int>{ });
             last_effort = solver->getSolvingEffort( );
             msg.info("Original solve returned code {} with status {} and effort {}.\n", (int)last_result.first, last_result.second, last_effort);
@@ -149,7 +149,7 @@ namespace bugger {
                //TODO: Clean matrix in each round
                //TODO: Simplify solver handling
                //TODO: Free solver afterwards
-               auto solver = factory->create_solver(msg);
+               solver = factory->create_solver(msg);
                solver->doSetUp(settings, problem, solution);
                if( !solver->writeInstance(filename + std::to_string(round), setting->isEnabled()) )
                   MpsWriter<double>::writeProb(filename + std::to_string(round) + ".mps", problem);
