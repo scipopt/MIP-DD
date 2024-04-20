@@ -15,20 +15,22 @@ The external dependency that needs to be installed by the user is boost >= 1.65.
 
 # Building
 
-Building the bugger with SCIP as examined solver works with the standard cmake workflow:
+Building the bugger works with the standard cmake workflow:
 ```
 mkdir build
 cd build
-cmake .. -DSCIP_DIR=PATH_TO_SCIP
+cmake .. -DSOLVER_DIR=PATH_TO_SOLVER
 make
 ```
-Here, PATH_TO_SCIP represents the path to the SCIP installation subdirectory containing scip-targets.cmake required to link SCIP as shared library.
-It is necessary to build the solver in optimized mode since the MIP-DD is not designed to handle assertions in order to keep the process performant.
-Nevertheless, it is usually easily possible to handle assertion fails by reformulating the solver to return a suitable error code under the negated assertion condition.
+Here, SOLVER stands for one of the interfaced solvers for which the installation subdirectory PATH_TO_SOLVER contains the file solver-targets.cmake required to link its shared library.
+Currently supported solvers:
+
+- SOPLEX (https://soplex.zib.de/doc/html/INSTALL.php)
+- SCIP (https://scipopt.org/doc/html/INSTALL.php)
+
+It is necessary to build the solver in optimized mode since the MIP-DD is not designed to handle assertions directly in order to keep the process performant.
+Nevertheless, it is usually possible to handle assertions indirectly by reformulating the solver code to return a suitable error under the negated assertion condition.
 The MIP-DD will then identify the formerly failing assertion as a solver error.
-For information on building SCIP please refer to https://scipopt.org/doc.
-
-
 
 To run the bugger with parameters on a settings-problem-solution instance with respect to target settings, it can be invoked by
 ```
