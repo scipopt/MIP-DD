@@ -433,8 +433,6 @@ namespace bugger
             return { settings, boost::none };
          ProblemBuilder<double> builder;
 
-         //TODO: Set problem name
-
          // set objective offset
          builder.setObjOffset(soplex->realParam(SoPlex::OBJ_OFFSET));
          // set objective sense
@@ -518,8 +516,6 @@ namespace bugger
          const auto& lhs_values = consMatrix.getLeftHandSides( );
          const auto& rhs_values = consMatrix.getRightHandSides( );
          const auto& rflags = model->getRowFlags( );
-
-         //TODO: Get problem name
 
          set_parameters( );
          soplex->setRealParam(SoPlex::OBJ_OFFSET, obj.offset);
