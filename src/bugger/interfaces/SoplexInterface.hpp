@@ -488,7 +488,11 @@ namespace bugger
       writeInstance(const String& filename, const bool& writesettings) override
       {
          if( writesettings || limits.size() >= 1 )
+         {
+            soplex->setIntParam(VERB, SoPlex::VERBOSITY_NORMAL);
             soplex->saveSettingsFile((filename + ".set").c_str(), true);
+            soplex->setIntParam(VERB, SoPlex::VERBOSITY_DEBUG);
+         }
          return soplex->writeFile((filename + ".lp").c_str(), &rowNames, &colNames);
       }
 
