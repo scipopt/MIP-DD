@@ -67,7 +67,7 @@ namespace bugger
 
    private:
 
-      static const SoPlex::IntParam VERB = SoPlex::VERBOSITY;
+      static const SoPlex::IntParam VERB;
       SoplexParameters& parameters;
       HashMap<String, char>& limits;
       SoPlex* soplex;
@@ -622,6 +622,8 @@ namespace bugger
          }
       }
    };
+
+   const SoPlex::IntParam SoplexInterface::VERB = SoPlex::VERBOSITY;
 
    class SoplexFactory : public SolverFactory
    {

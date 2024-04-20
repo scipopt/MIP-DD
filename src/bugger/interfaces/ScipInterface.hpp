@@ -76,7 +76,7 @@ namespace bugger
 
    private:
 
-      static const String VERB = "display/verblevel";
+      static const String VERB;
       const ScipParameters& parameters;
       const HashMap<String, char>& limits;
       SCIP* scip = nullptr;
@@ -764,6 +764,8 @@ namespace bugger
          }
       }
    };
+
+   const String ScipInterface::VERB = "display/verblevel";
 
    class ScipFactory : public SolverFactory
    {
