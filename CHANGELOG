@@ -5,6 +5,7 @@ Features
 --------
 
 - enable SCIP interface to restrict limits automatically with respect to a variability margin defined by parameter scip.limitspace
+- create SoPlex interface
 
 Performance improvements
 ------------------------
