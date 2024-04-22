@@ -101,13 +101,13 @@ namespace bugger
          {
          case 0:
             return (unsigned char)name.back() < SoPlex::BOOLPARAM_COUNT;
-            break;
          case 1:
             return (unsigned char)name.back() < SoPlex::INTPARAM_COUNT;
-            break;
+         // has random seed
          case 2:
+            return (unsigned char)name.back() < 1;
+         case 3:
             return (unsigned char)name.back() < SoPlex::REALPARAM_COUNT;
-            break;
          default:
             return false;
          }
@@ -131,7 +131,7 @@ namespace bugger
             {
                if( parameters.set_dual_limit )
                {
-                  String name { 2, (char)(soplex->intParam(SoPlex::OBJSENSE) == SoPlex::OBJSENSE_MINIMIZE ? SoPlex::OBJLIMIT_UPPER : SoPlex::OBJLIMIT_LOWER) };
+                  String name { 3, (char)(soplex->intParam(SoPlex::OBJSENSE) == SoPlex::OBJSENSE_MINIMIZE ? SoPlex::OBJLIMIT_UPPER : SoPlex::OBJLIMIT_LOWER) };
                   if( has_setting(name) )
                      limits[name] = SoplexInterface::DUAL;
                   else
@@ -142,7 +142,7 @@ namespace bugger
                }
                if( parameters.set_prim_limit )
                {
-                  String name { 2, (char)(soplex->intParam(SoPlex::OBJSENSE) == SoPlex::OBJSENSE_MINIMIZE ? SoPlex::OBJLIMIT_LOWER : SoPlex::OBJLIMIT_UPPER) };
+                  String name { 3, (char)(soplex->intParam(SoPlex::OBJSENSE) == SoPlex::OBJSENSE_MINIMIZE ? SoPlex::OBJLIMIT_LOWER : SoPlex::OBJLIMIT_UPPER) };
                   if( has_setting(name) )
                      limits[name] = SoplexInterface::PRIM;
                   else
@@ -206,11 +206,32 @@ namespace bugger
                int_settings.emplace_back( name, soplex->intParam(SoPlex::IntParam(i)) );
          }
 
+         // parse random seed
+         for( int i = 0; i < 1; ++i )
+         {
+            String name { 2, (char)i };
+            auto limit = limits.find(name);
+            if( limit != limits.end() )
+            {
+               switch( limit->second )
+               {
+               case DUAL:
+               case PRIM:
+               case ITER:
+               case TIME:
+               default:
+                  SPX_MSG_ERROR(soplex->spxout << "unknown limit type\n");
+               }
+            }
+            else
+               long_settings.emplace_back( name, soplex->randomSeed() );
+         }
+
          for( int i = 0; i < SoPlex::REALPARAM_COUNT; ++i )
          {
             if( i == SoPlex::OBJ_OFFSET )
                continue;
-            String name { 2, (char)i };
+            String name { 3, (char)i };
             auto limit = limits.find(name);
             if( limit != limits.end() )
             {
@@ -632,6 +653,9 @@ namespace bugger
             soplex->setBoolParam(SoPlex::BoolParam(pair.first.back()), pair.second);
          for( const auto& pair : adjustment->getIntSettings( ) )
             soplex->setIntParam(SoPlex::IntParam(pair.first.back()), pair.second);
+         // set random seed
+         for( const auto& pair : adjustment->getLongSettings( ) )
+            soplex->setRandomSeed(pair.second);
          for( const auto& pair : adjustment->getDoubleSettings( ) )
             soplex->setRealParam(SoPlex::RealParam(pair.first.back()), pair.second);
          for( const auto& pair : adjustment->getLimitSettings( ) )
@@ -706,7 +730,7 @@ namespace bugger
                }
                if( parameters.set_time_limit )
                {
-                  String name { 2, (char)SoPlex::TIMELIMIT };
+                  String name { 3, (char)SoPlex::TIMELIMIT };
                   if( soplex->has_setting(name) )
                      limits[name] = SoplexInterface::TIME;
                   else
