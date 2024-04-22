@@ -50,6 +50,7 @@ load_solver_factory( ) {
 #endif
 }
 
+
 int
 main(int argc, char *argv[]) {
 
@@ -72,10 +73,16 @@ main(int argc, char *argv[]) {
    if( !optionsInfo.is_complete )
       return 0;
 
+
+
 /*
  * TODO: since the parameters need to be loaded after the modules are created (and the type initialized)
  *       the arithmetic type can not be a parameter. So the best solution is to add a cmd parameter and extract the below to a new function
  *       For exact-scip I would then check the arithmetic type and state a warning if it is not rational.
+ */
+
+/**
+ * TODO: extract this in a new templatize function and based of the arithemtic type call then the right instantiated function
  */
 
    Message msg { };

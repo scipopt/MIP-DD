@@ -43,6 +43,7 @@ namespace bugger {
       std::string settings_file;
       std::string target_settings_file;
       std::string solution_file;
+      std::string arithemtic_type;
       std::vector<std::string> unparsed_options;
       bool is_complete;
 
@@ -111,6 +112,10 @@ namespace bugger {
          desc.add_options( )("solution-file,o",
                              value(&solution_file),
                              "filename for solution settings or unknown/infeasible/unbounded");
+
+//         desc.add_options( )("arithemtic-type,a",
+//                             value(&arithemtic-type),
+//                             "arithemtic-type r = rational d = double q = quad");
 
 
          if( opts.empty( ))

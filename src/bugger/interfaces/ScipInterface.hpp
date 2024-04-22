@@ -57,6 +57,7 @@ namespace bugger {
 
       int mode = -1;
       double limitspace = 1.0;
+      int arithmetic_type = 0;
       bool set_dual_limit = true;
       bool set_prim_limit = true;
       bool set_best_limit = true;
@@ -775,12 +776,14 @@ namespace bugger {
          parameterset.addParameter("scip.setrestlimit", "restrict number of restarts automatically", parameters.set_rest_limit);
          parameterset.addParameter("scip.settotalimit", "restrict total number of nodes automatically", parameters.set_tota_limit);
          parameterset.addParameter("scip.settimelimit", "restrict time automatically (unreproducible)", parameters.set_time_limit);
+//         parameterset.addParameter("scip.arithmetictype", "arithmetic type to use in SCIP (0: floating point (double) 1: exact)", parameters.arithmetic_type);
          // run and stalling number of nodes, memory, and gap are unrestrictable because they are not monotonously increasing
       }
 
       std::unique_ptr<SolverInterface<REAL>>
       create_solver(const Message& msg) override
       {
+//         auto scip = std::unique_ptr<SolverInterface<REAL>>( parameter.arithmetic_type == 0 ? new ScipInterface<REAL>( msg, parameters, limits ) : EXACT_SCIP);
          auto scip = std::unique_ptr<SolverInterface<REAL>>( new ScipInterface<REAL>( msg, parameters, limits ) );
          if( initial )
          {
@@ -886,6 +889,7 @@ namespace bugger {
             initial = false;
          }
          return scip;
+
       }
    };
 
