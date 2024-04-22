@@ -514,7 +514,11 @@ namespace bugger
             soplex->saveSettingsFile((filename + ".set").c_str(), true);
             soplex->setIntParam(VERB, SoPlex::VERBOSITY_DEBUG);
          }
-         return soplex->writeFile((filename + ".lp").c_str(), &rowNames, &colNames);
+         return soplex->writeFile((filename + ".lp").c_str(), &rowNames, &colNames
+#if SOPLEX_VERSION_API >= 15
+               , 0, true, true
+#endif
+               );
       }
 
       ~SoplexInterface( ) override
