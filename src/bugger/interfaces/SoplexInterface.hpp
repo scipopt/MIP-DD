@@ -516,7 +516,7 @@ namespace bugger
          }
          return soplex->writeFile((filename + ".lp").c_str(), &rowNames, &colNames
 #if SOPLEX_VERSION_API >= 15
-               , 0, true, true
+               , nullptr, true, true
 #endif
                );
       }
