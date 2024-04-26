@@ -39,10 +39,10 @@
 #include "bugger/interfaces/SolverInterface.hpp"
 
 
-namespace bugger {
-
-   class ScipParameters {
-
+namespace bugger
+{
+   class ScipParameters
+   {
    public:
 
       int mode = -1;
@@ -56,8 +56,8 @@ namespace bugger {
       bool set_time_limit = false;
    };
 
-   class ScipInterface : public SolverInterface {
-
+   class ScipInterface : public SolverInterface
+   {
    public:
 
       enum Limit : char {
@@ -81,7 +81,8 @@ namespace bugger {
 
       explicit ScipInterface(const Message& _msg, const ScipParameters& _parameters,
                              const HashMap<String, char>& _limits) : SolverInterface(_msg), parameters(_parameters),
-                             limits(_limits) {
+                             limits(_limits)
+      {
          if( SCIPcreate(&scip) != SCIP_OKAY || SCIPincludeDefaultPlugins(scip) != SCIP_OKAY )
             throw std::runtime_error("could not create SCIP");
       }
@@ -204,14 +205,15 @@ namespace bugger {
       }
 
       void
-      doSetUp(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) override {
+      doSetUp(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) override
+      {
          auto retcode = setup(settings, problem, solution);
          assert(retcode == SCIP_OKAY);
       }
 
       std::pair<char, SolverStatus>
-      solve(const Vec<int>& passcodes) override {
-
+      solve(const Vec<int>& passcodes) override
+      {
          char retcode = SCIP_ERROR;
          SolverStatus solverstatus = SolverStatus::kUndefinedError;
          SCIPsetMessagehdlrQuiet(scip, msg.getVerbosityLevel() < VerbosityLevel::kDetailed);
@@ -341,7 +343,7 @@ namespace bugger {
                case SCIP_STATUS_GAPLIMIT:
                   solverstatus = SolverStatus::kGapLimit;
                   break;
-#if SCIP_VERSION_API >= 115
+#if SCIP_APIVERSION >= 115
                case SCIP_STATUS_PRIMALLIMIT:
                   solverstatus = SolverStatus::kPrimalLimit;
                   break;
@@ -364,7 +366,7 @@ namespace bugger {
                case SCIP_STATUS_USERINTERRUPT:
                   solverstatus = SolverStatus::kInterrupt;
                   break;
-#if SCIP_VERSION_API >= 22
+#if SCIP_APIVERSION >= 22
                case SCIP_STATUS_TERMINATE:
                   solverstatus = SolverStatus::kTerminate;
                   break;
@@ -485,8 +487,8 @@ namespace bugger {
       }
 
       std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>>
-      readInstance(const String& settings_filename, const String& problem_filename) override {
-
+      readInstance(const String& settings_filename, const String& problem_filename) override
+      {
          auto settings = parseSettings(settings_filename);
          SCIP_RETCODE retcode = SCIPreadProb(scip, problem_filename.c_str(), nullptr);
          if( retcode != SCIP_OKAY )
@@ -575,13 +577,15 @@ namespace bugger {
       }
 
       bool
-      writeInstance(const String& filename, const bool& writesettings) override {
+      writeInstance(const String& filename, const bool& writesettings) override
+      {
          if( writesettings || limits.size() >= 1 )
             SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
          return SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
       };
 
-      ~ScipInterface( ) override {
+      ~ScipInterface( ) override
+      {
          if( scip != nullptr )
          {
             auto retcode = SCIPfree(&scip);
@@ -593,8 +597,8 @@ namespace bugger {
    private:
 
       SCIP_RETCODE
-      setup(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) {
-
+      setup(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution)
+      {
          adjustment = &settings;
          model = &problem;
          reference = &solution;
@@ -712,7 +716,8 @@ namespace bugger {
       }
 
       void
-      set_parameters( ) const {
+      set_parameters( ) const
+      {
          for( const auto& pair : adjustment->getBoolSettings( ) )
             SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);
          for( const auto& pair : adjustment->getIntSettings( ) )
@@ -749,8 +754,8 @@ namespace bugger {
       }
    };
 
-   class ScipFactory : public SolverFactory {
-
+   class ScipFactory : public SolverFactory
+   {
    private:
 
       ScipParameters parameters { };
@@ -884,6 +889,12 @@ namespace bugger {
          return scip;
       }
    };
+
+   std::shared_ptr<SolverFactory>
+   load_solver_factory( )
+   {
+      return std::shared_ptr<SolverFactory>(new ScipFactory( ));
+   }
 
 } // namespace bugger
 
