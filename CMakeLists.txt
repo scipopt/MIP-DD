@@ -169,13 +169,22 @@ else()
    setLibProperties(bugger-core "bugger-core")
 endif()
 
+find_package(Boost REQUIRED iostreams serialization program_options)
+set(CMAKE_REQUIRED_INCLUDES ${Boost_INCLUDE_DIRS})
+set(CMAKE_REQUIRED_LIBRARIES ${Boost_LIBRARIES})
+check_cxx_source_compiles(
+   "#include <boost/iostreams/filter/gzip.hpp>
+    int main() { auto decomp = boost::iostreams::gzip_decompressor(); (void)decomp; return 0; }"
+   BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB )
+check_cxx_source_compiles(
+   "#include <boost/iostreams/filter/bzip2.hpp>
+    int main() { auto decomp = boost::iostreams::bzip2_decompressor(); (void)decomp; return 0; }"
+   BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2 )
 
-target_link_libraries(bugger-core bugger)
+target_link_libraries(bugger-core bugger ${Boost_LIBRARIES})
 target_compile_definitions(bugger-core PRIVATE BUGGER_USE_EXTERN_TEMPLATES)
 
-if(NOT BUGGER_NO_BINARIES)
-   add_subdirectory(binaries)
-endif()
+add_subdirectory(binaries)
 
 configure_file("${PROJECT_SOURCE_DIR}/src/bugger/CMakeConfig.hpp.in"
                "${PROJECT_BINARY_DIR}/bugger/CMakeConfig.hpp")
@@ -211,7 +220,6 @@ install(FILES
    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/data)
 
 install(FILES
-        ${PROJECT_SOURCE_DIR}/src/bugger/interfaces/ScipInterface.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/interfaces/BuggerStatus.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/interfaces/SolverStatus.hpp
         ${PROJECT_SOURCE_DIR}/src/bugger/interfaces/SolverInterface.hpp

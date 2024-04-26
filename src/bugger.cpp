@@ -35,20 +35,12 @@
 #include "bugger/modules/ObjectiveModul.hpp"
 #include "bugger/modules/VarroundModul.hpp"
 #include "bugger/modules/ConsroundModul.hpp"
+#if   defined(BUGGER_WITH_SCIP)
 #include "bugger/interfaces/ScipInterface.hpp"
+#endif
 
 
 using namespace bugger;
-
-std::shared_ptr<SolverFactory>
-load_solver_factory( ) {
-#ifdef BUGGER_HAVE_SCIP
-   return std::shared_ptr<SolverFactory>(new ScipFactory( ));
-#else
-   msg.error("No solver specified -- aborting ....");
-   return nullptr;
-#endif
-}
 
 int
 main(int argc, char *argv[]) {

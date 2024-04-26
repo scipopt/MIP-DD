@@ -26,7 +26,6 @@
 #include "bugger/misc/NumericalStatistics.hpp"
 #include "bugger/misc/OptionsParser.hpp"
 #include "bugger/misc/tbb.hpp"
-#include "scip/scipgithash.h"
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/lexical_cast.hpp>
