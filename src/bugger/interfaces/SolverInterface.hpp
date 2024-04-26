@@ -31,9 +31,10 @@
 #include "boost/optional.hpp"
 
 
-namespace bugger {
-
-   enum SolverRetcode : char {
+namespace bugger
+{
+   enum SolverRetcode : char
+   {
       OKAY          = 0,
       DUALFAIL      = 1,
       PRIMALFAIL    = 2,
@@ -41,8 +42,8 @@ namespace bugger {
    };
 
    template <typename REAL>
-   class SolverInterface {
-
+   class SolverInterface
+   {
    protected:
 
       const Message& msg;
@@ -373,8 +374,8 @@ namespace bugger {
    };
 
    template <typename REAL>
-   class SolverFactory {
-
+   class SolverFactory
+   {
    public:
 
       virtual
