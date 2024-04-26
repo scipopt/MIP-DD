@@ -41,10 +41,8 @@
 
 namespace bugger
 {
-
    class ScipParameters
    {
-
    public:
 
       int mode = -1;
@@ -60,7 +58,6 @@ namespace bugger
 
    class ScipInterface : public SolverInterface
    {
-
    public:
 
       enum Limit : char
@@ -354,7 +351,7 @@ namespace bugger
                case SCIP_STATUS_GAPLIMIT:
                   solverstatus = SolverStatus::kGapLimit;
                   break;
-#if SCIP_VERSION_API >= 115
+#if SCIP_APIVERSION >= 115
                case SCIP_STATUS_PRIMALLIMIT:
                   solverstatus = SolverStatus::kPrimalLimit;
                   break;
@@ -377,7 +374,7 @@ namespace bugger
                case SCIP_STATUS_USERINTERRUPT:
                   solverstatus = SolverStatus::kInterrupt;
                   break;
-#if SCIP_VERSION_API >= 22
+#if SCIP_APIVERSION >= 22
                case SCIP_STATUS_TERMINATE:
                   solverstatus = SolverStatus::kTerminate;
                   break;
@@ -769,7 +766,6 @@ namespace bugger
 
    class ScipFactory : public SolverFactory
    {
-
    private:
 
       ScipParameters parameters { };

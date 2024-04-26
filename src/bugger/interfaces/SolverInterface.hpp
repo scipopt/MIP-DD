@@ -32,10 +32,8 @@
 
 namespace bugger
 {
-
    class SolverInterface
    {
-
    public:
 
       enum Retcode : char
@@ -376,7 +374,6 @@ namespace bugger
 
    class SolverFactory
    {
-
    public:
 
       virtual
