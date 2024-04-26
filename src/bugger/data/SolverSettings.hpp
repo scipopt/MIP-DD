@@ -37,6 +37,7 @@ namespace bugger {
       Vec<std::pair<String, double>> double_settings;
       Vec<std::pair<String, char>> char_settings;
       Vec<std::pair<String, String>> string_settings;
+      Vec<std::pair<String, long long>> limit_settings;
 
    public:
 
@@ -46,7 +47,8 @@ namespace bugger {
          long_settings( ),
          double_settings( ),
          char_settings( ),
-         string_settings( )
+         string_settings( ),
+         limit_settings( )
       { };
 
       SolverSettings(Vec<std::pair<String, bool>>& _bool_settings,
@@ -54,14 +56,16 @@ namespace bugger {
                      Vec<std::pair<String, long>>& _long_settings,
                      Vec<std::pair<String, double>>& _double_settings,
                      Vec<std::pair<String, char>>& _char_settings,
-                     Vec<std::pair<String, String>>& _string_settings
+                     Vec<std::pair<String, String>>& _string_settings,
+                     Vec<std::pair<String, long long>>& _limit_settings
       ) :
          bool_settings(_bool_settings),
          int_settings(_int_settings),
          long_settings(_long_settings),
          double_settings(_double_settings),
          char_settings(_char_settings),
-         string_settings(_string_settings)
+         string_settings(_string_settings),
+         limit_settings(_limit_settings)
       { };
 
       const Vec<std::pair<String, bool>>& getBoolSettings( ) const {
@@ -88,6 +92,10 @@ namespace bugger {
          return string_settings;
       }
 
+      const Vec<std::pair<String, long long>>& getLimitSettings( ) const {
+         return limit_settings;
+      }
+
       void setBoolSettings(int index, bool value) {
          bool_settings[ index ].second = value;
       }
@@ -110,6 +118,10 @@ namespace bugger {
 
       void setStringSettings(int index, String value) {
          string_settings[ index ].second = value;
+      }
+
+      void setLimitSettings(int index, long long value) {
+         limit_settings[ index ].second = value;
       }
    };
 

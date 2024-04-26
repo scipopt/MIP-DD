@@ -47,6 +47,7 @@ namespace bugger
    protected:
 
       const Message& msg;
+      SolverSettings* adjustment = nullptr;
       const Problem<double>* model = nullptr;
       const Solution<double>* reference = nullptr;
       double value = std::numeric_limits<double>::signaling_NaN();
@@ -82,7 +83,7 @@ namespace bugger
        * @param solution
        */
       virtual
-      void doSetUp(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) = 0;
+      void doSetUp(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) = 0;
 
       /**
        * solves the instance
@@ -91,6 +92,16 @@ namespace bugger
        */
       virtual
       std::pair<char, SolverStatus> solve(const Vec<int>& passcodes) = 0;
+
+      /**
+       * provides measure for the solving effort to adapt batch number
+       * @return a long long int: Non-negative value proportional to effort of the solve or -1 if unknown
+       */
+      virtual
+      long long getSolvingEffort( )
+      {
+         return -1;
+      }
 
       /**
        * read setting-problem pair from files

@@ -39,14 +39,14 @@ namespace bugger {
 
       const Message& msg;
       const Num<double>& num;
-      const BuggerParameters& parameters;
+      BuggerParameters& parameters;
       const std::shared_ptr<SolverFactory>& factory;
       const Vec<std::unique_ptr<BuggerModul>>& modules;
       Vec<ModulStatus> results;
 
    public:
 
-      explicit BuggerRun(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters, const std::shared_ptr<SolverFactory>& _factory, const Vec<std::unique_ptr<BuggerModul>>& _modules)
+      explicit BuggerRun(const Message& _msg, const Num<double>& _num, BuggerParameters& _parameters, const std::shared_ptr<SolverFactory>& _factory, const Vec<std::unique_ptr<BuggerModul>>& _modules)
             : msg(_msg), num(_num), parameters(_parameters), factory(_factory), modules(_modules), results(_modules.size()) { }
 
       bool
@@ -108,15 +108,30 @@ namespace bugger {
          }
 
          check_feasibility_of_solution(problem, solution);
-         std::pair<char, SolverStatus> final_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
-         int final_round = -1;
-         int final_module = -1;
-         if( parameters.mode != 1 )
+         long long last_effort = -1;
+         std::pair<char, SolverStatus> last_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
+         int last_round = -1;
+         int last_module = -1;
+         if( parameters.mode == 1 )
          {
-            final_result = getOriginalSolveStatus(settings, problem, solution, factory);
-            msg.info("Original solve returned code {} with status {}.\n\n", (int)final_result.first, final_result.second);
+            if( parameters.expenditure < 0 )
+               parameters.expenditure = 0;
+         }
+         else
+         {
+            auto solver = factory->create_solver(msg);
+            solver->doSetUp(settings, problem, solution);
+            last_result = solver->solve(Vec<int>{ });
+            last_effort = solver->getSolvingEffort( );
+            msg.info("Original solve returned code {} with status {} and effort {}.\n", (int)last_result.first, last_result.second, last_effort);
             if( parameters.mode == 0 )
                return;
+            if( parameters.expenditure < 0 && ( parameters.nbatches <= 0 || last_effort <= 0 || (parameters.expenditure = parameters.nbatches * last_effort) / last_effort != parameters.nbatches ) )
+            {
+               msg.info("Batch adaption disabled.\n");
+               parameters.expenditure = 0;
+            }
+            msg.info("\n");
          }
 
          int ending = optionsInfo.problem_file.rfind('.');
@@ -142,7 +157,11 @@ namespace bugger {
                if( is_time_exceeded(timer) )
                   break;
 
-               msg.info("Round {} Stage {}\n", round+1, stage+1);
+               // adapt batch number
+               if( parameters.expenditure > 0 && last_effort >= 0 )
+                  parameters.nbatches = last_effort >= 1 ? ( parameters.expenditure - 1) / last_effort + 1 : 0;
+
+               msg.info("Round {} Stage {} Batch {}\n", round+1, stage+1, parameters.nbatches);
 
                for( int module = 0; module <= stage && stage < parameters.maxstages; ++module )
                {
@@ -150,9 +169,12 @@ namespace bugger {
 
                   if( results[ module ] == bugger::ModulStatus::kSuccessful )
                   {
-                     final_result = modules[ module ]->getFinalResult( );
-                     final_round = round;
-                     final_module = module;
+                     long long effort = modules[ module ]->getLastSolvingEffort( );
+                     if( effort >= 0 )
+                        last_effort = effort;
+                     last_result = modules[ module ]->getLastResult( );
+                     last_round = round;
+                     last_module = module;
                      success = module;
                   }
                   else if( success == module )
@@ -166,7 +188,7 @@ namespace bugger {
 
             assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModulStatus::kSuccessful );
          }
-         printStats(time, final_result, final_round, final_module);
+         printStats(time, last_result, last_round, last_module, last_effort);
       }
 
    private:
@@ -283,20 +305,12 @@ namespace bugger {
             }
          }
 
+         msg.info("Solution is {}.\n", num.isEpsGT(maxviol, 0.0) ? "infeasible" : num.isZetaGT(maxviol, 0.0) ? "tolerable" : "feasible");
          if( maxindex >= 0 )
-            msg.info("Solution is infeasible.\nMaximum violation {:<3} of {} {:<3} {}.", maxviol, maxrow ? "row" : "column", (maxrow ? problem.getConstraintNames() : problem.getVariableNames())[maxindex], maxintegral ? "integral" : (maxrow ? (maxupper ? "right" : "left") : (maxupper ? "upper" : "lower")));
+            msg.info("Maximum violation {:<3} of {} {:<3} {}.\n", maxviol, maxrow ? "row" : "column", (maxrow ? problem.getConstraintNames() : problem.getVariableNames())[maxindex], maxintegral ? "integral" : (maxrow ? (maxupper ? "right" : "left") : (maxupper ? "upper" : "lower")));
          else
-            msg.info("Solution is feasible.\nNo violations detected.");
-         msg.info("\n\n");
-      }
-
-      std::pair<char, SolverStatus>
-      getOriginalSolveStatus(const SolverSettings& settings, const Problem<double>& problem, Solution<double>& solution, const std::shared_ptr<SolverFactory>& factory) {
-
-         auto solver = factory->create_solver(msg);
-         solver->doSetUp(settings, problem, solution);
-         Vec<int> empty_passcodes{};
-         return solver->solve(empty_passcodes);
+            msg.info("No violations detected.\n");
+         msg.info("\n");
       }
 
       bugger::ModulStatus
@@ -311,7 +325,7 @@ namespace bugger {
       }
 
       void
-      printStats(const double& time, const std::pair<char, SolverStatus>& final_result, int final_round, int final_module) {
+      printStats(const double& time, const std::pair<char, SolverStatus>& last_result, int last_round, int last_module, long long last_effort) {
 
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n",
                   "modules", "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
@@ -321,20 +335,21 @@ namespace bugger {
             module->printStats(msg);
             nsolves += module->getNSolves();
          }
-         if( final_round == -1 )
+         if( last_round == -1 )
          {
-            assert(final_module == -1);
+            assert(last_module == -1);
             if( parameters.mode == 1 )
             {
-               assert(final_result.first == SolverInterface::OKAY);
-               assert(final_result.second == SolverStatus::kUnknown);
+               assert(last_result.first == SolverInterface::OKAY);
+               assert(last_result.second == SolverStatus::kUnknown);
+               assert(last_effort == -1);
             }
             msg.info("\nNo reductions found by the bugger!");
          }
          else
          {
-            assert(final_module != -1);
-            msg.info("\nFinal solve returned code {} with status {} in round {} by module {}.", (int)final_result.first, final_result.second, final_round + 1, modules[ final_module ]->getName( ));
+            assert(last_module != -1);
+            msg.info("\nFinal solve returned code {} with status {} and effort {} in round {} by module {}.", (int)last_result.first, last_result.second, last_effort, last_round + 1, modules[ last_module ]->getName( ));
          }
          msg.info( "\nbugging took {:.3f} seconds with {} solver invocations", time, nsolves );
          if( parameters.mode != 1 )
