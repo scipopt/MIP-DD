@@ -75,7 +75,6 @@ main(int argc, char *argv[]) {
    Message msg { };
    Num<REAL> num { };
    BuggerParameters parameters { };
-
    std::shared_ptr<SolverFactory<REAL>> factory { load_solver_factory<REAL>() };
    Vec<std::unique_ptr<BuggerModul<REAL>>> modules { };
 

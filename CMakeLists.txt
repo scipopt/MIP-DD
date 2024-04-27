@@ -77,15 +77,6 @@ target_include_directories(bugger INTERFACE
 
 option(TBB "should TBB be linked if found" OFF)
 
-set(BUGGER_ARITHMETIC d CACHE STRING "arithmetic for modules, problems, and solutions (f: float, d: double)")
-if    ("float"    MATCHES ^${BUGGER_ARITHMETIC})
-    add_compile_definitions(BUGGER_FLOAT)
-elseif("double"   MATCHES ^${BUGGER_ARITHMETIC})
-    add_compile_definitions(BUGGER_DOUBLE)
-else()
-    message(FATAL_ERROR "Arithmetic not supported!")
-endif()
-
 set(BUGGER_TBB off)
 
 # on windows we don't want to build tbb
@@ -177,6 +168,16 @@ if(MSVC)
     setLibProperties(bugger-core "libbugger-core")
 else()
     setLibProperties(bugger-core "bugger-core")
+endif()
+
+# define bugger arithmetic
+set(BUGGER_ARITHMETIC d CACHE STRING "arithmetic for modules, problems, and solutions (f: float, d: double)")
+if    ("float"    MATCHES ^${BUGGER_ARITHMETIC})
+    target_compile_definitions(bugger-core PUBLIC BUGGER_FLOAT)
+elseif("double"   MATCHES ^${BUGGER_ARITHMETIC})
+    target_compile_definitions(bugger-core PUBLIC BUGGER_DOUBLE)
+else()
+    message(FATAL_ERROR "Arithmetic not supported!")
 endif()
 
 find_package(Boost REQUIRED iostreams serialization program_options)

@@ -101,7 +101,7 @@ namespace bugger
          {
             String n { names[i] };
             String d { description[i] };
-            this->msg.info("\t{:20} {}\n", n,d);
+            this->msg.info("\t{:20} {}\n", n, d);
          }
       }
 
@@ -281,7 +281,7 @@ namespace bugger
                         solution[i].primal.resize(vars.size());
 
                         for( int col = 0; col < solution[i].primal.size(); ++col )
-                           solution[i].primal[col] = this->model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : SCIPgetSolVal(scip, sols[i], vars[col]);
+                           solution[i].primal[col] = this->model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(SCIPgetSolVal(scip, sols[i], vars[col]));
                      }
 
                      if( solution.size() >= 1 && SCIPhasPrimalRay(scip) )
@@ -290,7 +290,7 @@ namespace bugger
                         solution[0].ray.resize(vars.size());
 
                         for( int col = 0; col < solution[0].ray.size(); ++col )
-                           solution[0].ray[col] = this->model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : SCIPgetPrimalRayVal(scip, vars[col]);
+                           solution[0].ray[col] = this->model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(SCIPgetPrimalRayVal(scip, vars[col]));
                      }
 
                      if( primal )
@@ -509,8 +509,8 @@ namespace bugger
          int ncols = SCIPgetNVars(scip);
          int nrows = SCIPgetNConss(scip);
          int nnz = 0;
-         SCIP_VAR **probvars = SCIPgetVars(scip);
-         SCIP_CONS **probconss = SCIPgetConss(scip);
+         SCIP_VAR** probvars = SCIPgetVars(scip);
+         SCIP_CONS** probconss = SCIPgetConss(scip);
          for( int i = 0; i < nrows; ++i )
          {
             int nconsvars = 0;
@@ -526,7 +526,7 @@ namespace bugger
          builder.setNumCols(ncols);
          for( int i = 0; i < ncols; ++i )
          {
-            SCIP_VAR *var = probvars[ i ];
+            SCIP_VAR* var = probvars[ i ];
             SCIP_Real lb = SCIPvarGetLbGlobal(var);
             SCIP_Real ub = SCIPvarGetUbGlobal(var);
             SCIP_VARTYPE vartype = SCIPvarGetType(var);
@@ -549,7 +549,7 @@ namespace bugger
          {
             int nconsvars = 0;
             SCIP_Bool success = FALSE;
-            SCIP_CONS *cons = probconss[ i ];
+            SCIP_CONS* cons = probconss[ i ];
             SCIPgetConsNVars(scip, cons, &nconsvars, &success);
             SCIPgetConsVars(scip, cons, consvars.data(), ncols, &success);
             if( !success )

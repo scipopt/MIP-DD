@@ -138,7 +138,7 @@ namespace bugger {
 
       void
       printStats(const Message& message) {
-         double success = ncalls == 0 ? 0.0 : ( double(nsuccessCall) / double(ncalls)) * 100.0;
+         double success = ncalls == 0 ? 0.0 : ( (double)nsuccessCall / (double)ncalls ) * 100.0;
          int changes = nchgcoefs + nfixedvars + nchgsides + naggrvars + ndeletedrows + nchgsettings;
          message.info(" {:>18} {:>12} {:>12} {:>18.1f} {:>12} {:>18.3f}\n", name, ncalls, changes, success, nsolves, execTime);
       }
@@ -173,7 +173,7 @@ namespace bugger {
       REAL get_linear_activity(SparseVectorView<REAL>& data, Solution<REAL>& solution) {
          StableSum<REAL> sum;
          for( int i = 0; i < data.getLength( ); ++i )
-            sum.add(solution.primal[ data.getIndices( )[ i ] ] * data.getValues( )[ i ]);
+            sum.add(data.getValues( )[ i ] * solution.primal[ data.getIndices( )[ i ] ]);
          return sum.get( );
       }
 
@@ -188,8 +188,7 @@ namespace bugger {
 
       static bool
       is_time_exceeded(const Timer& timer, double tlim) {
-         return tlim != std::numeric_limits<double>::max( ) &&
-                timer.getTime( ) >= tlim;
+         return timer.getTime( ) >= tlim;
       }
 
       BuggerStatus
@@ -231,7 +230,7 @@ namespace bugger {
       }
 
       void apply_changes(Problem<REAL>& copy, const Vec<MatrixEntry<REAL>>& entries) const {
-         MatrixBuffer<REAL> matrixBuffer{ };
+         MatrixBuffer<REAL> matrixBuffer { };
          for( const auto &entry: entries )
             matrixBuffer.addEntry(entry.row, entry.col, entry.val);
          copy.getConstraintMatrix( ).changeCoefficients(matrixBuffer);

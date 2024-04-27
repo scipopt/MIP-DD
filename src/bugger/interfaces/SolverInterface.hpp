@@ -28,7 +28,6 @@
 #include "bugger/data/Solution.hpp"
 #include "bugger/misc/Timer.hpp"
 #include "bugger/interfaces/SolverStatus.hpp"
-#include "boost/optional.hpp"
 
 
 namespace bugger
