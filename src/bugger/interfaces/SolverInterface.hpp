@@ -50,8 +50,7 @@ namespace bugger
       SolverSettings* adjustment = nullptr;
       const Problem<REAL>* model = nullptr;
       const Solution<REAL>* reference = nullptr;
-      //TODO:
-      REAL value = std::numeric_limits<double>::signaling_NaN();
+      REAL value { std::numeric_limits<REAL>::signaling_NaN() };
 
    public:
 
@@ -211,10 +210,12 @@ namespace bugger
                   if( model->getRowFlags()[row].test( RowFlag::kRedundant ) )
                      continue;
 
-                  REAL activity = {0.0};
-                  auto coefficients = model->getConstraintMatrix().getRowCoefficients(row);
+                  REAL activity { };
+                  const auto& coefficients = model->getConstraintMatrix().getRowCoefficients(row);
+
                   for( int j = 0; j < coefficients.getLength(); ++j )
                      activity += coefficients.getValues()[j] * solution[i].primal[coefficients.getIndices()[j]];
+
                   if( ( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < relax( model->getConstraintMatrix().getLeftHandSides()[row],  false, tolerance, infinity ) )
                    || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity > relax( model->getConstraintMatrix().getRightHandSides()[row], true,  tolerance, infinity ) ) )
                   {
@@ -228,7 +229,7 @@ namespace bugger
             {
                assert(solution[i].ray.size() == model->getNCols());
 
-               REAL scale = {0.0};
+               REAL scale { };
 
                for( int col = 0; col < model->getNCols(); ++col )
                   if( !model->getColFlags()[col].test( ColFlag::kFixed ) )
@@ -252,10 +253,12 @@ namespace bugger
                   if( model->getRowFlags()[row].test( RowFlag::kRedundant ) )
                      continue;
 
-                  REAL activity = {0.0};
-                  auto coefficients = model->getConstraintMatrix().getRowCoefficients(row);
+                  REAL activity { };
+                  const auto& coefficients = model->getConstraintMatrix().getRowCoefficients(row);
+
                   for( int j = 0; j < coefficients.getLength(); ++j )
                      activity += coefficients.getValues()[j] * solution[i].ray[coefficients.getIndices()[j]];
+
                   if( ( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < -scale )
                    || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity >  scale ) )
                   {
@@ -285,8 +288,8 @@ namespace bugger
          {
             assert(solution.ray.size() == model->getNCols());
 
-            REAL scale = {0.0};
-            REAL slope = {0.0};
+            REAL scale { };
+            REAL slope { };
 
             for( int col = 0; col < model->getNCols(); ++col )
             {
@@ -339,7 +342,7 @@ namespace bugger
       }
 
       char
-      check_count_number( const REAL &dual, const REAL &primal, const long long int &count, const REAL &infinity )
+      check_count_number(const REAL& dual, const REAL& primal, const long long int& count, const REAL& infinity)
       {
          assert(infinity > 1.0);
 

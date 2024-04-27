@@ -56,9 +56,9 @@ namespace bugger
    {
    public:
 
+      int arithmetic = 0;
       int mode = -1;
       double limitspace = 1.0;
-      int arithmetic_type = 0;
       bool set_dual_limit = true;
       bool set_prim_limit = true;
       bool set_best_limit = true;
@@ -92,9 +92,11 @@ namespace bugger
       print_header( ) const override
       {
          SCIPprintVersion(scip, nullptr);
+
          int length = SCIPgetNExternalCodes(scip);
          auto description = SCIPgetExternalCodeDescriptions(scip);
          auto names = SCIPgetExternalCodeNames(scip);
+
          for( int i = 0; i < length; ++i )
          {
             String n { names[i] };
@@ -206,7 +208,7 @@ namespace bugger
       }
 
       void
-      doSetUp(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) override
+      doSetUp(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution) override
       {
          auto retcode = setup(settings, problem, solution);
          assert(retcode == SCIP_OKAY);
@@ -258,7 +260,7 @@ namespace bugger
                }
 
                // declare primal solution
-               Vec<Solution<double>> solution;
+               Vec<Solution<REAL>> solution;
                SCIP_SOL** sols = SCIPgetSols(scip);
                int nsols = SCIPgetNSols(scip);
 
@@ -279,7 +281,7 @@ namespace bugger
                         solution[i].primal.resize(vars.size());
 
                         for( int col = 0; col < solution[i].primal.size(); ++col )
-                           solution[i].primal[col] = this->model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetSolVal(scip, sols[i], vars[col]);
+                           solution[i].primal[col] = this->model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : SCIPgetSolVal(scip, sols[i], vars[col]);
                      }
 
                      if( solution.size() >= 1 && SCIPhasPrimalRay(scip) )
@@ -288,7 +290,7 @@ namespace bugger
                         solution[0].ray.resize(vars.size());
 
                         for( int col = 0; col < solution[0].ray.size(); ++col )
-                           solution[0].ray[col] = this->model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetPrimalRayVal(scip, vars[col]);
+                           solution[0].ray[col] = this->model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : SCIPgetPrimalRayVal(scip, vars[col]);
                      }
 
                      if( primal )
@@ -302,7 +304,7 @@ namespace bugger
                if( retcode == SolverRetcode::OKAY && objective )
                {
                   // check solution objective instead of primal bound if no ray is provided
-                  double bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
+                  REAL bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
 
                   if( solution.size() == 0 )
                      solution.emplace_back(SolutionStatus::kInfeasible);
@@ -463,8 +465,8 @@ namespace bugger
       }
 
       long long
-      getSolvingEffort( ) override {
-
+      getSolvingEffort( ) override
+      {
          switch( SCIPgetStage(scip) )
          {
          case SCIP_STAGE_PRESOLVING:
@@ -487,14 +489,14 @@ namespace bugger
          }
       }
 
-      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>>
+      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>>
       readInstance(const String& settings_filename, const String& problem_filename) override
       {
          auto settings = parseSettings(settings_filename);
          SCIP_RETCODE retcode = SCIPreadProb(scip, problem_filename.c_str(), nullptr);
          if( retcode != SCIP_OKAY )
             return { settings, boost::none };
-         ProblemBuilder<SCIP_Real> builder;
+         ProblemBuilder<REAL> builder;
 
          // set problem name
          builder.setProblemName(String(SCIPgetProbName(scip)));
@@ -598,7 +600,7 @@ namespace bugger
    private:
 
       SCIP_RETCODE
-      setup(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution)
+      setup(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution)
       {
          this->adjustment = &settings;
          this->model = &problem;
@@ -606,18 +608,18 @@ namespace bugger
          bool solution_exists = this->reference->status == SolutionStatus::kFeasible;
          int ncols = this->model->getNCols( );
          int nrows = this->model->getNRows( );
-         const Vec<String> &varNames = this->model->getVariableNames( );
-         const Vec<String> &consNames = this->model->getConstraintNames( );
-         const VariableDomains<double> &domains = this->model->getVariableDomains( );
-         const Objective<double> &obj = this->model->getObjective( );
-         const auto &consMatrix = this->model->getConstraintMatrix( );
-         const auto &lhs_values = consMatrix.getLeftHandSides( );
-         const auto &rhs_values = consMatrix.getRightHandSides( );
-         const auto &rflags = this->model->getRowFlags( );
+         const auto& varNames = this->model->getVariableNames( );
+         const auto& consNames = this->model->getConstraintNames( );
+         const auto& domains = this->model->getVariableDomains( );
+         const auto& obj = this->model->getObjective( );
+         const auto& consMatrix = this->model->getConstraintMatrix( );
+         const auto& lhs_values = consMatrix.getLeftHandSides( );
+         const auto& rhs_values = consMatrix.getRightHandSides( );
+         const auto& rflags = this->model->getRowFlags( );
 
          set_parameters( );
          SCIP_CALL(SCIPcreateProbBasic(scip, this->model->getName( ).c_str( )));
-         SCIP_CALL(SCIPaddOrigObjoffset(scip, SCIP_Real(obj.offset)));
+         SCIP_CALL(SCIPaddOrigObjoffset(scip, obj.offset));
          SCIP_CALL(SCIPsetObjsense(scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
          vars.resize(this->model->getNCols( ));
          if( solution_exists )
@@ -626,14 +628,12 @@ namespace bugger
             this->value = obj.sense ? -SCIPinfinity(scip) : SCIPinfinity(scip);
          else if( this->reference->status == SolutionStatus::kInfeasible )
             this->value = obj.sense ? SCIPinfinity(scip) : -SCIPinfinity(scip);
-
          for( int col = 0; col < ncols; ++col )
          {
             if( domains.flags[ col ].test(ColFlag::kFixed) )
                vars[ col ] = nullptr;
             else
             {
-               SCIP_VAR *var;
                SCIP_Real lb = domains.flags[ col ].test(ColFlag::kLbInf)
                               ? -SCIPinfinity(scip)
                               : SCIP_Real(domains.lower_bounds[ col ]);
@@ -641,6 +641,7 @@ namespace bugger
                               ? SCIPinfinity(scip)
                               : SCIP_Real(domains.upper_bounds[ col ]);
                assert(!domains.flags[ col ].test(ColFlag::kInactive) || ( lb == ub ));
+               SCIP_VAR *var;
                SCIP_VARTYPE type;
                if( domains.flags[ col ].test(ColFlag::kIntegral) )
                {
@@ -653,9 +654,8 @@ namespace bugger
                   type = SCIP_VARTYPE_IMPLINT;
                else
                   type = SCIP_VARTYPE_CONTINUOUS;
-               SCIP_CALL(SCIPcreateVarBasic(
-                     scip, &var, varNames[ col ].c_str( ), lb, ub,
-                     SCIP_Real(obj.coefficients[ col ]), type));
+               SCIP_CALL(SCIPcreateVarBasic(scip, &var, varNames[ col ].c_str( ), lb, ub, obj.coefficients[ col ],
+                                            type));
                if( solution_exists )
                   this->value += obj.coefficients[ col ] * this->reference->primal[ col ];
                SCIP_CALL(SCIPaddVar(scip, var));
@@ -668,13 +668,19 @@ namespace bugger
          Vec<SCIP_Real> consvals(this->model->getNCols( ));
          for( int row = 0; row < nrows; ++row )
          {
-            if( this->model->getRowFlags( )[ row ].test(RowFlag::kRedundant) )
+            if( rflags[ row ].test(RowFlag::kRedundant) )
                continue;
             assert(!rflags[ row ].test(RowFlag::kLhsInf) || !rflags[ row ].test(RowFlag::kRhsInf));
 
-            auto rowvec = consMatrix.getRowCoefficients(row);
-            const double *vals = rowvec.getValues( );
-            const int *inds = rowvec.getIndices( );
+            const auto& rowvec = consMatrix.getRowCoefficients(row);
+            const auto& vals = rowvec.getValues( );
+            const auto& inds = rowvec.getIndices( );
+            SCIP_Real lhs = rflags[ row ].test(RowFlag::kLhsInf)
+                            ? -SCIPinfinity(scip)
+                            : SCIP_Real(lhs_values[ row ]);
+            SCIP_Real rhs = rflags[ row ].test(RowFlag::kRhsInf)
+                            ? SCIPinfinity(scip)
+                            : SCIP_Real(rhs_values[ row ]);
             SCIP_CONS *cons;
 
             // the first length entries of consvars/-vals are the entries of the current constraint
@@ -684,15 +690,12 @@ namespace bugger
                assert(!this->model->getColFlags( )[ inds[ k ] ].test(ColFlag::kFixed));
                assert(vals[ k ] != 0.0);
                consvars[ length ] = vars[ inds[ k ] ];
-               consvals[ length ] = SCIP_Real(vals[ k ]);
+               consvals[ length ] = vals[ k ];
                ++length;
             }
 
-            SCIP_CALL(SCIPcreateConsBasicLinear(
-                  scip, &cons, consNames[ row ].c_str( ), length,
-                  consvars.data( ), consvals.data( ),
-                  rflags[ row ].test(RowFlag::kLhsInf) ? -SCIPinfinity(scip) : SCIP_Real(lhs_values[ row ]),
-                  rflags[ row ].test(RowFlag::kRhsInf) ? SCIPinfinity(scip) : SCIP_Real(rhs_values[ row ])));
+            SCIP_CALL(SCIPcreateConsBasicLinear(scip, &cons, consNames[ row ].c_str( ), length, consvars.data( ),
+                                                consvals.data( ), lhs, rhs));
             SCIP_CALL(SCIPaddCons(scip, cons));
             SCIP_CALL(SCIPreleaseCons(scip, &cons));
          }
@@ -769,6 +772,7 @@ namespace bugger
       void
       addParameters(ParameterSet& parameterset) override
       {
+         parameterset.addParameter("scip.arithmetic", "arithmetic scip type (0: double)", parameters.arithmetic, 0, 0);
          parameterset.addParameter("scip.mode", "solve scip mode (-1: optimize, 0: count)", parameters.mode, -1, 0);
          parameterset.addParameter("scip.limitspace", "relative margin when restricting limits or -1 for no restriction", parameters.limitspace, -1.0);
          parameterset.addParameter("scip.setduallimit", "terminate when dual bound is better than reference solution", parameters.set_dual_limit);
@@ -778,14 +782,13 @@ namespace bugger
          parameterset.addParameter("scip.setrestlimit", "restrict number of restarts automatically", parameters.set_rest_limit);
          parameterset.addParameter("scip.settotalimit", "restrict total number of nodes automatically", parameters.set_tota_limit);
          parameterset.addParameter("scip.settimelimit", "restrict time automatically (unreproducible)", parameters.set_time_limit);
-//         parameterset.addParameter("scip.arithmetictype", "arithmetic type to use in SCIP (0: floating point (double) 1: exact)", parameters.arithmetic_type);
          // run and stalling number of nodes, memory, and gap are unrestrictable because they are not monotonously increasing
       }
 
       std::unique_ptr<SolverInterface<REAL>>
       create_solver(const Message& msg) override
       {
-//         auto scip = std::unique_ptr<SolverInterface<REAL>>( parameter.arithmetic_type == 0 ? new ScipInterface<REAL>( msg, parameters, limits ) : EXACT_SCIP);
+//         auto scip = std::unique_ptr<SolverInterface<REAL>>( parameter.arithmetic == 0 ? new ScipInterface<REAL>( msg, parameters, limits ) : EXACT_SCIP);
          auto scip = std::unique_ptr<SolverInterface<REAL>>( new ScipInterface<REAL>( msg, parameters, limits ) );
          if( initial )
          {
@@ -891,7 +894,6 @@ namespace bugger
             initial = false;
          }
          return scip;
-
       }
    };
 
@@ -899,7 +901,7 @@ namespace bugger
    std::shared_ptr<SolverFactory<REAL>>
    load_solver_factory( )
    {
-      return std::shared_ptr<SolverFactory<REAL>>(new ScipFactory<REAL>( ));
+      return std::shared_ptr<SolverFactory<REAL>>( new ScipFactory<REAL>( ) );
    }
 
 } // namespace bugger

@@ -77,7 +77,17 @@ target_include_directories(bugger INTERFACE
 
 option(TBB "should TBB be linked if found" OFF)
 
+set(BUGGER_ARITHMETIC d CACHE STRING "arithmetic for modules, problems, and solutions (f: float, d: double)")
+if    ("float"    MATCHES ^${BUGGER_ARITHMETIC})
+    add_compile_definitions(BUGGER_FLOAT)
+elseif("double"   MATCHES ^${BUGGER_ARITHMETIC})
+    add_compile_definitions(BUGGER_DOUBLE)
+else()
+    message(FATAL_ERROR "Arithmetic not supported!")
+endif()
+
 set(BUGGER_TBB off)
+
 # on windows we don't want to build tbb
 if(WIN32)
    find_package(TBB 2018 COMPONENTS tbb tbbmalloc REQUIRED)
