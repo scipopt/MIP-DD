@@ -110,10 +110,6 @@ namespace bugger {
       }
    };
 
-   extern template class ConstraintModul<double>;
-   extern template class ConstraintModul<Quad>;
-   extern template class ConstraintModul<Rational>;
-
 } // namespace bugger
 
 #endif

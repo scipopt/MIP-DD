@@ -171,11 +171,6 @@ namespace bugger {
       }
    };
 
-   extern template class ConsRoundModul<double>;
-   extern template class ConsRoundModul<Quad>;
-   extern template class ConsRoundModul<Rational>;
-
-
 } // namespace bugger
 
 #endif

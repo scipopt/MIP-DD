@@ -895,10 +895,11 @@ namespace bugger
       }
    };
 
-   std::shared_ptr<SolverFactory>
+   template <typename REAL>
+   std::shared_ptr<SolverFactory<REAL>>
    load_solver_factory( )
    {
-      return std::shared_ptr<SolverFactory>(new ScipFactory( ));
+      return std::shared_ptr<SolverFactory<REAL>>(new ScipFactory<REAL>( ));
    }
 
 } // namespace bugger

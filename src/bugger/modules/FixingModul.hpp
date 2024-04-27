@@ -198,11 +198,6 @@ namespace bugger {
       }
    };
 
-   extern template class FixingModul<double>;
-   extern template class FixingModul<Quad>;
-   extern template class FixingModul<Rational>;
-
-
 } // namespace bugger
 
 #endif

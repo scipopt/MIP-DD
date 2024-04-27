@@ -153,15 +153,6 @@ add_library(bugger-core STATIC
         src/bugger/data/VariableDomains.cpp
         src/bugger/data/SparseStorage.cpp
         src/bugger/data/ConstraintMatrix.cpp
-        src/bugger/modules/CoefficientModul.cpp
-        src/bugger/modules/ConsRoundModul.cpp
-        src/bugger/modules/ConstraintModul.cpp
-        src/bugger/modules/FixingModul.cpp
-        src/bugger/modules/ObjectiveModul.cpp
-        src/bugger/modules/SettingModul.cpp
-        src/bugger/modules/SideModul.cpp
-        src/bugger/modules/VariableModul.cpp
-        src/bugger/modules/VarroundModul.cpp
 )
 
 #
@@ -175,7 +166,7 @@ endfunction(setLibProperties)
 if(MSVC)
     setLibProperties(bugger-core "libbugger-core")
 else()
-   setLibProperties(bugger-core "bugger-core")
+    setLibProperties(bugger-core "bugger-core")
 endif()
 
 find_package(Boost REQUIRED iostreams serialization program_options)

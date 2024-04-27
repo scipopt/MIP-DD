@@ -194,10 +194,6 @@ namespace bugger {
       }
    };
 
-   extern template class CoefficientModul<double>;
-   extern template class CoefficientModul<Quad>;
-   extern template class CoefficientModul<Rational>;
-
 } // namespace bugger
 
 #endif

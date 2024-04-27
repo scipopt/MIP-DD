@@ -147,10 +147,6 @@ namespace bugger {
       }
    };
 
-   extern template class SideModul<double>;
-   extern template class SideModul<Quad>;
-   extern template class SideModul<Rational>;
-
 } // namespace bugger
 
 #endif

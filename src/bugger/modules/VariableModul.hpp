@@ -139,10 +139,6 @@ namespace bugger {
       }
    };
 
-   extern template class VariableModul<double>;
-   extern template class VariableModul<Quad>;
-   extern template class VariableModul<Rational>;
-
 } // namespace bugger
 
 #endif

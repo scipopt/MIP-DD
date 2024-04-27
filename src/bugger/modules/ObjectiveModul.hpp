@@ -107,10 +107,6 @@ namespace bugger {
       }
    };
 
-   extern template class ObjectiveModul<double>;
-   extern template class ObjectiveModul<Quad>;
-   extern template class ObjectiveModul<Rational>;
-
 } // namespace bugger
 
 #endif

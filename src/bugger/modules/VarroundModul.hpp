@@ -153,10 +153,6 @@ namespace bugger {
       }
    };
 
-   extern template class VarroundModul<double>;
-   extern template class VarroundModul<Quad>;
-   extern template class VarroundModul<Rational>;
-
 } // namespace bugger
 
 #endif

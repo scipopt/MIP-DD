@@ -329,11 +329,6 @@ namespace bugger {
       }
    };
 
-   extern template class SettingModul<double>;
-   extern template class SettingModul<Quad>;
-   extern template class SettingModul<Rational>;
-
-
 } // namespace bugger
 
 #endif
