@@ -88,7 +88,7 @@ namespace bugger {
                if( this->call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
                   copy = Problem<REAL>(problem);
-                  for( const auto &item: applied_reductions )
+                  for( const auto& item: applied_reductions )
                   {
                      assert(!copy.getRowFlags( )[ item ].test(RowFlag::kRedundant));
                      copy.getRowFlags( )[ item ].set(RowFlag::kRedundant);

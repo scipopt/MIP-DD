@@ -170,7 +170,8 @@ namespace bugger {
 
    protected:
 
-      REAL get_linear_activity(SparseVectorView<REAL>& data, Solution<REAL>& solution) {
+      REAL
+      get_linear_activity(const SparseVectorView<REAL>& data, const Solution<REAL>& solution) const {
          StableSum<REAL> sum;
          for( int i = 0; i < data.getLength( ); ++i )
             sum.add(data.getValues( )[ i ] * solution.primal[ data.getIndices( )[ i ] ]);

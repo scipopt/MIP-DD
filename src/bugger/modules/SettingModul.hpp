@@ -313,17 +313,17 @@ namespace bugger {
             const Vec<std::pair<int, long>>& applied_long, const Vec<std::pair<int, double>>& applied_double,
             const Vec<std::pair<int, char>>& applied_char, const Vec<std::pair<int, std::string>>& applied_string) const {
          auto reset = SolverSettings(settings);
-         for( const auto &item: applied_bool )
+         for( const auto& item: applied_bool )
             reset.setBoolSettings(item.first, item.second);
-         for( const auto &item: applied_int )
+         for( const auto& item: applied_int )
             reset.setIntSettings(item.first, item.second);
-         for( const auto &item: applied_long )
+         for( const auto& item: applied_long )
             reset.setLongSettings(item.first, item.second);
-         for( const auto &item: applied_double )
+         for( const auto& item: applied_double )
             reset.setDoubleSettings(item.first, item.second);
-         for( const auto &item: applied_char )
+         for( const auto& item: applied_char )
             reset.setCharSettings(item.first, item.second);
-         for( const auto &item: applied_string )
+         for( const auto& item: applied_string )
             reset.setStringSettings(item.first, item.second);
          return reset;
       }

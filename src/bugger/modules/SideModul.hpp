@@ -70,7 +70,7 @@ namespace bugger {
 
          bool admissible = false;
          auto copy = Problem<REAL>(problem);
-         ConstraintMatrix<REAL>& matrix = copy.getConstraintMatrix( );
+         auto& matrix = copy.getConstraintMatrix( );
          Vec<std::pair<int, REAL>> applied_reductions { };
          Vec<std::pair<int, REAL>> batches { };
          batches.reserve(batchsize);
@@ -80,9 +80,9 @@ namespace bugger {
             if( isSideAdmissable(copy, row) )
             {
                admissible = true;
-               auto data = matrix.getRowCoefficients(row);
+               const auto& data = matrix.getRowCoefficients(row);
                bool integral = true;
-               REAL fixedval;
+               REAL fixedval { };
                for( int index = 0; index < data.getLength( ); ++index )
                {
                   if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral) || !this->num.isEpsIntegral(data.getValues( )[ index ]) ) )
@@ -99,7 +99,6 @@ namespace bugger {
                }
                else
                {
-                  fixedval = 0.0;
                   if( integral )
                   {
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
@@ -125,7 +124,7 @@ namespace bugger {
                if( this->call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
                   copy = Problem<REAL>(problem);
-                  for( const auto &item: applied_reductions )
+                  for( const auto& item: applied_reductions )
                   {
                      matrix.modifyLeftHandSide( item.first, this->num, item.second );
                      matrix.modifyRightHandSide( item.first, this->num, item.second );

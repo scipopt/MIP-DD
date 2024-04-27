@@ -49,8 +49,8 @@ namespace bugger {
             return true;
          bool lbinf = problem.getColFlags( )[ col ].test(ColFlag::kLbInf);
          bool ubinf = problem.getColFlags( )[ col ].test(ColFlag::kUbInf);
-         REAL lb = problem.getLowerBounds( )[ col ];
-         REAL ub = problem.getUpperBounds( )[ col ];
+         REAL lb { problem.getLowerBounds( )[ col ] };
+         REAL ub { problem.getUpperBounds( )[ col ] };
          return ( lbinf || ubinf || !this->num.isZetaEq(lb, ub) ) && ( ( !lbinf && !this->num.isZetaIntegral(lb) ) || ( !ubinf && !this->num.isZetaIntegral(ub) ) );
       }
 
@@ -91,17 +91,17 @@ namespace bugger {
             if( isVarroundAdmissible(copy, col) )
             {
                admissible = true;
-               REAL lb = this->num.round(copy.getLowerBounds( )[ col ]);
-               REAL ub = this->num.round(copy.getUpperBounds( )[ col ]);
+               REAL lb { this->num.round(copy.getLowerBounds( )[ col ]) };
+               REAL ub { this->num.round(copy.getUpperBounds( )[ col ]) };
                if( solution.status == SolutionStatus::kFeasible )
                {
-                  REAL value = solution.primal[ col ];
+                  REAL value { solution.primal[ col ] };
                   lb = this->num.min(lb, this->num.epsFloor(value));
                   ub = this->num.max(ub, this->num.epsCeil(value));
                }
                if( !this->num.isZetaIntegral(copy.getObjective( ).coefficients[ col ]) )
                {
-                  REAL obj = this->num.round(copy.getObjective( ).coefficients[ col ]);
+                  REAL obj { this->num.round(copy.getObjective( ).coefficients[ col ]) };
                   copy.getObjective( ).coefficients[ col ] = obj;
                   batches_obj.emplace_back(col, obj);
                }
@@ -123,11 +123,11 @@ namespace bugger {
                if( this->call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
                   copy = Problem<REAL>(problem);
-                  for( const auto &item: applied_objectives )
+                  for( const auto& item: applied_objectives )
                      copy.getObjective( ).coefficients[ item.first ] = item.second;
-                  for( const auto &item: applied_lowers )
+                  for( const auto& item: applied_lowers )
                      copy.getLowerBounds( )[ item.first ] = item.second;
-                  for( const auto &item: applied_uppers )
+                  for( const auto& item: applied_uppers )
                      copy.getUpperBounds( )[ item.first ] = item.second;
                }
                else

@@ -47,11 +47,11 @@ namespace bugger {
             return false;
          bool lhsinf = problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf);
          bool rhsinf = problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf);
-         REAL lhs = problem.getConstraintMatrix( ).getLeftHandSides( )[ row ];
-         REAL rhs = problem.getConstraintMatrix( ).getRightHandSides( )[ row ];
+         REAL lhs { problem.getConstraintMatrix( ).getLeftHandSides( )[ row ] };
+         REAL rhs { problem.getConstraintMatrix( ).getRightHandSides( )[ row ] };
          if( ( lhsinf || rhsinf || !this->num.isZetaEq(lhs, rhs) ) && ( ( !lhsinf && !this->num.isZetaIntegral(lhs) ) || ( !rhsinf && !this->num.isZetaIntegral(rhs) ) ) )
             return true;
-         auto data = problem.getConstraintMatrix( ).getRowCoefficients(row);
+         const auto& data = problem.getConstraintMatrix( ).getRowCoefficients(row);
          for( int index = 0; index < data.getLength( ); ++index )
             if( !this->num.isZetaIntegral(data.getValues( )[ index ]) )
                return true;
@@ -79,6 +79,7 @@ namespace bugger {
 
          bool admissible = false;
          auto copy = Problem<REAL>(problem);
+         auto& matrix = copy.getConstraintMatrix( );
          Vec<MatrixEntry<REAL>> applied_entries { };
          Vec<std::pair<int, REAL>> applied_lefts { };
          Vec<std::pair<int, REAL>> applied_rights { };
@@ -94,17 +95,17 @@ namespace bugger {
             if( isConsroundAdmissible(copy, row) )
             {
                admissible = true;
-               auto data = copy.getConstraintMatrix( ).getRowCoefficients(row);
-               REAL lhs = this->num.round(copy.getConstraintMatrix( ).getLeftHandSides( )[ row ]);
-               REAL rhs = this->num.round(copy.getConstraintMatrix( ).getRightHandSides( )[ row ]);
-               REAL activity = 0.0;
+               const auto& data = matrix.getRowCoefficients(row);
+               REAL lhs { this->num.round(matrix.getLeftHandSides( )[ row ]) };
+               REAL rhs { this->num.round(matrix.getRightHandSides( )[ row ]) };
+               REAL activity { };
                for( int index = 0; index < data.getLength( ); ++index )
                {
                   if( solution.status == SolutionStatus::kFeasible )
                   {
                      if( !this->num.isZetaIntegral(data.getValues( )[ index ]) )
                      {
-                        REAL coeff = this->num.round(data.getValues( )[ index ]);
+                        REAL coeff { this->num.round(data.getValues( )[ index ]) };
                         batches_coeff.emplace_back(row, data.getIndices( )[ index ], coeff);
                         activity += solution.primal[ data.getIndices( )[ index ] ] * coeff;
                      }
@@ -122,14 +123,14 @@ namespace bugger {
                   lhs = this->num.min(lhs, this->num.epsFloor(activity));
                   rhs = this->num.max(rhs, this->num.epsCeil(activity));
                }
-               if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) && !this->num.isZetaEq(copy.getConstraintMatrix().getLeftHandSides()[ row ], lhs) )
+               if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) && !this->num.isZetaEq(matrix.getLeftHandSides()[ row ], lhs) )
                {
-                  copy.getConstraintMatrix( ).modifyLeftHandSide(row, this->num, lhs);
+                  matrix.modifyLeftHandSide(row, this->num, lhs);
                   batches_lhs.emplace_back(row, lhs);
                }
-               if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) && !this->num.isZetaEq(copy.getConstraintMatrix().getRightHandSides()[ row ], rhs) )
+               if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) && !this->num.isZetaEq(matrix.getRightHandSides()[ row ], rhs) )
                {
-                  copy.getConstraintMatrix( ).modifyRightHandSide(row, this->num, rhs);
+                  matrix.modifyRightHandSide(row, this->num, rhs);
                   batches_rhs.emplace_back(row, rhs);
                }
                ++batch;
@@ -142,10 +143,10 @@ namespace bugger {
                {
                   copy = Problem<REAL>(problem);
                   this->apply_changes(copy, applied_entries);
-                  for( const auto &item: applied_lefts )
-                     copy.getConstraintMatrix( ).modifyLeftHandSide( item.first, this->num, item.second );
-                  for( const auto &item: applied_rights )
-                     copy.getConstraintMatrix( ).modifyRightHandSide( item.first, this->num, item.second );
+                  for( const auto& item: applied_lefts )
+                     matrix.modifyLeftHandSide( item.first, this->num, item.second );
+                  for( const auto& item: applied_rights )
+                     matrix.modifyRightHandSide( item.first, this->num, item.second );
                }
                else
                {

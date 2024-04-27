@@ -79,7 +79,7 @@ namespace bugger {
             if( isObjectiveAdmissible(copy, col) )
             {
                admissible = true;
-               copy.getObjective( ).coefficients[ col ] = 0.0;
+               copy.getObjective( ).coefficients[ col ] = 0;
                batches.push_back(col);
             }
 
@@ -88,8 +88,8 @@ namespace bugger {
                if( this->call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
                   copy = Problem<REAL>(problem);
-                  for( const auto &item: applied_reductions )
-                     copy.getObjective( ).coefficients[ item ] = 0.0;
+                  for( const auto& item: applied_reductions )
+                     copy.getObjective( ).coefficients[ item ] = 0;
                }
                else
                   applied_reductions.insert(applied_reductions.end(), batches.begin(), batches.end());

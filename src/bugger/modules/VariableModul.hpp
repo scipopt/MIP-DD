@@ -77,7 +77,7 @@ namespace bugger {
          {
             if( isVariableAdmissible(copy, col) )
             {
-               REAL fixedval;
+               REAL fixedval { };
                admissible = true;
                if( solution.status == SolutionStatus::kFeasible )
                {
@@ -87,7 +87,6 @@ namespace bugger {
                }
                else
                {
-                  fixedval = 0.0;
                   if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
                   {
                      if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
@@ -115,7 +114,7 @@ namespace bugger {
                if( this->call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
                   copy = Problem<REAL>(problem);
-                  for( const auto &item: applied_reductions )
+                  for( const auto& item: applied_reductions )
                   {
                      copy.getColFlags( )[ item.first ].unset(ColFlag::kLbInf);
                      copy.getColFlags( )[ item.first ].unset(ColFlag::kUbInf);
