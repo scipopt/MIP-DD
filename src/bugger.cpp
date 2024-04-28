@@ -53,9 +53,9 @@ REAL;
 using namespace bugger;
 
 int
-main(int argc, char *argv[]) {
-
-   print_header( );
+main(int argc, char *argv[])
+{
+   print_header<REAL>( );
 
    // get the options passed by the user
    OptionsInfo optionsInfo;

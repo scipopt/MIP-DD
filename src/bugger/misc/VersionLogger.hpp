@@ -23,45 +23,41 @@
 #ifndef _BUGGER_MISC_VERSION_LOGGER_HPP_
 #define _BUGGER_MISC_VERSION_LOGGER_HPP_
 
-#include "bugger/misc/NumericalStatistics.hpp"
-#include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/tbb.hpp"
-#include <boost/archive/binary_iarchive.hpp>
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/lexical_cast.hpp>
-#include <fstream>
-#include <string>
-#include <utility>
 
 namespace bugger
 {
-
+template <typename REAL>
 void
 print_header()
 {
-   std::string mode = "optimized";
-#ifndef NDEBUG
-   mode = "debug";
-#endif
    fmt::print( "MIP-Bugger version {}.{}.{} ", BUGGER_VERSION_MAJOR, BUGGER_VERSION_MINOR, BUGGER_VERSION_PATCH);
 
-   #if defined(__INTEL_COMPILER)
-   fmt::print("[Compiler: Intel {}]", __INTEL_COMPILER);
-   #elif defined(__clang__)
-   fmt::print("[Compiler: clang {}.{}.{}]", __clang_major__, __clang_minor__, __clang_patchlevel__);
-   #elif defined(_MSC_VER)
-   fmt::print("[Compiler: microsoft visual c {}]", _MSC_FULL_VER);
-   #elif defined(__GNUC__)
-   #if defined(__GNUC_PATCHLEVEL__)
-   fmt::print("[Compiler: gcc {}.{}.{}]", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
-   #else
-   fmt::print("[Compiler: gcc {}.{}]", __GNUC__, __GNUC_MINOR__);
-   #endif
-   #else
-   fmt::print("[Compiler: unknown]");
-   #endif
+   fmt::print("[arithmetic: {}]", typeid(REAL).name());
 
-   fmt::print("[mode: {}]", mode);
+   fmt::print("[precision: {} bytes]", sizeof(REAL));
+
+#if defined(__INTEL_COMPILER)
+   fmt::print("[Compiler: Intel {}]", __INTEL_COMPILER);
+#elif defined(__clang__)
+   fmt::print("[Compiler: clang {}.{}.{}]", __clang_major__, __clang_minor__, __clang_patchlevel__);
+#elif defined(_MSC_VER)
+   fmt::print("[Compiler: microsoft visual c {}]", _MSC_FULL_VER);
+#elif defined(__GNUC__)
+#if defined(__GNUC_PATCHLEVEL__)
+   fmt::print("[Compiler: gcc {}.{}.{}]", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+#else
+   fmt::print("[Compiler: gcc {}.{}]", __GNUC__, __GNUC_MINOR__);
+#endif
+#else
+   fmt::print("[Compiler: unknown]");
+#endif
+
+#ifdef NDEBUG
+   fmt::print("[mode: optimized]");
+#else
+   fmt::print("[mode: debug]");
+#endif
+
 #ifdef BUGGER_GITHASH_AVAILABLE
    fmt::print("[GitHash: {}]", BUGGER_GITHASH);
 #endif
@@ -84,8 +80,6 @@ print_header()
 #endif
    fmt::print( "\n" );
 }
-
-
 
 } // namespace bugger
 
