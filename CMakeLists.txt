@@ -171,7 +171,7 @@ else()
 endif()
 
 # define bugger arithmetic
-set(BUGGER_ARITHMETIC d CACHE STRING "arithmetic for modules, problems, and solutions (f: float, d: double, l: long double)")
+set(BUGGER_ARITHMETIC d CACHE STRING "arithmetic for reductions, problems, and solutions (f: float, d: double, l: long double)")
 if    ("float"      MATCHES ^${BUGGER_ARITHMETIC})
     target_compile_definitions(bugger-core PUBLIC BUGGER_FLOAT)
 elseif("double"     MATCHES ^${BUGGER_ARITHMETIC})
