@@ -44,6 +44,8 @@ typedef
 float
 #elif defined(BUGGER_DOUBLE)
 double
+#elif defined(BUGGER_LONGDOUBLE)
+long double
 #endif
 REAL;
 
