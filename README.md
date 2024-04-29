@@ -27,8 +27,7 @@ It is necessary to build the solver in optimized mode since the MIP-DD is not de
 Nevertheless, it is usually easily possible to handle assertion fails by reformulating the solver to return a suitable error code under the negated assertion condition.
 The MIP-DD will then identify the formerly failing assertion as a solver error.
 For information on building SCIP please refer to https://scipopt.org/doc.
-
-
+Optionally, the arithmetic type used for reductions, problems, and solutions can be selected by the cmake parameter BUGGER_ARITHMETIC, which is double by default.
 
 To run the bugger with parameters on a settings-problem-solution instance with respect to target settings, it can be invoked by
 ```

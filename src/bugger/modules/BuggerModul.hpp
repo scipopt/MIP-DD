@@ -47,6 +47,7 @@ namespace bugger {
 
    };
 
+   template <typename REAL>
    class BuggerModul {
 
    private:
@@ -60,9 +61,9 @@ namespace bugger {
    protected:
 
       const Message& msg;
-      const Num<double>& num;
+      const Num<REAL>& num;
       const BuggerParameters& parameters;
-      std::shared_ptr<SolverFactory> factory;
+      std::shared_ptr<SolverFactory<REAL>> factory;
       int nchgcoefs = 0;
       int nfixedvars = 0;
       int nchgsides = 0;
@@ -70,13 +71,13 @@ namespace bugger {
       int nchgsettings = 0;
       int ndeletedrows = 0;
       int nsolves = 0;
-      std::pair<char, SolverStatus> last_result { SolverInterface::OKAY, SolverStatus::kUnknown };
+      std::pair<char, SolverStatus> last_result { SolverRetcode::OKAY, SolverStatus::kUnknown };
       long long last_effort = -1;
 
    public:
 
-      BuggerModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
-                  std::shared_ptr<SolverFactory>& _factory) : msg(_msg), num(_num), parameters(_parameters),
+      BuggerModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+                  std::shared_ptr<SolverFactory<REAL>>& _factory) : msg(_msg), num(_num), parameters(_parameters),
                   factory(_factory) { }
 
       virtual ~BuggerModul( ) = default;
@@ -106,8 +107,8 @@ namespace bugger {
       }
 
       ModulStatus
-      run(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution, const Timer& timer) {
-         last_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
+      run(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution, const Timer& timer) {
+         last_result = { SolverRetcode::OKAY, SolverStatus::kUnknown };
          last_effort = -1;
          if( !enabled )
             return ModulStatus::kDidNotRun;
@@ -137,7 +138,7 @@ namespace bugger {
 
       void
       printStats(const Message& message) {
-         double success = ncalls == 0 ? 0.0 : ( double(nsuccessCall) / double(ncalls)) * 100.0;
+         double success = ncalls == 0 ? 0.0 : ( (double)nsuccessCall / (double)ncalls ) * 100.0;
          int changes = nchgcoefs + nfixedvars + nchgsides + naggrvars + ndeletedrows + nchgsettings;
          message.info(" {:>18} {:>12} {:>12} {:>18.1f} {:>12} {:>18.3f}\n", name, ncalls, changes, success, nsolves, execTime);
       }
@@ -169,15 +170,16 @@ namespace bugger {
 
    protected:
 
-      double get_linear_activity(SparseVectorView<double>& data, Solution<double>& solution) {
-         StableSum<double> sum;
+      REAL
+      get_linear_activity(const SparseVectorView<REAL>& data, const Solution<REAL>& solution) const {
+         StableSum<REAL> sum;
          for( int i = 0; i < data.getLength( ); ++i )
-            sum.add(solution.primal[ data.getIndices( )[ i ] ] * data.getValues( )[ i ]);
+            sum.add(data.getValues( )[ i ] * solution.primal[ data.getIndices( )[ i ] ]);
          return sum.get( );
       }
 
       virtual ModulStatus
-      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) = 0;
+      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) = 0;
 
       void
       setName(const String& value) {
@@ -187,12 +189,11 @@ namespace bugger {
 
       static bool
       is_time_exceeded(const Timer& timer, double tlim) {
-         return tlim != std::numeric_limits<double>::max( ) &&
-                timer.getTime( ) >= tlim;
+         return timer.getTime( ) >= tlim;
       }
 
       BuggerStatus
-      call_solver(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) {
+      call_solver(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution) {
          ++nsolves;
          auto solver = factory->create_solver(msg);
          solver->doSetUp(settings, problem, solution);
@@ -206,7 +207,7 @@ namespace bugger {
             return BuggerStatus::kError;
          }
          long long effort = solver->getSolvingEffort( );
-         if( result.first == SolverInterface::OKAY )
+         if( result.first == SolverRetcode::OKAY )
          {
             msg.info("\tOkay    - Status {:<23} - Effort{:>20}\n", result.second, effort);
             return BuggerStatus::kOkay;
@@ -216,7 +217,7 @@ namespace bugger {
             if( effort >= 0 )
                last_effort = effort;
             last_result = result;
-            if( result.first > SolverInterface::OKAY )
+            if( result.first > SolverRetcode::OKAY )
             {
                msg.info("\tBug{:>4} - Status {:<23} - Effort{:>20}\n", (int)result.first, result.second, effort);
                return BuggerStatus::kBug;
@@ -229,8 +230,8 @@ namespace bugger {
          }
       }
 
-      void apply_changes(Problem<double>& copy, const Vec<MatrixEntry<double>>& entries) const {
-         MatrixBuffer<double> matrixBuffer{ };
+      void apply_changes(Problem<REAL>& copy, const Vec<MatrixEntry<REAL>>& entries) const {
+         MatrixBuffer<REAL> matrixBuffer { };
          for( const auto &entry: entries )
             matrixBuffer.addEntry(entry.row, entry.col, entry.val);
          copy.getConstraintMatrix( ).changeCoefficients(matrixBuffer);
