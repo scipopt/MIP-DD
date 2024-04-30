@@ -4,8 +4,19 @@
 Features
 --------
 
+- enable SCIP interface to restrict limits automatically with respect to a variability margin defined by parameter scip.limitspace
+
 Performance improvements
 ------------------------
+
+- restrict solver limit settings automatically in order to accelerate the process by default
+- adjust number of batches every round automatically in order to maintain expenditure by default
+
+New parameters:
+----------
+
+- expenditure = -1 : calculate the number of batches by ceiled division of the solving effort defined in the solver interface (-1: use original, 0: keep batches)
+- default value nbatches = 2 in order to try bisection initially
 
 Fixed bugs
 ----------
@@ -20,6 +31,7 @@ Build system
 - backdate fmt from 8 to 7 to conform c++ standard 14
 - add compile option -ffp-contract=off or /fp:precise to enhance reproducibility across different systems
 - provide symlink to scip library in bugger build directory for a reliable unique link at runtime
+- introduce cmake parameter BUGGER_ARITHMETIC to select reduction arithmetic throughout templated bugger modules among float, double, and longdouble
 
 
 @section Release Notes MIP-Bugger 1.0

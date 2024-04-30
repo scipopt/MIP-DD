@@ -28,12 +28,14 @@
 
 namespace bugger
 {
-   class ObjectiveModul : public BuggerModul
+   template <typename REAL>
+   class ObjectiveModul : public BuggerModul<REAL>
    {
    public:
 
-      explicit ObjectiveModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
-                              std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory)
+      explicit ObjectiveModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+                              std::shared_ptr<SolverFactory<REAL>>& _factory)
+                              : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
       {
          this->setName("objective");
       }
@@ -41,35 +43,35 @@ namespace bugger
    private:
 
       bool
-      isObjectiveAdmissible(const Problem<double>& problem, const int& col) const
+      isObjectiveAdmissible(const Problem<REAL>& problem, const int& col) const
       {
-         return !num.isZetaZero(problem.getObjective( ).coefficients[ col ])
+         return !this->num.isZetaZero(problem.getObjective( ).coefficients[ col ])
            && ( problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
              || problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
-             || !num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) );
+             || !this->num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) );
       }
 
       ModulStatus
-      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override
+      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
          if( solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;
 
-         int batchsize = 1;
+         long long batchsize = 1;
 
-         if( parameters.nbatches > 0 )
+         if( this->parameters.nbatches > 0 )
          {
-            batchsize = parameters.nbatches - 1;
+            batchsize = this->parameters.nbatches - 1;
             for( int i = problem.getNCols( ) - 1; i >= 0; --i )
                if( isObjectiveAdmissible(problem, i) )
                   ++batchsize;
-            if( batchsize == parameters.nbatches - 1 )
+            if( batchsize == this->parameters.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
-            batchsize /= parameters.nbatches;
+            batchsize /= this->parameters.nbatches;
          }
 
          bool admissible = false;
-         auto copy = Problem<double>(problem);
+         auto copy = Problem<REAL>(problem);
          Vec<int> applied_reductions { };
          Vec<int> batches { };
          batches.reserve(batchsize);
@@ -79,17 +81,17 @@ namespace bugger
             if( isObjectiveAdmissible(copy, col) )
             {
                admissible = true;
-               copy.getObjective( ).coefficients[ col ] = 0.0;
+               copy.getObjective( ).coefficients[ col ] = 0;
                batches.push_back(col);
             }
 
             if( !batches.empty() && ( batches.size() >= batchsize || col <= 0 ) )
             {
-               if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
+               if( this->call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
-                  copy = Problem<double>(problem);
-                  for( const auto &item: applied_reductions )
-                     copy.getObjective( ).coefficients[ item ] = 0.0;
+                  copy = Problem<REAL>(problem);
+                  for( const auto& item: applied_reductions )
+                     copy.getObjective( ).coefficients[ item ] = 0;
                }
                else
                   applied_reductions.insert(applied_reductions.end(), batches.begin(), batches.end());
@@ -102,7 +104,7 @@ namespace bugger
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
          problem = copy;
-         nchgcoefs += applied_reductions.size();
+         this->nchgcoefs += applied_reductions.size();
          return ModulStatus::kSuccessful;
       }
    };

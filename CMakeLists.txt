@@ -1,8 +1,8 @@
 cmake_minimum_required (VERSION 3.11.0)
 
 set(BUGGER_VERSION_MAJOR 1)
-set(BUGGER_VERSION_MINOR 0)
-set(BUGGER_VERSION_PATCH 1)
+set(BUGGER_VERSION_MINOR 1)
+set(BUGGER_VERSION_PATCH 0)
 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
@@ -78,6 +78,7 @@ target_include_directories(bugger INTERFACE
 option(TBB "should TBB be linked if found" OFF)
 
 set(BUGGER_TBB off)
+
 # on windows we don't want to build tbb
 if(WIN32)
    find_package(TBB 2018 COMPONENTS tbb tbbmalloc REQUIRED)
@@ -153,7 +154,7 @@ add_library(bugger-core STATIC
         src/bugger/data/VariableDomains.cpp
         src/bugger/data/SparseStorage.cpp
         src/bugger/data/ConstraintMatrix.cpp
-  )
+)
 
 #
 # interface function for setting common library properties
@@ -166,7 +167,19 @@ endfunction(setLibProperties)
 if(MSVC)
     setLibProperties(bugger-core "libbugger-core")
 else()
-   setLibProperties(bugger-core "bugger-core")
+    setLibProperties(bugger-core "bugger-core")
+endif()
+
+# define bugger arithmetic
+set(BUGGER_ARITHMETIC d CACHE STRING "arithmetic for reductions, problems, and solutions (f: float, d: double, l: long double)")
+if    ("float"      MATCHES ^${BUGGER_ARITHMETIC})
+    target_compile_definitions(bugger-core PUBLIC BUGGER_FLOAT)
+elseif("double"     MATCHES ^${BUGGER_ARITHMETIC})
+    target_compile_definitions(bugger-core PUBLIC BUGGER_DOUBLE)
+elseif("longdouble" MATCHES ^${BUGGER_ARITHMETIC})
+    target_compile_definitions(bugger-core PUBLIC BUGGER_LONGDOUBLE)
+else()
+    message(FATAL_ERROR "Arithmetic not supported!")
 endif()
 
 find_package(Boost REQUIRED iostreams serialization program_options)

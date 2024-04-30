@@ -39,13 +39,23 @@
 #include "bugger/interfaces/ScipInterface.hpp"
 #endif
 
+typedef
+#if   defined(BUGGER_FLOAT)
+float
+#elif defined(BUGGER_DOUBLE)
+double
+#elif defined(BUGGER_LONGDOUBLE)
+long double
+#endif
+REAL;
+
 
 using namespace bugger;
 
 int
-main(int argc, char *argv[]) {
-
-   print_header( );
+main(int argc, char *argv[])
+{
+   print_header<REAL>( );
 
    // get the options passed by the user
    OptionsInfo optionsInfo;
@@ -65,21 +75,21 @@ main(int argc, char *argv[]) {
       return 0;
 
    Message msg { };
-   Num<double> num { };
+   Num<REAL> num { };
    BuggerParameters parameters { };
-   std::shared_ptr<SolverFactory> factory { load_solver_factory() };
-   Vec<std::unique_ptr<BuggerModul>> modules { };
+   std::shared_ptr<SolverFactory<REAL>> factory { load_solver_factory<REAL>() };
+   Vec<std::unique_ptr<BuggerModul<REAL>>> modules { };
 
-   modules.emplace_back(new ConstraintModul(msg, num, parameters, factory));
-   modules.emplace_back(new VariableModul(msg, num, parameters, factory));
-   modules.emplace_back(new CoefficientModul(msg, num, parameters, factory));
-   modules.emplace_back(new FixingModul(msg, num, parameters, factory));
-   SettingModul* setting = new SettingModul(msg, num, parameters, factory);
+   modules.emplace_back(new ConstraintModul<REAL>(msg, num, parameters, factory));
+   modules.emplace_back(new VariableModul<REAL>(msg, num, parameters, factory));
+   modules.emplace_back(new CoefficientModul<REAL>(msg, num, parameters, factory));
+   modules.emplace_back(new FixingModul<REAL>(msg, num, parameters, factory));
+   SettingModul<REAL>* setting = new SettingModul<REAL>(msg, num, parameters, factory);
    modules.emplace_back(setting);
-   modules.emplace_back(new SideModul(msg, num, parameters, factory));
-   modules.emplace_back(new ObjectiveModul(msg, num, parameters, factory));
-   modules.emplace_back(new VarroundModul(msg, num, parameters, factory));
-   modules.emplace_back(new ConsRoundModul(msg, num, parameters, factory));
+   modules.emplace_back(new SideModul<REAL>(msg, num, parameters, factory));
+   modules.emplace_back(new ObjectiveModul<REAL>(msg, num, parameters, factory));
+   modules.emplace_back(new VarroundModul<REAL>(msg, num, parameters, factory));
+   modules.emplace_back(new ConsRoundModul<REAL>(msg, num, parameters, factory));
 
    if( !optionsInfo.param_settings_file.empty( ) || !optionsInfo.unparsed_options.empty( ) )
    {
@@ -180,7 +190,7 @@ main(int argc, char *argv[]) {
    if( optionsInfo.target_settings_file.empty( ) )
       setting->setEnabled(false);
 
-   BuggerRun( msg, num, parameters, factory, modules ).apply( optionsInfo, setting );
+   BuggerRun<REAL>( msg, num, parameters, factory, modules ).apply( optionsInfo, setting );
 
    return 0;
 }
