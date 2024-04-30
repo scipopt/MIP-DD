@@ -553,7 +553,7 @@ namespace bugger
          rowNames.reMax(this->model->getNRows( ));
          inds.resize(this->model->getNCols( ));
          if( solution_exists )
-            this->value = obj.offset;
+            this->value = this->get_primal_objective(solution);
          else if( this->reference->status == SolutionStatus::kUnbounded )
             this->value = obj.sense ? -soplex->realParam(SoPlex::INFTY) : soplex->realParam(SoPlex::INFTY);
          else if( this->reference->status == SolutionStatus::kInfeasible )
@@ -579,8 +579,6 @@ namespace bugger
                inds[col] = soplex->numCols();
                soplex->addColReal(var);
                colNames.add(varNames[col].c_str());
-               if( solution_exists )
-                  this->value += obj.coefficients[ col ] * this->reference->primal[ col ];
             }
          }
 
