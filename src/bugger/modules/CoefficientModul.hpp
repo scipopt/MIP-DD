@@ -26,62 +26,68 @@
 #include "bugger/modules/BuggerModul.hpp"
 
 
-namespace bugger {
-
-   class CoefficientModul : public BuggerModul {
-
+namespace bugger
+{
+   template <typename REAL>
+   class CoefficientModul : public BuggerModul<REAL>
+   {
    public:
 
-      explicit CoefficientModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
-                                std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory) {
+      explicit CoefficientModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+                                std::shared_ptr<SolverFactory<REAL>>& _factory)
+                                : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
+      {
          this->setName("coefficient");
       }
 
    private:
 
       bool
-      isFixingAdmissible(const Problem<double>& problem, const int& col) const {
+      isFixingAdmissible(const Problem<REAL>& problem, const int& col) const
+      {
          return !problem.getColFlags( )[ col ].test(ColFlag::kFixed)
              && !problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
              && !problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
-             && num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
+             && this->num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
       }
 
       bool
-      isCoefficientAdmissible(const Problem<double>& problem, const int& row) const {
+      isCoefficientAdmissible(const Problem<REAL>& problem, const int& row) const
+      {
          if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant) )
             return false;
-         auto data = problem.getConstraintMatrix( ).getRowCoefficients(row);
+         const auto& data = problem.getConstraintMatrix( ).getRowCoefficients(row);
          for( int index = 0; index < data.getLength( ); ++index )
-            if( !num.isZetaZero(data.getValues( )[ index ]) && isFixingAdmissible(problem, data.getIndices( )[ index ]) )
+            if( !this->num.isZetaZero(data.getValues( )[ index ]) && isFixingAdmissible(problem, data.getIndices( )[ index ]) )
                return true;
          return false;
       }
 
       ModulStatus
-      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override {
-
+      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
+      {
          long long batchsize = 1;
 
-         if( parameters.nbatches > 0 )
+         if( this->parameters.nbatches > 0 )
          {
-            batchsize = parameters.nbatches - 1;
+            batchsize = this->parameters.nbatches - 1;
             for( int i = problem.getNRows( ) - 1; i >= 0; --i )
                if( isCoefficientAdmissible(problem, i) )
                   ++batchsize;
-            if( batchsize == parameters.nbatches - 1 )
+            if( batchsize == this->parameters.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
-            batchsize /= parameters.nbatches;
+            batchsize /= this->parameters.nbatches;
          }
 
          bool admissible = false;
-         auto copy = Problem<double>(problem);
-         Vec<MatrixEntry<double>> applied_entries { };
-         Vec<std::pair<int, double>> applied_lefts { };
-         Vec<std::pair<int, double>> applied_rights { };
-         Vec<MatrixEntry<double>> batches_coeff { };
-         Vec<std::pair<int, double>> batches_lhs { };
-         Vec<std::pair<int, double>> batches_rhs { };
+         auto copy = Problem<REAL>(problem);
+         auto& matrix = copy.getConstraintMatrix( );
+         Vec<MatrixEntry<REAL>> applied_entries { };
+         Vec<std::pair<int, REAL>> applied_lefts { };
+         Vec<std::pair<int, REAL>> applied_rights { };
+         Vec<MatrixEntry<REAL>> batches_coeff { };
+         Vec<std::pair<int, REAL>> batches_lhs { };
+         Vec<std::pair<int, REAL>> batches_rhs { };
          batches_lhs.reserve(batchsize);
          batches_rhs.reserve(batchsize);
          int batch = 0;
@@ -91,65 +97,64 @@ namespace bugger {
             if( isCoefficientAdmissible(copy, row) )
             {
                admissible = true;
-               auto data = copy.getConstraintMatrix( ).getRowCoefficients(row);
+               const auto& data = matrix.getRowCoefficients(row);
                bool integral = true;
-               double offset = 0.0;
+               REAL offset { };
                for( int index = data.getLength( ) - 1; index >= 0; --index )
                {
                   int col = data.getIndices( )[ index ];
-                  double val = data.getValues( )[ index ];
-                  if( !num.isZetaZero(val) && isFixingAdmissible(copy, col) )
+                  REAL val = data.getValues( )[ index ];
+                  if( !this->num.isZetaZero(val) && isFixingAdmissible(copy, col) )
                   {
-                     double fixedval;
+                     REAL fixedval { };
                      if( solution.status == SolutionStatus::kFeasible )
                      {
                         fixedval = solution.primal[ col ];
                         if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
-                           fixedval = num.round(fixedval);
+                           fixedval = this->num.round(fixedval);
                      }
                      else
                      {
-                        fixedval = 0.0;
                         if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
                         {
                            if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
-                              fixedval = num.min(fixedval, num.epsFloor(copy.getUpperBounds( )[ col ]));
+                              fixedval = this->num.min(fixedval, this->num.epsFloor(copy.getUpperBounds( )[ col ]));
                            if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) )
-                              fixedval = num.max(fixedval, num.epsCeil(copy.getLowerBounds( )[ col ]));
+                              fixedval = this->num.max(fixedval, this->num.epsCeil(copy.getLowerBounds( )[ col ]));
                         }
                         else
                         {
                            if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
-                              fixedval = num.min(fixedval, copy.getUpperBounds( )[ col ]);
+                              fixedval = this->num.min(fixedval, copy.getUpperBounds( )[ col ]);
                            if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) )
-                              fixedval = num.max(fixedval, copy.getLowerBounds( )[ col ]);
+                              fixedval = this->num.max(fixedval, copy.getLowerBounds( )[ col ]);
                         }
                      }
                      offset -= val * fixedval;
-                     batches_coeff.emplace_back(row, col, 0.0);
+                     batches_coeff.emplace_back(row, col, 0);
                   }
-                  else if( !copy.getColFlags( )[ col ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ col ].test(ColFlag::kIntegral) || !num.isEpsIntegral(val) ) )
+                  else if( !copy.getColFlags( )[ col ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ col ].test(ColFlag::kIntegral) || !this->num.isEpsIntegral(val) ) )
                      integral = false;
                }
                if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
                {
-                  double lhs = copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] + offset;
+                  REAL lhs { matrix.getLeftHandSides( )[ row ] + offset };
                   if( integral )
-                     lhs = num.round(lhs);
-                  if( !num.isZetaEq(copy.getConstraintMatrix( ).getLeftHandSides( )[ row ], lhs) )
+                     lhs = this->num.round(lhs);
+                  if( !this->num.isZetaEq(matrix.getLeftHandSides( )[ row ], lhs) )
                   {
-                     copy.getConstraintMatrix( ).modifyLeftHandSide(row, num, lhs);
+                     matrix.modifyLeftHandSide(row, this->num, lhs);
                      batches_lhs.emplace_back(row, lhs);
                   }
                }
                if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
                {
-                  double rhs = copy.getConstraintMatrix( ).getRightHandSides( )[ row ] + offset;
+                  REAL rhs { matrix.getRightHandSides( )[ row ] + offset };
                   if( integral )
-                     rhs = num.round(rhs);
-                  if( !num.isZetaEq(copy.getConstraintMatrix( ).getRightHandSides( )[ row ], rhs) )
+                     rhs = this->num.round(rhs);
+                  if( !this->num.isZetaEq(matrix.getRightHandSides( )[ row ], rhs) )
                   {
-                     copy.getConstraintMatrix( ).modifyRightHandSide(row, num, rhs);
+                     matrix.modifyRightHandSide(row, this->num, rhs);
                      batches_rhs.emplace_back(row, rhs);
                   }
                }
@@ -158,15 +163,15 @@ namespace bugger {
 
             if( batch >= 1 && ( batch >= batchsize || row <= 0 ) )
             {
-               apply_changes(copy, batches_coeff);
-               if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
+               this->apply_changes(copy, batches_coeff);
+               if( this->call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
-                  copy = Problem<double>(problem);
-                  apply_changes(copy, applied_entries);
-                  for( const auto &item: applied_lefts )
-                     copy.getConstraintMatrix( ).modifyLeftHandSide( item.first, num, item.second );
-                  for( const auto &item: applied_rights )
-                     copy.getConstraintMatrix( ).modifyRightHandSide( item.first, num, item.second );
+                  copy = Problem<REAL>(problem);
+                  this->apply_changes(copy, applied_entries);
+                  for( const auto& item: applied_lefts )
+                     matrix.modifyLeftHandSide( item.first, this->num, item.second );
+                  for( const auto& item: applied_rights )
+                     matrix.modifyRightHandSide( item.first, this->num, item.second );
                }
                else
                {
@@ -186,8 +191,8 @@ namespace bugger {
          if( applied_entries.empty() )
             return ModulStatus::kUnsuccesful;
          problem = copy;
-         nchgcoefs += applied_entries.size();
-         nchgsides += applied_lefts.size() + applied_rights.size();
+         this->nchgcoefs += applied_entries.size();
+         this->nchgsides += applied_lefts.size() + applied_rights.size();
          return ModulStatus::kSuccessful;
       }
    };

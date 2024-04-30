@@ -31,33 +31,34 @@
 #include "bugger/modules/SettingModul.hpp"
 
 
-namespace bugger {
-
-   class BuggerRun {
-
+namespace bugger
+{
+   template <typename REAL>
+   class BuggerRun
+   {
    private:
 
       const Message& msg;
-      const Num<double>& num;
+      const Num<REAL>& num;
       BuggerParameters& parameters;
-      const std::shared_ptr<SolverFactory>& factory;
-      const Vec<std::unique_ptr<BuggerModul>>& modules;
+      const std::shared_ptr<SolverFactory<REAL>>& factory;
+      const Vec<std::unique_ptr<BuggerModul<REAL>>>& modules;
       Vec<ModulStatus> results;
 
    public:
 
-      explicit BuggerRun(const Message& _msg, const Num<double>& _num, BuggerParameters& _parameters, const std::shared_ptr<SolverFactory>& _factory, const Vec<std::unique_ptr<BuggerModul>>& _modules)
+      explicit BuggerRun(const Message& _msg, const Num<REAL>& _num, BuggerParameters& _parameters, const std::shared_ptr<SolverFactory<REAL>>& _factory, const Vec<std::unique_ptr<BuggerModul<REAL>>>& _modules)
             : msg(_msg), num(_num), parameters(_parameters), factory(_factory), modules(_modules), results(_modules.size()) { }
 
       bool
-      is_time_exceeded(const Timer& timer) const {
-
+      is_time_exceeded(const Timer& timer) const
+      {
          return timer.getTime() >= parameters.tlim;
       }
 
       void
-      apply(const OptionsInfo& optionsInfo, SettingModul* const setting) {
-
+      apply(const OptionsInfo& optionsInfo, SettingModul<REAL>* const setting)
+      {
          msg.info("\nMIP Solver:\n");
          factory->create_solver(msg)->print_header();
          msg.info("\n");
@@ -80,7 +81,7 @@ namespace bugger {
          if( !instance.second )
          {
             msg.info("Parser of the solver failed. Using internal parser...");
-            instance.second = MpsParser<double>::loadProblem(optionsInfo.problem_file);
+            instance.second = MpsParser<REAL>::loadProblem(optionsInfo.problem_file);
             if( !instance.second )
             {
                msg.error("error loading problem {}\n", optionsInfo.problem_file);
@@ -89,7 +90,7 @@ namespace bugger {
          }
          auto settings = instance.first.get();
          auto problem = instance.second.get();
-         Solution<double> solution;
+         Solution<REAL> solution;
          if( !optionsInfo.solution_file.empty( ) )
          {
             if( boost::iequals(optionsInfo.solution_file, "infeasible") )
@@ -98,7 +99,7 @@ namespace bugger {
                solution.status = SolutionStatus::kUnbounded;
             else if( !boost::iequals(optionsInfo.solution_file, "unknown") )
             {
-               bool success = SolParser<double>::read(optionsInfo.solution_file, problem.getVariableNames( ), solution);
+               bool success = SolParser<REAL>::read(optionsInfo.solution_file, problem.getVariableNames( ), solution);
                if( !success )
                {
                   msg.error("error loading solution {}\n", optionsInfo.solution_file);
@@ -109,7 +110,7 @@ namespace bugger {
 
          check_feasibility_of_solution(problem, solution);
          long long last_effort = -1;
-         std::pair<char, SolverStatus> last_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
+         std::pair<char, SolverStatus> last_result = { SolverRetcode::OKAY, SolverStatus::kUnknown };
          int last_round = -1;
          int last_module = -1;
          auto solver = factory->create_solver(msg);
@@ -152,7 +153,7 @@ namespace bugger {
                solver = factory->create_solver(msg);
                solver->doSetUp(settings, problem, solution);
                if( !solver->writeInstance(filename + std::to_string(round), setting->isEnabled()) )
-                  MpsWriter<double>::writeProb(filename + std::to_string(round) + ".mps", problem);
+                  MpsWriter<REAL>::writeProb(filename + std::to_string(round) + ".mps", problem);
 
                if( is_time_exceeded(timer) )
                   break;
@@ -193,19 +194,29 @@ namespace bugger {
 
    private:
 
-      void
-      check_feasibility_of_solution(const Problem<double>& problem, const Solution<double>& solution) {
+      REAL
+      get_linear_activity(const SparseVectorView<REAL>& data, const Solution<REAL>& solution) const
+      {
+         StableSum<REAL> sum;
+         for( int i = 0; i < data.getLength( ); ++i )
+            sum.add(data.getValues( )[ i ] * solution.primal[ data.getIndices( )[ i ] ]);
+         return sum.get( );
+      }
 
+      void
+      check_feasibility_of_solution(const Problem<REAL>& problem, const Solution<REAL>& solution)
+      {
          if( solution.status != SolutionStatus::kFeasible )
             return;
-         const Vec<double>& ub = problem.getUpperBounds();
-         const Vec<double>& lb = problem.getLowerBounds();
-         double maxviol = 0.0;
+
+         const auto& lb = problem.getLowerBounds();
+         const auto& ub = problem.getUpperBounds();
+         REAL viol;
+         REAL maxviol { };
          int maxindex = -1;
          bool maxrow = false;
          bool maxupper = false;
          bool maxintegral = false;
-         double viol;
 
          msg.info("\nCheck:\n");
          for( int col = 0; col < problem.getNCols(); col++ )
@@ -256,30 +267,20 @@ namespace bugger {
             }
          }
 
-         const Vec<double>& rhs = problem.getConstraintMatrix().getRightHandSides();
-         const Vec<double>& lhs = problem.getConstraintMatrix().getLeftHandSides();
+         const auto& lhs = problem.getConstraintMatrix().getLeftHandSides();
+         const auto& rhs = problem.getConstraintMatrix().getRightHandSides();
 
          for( int row = 0; row < problem.getNRows(); row++ )
          {
             if( problem.getRowFlags()[row].test( RowFlag::kRedundant ) )
                continue;
 
-            double rowValue = 0;
-            auto entries = problem.getConstraintMatrix().getRowCoefficients( row );
-            for( int j = 0; j < entries.getLength(); j++ )
-            {
-               int col = entries.getIndices()[j];
-               if( problem.getColFlags()[col].test( ColFlag::kInactive ) )
-                  continue;
-               double x = entries.getValues()[j];
-               double primal = solution.primal[col];
-               rowValue += x * primal;
-            }
+            REAL activity { get_linear_activity(problem.getConstraintMatrix().getRowCoefficients(row), solution) };
 
-            if( !problem.getRowFlags()[row].test( RowFlag::kLhsInf ) && rowValue < lhs[row] )
+            if( !problem.getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < lhs[row] )
             {
-               msg.detailed( "\tRow {:<3} violates left side ({:<3} < {:<3})\n", problem.getConstraintNames()[row], rowValue, lhs[row] );
-               viol = lhs[row] - rowValue;
+               msg.detailed( "\tRow {:<3} violates left side ({:<3} < {:<3})\n", problem.getConstraintNames()[row], activity, lhs[row] );
+               viol = lhs[row] - activity;
                if( viol > maxviol )
                {
                   maxviol = viol;
@@ -290,10 +291,10 @@ namespace bugger {
                }
             }
 
-            if( !problem.getRowFlags()[row].test( RowFlag::kRhsInf ) && rowValue > rhs[row] )
+            if( !problem.getRowFlags()[row].test( RowFlag::kRhsInf ) && activity > rhs[row] )
             {
-               msg.detailed( "\tRow {:<3} violates right side ({:<3} > {:<3})\n", problem.getConstraintNames()[row], rowValue, rhs[row] );
-               viol = rowValue - rhs[row];
+               msg.detailed( "\tRow {:<3} violates right side ({:<3} > {:<3})\n", problem.getConstraintNames()[row], activity, rhs[row] );
+               viol = activity - rhs[row];
                if( viol > maxviol )
                {
                   maxviol = viol;
@@ -314,8 +315,8 @@ namespace bugger {
       }
 
       bugger::ModulStatus
-      evaluateResults( ) {
-
+      evaluateResults( )
+      {
          int largestValue = static_cast<int>( bugger::ModulStatus::kDidNotRun );
 
          for( int module = 0; module < parameters.maxstages; ++module )
@@ -325,8 +326,8 @@ namespace bugger {
       }
 
       void
-      printStats(const double& time, const std::pair<char, SolverStatus>& last_result, int last_round, int last_module, long long last_effort) {
-
+      printStats(const double& time, const std::pair<char, SolverStatus>& last_result, int last_round, int last_module, long long last_effort)
+      {
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n",
                   "modules", "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
          int nsolves = 0;
@@ -340,7 +341,7 @@ namespace bugger {
             assert(last_module == -1);
             if( parameters.mode == 1 )
             {
-               assert(last_result.first == SolverInterface::OKAY);
+               assert(last_result.first == SolverRetcode::OKAY);
                assert(last_result.second == SolverStatus::kUnknown);
                assert(last_effort == -1);
             }

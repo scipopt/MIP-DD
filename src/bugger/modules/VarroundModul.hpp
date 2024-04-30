@@ -26,59 +26,63 @@
 #include "bugger/modules/BuggerModul.hpp"
 
 
-namespace bugger {
-
-   class VarroundModul : public BuggerModul {
-
+namespace bugger
+{
+   template <typename REAL>
+   class VarroundModul : public BuggerModul<REAL>
+   {
    public:
 
-      explicit VarroundModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
-                    std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory) {
+      explicit VarroundModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+                    std::shared_ptr<SolverFactory<REAL>>& _factory)
+                    : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
+      {
          this->setName("varround");
       }
 
    private:
 
       bool
-      isVarroundAdmissible(const Problem<double>& problem, const int& col) const {
+      isVarroundAdmissible(const Problem<REAL>& problem, const int& col) const
+      {
          if( problem.getColFlags( )[ col ].test(ColFlag::kFixed) )
             return false;
-         if( !num.isZetaIntegral(problem.getObjective( ).coefficients[ col ]) )
+         if( !this->num.isZetaIntegral(problem.getObjective( ).coefficients[ col ]) )
             return true;
          bool lbinf = problem.getColFlags( )[ col ].test(ColFlag::kLbInf);
          bool ubinf = problem.getColFlags( )[ col ].test(ColFlag::kUbInf);
-         double lb = problem.getLowerBounds( )[ col ];
-         double ub = problem.getUpperBounds( )[ col ];
-         return ( lbinf || ubinf || !num.isZetaEq(lb, ub) ) && ( ( !lbinf && !num.isZetaIntegral(lb) ) || ( !ubinf && !num.isZetaIntegral(ub) ) );
+         REAL lb { problem.getLowerBounds( )[ col ] };
+         REAL ub { problem.getUpperBounds( )[ col ] };
+         return ( lbinf || ubinf || !this->num.isZetaEq(lb, ub) ) && ( ( !lbinf && !this->num.isZetaIntegral(lb) ) || ( !ubinf && !this->num.isZetaIntegral(ub) ) );
       }
 
       ModulStatus
-      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override {
-
+      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
+      {
          if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;
 
          long long batchsize = 1;
 
-         if( parameters.nbatches > 0 )
+         if( this->parameters.nbatches > 0 )
          {
-            batchsize = parameters.nbatches - 1;
+            batchsize = this->parameters.nbatches - 1;
             for( int i = 0; i < problem.getNCols( ); ++i )
                if( isVarroundAdmissible(problem, i) )
                   ++batchsize;
-            if( batchsize == parameters.nbatches - 1 )
+            if( batchsize == this->parameters.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
-            batchsize /= parameters.nbatches;
+            batchsize /= this->parameters.nbatches;
          }
 
          bool admissible = false;
-         auto copy = Problem<double>(problem);
-         Vec<std::pair<int, double>> applied_objectives { };
-         Vec<std::pair<int, double>> applied_lowers { };
-         Vec<std::pair<int, double>> applied_uppers { };
-         Vec<std::pair<int, double>> batches_obj { };
-         Vec<std::pair<int, double>> batches_lb { };
-         Vec<std::pair<int, double>> batches_ub { };
+         auto copy = Problem<REAL>(problem);
+         Vec<std::pair<int, REAL>> applied_objectives { };
+         Vec<std::pair<int, REAL>> applied_lowers { };
+         Vec<std::pair<int, REAL>> applied_uppers { };
+         Vec<std::pair<int, REAL>> batches_obj { };
+         Vec<std::pair<int, REAL>> batches_lb { };
+         Vec<std::pair<int, REAL>> batches_ub { };
          batches_obj.reserve(batchsize);
          batches_lb.reserve(batchsize);
          batches_ub.reserve(batchsize);
@@ -89,26 +93,26 @@ namespace bugger {
             if( isVarroundAdmissible(copy, col) )
             {
                admissible = true;
-               double lb = num.round(copy.getLowerBounds( )[ col ]);
-               double ub = num.round(copy.getUpperBounds( )[ col ]);
+               REAL lb { this->num.round(copy.getLowerBounds( )[ col ]) };
+               REAL ub { this->num.round(copy.getUpperBounds( )[ col ]) };
                if( solution.status == SolutionStatus::kFeasible )
                {
-                  double value = solution.primal[ col ];
-                  lb = num.min(lb, num.epsFloor(value));
-                  ub = num.max(ub, num.epsCeil(value));
+                  REAL value { solution.primal[ col ] };
+                  lb = this->num.min(lb, this->num.epsFloor(value));
+                  ub = this->num.max(ub, this->num.epsCeil(value));
                }
-               if( !num.isZetaIntegral(copy.getObjective( ).coefficients[ col ]) )
+               if( !this->num.isZetaIntegral(copy.getObjective( ).coefficients[ col ]) )
                {
-                  double obj = num.round(copy.getObjective( ).coefficients[ col ]);
+                  REAL obj { this->num.round(copy.getObjective( ).coefficients[ col ]) };
                   copy.getObjective( ).coefficients[ col ] = obj;
                   batches_obj.emplace_back(col, obj);
                }
-               if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) && !num.isZetaEq(copy.getLowerBounds( )[ col ], lb) )
+               if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) && !this->num.isZetaEq(copy.getLowerBounds( )[ col ], lb) )
                {
                   copy.getLowerBounds( )[ col ] = lb;
                   batches_lb.emplace_back(col, lb);
                }
-               if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) && !num.isZetaEq(copy.getUpperBounds( )[ col ], ub) )
+               if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) && !this->num.isZetaEq(copy.getUpperBounds( )[ col ], ub) )
                {
                   copy.getUpperBounds( )[ col ] = ub;
                   batches_ub.emplace_back(col, ub);
@@ -118,14 +122,14 @@ namespace bugger {
 
             if( batch >= 1 && ( batch >= batchsize || col >= copy.getNCols( ) - 1 ) )
             {
-               if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
+               if( this->call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
-                  copy = Problem<double>(problem);
-                  for( const auto &item: applied_objectives )
+                  copy = Problem<REAL>(problem);
+                  for( const auto& item: applied_objectives )
                      copy.getObjective( ).coefficients[ item.first ] = item.second;
-                  for( const auto &item: applied_lowers )
+                  for( const auto& item: applied_lowers )
                      copy.getLowerBounds( )[ item.first ] = item.second;
-                  for( const auto &item: applied_uppers )
+                  for( const auto& item: applied_uppers )
                      copy.getUpperBounds( )[ item.first ] = item.second;
                }
                else
@@ -146,7 +150,7 @@ namespace bugger {
          if( applied_objectives.empty() && applied_lowers.empty() && applied_uppers.empty() )
             return ModulStatus::kUnsuccesful;
          problem = copy;
-         nchgcoefs += applied_objectives.size() + applied_lowers.size() + applied_uppers.size();
+         this->nchgcoefs += applied_objectives.size() + applied_lowers.size() + applied_uppers.size();
          return ModulStatus::kSuccessful;
       }
    };
