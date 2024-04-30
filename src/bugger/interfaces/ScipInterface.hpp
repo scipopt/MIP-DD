@@ -56,6 +56,8 @@ namespace bugger
    {
    public:
 
+      static const String VERB;
+
       int arithmetic = 0;
       int mode = -1;
       double limitspace = 1.0;
@@ -68,12 +70,13 @@ namespace bugger
       bool set_time_limit = false;
    };
 
+   const String ScipParameters::VERB = "display/verblevel";
+
    template <typename REAL>
    class ScipInterface : public SolverInterface<REAL>
    {
    private:
 
-      static const String VERB;
       const ScipParameters& parameters;
       const HashMap<String, char>& limits;
       SCIP* scip = nullptr;
@@ -136,7 +139,7 @@ namespace bugger
          {
             SCIP_PARAM* param = params[ i ];
             String name { param->name };
-            if( name == VERB )
+            if( name == ScipParameters::VERB )
                continue;
             auto limit = limits.find(name);
             if( limit != limits.end() )
@@ -226,7 +229,7 @@ namespace bugger
          if( this->msg.getVerbosityLevel() < VerbosityLevel::kDetailed )
             SCIPsetMessagehdlrQuiet(scip, TRUE);
          else
-            SCIPsetIntParam(scip, VERB.c_str(), 5);
+            SCIPsetIntParam(scip, ScipParameters::VERB.c_str(), 5);
 
          // optimize
          if( parameters.mode == -1 )
@@ -764,9 +767,6 @@ namespace bugger
          }
       }
    };
-
-   template <typename REAL>
-   const String ScipInterface<REAL>::VERB = "display/verblevel";
 
    template <typename REAL>
    class ScipFactory : public SolverFactory<REAL>
