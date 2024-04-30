@@ -515,7 +515,7 @@ namespace bugger
             soplex->setIntParam(SoplexParameters::VERB, SoPlex::VERBOSITY_DEBUG);
          }
          return soplex->writeFile((filename + ".lp").c_str(), &rowNames, &colNames
-#if SOPLEX_VERSION_API >= 15
+#if SOPLEX_APIVERSION >= 15
                , nullptr, true, true
 #endif
                );
