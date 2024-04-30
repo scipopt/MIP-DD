@@ -31,10 +31,10 @@
 #include "bugger/modules/SettingModul.hpp"
 
 
-namespace bugger {
-
-   class BuggerRun {
-
+namespace bugger
+{
+   class BuggerRun
+   {
    private:
 
       const Message& msg;
@@ -50,14 +50,14 @@ namespace bugger {
             : msg(_msg), num(_num), parameters(_parameters), factory(_factory), modules(_modules), results(_modules.size()) { }
 
       bool
-      is_time_exceeded(const Timer& timer) const {
-
+      is_time_exceeded(const Timer& timer) const
+      {
          return timer.getTime() >= parameters.tlim;
       }
 
       void
-      apply(const OptionsInfo& optionsInfo, SettingModul* const setting) {
-
+      apply(const OptionsInfo& optionsInfo, SettingModul* const setting)
+      {
          msg.info("\nMIP Solver:\n");
          factory->create_solver(msg)->print_header();
          msg.info("\n");
@@ -171,19 +171,29 @@ namespace bugger {
 
    private:
 
-      void
-      check_feasibility_of_solution(const Problem<double>& problem, const Solution<double>& solution) {
+      double
+      get_linear_activity(const SparseVectorView<double>& data, const Solution<double>& solution) const
+      {
+         StableSum<double> sum;
+         for( int i = 0; i < data.getLength( ); ++i )
+            sum.add(data.getValues( )[ i ] * solution.primal[ data.getIndices( )[ i ] ]);
+         return sum.get( );
+      }
 
+      void
+      check_feasibility_of_solution(const Problem<double>& problem, const Solution<double>& solution)
+      {
          if( solution.status != SolutionStatus::kFeasible )
             return;
-         const Vec<double>& ub = problem.getUpperBounds();
+
          const Vec<double>& lb = problem.getLowerBounds();
+         const Vec<double>& ub = problem.getUpperBounds();
+         double viol;
          double maxviol = 0.0;
          int maxindex = -1;
          bool maxrow = false;
          bool maxupper = false;
          bool maxintegral = false;
-         double viol;
 
          msg.info("\nCheck:\n");
          for( int col = 0; col < problem.getNCols(); col++ )
@@ -234,30 +244,20 @@ namespace bugger {
             }
          }
 
-         const Vec<double>& rhs = problem.getConstraintMatrix().getRightHandSides();
          const Vec<double>& lhs = problem.getConstraintMatrix().getLeftHandSides();
+         const Vec<double>& rhs = problem.getConstraintMatrix().getRightHandSides();
 
          for( int row = 0; row < problem.getNRows(); row++ )
          {
             if( problem.getRowFlags()[row].test( RowFlag::kRedundant ) )
                continue;
 
-            double rowValue = 0;
-            auto entries = problem.getConstraintMatrix().getRowCoefficients( row );
-            for( int j = 0; j < entries.getLength(); j++ )
-            {
-               int col = entries.getIndices()[j];
-               if( problem.getColFlags()[col].test( ColFlag::kInactive ) )
-                  continue;
-               double x = entries.getValues()[j];
-               double primal = solution.primal[col];
-               rowValue += x * primal;
-            }
+            double activity = get_linear_activity(problem.getConstraintMatrix().getRowCoefficients(row), solution);
 
-            if( !problem.getRowFlags()[row].test( RowFlag::kLhsInf ) && rowValue < lhs[row] )
+            if( !problem.getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < lhs[row] )
             {
-               msg.detailed( "\tRow {:<3} violates left side ({:<3} < {:<3})\n", problem.getConstraintNames()[row], rowValue, lhs[row] );
-               viol = lhs[row] - rowValue;
+               msg.detailed( "\tRow {:<3} violates left side ({:<3} < {:<3})\n", problem.getConstraintNames()[row], activity, lhs[row] );
+               viol = lhs[row] - activity;
                if( viol > maxviol )
                {
                   maxviol = viol;
@@ -268,10 +268,10 @@ namespace bugger {
                }
             }
 
-            if( !problem.getRowFlags()[row].test( RowFlag::kRhsInf ) && rowValue > rhs[row] )
+            if( !problem.getRowFlags()[row].test( RowFlag::kRhsInf ) && activity > rhs[row] )
             {
-               msg.detailed( "\tRow {:<3} violates right side ({:<3} > {:<3})\n", problem.getConstraintNames()[row], rowValue, rhs[row] );
-               viol = rowValue - rhs[row];
+               msg.detailed( "\tRow {:<3} violates right side ({:<3} > {:<3})\n", problem.getConstraintNames()[row], activity, rhs[row] );
+               viol = activity - rhs[row];
                if( viol > maxviol )
                {
                   maxviol = viol;
@@ -291,8 +291,8 @@ namespace bugger {
       }
 
       std::pair<char, SolverStatus>
-      getOriginalSolveStatus(const SolverSettings& settings, const Problem<double>& problem, Solution<double>& solution, const std::shared_ptr<SolverFactory>& factory) {
-
+      getOriginalSolveStatus(const SolverSettings& settings, const Problem<double>& problem, Solution<double>& solution, const std::shared_ptr<SolverFactory>& factory)
+      {
          auto solver = factory->create_solver(msg);
          solver->doSetUp(settings, problem, solution);
          Vec<int> empty_passcodes{};
@@ -300,8 +300,8 @@ namespace bugger {
       }
 
       bugger::ModulStatus
-      evaluateResults( ) {
-
+      evaluateResults( )
+      {
          int largestValue = static_cast<int>( bugger::ModulStatus::kDidNotRun );
 
          for( int module = 0; module < parameters.maxstages; ++module )
@@ -311,8 +311,8 @@ namespace bugger {
       }
 
       void
-      printStats(const double& time, const std::pair<char, SolverStatus>& final_result, int final_round, int final_module) {
-
+      printStats(const double& time, const std::pair<char, SolverStatus>& final_result, int final_round, int final_module)
+      {
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n",
                   "modules", "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
          int nsolves = 0;

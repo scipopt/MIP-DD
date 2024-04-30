@@ -26,21 +26,23 @@
 #include "bugger/modules/BuggerModul.hpp"
 
 
-namespace bugger {
-
-   class CoefficientModul : public BuggerModul {
-
+namespace bugger
+{
+   class CoefficientModul : public BuggerModul
+   {
    public:
 
       explicit CoefficientModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
-                                std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory) {
+                                std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory)
+      {
          this->setName("coefficient");
       }
 
    private:
 
       bool
-      isFixingAdmissible(const Problem<double>& problem, const int& col) const {
+      isFixingAdmissible(const Problem<double>& problem, const int& col) const
+      {
          return !problem.getColFlags( )[ col ].test(ColFlag::kFixed)
              && !problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
              && !problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
@@ -48,7 +50,8 @@ namespace bugger {
       }
 
       bool
-      isCoefficientAdmissible(const Problem<double>& problem, const int& row) const {
+      isCoefficientAdmissible(const Problem<double>& problem, const int& row) const
+      {
          if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant) )
             return false;
          auto data = problem.getConstraintMatrix( ).getRowCoefficients(row);
@@ -59,8 +62,8 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override {
-
+      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override
+      {
          int batchsize = 1;
 
          if( parameters.nbatches > 0 )

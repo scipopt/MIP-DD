@@ -26,21 +26,23 @@
 #include "bugger/modules/BuggerModul.hpp"
 
 
-namespace bugger {
-
-   class ObjectiveModul : public BuggerModul {
-
+namespace bugger
+{
+   class ObjectiveModul : public BuggerModul
+   {
    public:
 
       explicit ObjectiveModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
-                              std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory) {
+                              std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory)
+      {
          this->setName("objective");
       }
 
    private:
 
       bool
-      isObjectiveAdmissible(const Problem<double>& problem, const int& col) const {
+      isObjectiveAdmissible(const Problem<double>& problem, const int& col) const
+      {
          return !num.isZetaZero(problem.getObjective( ).coefficients[ col ])
            && ( problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
              || problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
@@ -48,8 +50,8 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override {
-
+      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override
+      {
          if( solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;
 
