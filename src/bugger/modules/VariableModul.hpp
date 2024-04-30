@@ -26,31 +26,33 @@
 #include "bugger/modules/BuggerModul.hpp"
 
 
-namespace bugger {
-
+namespace bugger
+{
    template <typename REAL>
-   class VariableModul : public BuggerModul<REAL> {
-
+   class VariableModul : public BuggerModul<REAL>
+   {
    public:
 
       explicit VariableModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
                              std::shared_ptr<SolverFactory<REAL>>& _factory)
-                             : BuggerModul<REAL>(_msg, _num, _parameters, _factory) {
+                             : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
+      {
          this->setName("variable");
       }
 
    private:
 
       bool
-      isVariableAdmissible(const Problem<REAL>& problem, const int& col) const {
+      isVariableAdmissible(const Problem<REAL>& problem, const int& col) const
+      {
          return problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
              || problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
              || !this->num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
       }
 
       ModulStatus
-      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override {
-
+      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
+      {
          if( solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;
 

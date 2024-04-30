@@ -34,9 +34,11 @@
 #endif
 
 
-namespace bugger {
+namespace bugger
+{
+   enum class ModulStatus : int
+   {
 
-   enum class ModulStatus : int {
       kDidNotRun = 0,
 
       kNotAdmissible = 1,
@@ -48,8 +50,8 @@ namespace bugger {
    };
 
    template <typename REAL>
-   class BuggerModul {
-
+   class BuggerModul
+   {
    private:
 
       String name { };
@@ -83,21 +85,23 @@ namespace bugger {
       virtual ~BuggerModul( ) = default;
 
       virtual bool
-      initialize( ) {
+      initialize( )
+      {
          return false;
       }
 
       int
-      getNSolves( ) {
+      getNSolves( )
+      {
          return nsolves;
       }
 
       virtual void
-      addModuleParameters(ParameterSet& paramSet) {
-      }
+      addModuleParameters(ParameterSet& paramSet) { };
 
       void
-      addParameters(ParameterSet& paramSet) {
+      addParameters(ParameterSet& paramSet)
+      {
          paramSet.addParameter(
                fmt::format("{}.enabled", this->name).c_str( ),
                fmt::format("enable module {}", this->name).c_str( ),
@@ -107,7 +111,8 @@ namespace bugger {
       }
 
       ModulStatus
-      run(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution, const Timer& timer) {
+      run(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution, const Timer& timer)
+      {
          last_result = { SolverRetcode::OKAY, SolverStatus::kUnknown };
          last_effort = -1;
          if( !enabled )
@@ -137,41 +142,48 @@ namespace bugger {
       }
 
       void
-      printStats(const Message& message) {
+      printStats(const Message& message)
+      {
          double success = ncalls == 0 ? 0.0 : ( (double)nsuccessCall / (double)ncalls ) * 100.0;
          int changes = nchgcoefs + nfixedvars + nchgsides + naggrvars + ndeletedrows + nchgsettings;
          message.info(" {:>18} {:>12} {:>12} {:>18.1f} {:>12} {:>18.3f}\n", name, ncalls, changes, success, nsolves, execTime);
       }
 
       bool
-      isEnabled( ) const {
+      isEnabled( ) const
+      {
          return this->enabled;
       }
 
       const String&
-      getName( ) const {
+      getName( ) const
+      {
          return this->name;
       }
 
       std::pair<char, SolverStatus>
-      getLastResult( ) const {
+      getLastResult( ) const
+      {
          return last_result;
       }
 
       long long
-      getLastSolvingEffort( ) const {
+      getLastSolvingEffort( ) const
+      {
          return last_effort;
       }
 
       void
-      setEnabled(bool value) {
+      setEnabled(bool value)
+      {
          this->enabled = value;
       }
 
    protected:
 
       REAL
-      get_linear_activity(const SparseVectorView<REAL>& data, const Solution<REAL>& solution) const {
+      get_linear_activity(const SparseVectorView<REAL>& data, const Solution<REAL>& solution) const
+      {
          StableSum<REAL> sum;
          for( int i = 0; i < data.getLength( ); ++i )
             sum.add(data.getValues( )[ i ] * solution.primal[ data.getIndices( )[ i ] ]);
@@ -182,18 +194,20 @@ namespace bugger {
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) = 0;
 
       void
-      setName(const String& value) {
+      setName(const String& value)
+      {
          this->name = value;
       }
 
-
       static bool
-      is_time_exceeded(const Timer& timer, double tlim) {
+      is_time_exceeded(const Timer& timer, double tlim)
+      {
          return timer.getTime( ) >= tlim;
       }
 
       BuggerStatus
-      call_solver(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution) {
+      call_solver(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution)
+      {
          ++nsolves;
          auto solver = factory->create_solver(msg);
          solver->doSetUp(settings, problem, solution);
@@ -230,7 +244,8 @@ namespace bugger {
          }
       }
 
-      void apply_changes(Problem<REAL>& copy, const Vec<MatrixEntry<REAL>>& entries) const {
+      void apply_changes(Problem<REAL>& copy, const Vec<MatrixEntry<REAL>>& entries) const
+      {
          MatrixBuffer<REAL> matrixBuffer { };
          for( const auto &entry: entries )
             matrixBuffer.addEntry(entry.row, entry.col, entry.val);

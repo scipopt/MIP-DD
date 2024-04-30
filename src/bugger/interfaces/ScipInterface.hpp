@@ -623,11 +623,12 @@ namespace bugger
          SCIP_CALL(SCIPsetObjsense(scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
          vars.resize(this->model->getNCols( ));
          if( solution_exists )
-            this->value = obj.offset;
+            this->value = this->get_primal_objective(solution);
          else if( this->reference->status == SolutionStatus::kUnbounded )
             this->value = obj.sense ? -SCIPinfinity(scip) : SCIPinfinity(scip);
          else if( this->reference->status == SolutionStatus::kInfeasible )
             this->value = obj.sense ? SCIPinfinity(scip) : -SCIPinfinity(scip);
+
          for( int col = 0; col < ncols; ++col )
          {
             if( domains.flags[ col ].test(ColFlag::kFixed) )
@@ -656,8 +657,6 @@ namespace bugger
                   type = SCIP_VARTYPE_CONTINUOUS;
                SCIP_CALL(SCIPcreateVarBasic(scip, &var, varNames[ col ].c_str( ), lb, ub, obj.coefficients[ col ],
                                             type));
-               if( solution_exists )
-                  this->value += obj.coefficients[ col ] * this->reference->primal[ col ];
                SCIP_CALL(SCIPaddVar(scip, var));
                vars[ col ] = var;
                SCIP_CALL(SCIPreleaseVar(scip, &var));

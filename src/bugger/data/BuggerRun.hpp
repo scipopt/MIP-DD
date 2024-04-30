@@ -31,11 +31,11 @@
 #include "bugger/modules/SettingModul.hpp"
 
 
-namespace bugger {
-
+namespace bugger
+{
    template <typename REAL>
-   class BuggerRun {
-
+   class BuggerRun
+   {
    private:
 
       const Message& msg;
@@ -51,14 +51,14 @@ namespace bugger {
             : msg(_msg), num(_num), parameters(_parameters), factory(_factory), modules(_modules), results(_modules.size()) { }
 
       bool
-      is_time_exceeded(const Timer& timer) const {
-
+      is_time_exceeded(const Timer& timer) const
+      {
          return timer.getTime() >= parameters.tlim;
       }
 
       void
-      apply(const OptionsInfo& optionsInfo, SettingModul<REAL>* const setting) {
-
+      apply(const OptionsInfo& optionsInfo, SettingModul<REAL>* const setting)
+      {
          msg.info("\nMIP Solver:\n");
          factory->create_solver(msg)->print_header();
          msg.info("\n");
@@ -194,9 +194,18 @@ namespace bugger {
 
    private:
 
-      void
-      check_feasibility_of_solution(const Problem<REAL>& problem, const Solution<REAL>& solution) {
+      REAL
+      get_linear_activity(const SparseVectorView<REAL>& data, const Solution<REAL>& solution) const
+      {
+         StableSum<REAL> sum;
+         for( int i = 0; i < data.getLength( ); ++i )
+            sum.add(data.getValues( )[ i ] * solution.primal[ data.getIndices( )[ i ] ]);
+         return sum.get( );
+      }
 
+      void
+      check_feasibility_of_solution(const Problem<REAL>& problem, const Solution<REAL>& solution)
+      {
          if( solution.status != SolutionStatus::kFeasible )
             return;
 
@@ -266,11 +275,7 @@ namespace bugger {
             if( problem.getRowFlags()[row].test( RowFlag::kRedundant ) )
                continue;
 
-            REAL activity { };
-            const auto& coefficients = problem.getConstraintMatrix().getRowCoefficients(row);
-
-            for( int j = 0; j < coefficients.getLength(); ++j )
-               activity += coefficients.getValues()[j] * solution.primal[coefficients.getIndices()[j]];
+            REAL activity { get_linear_activity(problem.getConstraintMatrix().getRowCoefficients(row), solution) };
 
             if( !problem.getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < lhs[row] )
             {
@@ -310,8 +315,8 @@ namespace bugger {
       }
 
       bugger::ModulStatus
-      evaluateResults( ) {
-
+      evaluateResults( )
+      {
          int largestValue = static_cast<int>( bugger::ModulStatus::kDidNotRun );
 
          for( int module = 0; module < parameters.maxstages; ++module )
@@ -321,8 +326,8 @@ namespace bugger {
       }
 
       void
-      printStats(const double& time, const std::pair<char, SolverStatus>& last_result, int last_round, int last_module, long long last_effort) {
-
+      printStats(const double& time, const std::pair<char, SolverStatus>& last_result, int last_round, int last_module, long long last_effort)
+      {
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n",
                   "modules", "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
          int nsolves = 0;

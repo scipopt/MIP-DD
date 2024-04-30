@@ -26,23 +26,25 @@
 #include "bugger/modules/BuggerModul.hpp"
 
 
-namespace bugger {
-
+namespace bugger
+{
    template <typename REAL>
-   class VarroundModul : public BuggerModul<REAL> {
-
+   class VarroundModul : public BuggerModul<REAL>
+   {
    public:
 
       explicit VarroundModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
                     std::shared_ptr<SolverFactory<REAL>>& _factory)
-                    : BuggerModul<REAL>(_msg, _num, _parameters, _factory) {
+                    : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
+      {
          this->setName("varround");
       }
 
    private:
 
       bool
-      isVarroundAdmissible(const Problem<REAL>& problem, const int& col) const {
+      isVarroundAdmissible(const Problem<REAL>& problem, const int& col) const
+      {
          if( problem.getColFlags( )[ col ].test(ColFlag::kFixed) )
             return false;
          if( !this->num.isZetaIntegral(problem.getObjective( ).coefficients[ col ]) )
@@ -55,8 +57,8 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override {
-
+      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
+      {
          if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;
 

@@ -26,23 +26,25 @@
 #include "bugger/modules/BuggerModul.hpp"
 
 
-namespace bugger {
-
+namespace bugger
+{
    template <typename REAL>
-   class SideModul : public BuggerModul<REAL> {
-
+   class SideModul : public BuggerModul<REAL>
+   {
    public:
 
       explicit SideModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
                          std::shared_ptr<SolverFactory<REAL>>& _factory)
-                         : BuggerModul<REAL>(_msg, _num, _parameters, _factory) {
+                         : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
+      {
          this->setName("side");
       }
 
    private:
 
       bool
-      isSideAdmissable(const Problem<REAL>& problem, const int& row) const {
+      isSideAdmissable(const Problem<REAL>& problem, const int& row) const
+      {
          return !problem.getRowFlags( )[ row ].test(RowFlag::kRedundant)
            && ( problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
              || problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
@@ -50,8 +52,8 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override {
-
+      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
+      {
          if( solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;
 

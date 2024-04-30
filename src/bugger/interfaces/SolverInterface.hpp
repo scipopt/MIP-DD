@@ -126,6 +126,44 @@ namespace bugger
    protected:
 
       REAL
+      get_primal_activity(const SparseVectorView<REAL>& data, const Solution<REAL>& solution) const
+      {
+         StableSum<REAL> sum;
+         for( int i = 0; i < data.getLength( ); ++i )
+            sum.add(data.getValues( )[ i ] * solution.primal[ data.getIndices( )[ i ] ]);
+         return sum.get( );
+      }
+
+      REAL
+      get_ray_activity(const SparseVectorView<REAL>& data, const Solution<REAL>& solution) const
+      {
+         StableSum<REAL> sum;
+         for( int i = 0; i < data.getLength( ); ++i )
+            sum.add(data.getValues( )[ i ] * solution.ray[ data.getIndices( )[ i ] ]);
+         return sum.get( );
+      }
+
+      REAL
+      get_primal_objective(const Solution<REAL>& solution) const
+      {
+         StableSum<REAL> sum { model->getObjective().offset };
+         for( int i = 0; i < model->getNCols(); ++i )
+            if( !model->getColFlags()[i].test( ColFlag::kFixed ) )
+               sum.add(model->getObjective().coefficients[i] * solution.primal[i]);
+         return sum.get( );
+      }
+
+      REAL
+      get_ray_objective(const Solution<REAL>& solution) const
+      {
+         StableSum<REAL> sum;
+         for( int i = 0; i < model->getNCols(); ++i )
+            if( !model->getColFlags()[i].test( ColFlag::kFixed ) )
+               sum.add(model->getObjective().coefficients[i] * solution.ray[i]);
+         return sum.get( );
+      }
+
+      REAL
       relax(const REAL& bound, const bool& increase, const REAL& tolerance, const REAL& infinity)
       {
          assert(tolerance > 0.0);
@@ -209,11 +247,7 @@ namespace bugger
                   if( model->getRowFlags()[row].test( RowFlag::kRedundant ) )
                      continue;
 
-                  REAL activity { };
-                  const auto& coefficients = model->getConstraintMatrix().getRowCoefficients(row);
-
-                  for( int j = 0; j < coefficients.getLength(); ++j )
-                     activity += coefficients.getValues()[j] * solution[i].primal[coefficients.getIndices()[j]];
+                  REAL activity { get_primal_activity(model->getConstraintMatrix().getRowCoefficients(row), solution[i]) };
 
                   if( ( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < relax( model->getConstraintMatrix().getLeftHandSides()[row],  false, tolerance, infinity ) )
                    || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity > relax( model->getConstraintMatrix().getRightHandSides()[row], true,  tolerance, infinity ) ) )
@@ -252,11 +286,7 @@ namespace bugger
                   if( model->getRowFlags()[row].test( RowFlag::kRedundant ) )
                      continue;
 
-                  REAL activity { };
-                  const auto& coefficients = model->getConstraintMatrix().getRowCoefficients(row);
-
-                  for( int j = 0; j < coefficients.getLength(); ++j )
-                     activity += coefficients.getValues()[j] * solution[i].ray[coefficients.getIndices()[j]];
+                  REAL activity { get_ray_activity(model->getConstraintMatrix().getRowCoefficients(row), solution[i]) };
 
                   if( ( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < -scale )
                    || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity >  scale ) )
@@ -287,17 +317,12 @@ namespace bugger
          {
             assert(solution.ray.size() == model->getNCols());
 
+            REAL slope { get_ray_objective(solution) };
             REAL scale { };
-            REAL slope { };
 
             for( int col = 0; col < model->getNCols(); ++col )
-            {
                if( !model->getColFlags()[col].test( ColFlag::kFixed ) )
-               {
                   scale = std::max(scale, abs(solution.ray[col]));
-                  slope += model->getObjective().coefficients[col] * solution.ray[col];
-               }
-            }
 
             scale *= tolerance;
 
@@ -313,11 +338,7 @@ namespace bugger
          {
             assert(solution.primal.size() == model->getNCols());
 
-            result = model->getObjective().offset;
-
-            for( int col = 0; col < model->getNCols(); ++col )
-               if( !model->getColFlags()[col].test( ColFlag::kFixed ) )
-                  result += model->getObjective().coefficients[col] * solution.primal[col];
+            result = get_primal_objective(solution);
          }
 
          if( model->getObjective().sense )

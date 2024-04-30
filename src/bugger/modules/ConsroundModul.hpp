@@ -26,23 +26,25 @@
 #include "bugger/modules/BuggerModul.hpp"
 
 
-namespace bugger {
-
+namespace bugger
+{
    template <typename REAL>
-   class ConsRoundModul : public BuggerModul<REAL> {
-
+   class ConsRoundModul : public BuggerModul<REAL>
+   {
    public:
 
       explicit ConsRoundModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
                               std::shared_ptr<SolverFactory<REAL>>& _factory)
-                              : BuggerModul<REAL>(_msg, _num, _parameters, _factory) {
+                              : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
+      {
          this->setName("consround");
       }
 
    private:
 
       bool
-      isConsroundAdmissible(const Problem<REAL>& problem, const int& row) const {
+      isConsroundAdmissible(const Problem<REAL>& problem, const int& row) const
+      {
          if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant) )
             return false;
          bool lhsinf = problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf);
@@ -59,8 +61,8 @@ namespace bugger {
       }
 
       ModulStatus
-      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override {
-
+      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
+      {
          if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;
 
