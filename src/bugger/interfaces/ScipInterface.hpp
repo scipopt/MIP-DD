@@ -85,8 +85,8 @@ namespace bugger
    public:
 
       explicit ScipInterface(const Message& _msg, const ScipParameters& _parameters,
-                             const HashMap<String, char>& _limits) : SolverInterface<REAL>(_msg), parameters(_parameters),
-                             limits(_limits)
+                             const HashMap<String, char>& _limits) : SolverInterface<REAL>(_msg),
+                             parameters(_parameters), limits(_limits)
       {
          if( SCIPcreate(&scip) != SCIP_OKAY || SCIPincludeDefaultPlugins(scip) != SCIP_OKAY )
             throw std::runtime_error("could not create SCIP");
@@ -816,7 +816,7 @@ namespace bugger
                if( parameters.set_dual_limit )
                {
                   if( scip->has_setting(name = "limits/dual") || scip->has_setting(name = "limits/proofstop") )
-                     limits[name] = ScipLimit::DUAL;
+                     limits[name] = DUAL;
                   else
                   {
                      msg.info("Dual limit disabled.\n");
@@ -826,7 +826,7 @@ namespace bugger
                if( parameters.set_prim_limit )
                {
                   if( scip->has_setting(name = "limits/primal") || scip->has_setting(name = "limits/objectivestop") )
-                     limits[name] = ScipLimit::PRIM;
+                     limits[name] = PRIM;
                   else
                   {
                      msg.info("Primal limit disabled.\n");
@@ -844,7 +844,7 @@ namespace bugger
                   if( parameters.set_best_limit )
                   {
                      if( scip->has_setting(name = "limits/bestsol") )
-                        limits[name] = ScipLimit::BEST;
+                        limits[name] = BEST;
                      else
                      {
                         msg.info("Bestsolution limit disabled.\n");
@@ -854,7 +854,7 @@ namespace bugger
                   if( parameters.set_solu_limit )
                   {
                      if( scip->has_setting(name = "limits/solutions") )
-                        limits[name] = ScipLimit::SOLU;
+                        limits[name] = SOLU;
                      else
                      {
                         msg.info("Solution limit disabled.\n");
@@ -864,7 +864,7 @@ namespace bugger
                   if( parameters.set_rest_limit )
                   {
                      if( scip->has_setting(name = "limits/restarts") )
-                        limits[name] = ScipLimit::REST;
+                        limits[name] = REST;
                      else
                      {
                         msg.info("Restart limit disabled.\n");
@@ -883,7 +883,7 @@ namespace bugger
                if( parameters.set_tota_limit )
                {
                   if( scip->has_setting(name = "limits/totalnodes") )
-                     limits[name] = ScipLimit::TOTA;
+                     limits[name] = TOTA;
                   else
                   {
                      msg.info("Totalnode limit disabled.\n");
@@ -893,7 +893,7 @@ namespace bugger
                if( parameters.set_time_limit )
                {
                   if( scip->has_setting(name = "limits/time") )
-                     limits[name] = ScipLimit::TIME;
+                     limits[name] = TIME;
                   else
                   {
                      msg.info("Time limit disabled.\n");

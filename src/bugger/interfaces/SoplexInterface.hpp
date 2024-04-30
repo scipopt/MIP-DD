@@ -38,11 +38,19 @@ using namespace soplex;
 
 namespace bugger
 {
+   enum SoplexLimit : char
+   {
+      DUAL = 1,
+      PRIM = 2,
+      ITER = 3,
+      TIME = 4
+   };
 
    class SoplexParameters
    {
-
    public:
+
+      static const SoPlex::IntParam VERB;
 
       int mode = -1;
       double limitspace = 1.0;
@@ -52,23 +60,15 @@ namespace bugger
       bool set_time_limit = false;
    };
 
-   class SoplexInterface : public SolverInterface
+   const SoPlex::IntParam SoplexParameters::VERB = SoPlex::VERBOSITY;
+
+   template <typename REAL>
+   class SoplexInterface : public SolverInterface<REAL>
    {
-
-   public:
-
-      enum Limit : char
-      {
-         DUAL = 1,
-         PRIM = 2,
-         ITER = 3,
-         TIME = 4
-      };
-
    private:
 
-      static const SoPlex::IntParam VERB;
       static bool initial;
+
       SoplexParameters& parameters;
       HashMap<String, char>& limits;
       SoPlex* soplex;
@@ -79,19 +79,19 @@ namespace bugger
    public:
 
       explicit SoplexInterface(const Message& _msg, SoplexParameters& _parameters, HashMap<String, char>& _limits) :
-                               SolverInterface(_msg), parameters(_parameters), limits(_limits)
+                               SolverInterface<REAL>(_msg), parameters(_parameters), limits(_limits)
       {
          soplex = new SoPlex();
          // suppress setting messages
-         soplex->setIntParam(VERB, SoPlex::VERBOSITY_DEBUG);
+         soplex->setIntParam(SoplexParameters::VERB, SoPlex::VERBOSITY_DEBUG);
       }
 
       void
       print_header( ) const override
       {
-         soplex->setIntParam(VERB, SoPlex::VERBOSITY_NORMAL);
+         soplex->setIntParam(SoplexParameters::VERB, SoPlex::VERBOSITY_NORMAL);
          soplex->printVersion();
-         soplex->setIntParam(VERB, SoPlex::VERBOSITY_DEBUG);
+         soplex->setIntParam(SoplexParameters::VERB, SoPlex::VERBOSITY_DEBUG);
       }
 
       bool
@@ -133,10 +133,10 @@ namespace bugger
                {
                   String name { 3, (char)(soplex->intParam(SoPlex::OBJSENSE) == SoPlex::OBJSENSE_MINIMIZE ? SoPlex::OBJLIMIT_UPPER : SoPlex::OBJLIMIT_LOWER) };
                   if( has_setting(name) )
-                     limits[name] = SoplexInterface::DUAL;
+                     limits[name] = DUAL;
                   else
                   {
-                     msg.info("Dual limit disabled.\n");
+                     this->msg.info("Dual limit disabled.\n");
                      parameters.set_dual_limit = false;
                   }
                }
@@ -144,10 +144,10 @@ namespace bugger
                {
                   String name { 3, (char)(soplex->intParam(SoPlex::OBJSENSE) == SoPlex::OBJSENSE_MINIMIZE ? SoPlex::OBJLIMIT_LOWER : SoPlex::OBJLIMIT_UPPER) };
                   if( has_setting(name) )
-                     limits[name] = SoplexInterface::PRIM;
+                     limits[name] = PRIM;
                   else
                   {
-                     msg.info("Primal limit disabled.\n");
+                     this->msg.info("Primal limit disabled.\n");
                      parameters.set_prim_limit = false;
                   }
                }
@@ -184,7 +184,7 @@ namespace bugger
 
          for( int i = 0; i < SoPlex::INTPARAM_COUNT; ++i )
          {
-            if( i == VERB || i == SoPlex::OBJSENSE )
+            if( i == SoplexParameters::VERB || i == SoPlex::OBJSENSE )
                continue;
             String name { 1, (char)i };
             auto limit = limits.find(name);
@@ -256,7 +256,7 @@ namespace bugger
       }
 
       void
-      doSetUp(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) override
+      doSetUp(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution) override
       {
          setup(settings, problem, solution);
       }
@@ -266,7 +266,7 @@ namespace bugger
       {
          char retcode = SPxSolver::ERROR;
          SolverStatus solverstatus = SolverStatus::kUndefinedError;
-         soplex->setIntParam(VERB, msg.getVerbosityLevel() < VerbosityLevel::kDetailed ? SoPlex::VERBOSITY_ERROR : SoPlex::VERBOSITY_FULL);
+         soplex->setIntParam(SoplexParameters::VERB, this->msg.getVerbosityLevel() < VerbosityLevel::kDetailed ? SoPlex::VERBOSITY_ERROR : SoPlex::VERBOSITY_FULL);
 
          // optimize
          if( parameters.mode == -1 )
@@ -312,7 +312,7 @@ namespace bugger
             }
 
             // reset return code
-            retcode = OKAY;
+            retcode = SolverRetcode::OKAY;
 
             if( parameters.mode == -1 )
             {
@@ -325,27 +325,27 @@ namespace bugger
                {
                   switch( passcode )
                   {
-                  case DUALFAIL:
+                  case SolverRetcode::DUALFAIL:
                      dual = false;
                      break;
-                  case PRIMALFAIL:
+                  case SolverRetcode::PRIMALFAIL:
                      primal = false;
                      break;
-                  case OBJECTIVEFAIL:
+                  case SolverRetcode::OBJECTIVEFAIL:
                      objective = false;
                      break;
                   }
                }
 
                // declare primal solution
-               Vec<Solution<double>> solution;
+               Vec<Solution<REAL>> solution;
 
                // check dual by reference solution objective
-               if( retcode == OKAY && dual && soplex->isDualFeasible() )
-                  retcode = check_dual_bound( soplex->objValueReal(), std::max(soplex->realParam(SoPlex::FEASTOL), soplex->realParam(SoPlex::OPTTOL)), soplex->realParam(SoPlex::INFTY) );
+               if( retcode == SolverRetcode::OKAY && dual && soplex->isDualFeasible() )
+                  retcode = this->check_dual_bound( soplex->objValueReal(), std::max(soplex->realParam(SoPlex::FEASTOL), soplex->realParam(SoPlex::OPTTOL)), soplex->realParam(SoPlex::INFTY) );
 
                // check primal by generated solution values
-               if( retcode == OKAY && ( primal && soplex->isPrimalFeasible() || objective ) )
+               if( retcode == SolverRetcode::OKAY && ( primal && soplex->isPrimalFeasible() || objective ) )
                {
                   solution.resize(1);
                   solution[0].status = SolutionStatus::kFeasible;
@@ -353,7 +353,7 @@ namespace bugger
                   soplex->getPrimalReal(solution[0].primal.data(), solution[0].primal.size());
 
                   for( int col = solution[0].primal.size() - 1, var = soplex->numCols(); col >= var; --col )
-                     solution[0].primal[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : solution[0].primal[--var];
+                     solution[0].primal[col] = this->model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : solution[0].primal[--var];
 
                   if( soplex->hasPrimalRay() )
                   {
@@ -362,20 +362,20 @@ namespace bugger
                      soplex->getPrimalRayReal(solution[0].ray.data(), solution[0].ray.size());
 
                      for( int col = solution[0].ray.size() - 1, var = soplex->numCols(); col >= var; --col )
-                        solution[0].ray[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : solution[0].ray[--var];
+                        solution[0].ray[col] = this->model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : solution[0].ray[--var];
                   }
 
                   if( primal )
-                     retcode = check_primal_solution( solution, std::max(soplex->realParam(SoPlex::FEASTOL), soplex->realParam(SoPlex::OPTTOL)), soplex->realParam(SoPlex::INFTY) );
+                     retcode = this->check_primal_solution( solution, std::max(soplex->realParam(SoPlex::FEASTOL), soplex->realParam(SoPlex::OPTTOL)), soplex->realParam(SoPlex::INFTY) );
                }
 
                // check objective by best solution evaluation
-               if( retcode == OKAY && objective )
+               if( retcode == SolverRetcode::OKAY && objective )
                {
                   if( solution.size() == 0 )
                      solution.emplace_back(SolutionStatus::kInfeasible);
 
-                  retcode = check_objective_value( soplex->objValueReal(), solution[0], std::max(soplex->realParam(SoPlex::FEASTOL), soplex->realParam(SoPlex::OPTTOL)), soplex->realParam(SoPlex::INFTY) );
+                  retcode = this->check_objective_value( soplex->objValueReal(), solution[0], std::max(soplex->realParam(SoPlex::FEASTOL), soplex->realParam(SoPlex::OPTTOL)), soplex->realParam(SoPlex::INFTY) );
                }
             }
          }
@@ -389,14 +389,14 @@ namespace bugger
          {
             if( passcode == retcode )
             {
-               retcode = OKAY;
+               retcode = SolverRetcode::OKAY;
                break;
             }
          }
          // restrict limit settings
-         if( retcode != OKAY )
+         if( retcode != SolverRetcode::OKAY )
          {
-            const auto& limitsettings = adjustment->getLimitSettings( );
+            const auto& limitsettings = this->adjustment->getLimitSettings( );
             for( int index = 0; index < limitsettings.size( ); ++index )
             {
                if( limitsettings[index].second < 0 || limitsettings[index].second > 1 )
@@ -428,8 +428,8 @@ namespace bugger
                   }
                   if( limitsettings[index].second < 0 || bound < limitsettings[index].second )
                   {
-                     msg.info("\t\t{} = {}\n", name, (long long)bound);
-                     adjustment->setLimitSettings(index, bound);
+                     this->msg.info("\t\t{} = {}\n", name, (long long)bound);
+                     this->adjustment->setLimitSettings(index, bound);
                   }
                }
             }
@@ -446,13 +446,13 @@ namespace bugger
             return -1;
       }
 
-      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>>
+      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>>
       readInstance(const String& settings_filename, const String& problem_filename) override
       {
          auto settings = parseSettings(settings_filename);
          if( !soplex->readFile(problem_filename.c_str(), &rowNames, &colNames) )
             return { settings, boost::none };
-         ProblemBuilder<double> builder;
+         ProblemBuilder<REAL> builder;
 
          // set objective offset
          builder.setObjOffset(soplex->realParam(SoPlex::OBJ_OFFSET));
@@ -510,9 +510,9 @@ namespace bugger
       {
          if( writesettings || limits.size() >= 1 )
          {
-            soplex->setIntParam(VERB, SoPlex::VERBOSITY_NORMAL);
+            soplex->setIntParam(SoplexParameters::VERB, SoPlex::VERBOSITY_NORMAL);
             soplex->saveSettingsFile((filename + ".set").c_str(), true);
-            soplex->setIntParam(VERB, SoPlex::VERBOSITY_DEBUG);
+            soplex->setIntParam(SoplexParameters::VERB, SoPlex::VERBOSITY_DEBUG);
          }
          return soplex->writeFile((filename + ".lp").c_str(), &rowNames, &colNames
 #if SOPLEX_VERSION_API >= 15
@@ -529,35 +529,35 @@ namespace bugger
    private:
 
       void
-      setup(SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution)
+      setup(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution)
       {
-         adjustment = &settings;
-         model = &problem;
-         reference = &solution;
-         bool solution_exists = reference->status == SolutionStatus::kFeasible;
-         int ncols = model->getNCols( );
-         int nrows = model->getNRows( );
-         const auto& varNames = model->getVariableNames( );
-         const auto& consNames = model->getConstraintNames( );
-         const auto& domains = model->getVariableDomains( );
-         const auto& obj = model->getObjective( );
-         const auto& consMatrix = model->getConstraintMatrix( );
+         this->adjustment = &settings;
+         this->model = &problem;
+         this->reference = &solution;
+         bool solution_exists = this->reference->status == SolutionStatus::kFeasible;
+         int ncols = this->model->getNCols( );
+         int nrows = this->model->getNRows( );
+         const auto& varNames = this->model->getVariableNames( );
+         const auto& consNames = this->model->getConstraintNames( );
+         const auto& domains = this->model->getVariableDomains( );
+         const auto& obj = this->model->getObjective( );
+         const auto& consMatrix = this->model->getConstraintMatrix( );
          const auto& lhs_values = consMatrix.getLeftHandSides( );
          const auto& rhs_values = consMatrix.getRightHandSides( );
-         const auto& rflags = model->getRowFlags( );
+         const auto& rflags = this->model->getRowFlags( );
 
          set_parameters( );
          soplex->setRealParam(SoPlex::OBJ_OFFSET, obj.offset);
          soplex->setIntParam(SoPlex::OBJSENSE, obj.sense ? SoPlex::OBJSENSE_MINIMIZE : SoPlex::OBJSENSE_MAXIMIZE);
-         colNames.reMax(model->getNCols( ));
-         rowNames.reMax(model->getNRows( ));
-         inds.resize(model->getNCols( ));
+         colNames.reMax(this->model->getNCols( ));
+         rowNames.reMax(this->model->getNRows( ));
+         inds.resize(this->model->getNCols( ));
          if( solution_exists )
-            value = obj.offset;
-         else if( reference->status == SolutionStatus::kUnbounded )
-            value = obj.sense ? -soplex->realParam(SoPlex::INFTY) : soplex->realParam(SoPlex::INFTY);
-         else if( reference->status == SolutionStatus::kInfeasible )
-            value = obj.sense ? soplex->realParam(SoPlex::INFTY) : -soplex->realParam(SoPlex::INFTY);
+            this->value = obj.offset;
+         else if( this->reference->status == SolutionStatus::kUnbounded )
+            this->value = obj.sense ? -soplex->realParam(SoPlex::INFTY) : soplex->realParam(SoPlex::INFTY);
+         else if( this->reference->status == SolutionStatus::kInfeasible )
+            this->value = obj.sense ? soplex->realParam(SoPlex::INFTY) : -soplex->realParam(SoPlex::INFTY);
 
          for( int col = 0; col < ncols; ++col )
          {
@@ -568,10 +568,10 @@ namespace bugger
                LPCol var { };
                double lb = domains.flags[ col ].test(ColFlag::kLbInf)
                            ? -soplex->realParam(SoPlex::INFTY)
-                           : domains.lower_bounds[ col ];
+                           : double(domains.lower_bounds[ col ]);
                double ub = domains.flags[ col ].test(ColFlag::kUbInf)
                            ? soplex->realParam(SoPlex::INFTY)
-                           : domains.upper_bounds[ col ];
+                           : double(domains.upper_bounds[ col ]);
                assert(!domains.flags[ col ].test(ColFlag::kInactive) || ( lb == ub ));
                var.setLower(lb);
                var.setUpper(ub);
@@ -580,7 +580,7 @@ namespace bugger
                soplex->addColReal(var);
                colNames.add(varNames[col].c_str());
                if( solution_exists )
-                  value += obj.coefficients[ col ] * reference->primal[ col ];
+                  this->value += obj.coefficients[ col ] * this->reference->primal[ col ];
             }
          }
 
@@ -590,20 +590,25 @@ namespace bugger
                continue;
             assert(!rflags[ row ].test(RowFlag::kLhsInf) || !rflags[ row ].test(RowFlag::kRhsInf));
 
-            auto rowvec = consMatrix.getRowCoefficients(row);
-            const int* rowinds = rowvec.getIndices( );
-            const double* rowvals = rowvec.getValues( );
+            const auto& rowvec = consMatrix.getRowCoefficients(row);
+            const auto& rowvals = rowvec.getValues( );
+            const auto& rowinds = rowvec.getIndices( );
+            double lhs = rflags[ row ].test(RowFlag::kLhsInf)
+                         ? -soplex->realParam(SoPlex::INFTY)
+                         : double(lhs_values[ row ]);
+            double rhs = rflags[ row ].test(RowFlag::kRhsInf)
+                         ? soplex->realParam(SoPlex::INFTY)
+                         : double(rhs_values[ row ]);
             DSVector cons(rowvec.getLength( ));
+
             for( int k = 0; k < rowvec.getLength( ); ++k )
             {
-               assert(!model->getColFlags( )[ rowinds[ k ] ].test(ColFlag::kFixed));
+               assert(!this->model->getColFlags( )[ rowinds[ k ] ].test(ColFlag::kFixed));
                assert(rowvals[ k ] != 0.0);
                cons.add(inds[ rowinds[ k ] ], rowvals[ k ]);
             }
-            soplex->addRowReal(LPRow(
-                  rflags[ row ].test(RowFlag::kLhsInf) ? -soplex->realParam(SoPlex::INFTY) : lhs_values[ row ],
-                  cons,
-                  rflags[ row ].test(RowFlag::kRhsInf) ? soplex->realParam(SoPlex::INFTY) : rhs_values[ row ]));
+
+            soplex->addRowReal(LPRow(lhs, cons, rhs));
             rowNames.add(consNames[row].c_str());
          }
 
@@ -612,14 +617,14 @@ namespace bugger
          {
             if( solution_exists )
             {
-               const auto& doublesettings = adjustment->getDoubleSettings( );
+               const auto& doublesettings = this->adjustment->getDoubleSettings( );
                for( int index = 0; index < doublesettings.size( ); ++index )
                {
                   SoPlex::RealParam param = SoPlex::RealParam(doublesettings[index].first.back());
                   if( ( param == SoPlex::OBJLIMIT_LOWER || param == SoPlex::OBJLIMIT_UPPER ) && abs(soplex->realParam(param)) < soplex->realParam(SoPlex::INFTY) )
                   {
-                     soplex->setRealParam(param, std::max(std::min(soplex->realParam(param) - value, soplex->realParam(SoPlex::INFTY)), -soplex->realParam(SoPlex::INFTY)));
-                     adjustment->setDoubleSettings(index, soplex->realParam(param));
+                     soplex->setRealParam(param, std::max(std::min(soplex->realParam(param) - this->value, soplex->realParam(SoPlex::INFTY)), -soplex->realParam(SoPlex::INFTY)));
+                     this->adjustment->setDoubleSettings(index, soplex->realParam(param));
                   }
                }
             }
@@ -629,9 +634,9 @@ namespace bugger
          if( solution_exists )
          {
             if( abs(soplex->realParam(SoPlex::OBJLIMIT_LOWER)) < soplex->realParam(SoPlex::INFTY) )
-               soplex->setRealParam(SoPlex::OBJLIMIT_LOWER, std::max(std::min(soplex->realParam(SoPlex::OBJLIMIT_LOWER) + value, soplex->realParam(SoPlex::INFTY)), -soplex->realParam(SoPlex::INFTY)));
+               soplex->setRealParam(SoPlex::OBJLIMIT_LOWER, std::max(std::min(soplex->realParam(SoPlex::OBJLIMIT_LOWER) + this->value, soplex->realParam(SoPlex::INFTY)), -soplex->realParam(SoPlex::INFTY)));
             if( abs(soplex->realParam(SoPlex::OBJLIMIT_UPPER)) < soplex->realParam(SoPlex::INFTY) )
-               soplex->setRealParam(SoPlex::OBJLIMIT_UPPER, std::max(std::min(soplex->realParam(SoPlex::OBJLIMIT_UPPER) + value, soplex->realParam(SoPlex::INFTY)), -soplex->realParam(SoPlex::INFTY)));
+               soplex->setRealParam(SoPlex::OBJLIMIT_UPPER, std::max(std::min(soplex->realParam(SoPlex::OBJLIMIT_UPPER) + this->value, soplex->realParam(SoPlex::INFTY)), -soplex->realParam(SoPlex::INFTY)));
             if( parameters.set_dual_limit || parameters.set_prim_limit )
             {
                for( const auto& pair : limits )
@@ -639,10 +644,10 @@ namespace bugger
                   switch( pair.second )
                   {
                   case DUAL:
-                     soplex->setRealParam(SoPlex::RealParam(pair.first.back()), relax( value, obj.sense, 2.0 * std::max(soplex->realParam(SoPlex::FEASTOL), soplex->realParam(SoPlex::OPTTOL)), soplex->realParam(SoPlex::INFTY) ));
+                     soplex->setRealParam(SoPlex::RealParam(pair.first.back()), this->relax( this->value, obj.sense, 2.0 * std::max(soplex->realParam(SoPlex::FEASTOL), soplex->realParam(SoPlex::OPTTOL)), soplex->realParam(SoPlex::INFTY) ));
                      break;
                   case PRIM:
-                     soplex->setRealParam(SoPlex::RealParam(pair.first.back()), value);
+                     soplex->setRealParam(SoPlex::RealParam(pair.first.back()), this->value);
                      break;
                   }
                }
@@ -653,16 +658,16 @@ namespace bugger
       void
       set_parameters( ) const
       {
-         for( const auto& pair : adjustment->getBoolSettings( ) )
+         for( const auto& pair : this->adjustment->getBoolSettings( ) )
             soplex->setBoolParam(SoPlex::BoolParam(pair.first.back()), pair.second);
-         for( const auto& pair : adjustment->getIntSettings( ) )
+         for( const auto& pair : this->adjustment->getIntSettings( ) )
             soplex->setIntParam(SoPlex::IntParam(pair.first.back()), pair.second);
          // set random seed
-         for( const auto& pair : adjustment->getLongSettings( ) )
+         for( const auto& pair : this->adjustment->getLongSettings( ) )
             soplex->setRandomSeed(pair.second);
-         for( const auto& pair : adjustment->getDoubleSettings( ) )
+         for( const auto& pair : this->adjustment->getDoubleSettings( ) )
             soplex->setRealParam(SoPlex::RealParam(pair.first.back()), pair.second);
-         for( const auto& pair : adjustment->getLimitSettings( ) )
+         for( const auto& pair : this->adjustment->getLimitSettings( ) )
          {
             switch( limits.find(pair.first)->second )
             {
@@ -681,12 +686,12 @@ namespace bugger
       }
    };
 
-   const SoPlex::IntParam SoplexInterface::VERB = SoPlex::VERBOSITY;
-   bool SoplexInterface::initial = true;
+   template <typename REAL>
+   bool SoplexInterface<REAL>::initial = true;
 
-   class SoplexFactory : public SolverFactory
+   template <typename REAL>
+   class SoplexFactory : public SolverFactory<REAL>
    {
-
    private:
 
       SoplexParameters parameters { };
@@ -707,10 +712,10 @@ namespace bugger
          //TODO: Restrict monotonous limits by default
       }
 
-      std::unique_ptr<SolverInterface>
+      std::unique_ptr<SolverInterface<REAL>>
       create_solver(const Message& msg) override
       {
-         auto soplex = std::unique_ptr<SolverInterface>( new SoplexInterface( msg, parameters, limits ) );
+         auto soplex = std::unique_ptr<SolverInterface<REAL>>( new SoplexInterface<REAL>( msg, parameters, limits ) );
          if( initial )
          {
             // objective limits will be included in parseSettings() where sense is revealed
@@ -725,7 +730,7 @@ namespace bugger
                {
                   String name { 1, (char)SoPlex::ITERLIMIT };
                   if( soplex->has_setting(name) )
-                     limits[name] = SoplexInterface::ITER;
+                     limits[name] = ITER;
                   else
                   {
                      msg.info("Iteration limit disabled.\n");
@@ -736,7 +741,7 @@ namespace bugger
                {
                   String name { 3, (char)SoPlex::TIMELIMIT };
                   if( soplex->has_setting(name) )
-                     limits[name] = SoplexInterface::TIME;
+                     limits[name] = TIME;
                   else
                   {
                      msg.info("Time limit disabled.\n");
@@ -750,10 +755,11 @@ namespace bugger
       }
    };
 
-   std::shared_ptr<SolverFactory>
+   template <typename REAL>
+   std::shared_ptr<SolverFactory<REAL>>
    load_solver_factory( )
    {
-      return std::shared_ptr<SolverFactory>(new SoplexFactory( ));
+      return std::shared_ptr<SolverFactory<REAL>>(new SoplexFactory<REAL>( ));
    }
 
 } // namespace bugger
