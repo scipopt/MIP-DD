@@ -12,6 +12,7 @@ Fixed bugs
 
 - replace parameter type std::int64_t by long long to avert integral inconsistencies
 - write setting files for automatically handled limits instead of for detailed verbosity level in order to ensure reproducibility of limit triggered issues
+- use stable sum implementation for activity evaluations consistently
 
 Build system
 ------------

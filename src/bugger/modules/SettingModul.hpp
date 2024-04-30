@@ -26,24 +26,25 @@
 #include "bugger/modules/BuggerModul.hpp"
 
 
-namespace bugger {
-
-   class SettingModul : public BuggerModul {
-
+namespace bugger
+{
+   class SettingModul : public BuggerModul
+   {
    public:
 
       SolverSettings target_settings;
 
       explicit SettingModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
-                            std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory) {
+                            std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory)
+      {
          this->setName("setting");
       }
 
    private:
 
       ModulStatus
-      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override {
-
+      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override
+      {
          int batchsize = 1;
 
          if( parameters.nbatches > 0 )
@@ -309,7 +310,8 @@ namespace bugger {
       reset(const SolverSettings& settings,
             const Vec<std::pair<int, bool>>& applied_bool, const Vec<std::pair<int, int>>& applied_int,
             const Vec<std::pair<int, long>>& applied_long, const Vec<std::pair<int, double>>& applied_double,
-            const Vec<std::pair<int, char>>& applied_char, const Vec<std::pair<int, std::string>>& applied_string) const {
+            const Vec<std::pair<int, char>>& applied_char, const Vec<std::pair<int, std::string>>& applied_string) const
+      {
          auto reset = SolverSettings(settings);
          for( const auto &item: applied_bool )
             reset.setBoolSettings(item.first, item.second);

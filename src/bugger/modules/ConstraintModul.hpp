@@ -26,29 +26,31 @@
 #include "bugger/modules/BuggerModul.hpp"
 
 
-namespace bugger {
-
-   class ConstraintModul : public BuggerModul {
-
+namespace bugger
+{
+   class ConstraintModul : public BuggerModul
+   {
    public:
 
       explicit ConstraintModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
-                               std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory) {
+                               std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory)
+      {
          this->setName("constraint");
       }
 
    private:
 
       bool
-      isConstraintAdmissible(const Problem<double>& problem, const int& row) const {
+      isConstraintAdmissible(const Problem<double>& problem, const int& row) const
+      {
          if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant) )
             return false;
          return true;
       }
 
       ModulStatus
-      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override {
-
+      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override
+      {
          if( solution.status == SolutionStatus::kInfeasible )
             return ModulStatus::kNotAdmissible;
 

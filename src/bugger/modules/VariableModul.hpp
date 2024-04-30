@@ -26,29 +26,31 @@
 #include "bugger/modules/BuggerModul.hpp"
 
 
-namespace bugger {
-
-   class VariableModul : public BuggerModul {
-
+namespace bugger
+{
+   class VariableModul : public BuggerModul
+   {
    public:
 
       explicit VariableModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
-                             std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory) {
+                             std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory)
+      {
          this->setName("variable");
       }
 
    private:
 
       bool
-      isVariableAdmissible(const Problem<double>& problem, const int& col) const {
+      isVariableAdmissible(const Problem<double>& problem, const int& col) const
+      {
          return problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
              || problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
              || !num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
       }
 
       ModulStatus
-      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override {
-
+      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override
+      {
          if( solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;
 

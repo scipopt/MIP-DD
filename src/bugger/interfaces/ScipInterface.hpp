@@ -476,14 +476,14 @@ namespace bugger
          bool solution_exists = reference->status == SolutionStatus::kFeasible;
          int ncols = model->getNCols( );
          int nrows = model->getNRows( );
-         const Vec<String> &varNames = model->getVariableNames( );
-         const Vec<String> &consNames = model->getConstraintNames( );
-         const VariableDomains<double> &domains = model->getVariableDomains( );
-         const Objective<double> &obj = model->getObjective( );
-         const auto &consMatrix = model->getConstraintMatrix( );
-         const auto &lhs_values = consMatrix.getLeftHandSides( );
-         const auto &rhs_values = consMatrix.getRightHandSides( );
-         const auto &rflags = model->getRowFlags( );
+         const auto& varNames = model->getVariableNames( );
+         const auto& consNames = model->getConstraintNames( );
+         const auto& domains = model->getVariableDomains( );
+         const auto& obj = model->getObjective( );
+         const auto& consMatrix = model->getConstraintMatrix( );
+         const auto& lhs_values = consMatrix.getLeftHandSides( );
+         const auto& rhs_values = consMatrix.getRightHandSides( );
+         const auto& rflags = model->getRowFlags( );
 
          set_parameters(settings);
          SCIP_CALL(SCIPcreateProbBasic(scip, model->getName( ).c_str( )));
@@ -491,7 +491,7 @@ namespace bugger
          SCIP_CALL(SCIPsetObjsense(scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
          vars.resize(model->getNCols( ));
          if( solution_exists )
-            value = obj.offset;
+            value = get_primal_objective(solution);
          else if( reference->status == SolutionStatus::kUnbounded )
             value = obj.sense ? -SCIPinfinity(scip) : SCIPinfinity(scip);
          else if( reference->status == SolutionStatus::kInfeasible )
@@ -526,8 +526,6 @@ namespace bugger
                SCIP_CALL(SCIPcreateVarBasic(
                      scip, &var, varNames[ col ].c_str( ), lb, ub,
                      SCIP_Real(obj.coefficients[ col ]), type));
-               if( solution_exists )
-                  value += obj.coefficients[ col ] * reference->primal[ col ];
                SCIP_CALL(SCIPaddVar(scip, var));
                vars[ col ] = var;
                SCIP_CALL(SCIPreleaseVar(scip, &var));
@@ -538,7 +536,7 @@ namespace bugger
          Vec<SCIP_Real> consvals(model->getNCols( ));
          for( int row = 0; row < nrows; ++row )
          {
-            if( model->getRowFlags( )[ row ].test(RowFlag::kRedundant) )
+            if( rflags[ row ].test(RowFlag::kRedundant) )
                continue;
             assert(!rflags[ row ].test(RowFlag::kLhsInf) || !rflags[ row ].test(RowFlag::kRhsInf));
 
