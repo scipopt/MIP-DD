@@ -157,7 +157,7 @@ namespace bugger
                case TIME:
                   limit_settings.emplace_back( name, std::min(std::ceil(param->data.realparam.valueptr == nullptr
                                                                       ? param->data.realparam.curvalue
-                                                                      : *param->data.realparam.valueptr), SCIP_Real(LLONG_MAX)) );
+                                                                      : *param->data.realparam.valueptr), (double)LLONG_MAX) );
                   break;
                default:
                   SCIPerrorMessage("unknown limit type\n");
@@ -470,7 +470,7 @@ namespace bugger
       }
 
       long long
-      getSolvingEffort( ) override
+      getSolvingEffort( ) const override
       {
          switch( SCIPgetStage(scip) )
          {
@@ -586,7 +586,7 @@ namespace bugger
       }
 
       bool
-      writeInstance(const String& filename, const bool& writesettings) override
+      writeInstance(const String& filename, const bool& writesettings) const override
       {
          if( writesettings || limits.size() >= 1 )
             SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
@@ -720,7 +720,7 @@ namespace bugger
       }
 
       void
-      set_parameters( ) const
+      set_parameters( )
       {
          for( const auto& pair : this->adjustment->getBoolSettings( ) )
             SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);

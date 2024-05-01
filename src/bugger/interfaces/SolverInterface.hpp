@@ -59,21 +59,24 @@ namespace bugger
        * prints the header of the used solver
        */
       virtual
-      void print_header() const = 0;
+      void
+      print_header() const = 0;
 
       /**
        * reports whether given setting is available
        * @param name
        */
       virtual
-      bool has_setting(const String& name) const = 0;
+      bool
+      has_setting(const String& name) const = 0;
 
       /**
        * parse Settings
        * @param filename
        */
       virtual
-      boost::optional<SolverSettings> parseSettings(const String& filename) const = 0;
+      boost::optional<SolverSettings>
+      parseSettings(const String& filename) const = 0;
 
       /**
        * loads settings, problem, and solution
@@ -82,7 +85,8 @@ namespace bugger
        * @param solution
        */
       virtual
-      void doSetUp(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution) = 0;
+      void
+      doSetUp(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution) = 0;
 
       /**
        * solves the instance
@@ -90,14 +94,16 @@ namespace bugger
        * @return a pair<char, SolverStatus>: Negative values in the char are reserved for solver internal errors while the remaining ones are declared in SolverInterface::Retcode. The SolverStatus primarily serves to be printed in the log holding the solution status of the solve, for example infeasible, unbounded, optimal, or specific limits reached.
        */
       virtual
-      std::pair<char, SolverStatus> solve(const Vec<int>& passcodes) = 0;
+      std::pair<char, SolverStatus>
+      solve(const Vec<int>& passcodes) = 0;
 
       /**
        * provides measure for the solving effort to adapt batch number
        * @return a long long int: Non-negative value proportional to effort of the solve or -1 if unknown
        */
       virtual
-      long long getSolvingEffort( )
+      long long
+      getSolvingEffort( ) const
       {
          return -1;
       }
@@ -108,7 +114,8 @@ namespace bugger
        * @param problem_filename
        */
       virtual
-      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>> readInstance(const String& settings_filename, const String& problem_filename)
+      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>>
+      readInstance(const String& settings_filename, const String& problem_filename)
       {
          return { boost::none, boost::none };
       };
@@ -119,9 +126,11 @@ namespace bugger
        * @param writesettings
        */
       virtual
-      bool writeInstance(const String& filename, const bool& writesettings) = 0;
+      bool
+      writeInstance(const String& filename, const bool& writesettings) const = 0;
 
-      virtual ~SolverInterface() = default;
+      virtual
+      ~SolverInterface() = default;
 
    protected:
 
