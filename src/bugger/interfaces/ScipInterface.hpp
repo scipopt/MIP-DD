@@ -157,7 +157,7 @@ namespace bugger
                case TIME:
                   limit_settings.emplace_back( name, std::min(std::ceil(param->data.realparam.valueptr == nullptr
                                                                       ? param->data.realparam.curvalue
-                                                                      : *param->data.realparam.valueptr), (SCIP_Real)LLONG_MAX) );
+                                                                      : *param->data.realparam.valueptr), SCIP_Real(LLONG_MAX)) );
                   break;
                default:
                   SCIPerrorMessage("unknown limit type\n");

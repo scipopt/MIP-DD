@@ -35,6 +35,7 @@
 
 
 using namespace soplex;
+typedef Real SOPLEX_Real;
 
 namespace bugger
 {
@@ -242,7 +243,7 @@ namespace bugger
                case PRIM:
                   break;
                case TIME:
-                  limit_settings.emplace_back( name, std::min(std::ceil(soplex->realParam(SoPlex::RealParam(i))), (double)LLONG_MAX) );
+                  limit_settings.emplace_back( name, std::min(std::ceil(soplex->realParam(SoPlex::RealParam(i))), SOPLEX_Real(LLONG_MAX)) );
                   break;
                case ITER:
                default:
@@ -473,8 +474,8 @@ namespace bugger
          builder.setNumCols(ncols);
          for( int col = 0; col < ncols; ++col )
          {
-            double lb = soplex->lowerReal(col);
-            double ub = soplex->upperReal(col);
+            SOPLEX_Real lb = soplex->lowerReal(col);
+            SOPLEX_Real ub = soplex->upperReal(col);
             builder.setColLb(col, lb);
             builder.setColUb(col, ub);
             builder.setColLbInf(col, -lb >= soplex->realParam(SoPlex::INFTY));
@@ -486,11 +487,11 @@ namespace bugger
          // set up rows
          builder.setNumRows(nrows);
          Vec<int> consinds(ncols);
-         Vec<double> consvals(ncols);
+         Vec<SOPLEX_Real> consvals(ncols);
          for( int row = 0; row < nrows; ++row )
          {
-            double lhs = soplex->lhsReal(row);
-            double rhs = soplex->rhsReal(row);
+            SOPLEX_Real lhs = soplex->lhsReal(row);
+            SOPLEX_Real rhs = soplex->rhsReal(row);
             DSVector cons;
             soplex->getRowVectorReal(row, cons);
             for( int i = 0; i < cons.size(); ++i )
@@ -570,12 +571,12 @@ namespace bugger
             else
             {
                LPCol var { };
-               double lb = domains.flags[col].test(ColFlag::kLbInf)
-                           ? -soplex->realParam(SoPlex::INFTY)
-                           : double(domains.lower_bounds[col]);
-               double ub = domains.flags[col].test(ColFlag::kUbInf)
-                           ? soplex->realParam(SoPlex::INFTY)
-                           : double(domains.upper_bounds[col]);
+               SOPLEX_Real lb = domains.flags[col].test(ColFlag::kLbInf)
+                                ? -soplex->realParam(SoPlex::INFTY)
+                                : SOPLEX_Real(domains.lower_bounds[col]);
+               SOPLEX_Real ub = domains.flags[col].test(ColFlag::kUbInf)
+                                ? soplex->realParam(SoPlex::INFTY)
+                                : SOPLEX_Real(domains.upper_bounds[col]);
                assert(!domains.flags[col].test(ColFlag::kInactive) || lb == ub);
                var.setLower(lb);
                var.setUpper(ub);
@@ -594,12 +595,12 @@ namespace bugger
             const auto& rowvec = consMatrix.getRowCoefficients(row);
             const auto& rowvals = rowvec.getValues( );
             const auto& rowinds = rowvec.getIndices( );
-            double lhs = rflags[row].test(RowFlag::kLhsInf)
-                         ? -soplex->realParam(SoPlex::INFTY)
-                         : double(lhs_values[row]);
-            double rhs = rflags[row].test(RowFlag::kRhsInf)
-                         ? soplex->realParam(SoPlex::INFTY)
-                         : double(rhs_values[row]);
+            SOPLEX_Real lhs = rflags[row].test(RowFlag::kLhsInf)
+                              ? -soplex->realParam(SoPlex::INFTY)
+                              : SOPLEX_Real(lhs_values[row]);
+            SOPLEX_Real rhs = rflags[row].test(RowFlag::kRhsInf)
+                              ? soplex->realParam(SoPlex::INFTY)
+                              : SOPLEX_Real(rhs_values[row]);
             DSVector cons(rowvec.getLength( ));
             for( int i = 0; i < rowvec.getLength( ); ++i )
             {
