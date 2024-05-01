@@ -25,10 +25,7 @@
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
 
-#include "scip/cons_linear.h"
 #include "scip/scip.h"
-#include "scip/pub_cons.h"
-#include "scip/scip_param.h"
 #include "scip/scipdefplugins.h"
 #include "scip/struct_paramset.h"
 #include "bugger/data/Problem.hpp"
@@ -70,7 +67,7 @@ namespace bugger
       bool set_time_limit = false;
    };
 
-   const String ScipParameters::VERB = "display/verblevel";
+   const String ScipParameters::VERB { "display/verblevel" };
 
    template <typename REAL>
    class ScipInterface : public SolverInterface<REAL>
@@ -118,12 +115,8 @@ namespace bugger
       boost::optional<SolverSettings>
       parseSettings(const String& filename) const override
       {
-         if( !filename.empty() )
-         {
-            SCIP_RETCODE retcode = SCIPreadParams(scip, filename.c_str());
-            if( retcode != SCIP_OKAY )
-               return boost::none;
-         }
+         if( !filename.empty() && SCIPreadParams(scip, filename.c_str()) != SCIP_OKAY )
+            return boost::none;
 
          Vec<std::pair<String, bool>> bool_settings;
          Vec<std::pair<String, int>> int_settings;
@@ -132,8 +125,8 @@ namespace bugger
          Vec<std::pair<String, char>> char_settings;
          Vec<std::pair<String, String>> string_settings;
          Vec<std::pair<String, long long>> limit_settings;
-         int nparams = SCIPgetNParams(scip);
          SCIP_PARAM** params = SCIPgetParams(scip);
+         int nparams = SCIPgetNParams(scip);
 
          for( int i = 0; i < nparams; ++i )
          {
@@ -217,6 +210,7 @@ namespace bugger
       doSetUp(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution) override
       {
          auto retcode = setup(settings, problem, solution);
+         UNUSED(retcode);
          assert(retcode == SCIP_OKAY);
       }
 
@@ -404,7 +398,7 @@ namespace bugger
             // shift retcodes so that all errors have negative values
             --retcode;
          }
-         // progess certain passcodes as OKAY based on the user preferences
+         // interpret certain passcodes as OKAY based on the user preferences
          for( int passcode: passcodes )
          {
             if( passcode == retcode )
@@ -504,13 +498,12 @@ namespace bugger
       readInstance(const String& settings_filename, const String& problem_filename) override
       {
          auto settings = parseSettings(settings_filename);
-         SCIP_RETCODE retcode = SCIPreadProb(scip, problem_filename.c_str(), nullptr);
-         if( retcode != SCIP_OKAY )
+         if( SCIPreadProb(scip, problem_filename.c_str(), nullptr) != SCIP_OKAY )
             return { settings, boost::none };
          ProblemBuilder<REAL> builder;
 
          // set problem name
-         builder.setProblemName(String(SCIPgetProbName(scip)));
+         builder.setProblemName(SCIPgetProbName(scip));
          // set objective offset
          builder.setObjOffset(SCIPgetOrigObjoffset(scip));
          // set objective sense
@@ -522,11 +515,11 @@ namespace bugger
          int nnz = 0;
          SCIP_VAR** probvars = SCIPgetVars(scip);
          SCIP_CONS** probconss = SCIPgetConss(scip);
-         for( int i = 0; i < nrows; ++i )
+         for( int row = 0; row < nrows; ++row )
          {
             int nconsvars = 0;
             SCIP_Bool success = FALSE;
-            SCIPgetConsNVars(scip, probconss[ i ], &nconsvars, &success);
+            SCIPgetConsNVars(scip, probconss[row], &nconsvars, &success);
             if( !success )
                return { settings, boost::none };
             nnz += nconsvars;
@@ -535,56 +528,58 @@ namespace bugger
 
          // set up columns
          builder.setNumCols(ncols);
-         for( int i = 0; i < ncols; ++i )
+         for( int col = 0; col < ncols; ++col )
          {
-            SCIP_VAR* var = probvars[ i ];
+            SCIP_VAR* var = probvars[col];
             SCIP_Real lb = SCIPvarGetLbGlobal(var);
             SCIP_Real ub = SCIPvarGetUbGlobal(var);
             SCIP_VARTYPE vartype = SCIPvarGetType(var);
-            builder.setColLb(i, lb);
-            builder.setColUb(i, ub);
-            builder.setColLbInf(i, SCIPisInfinity(scip, -lb));
-            builder.setColUbInf(i, SCIPisInfinity(scip, ub));
-            builder.setColIntegral(i, vartype == SCIP_VARTYPE_BINARY || vartype == SCIP_VARTYPE_INTEGER);
-            builder.setColImplInt(i, vartype != SCIP_VARTYPE_CONTINUOUS);
-            builder.setColName(i, SCIPvarGetName(var));
-            builder.setObj(i, SCIPvarGetObj(var));
+            builder.setColLb(col, lb);
+            builder.setColUb(col, ub);
+            builder.setColLbInf(col, SCIPisInfinity(scip, -lb));
+            builder.setColUbInf(col, SCIPisInfinity(scip, ub));
+            builder.setColIntegral(col, vartype == SCIP_VARTYPE_BINARY || vartype == SCIP_VARTYPE_INTEGER);
+            builder.setColImplInt(col, vartype != SCIP_VARTYPE_CONTINUOUS);
+            builder.setObj(col, SCIPvarGetObj(var));
+            builder.setColName(col, SCIPvarGetName(var));
          }
 
          // set up rows
+         builder.setNumRows(nrows);
          Vec<SCIP_VAR*> consvars(ncols);
          Vec<SCIP_Real> consvals(ncols);
-         Vec<int> indices(ncols);
-         builder.setNumRows(nrows);
-         for( int i = 0; i < nrows; ++i )
+         Vec<int> consinds(ncols);
+         for( int row = 0; row < nrows; ++row )
          {
-            int nconsvars = 0;
+            SCIP_CONS* cons = probconss[row];
             SCIP_Bool success = FALSE;
-            SCIP_CONS* cons = probconss[ i ];
-            SCIPgetConsNVars(scip, cons, &nconsvars, &success);
-            SCIPgetConsVars(scip, cons, consvars.data(), ncols, &success);
-            if( !success )
-               return { settings, boost::none };
-            SCIPgetConsVals(scip, cons, consvals.data(), ncols, &success);
-            if( !success )
-               return { settings, boost::none };
-            for( int j = 0; j < nconsvars; ++j )
-            {
-               indices[ j ] = SCIPvarGetProbindex(consvars[ j ]);
-               assert(strcmp(SCIPvarGetName(consvars[ j ]), SCIPvarGetName(probvars[ indices[ j ] ])) == 0);
-            }
-            builder.addRowEntries(i, nconsvars, indices.data(), consvals.data());
             SCIP_Real lhs = SCIPconsGetLhs(scip, cons, &success);
             if( !success )
                return { settings, boost::none };
             SCIP_Real rhs = SCIPconsGetRhs(scip, cons, &success);
             if( !success )
                return { settings, boost::none };
-            builder.setRowLhs(i, lhs);
-            builder.setRowRhs(i, rhs);
-            builder.setRowLhsInf(i, SCIPisInfinity(scip, -lhs));
-            builder.setRowRhsInf(i, SCIPisInfinity(scip, rhs));
-            builder.setRowName(i, SCIPconsGetName(cons));
+            int nconsvars = 0;
+            SCIPgetConsNVars(scip, cons, &nconsvars, &success);
+            if( !success )
+               return { settings, boost::none };
+            SCIPgetConsVars(scip, cons, consvars.data(), ncols, &success);
+            if( !success )
+               return { settings, boost::none };
+            SCIPgetConsVals(scip, cons, consvals.data(), ncols, &success);
+            if( !success )
+               return { settings, boost::none };
+            for( int i = 0; i < nconsvars; ++i )
+            {
+               consinds[i] = SCIPvarGetProbindex(consvars[i]);
+               assert(strcmp(SCIPvarGetName(consvars[i]), SCIPvarGetName(probvars[consinds[i]])) == 0);
+            }
+            builder.setRowLhs(row, lhs);
+            builder.setRowRhs(row, rhs);
+            builder.setRowLhsInf(row, SCIPisInfinity(scip, -lhs));
+            builder.setRowRhsInf(row, SCIPisInfinity(scip, rhs));
+            builder.addRowEntries(row, nconsvars, consinds.data(), consvals.data());
+            builder.setRowName(row, SCIPconsGetName(cons));
          }
 
          return { settings, builder.build() };
@@ -642,34 +637,33 @@ namespace bugger
 
          for( int col = 0; col < ncols; ++col )
          {
-            if( domains.flags[ col ].test(ColFlag::kFixed) )
-               vars[ col ] = nullptr;
+            if( domains.flags[col].test(ColFlag::kFixed) )
+               vars[col] = nullptr;
             else
             {
-               SCIP_Real lb = domains.flags[ col ].test(ColFlag::kLbInf)
+               SCIP_VAR* var;
+               SCIP_Real lb = domains.flags[col].test(ColFlag::kLbInf)
                               ? -SCIPinfinity(scip)
-                              : SCIP_Real(domains.lower_bounds[ col ]);
-               SCIP_Real ub = domains.flags[ col ].test(ColFlag::kUbInf)
+                              : SCIP_Real(domains.lower_bounds[col]);
+               SCIP_Real ub = domains.flags[col].test(ColFlag::kUbInf)
                               ? SCIPinfinity(scip)
-                              : SCIP_Real(domains.upper_bounds[ col ]);
-               assert(!domains.flags[ col ].test(ColFlag::kInactive) || ( lb == ub ));
-               SCIP_VAR *var;
+                              : SCIP_Real(domains.upper_bounds[col]);
+               assert(!domains.flags[col].test(ColFlag::kInactive) || lb == ub);
                SCIP_VARTYPE type;
-               if( domains.flags[ col ].test(ColFlag::kIntegral) )
+               if( domains.flags[col].test(ColFlag::kIntegral) )
                {
-                  if( lb == 0 && ub == 1 )
+                  if( lb >= 0 && ub <= 1 )
                      type = SCIP_VARTYPE_BINARY;
                   else
                      type = SCIP_VARTYPE_INTEGER;
                }
-               else if( domains.flags[ col ].test(ColFlag::kImplInt) )
+               else if( domains.flags[col].test(ColFlag::kImplInt) )
                   type = SCIP_VARTYPE_IMPLINT;
                else
                   type = SCIP_VARTYPE_CONTINUOUS;
-               SCIP_CALL(SCIPcreateVarBasic(scip, &var, varNames[ col ].c_str( ), lb, ub, obj.coefficients[ col ],
-                                            type));
+               SCIP_CALL(SCIPcreateVarBasic(scip, &var, varNames[col].c_str( ), lb, ub, obj.coefficients[col], type));
+               vars[col] = var;
                SCIP_CALL(SCIPaddVar(scip, var));
-               vars[ col ] = var;
                SCIP_CALL(SCIPreleaseVar(scip, &var));
             }
          }
@@ -678,33 +672,29 @@ namespace bugger
          Vec<SCIP_Real> consvals(this->model->getNCols( ));
          for( int row = 0; row < nrows; ++row )
          {
-            if( rflags[ row ].test(RowFlag::kRedundant) )
+            if( rflags[row].test(RowFlag::kRedundant) )
                continue;
-            assert(!rflags[ row ].test(RowFlag::kLhsInf) || !rflags[ row ].test(RowFlag::kRhsInf));
-
+            assert(!rflags[row].test(RowFlag::kLhsInf) || !rflags[row].test(RowFlag::kRhsInf));
             const auto& rowvec = consMatrix.getRowCoefficients(row);
-            const auto& vals = rowvec.getValues( );
-            const auto& inds = rowvec.getIndices( );
-            SCIP_Real lhs = rflags[ row ].test(RowFlag::kLhsInf)
+            const auto& rowvals = rowvec.getValues( );
+            const auto& rowinds = rowvec.getIndices( );
+            SCIP_Real lhs = rflags[row].test(RowFlag::kLhsInf)
                             ? -SCIPinfinity(scip)
-                            : SCIP_Real(lhs_values[ row ]);
-            SCIP_Real rhs = rflags[ row ].test(RowFlag::kRhsInf)
+                            : SCIP_Real(lhs_values[row]);
+            SCIP_Real rhs = rflags[row].test(RowFlag::kRhsInf)
                             ? SCIPinfinity(scip)
-                            : SCIP_Real(rhs_values[ row ]);
-            SCIP_CONS *cons;
-
-            // the first length entries of consvars/-vals are the entries of the current constraint
+                            : SCIP_Real(rhs_values[row]);
+            SCIP_CONS* cons;
             int length = 0;
-            for( int k = 0; k != rowvec.getLength( ); ++k )
+            for( int i = 0; i < rowvec.getLength( ); ++i )
             {
-               assert(!this->model->getColFlags( )[ inds[ k ] ].test(ColFlag::kFixed));
-               assert(vals[ k ] != 0.0);
-               consvars[ length ] = vars[ inds[ k ] ];
-               consvals[ length ] = vals[ k ];
+               assert(!this->model->getColFlags( )[rowinds[i]].test(ColFlag::kFixed));
+               assert(rowvals[i] != 0);
+               consvars[length] = vars[rowinds[i]];
+               consvals[length] = rowvals[i];
                ++length;
             }
-
-            SCIP_CALL(SCIPcreateConsBasicLinear(scip, &cons, consNames[ row ].c_str( ), length, consvars.data( ),
+            SCIP_CALL(SCIPcreateConsBasicLinear(scip, &cons, consNames[row].c_str( ), length, consvars.data( ),
                                                 consvals.data( ), lhs, rhs));
             SCIP_CALL(SCIPaddCons(scip, cons));
             SCIP_CALL(SCIPreleaseCons(scip, &cons));
@@ -717,7 +707,7 @@ namespace bugger
                switch( pair.second )
                {
                case DUAL:
-                  SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), this->relax( this->value, obj.sense, 2.0 * SCIPsumepsilon(scip), SCIPinfinity(scip) )));
+                  SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), this->relax( this->value, obj.sense, 2 * SCIPsumepsilon(scip), SCIPinfinity(scip) )));
                   break;
                case PRIM:
                   SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), this->value));
@@ -798,7 +788,7 @@ namespace bugger
       std::unique_ptr<SolverInterface<REAL>>
       create_solver(const Message& msg) override
       {
-//         auto scip = std::unique_ptr<SolverInterface<REAL>>( parameter.arithmetic == 0 ? new ScipInterface<REAL>( msg, parameters, limits ) : EXACT_SCIP);
+         //TODO: auto scip = std::unique_ptr<SolverInterface<REAL>>( parameters.arithmetic == 0 ? new ScipInterface<REAL>( msg, parameters, limits ) : EXACT_SCIP);
          auto scip = std::unique_ptr<SolverInterface<REAL>>( new ScipInterface<REAL>( msg, parameters, limits ) );
          if( initial )
          {

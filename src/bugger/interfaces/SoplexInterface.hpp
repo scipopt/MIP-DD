@@ -52,6 +52,7 @@ namespace bugger
 
       static const SoPlex::IntParam VERB;
 
+      int arithmetic = 0;
       int mode = -1;
       double limitspace = 1.0;
       bool set_dual_limit = false;
@@ -60,7 +61,7 @@ namespace bugger
       bool set_time_limit = false;
    };
 
-   const SoPlex::IntParam SoplexParameters::VERB = SoPlex::VERBOSITY;
+   const SoPlex::IntParam SoplexParameters::VERB { SoPlex::VERBOSITY };
 
    template <typename REAL>
    class SoplexInterface : public SolverInterface<REAL>
@@ -116,9 +117,6 @@ namespace bugger
       boost::optional<SolverSettings>
       parseSettings(const String& filename) const override
       {
-         if( !filename.empty() && !soplex->loadSettingsFile(filename.c_str()) )
-            return boost::none;
-
          // include objective limits
          if( initial )
          {
@@ -153,6 +151,9 @@ namespace bugger
                }
             }
          }
+
+         if( !filename.empty() && !soplex->loadSettingsFile(filename.c_str()) )
+            return boost::none;
 
          Vec<std::pair<String, bool>> bool_settings;
          Vec<std::pair<String, int>> int_settings;
@@ -241,7 +242,7 @@ namespace bugger
                case PRIM:
                   break;
                case TIME:
-                  limit_settings.emplace_back( name, std::min(soplex->realParam(SoPlex::RealParam(i)), (double)LLONG_MAX) );
+                  limit_settings.emplace_back( name, std::min(std::ceil(soplex->realParam(SoPlex::RealParam(i))), (double)LLONG_MAX) );
                   break;
                case ITER:
                default:
@@ -266,11 +267,12 @@ namespace bugger
       {
          char retcode = SPxSolver::ERROR;
          SolverStatus solverstatus = SolverStatus::kUndefinedError;
+
          soplex->setIntParam(SoplexParameters::VERB, this->msg.getVerbosityLevel() < VerbosityLevel::kDetailed ? SoPlex::VERBOSITY_ERROR : SoPlex::VERBOSITY_FULL);
 
          // optimize
          if( parameters.mode == -1 )
-            retcode = soplex->optimize();
+            retcode = soplex->solve();
 
          if( retcode > SPxSolver::NOT_INIT )
          {
@@ -282,7 +284,9 @@ namespace bugger
                case SPxSolver::REGULAR:
                case SPxSolver::RUNNING:
                case SPxSolver::UNKNOWN:
+#if SOPLEX_APIVERSION >= 7
                case SPxSolver::OPTIMAL_UNSCALED_VIOLATIONS:
+#endif
                   solverstatus = SolverStatus::kUnknown;
                   break;
                case SPxSolver::ABORT_CYCLING:
@@ -467,39 +471,39 @@ namespace bugger
 
          // set up columns
          builder.setNumCols(ncols);
-         for( int i = 0; i < ncols; ++i )
+         for( int col = 0; col < ncols; ++col )
          {
-            double lb = soplex->lowerReal(i);
-            double ub = soplex->upperReal(i);
-            builder.setColLb(i, lb);
-            builder.setColUb(i, ub);
-            builder.setColLbInf(i, -lb >= soplex->realParam(SoPlex::INFTY));
-            builder.setColUbInf(i, ub >= soplex->realParam(SoPlex::INFTY));
-            builder.setObj(i, soplex->objReal(i));
-            builder.setColName(i, colNames[i]);
+            double lb = soplex->lowerReal(col);
+            double ub = soplex->upperReal(col);
+            builder.setColLb(col, lb);
+            builder.setColUb(col, ub);
+            builder.setColLbInf(col, -lb >= soplex->realParam(SoPlex::INFTY));
+            builder.setColUbInf(col, ub >= soplex->realParam(SoPlex::INFTY));
+            builder.setObj(col, soplex->objReal(col));
+            builder.setColName(col, colNames[col]);
          }
 
          // set up rows
          builder.setNumRows(nrows);
          Vec<int> consinds(ncols);
          Vec<double> consvals(ncols);
-         for( int i = 0; i < nrows; ++i )
+         for( int row = 0; row < nrows; ++row )
          {
-            double lhs = soplex->lhsReal(i);
-            double rhs = soplex->rhsReal(i);
-            builder.setRowLhs(i, lhs);
-            builder.setRowRhs(i, rhs);
-            builder.setRowLhsInf(i, -lhs >= soplex->realParam(SoPlex::INFTY));
-            builder.setRowRhsInf(i, rhs >= soplex->realParam(SoPlex::INFTY));
+            double lhs = soplex->lhsReal(row);
+            double rhs = soplex->rhsReal(row);
             DSVector cons;
-            soplex->getRowVectorReal(i, cons);
-            for( int j = 0; j < cons.size(); ++j )
+            soplex->getRowVectorReal(row, cons);
+            for( int i = 0; i < cons.size(); ++i )
             {
-               consinds[ j ] = cons.index(j);
-               consvals[ j ] = cons.value(j);
+               consinds[i] = cons.index(i);
+               consvals[i] = cons.value(i);
             }
-            builder.addRowEntries(i, cons.size(), consinds.data(), consvals.data());
-            builder.setRowName(i, rowNames[i]);
+            builder.setRowLhs(row, lhs);
+            builder.setRowRhs(row, rhs);
+            builder.setRowLhsInf(row, -lhs >= soplex->realParam(SoPlex::INFTY));
+            builder.setRowRhsInf(row, rhs >= soplex->realParam(SoPlex::INFTY));
+            builder.addRowEntries(row, cons.size(), consinds.data(), consvals.data());
+            builder.setRowName(row, rowNames[row]);
          }
 
          return { settings, builder.build() };
@@ -561,21 +565,21 @@ namespace bugger
 
          for( int col = 0; col < ncols; ++col )
          {
-            if( domains.flags[ col ].test(ColFlag::kFixed) )
+            if( domains.flags[col].test(ColFlag::kFixed) )
                inds[col] = -1;
             else
             {
                LPCol var { };
-               double lb = domains.flags[ col ].test(ColFlag::kLbInf)
+               double lb = domains.flags[col].test(ColFlag::kLbInf)
                            ? -soplex->realParam(SoPlex::INFTY)
-                           : double(domains.lower_bounds[ col ]);
-               double ub = domains.flags[ col ].test(ColFlag::kUbInf)
+                           : double(domains.lower_bounds[col]);
+               double ub = domains.flags[col].test(ColFlag::kUbInf)
                            ? soplex->realParam(SoPlex::INFTY)
-                           : double(domains.upper_bounds[ col ]);
-               assert(!domains.flags[ col ].test(ColFlag::kInactive) || ( lb == ub ));
+                           : double(domains.upper_bounds[col]);
+               assert(!domains.flags[col].test(ColFlag::kInactive) || lb == ub);
                var.setLower(lb);
                var.setUpper(ub);
-               var.setObj(obj.coefficients[ col ]);
+               var.setObj(obj.coefficients[col]);
                inds[col] = soplex->numCols();
                soplex->addColReal(var);
                colNames.add(varNames[col].c_str());
@@ -584,28 +588,25 @@ namespace bugger
 
          for( int row = 0; row < nrows; ++row )
          {
-            if( rflags[ row ].test(RowFlag::kRedundant) )
+            if( rflags[row].test(RowFlag::kRedundant) )
                continue;
-            assert(!rflags[ row ].test(RowFlag::kLhsInf) || !rflags[ row ].test(RowFlag::kRhsInf));
-
+            assert(!rflags[row].test(RowFlag::kLhsInf) || !rflags[row].test(RowFlag::kRhsInf));
             const auto& rowvec = consMatrix.getRowCoefficients(row);
             const auto& rowvals = rowvec.getValues( );
             const auto& rowinds = rowvec.getIndices( );
-            double lhs = rflags[ row ].test(RowFlag::kLhsInf)
+            double lhs = rflags[row].test(RowFlag::kLhsInf)
                          ? -soplex->realParam(SoPlex::INFTY)
-                         : double(lhs_values[ row ]);
-            double rhs = rflags[ row ].test(RowFlag::kRhsInf)
+                         : double(lhs_values[row]);
+            double rhs = rflags[row].test(RowFlag::kRhsInf)
                          ? soplex->realParam(SoPlex::INFTY)
-                         : double(rhs_values[ row ]);
+                         : double(rhs_values[row]);
             DSVector cons(rowvec.getLength( ));
-
-            for( int k = 0; k < rowvec.getLength( ); ++k )
+            for( int i = 0; i < rowvec.getLength( ); ++i )
             {
-               assert(!this->model->getColFlags( )[ rowinds[ k ] ].test(ColFlag::kFixed));
-               assert(rowvals[ k ] != 0.0);
-               cons.add(inds[ rowinds[ k ] ], rowvals[ k ]);
+               assert(!this->model->getColFlags( )[rowinds[i]].test(ColFlag::kFixed));
+               assert(rowvals[i] != 0);
+               cons.add(inds[rowinds[i]], rowvals[i]);
             }
-
             soplex->addRowReal(LPRow(lhs, cons, rhs));
             rowNames.add(consNames[row].c_str());
          }
@@ -642,7 +643,7 @@ namespace bugger
                   switch( pair.second )
                   {
                   case DUAL:
-                     soplex->setRealParam(SoPlex::RealParam(pair.first.back()), this->relax( this->value, obj.sense, 2.0 * std::max(soplex->realParam(SoPlex::FEASTOL), soplex->realParam(SoPlex::OPTTOL)), soplex->realParam(SoPlex::INFTY) ));
+                     soplex->setRealParam(SoPlex::RealParam(pair.first.back()), this->relax( this->value, obj.sense, 2 * std::max(soplex->realParam(SoPlex::FEASTOL), soplex->realParam(SoPlex::OPTTOL)), soplex->realParam(SoPlex::INFTY) ));
                      break;
                   case PRIM:
                      soplex->setRealParam(SoPlex::RealParam(pair.first.back()), this->value);
@@ -701,6 +702,7 @@ namespace bugger
       void
       addParameters(ParameterSet& parameterset) override
       {
+         parameterset.addParameter("soplex.arithmetic", "arithmetic soplex type (0: double)", parameters.arithmetic, 0, 0);
          parameterset.addParameter("soplex.mode", "solve soplex mode (-1: optimize)", parameters.mode, -1, -1);
          parameterset.addParameter("soplex.limitspace", "relative margin when restricting limits or -1 for no restriction", parameters.limitspace, -1.0);
          parameterset.addParameter("soplex.setduallimit", "terminate when dual solution is better than reference solution (affecting)", parameters.set_dual_limit);
@@ -757,7 +759,7 @@ namespace bugger
    std::shared_ptr<SolverFactory<REAL>>
    load_solver_factory( )
    {
-      return std::shared_ptr<SolverFactory<REAL>>(new SoplexFactory<REAL>( ));
+      return std::shared_ptr<SolverFactory<REAL>>( new SoplexFactory<REAL>( ) );
    }
 
 } // namespace bugger

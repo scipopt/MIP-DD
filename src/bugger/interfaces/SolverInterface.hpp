@@ -166,22 +166,22 @@ namespace bugger
       REAL
       relax(const REAL& bound, const bool& increase, const REAL& tolerance, const REAL& infinity)
       {
-         assert(tolerance > 0.0);
-         assert(tolerance < 0.5);
-         assert(infinity > 1.0);
+         assert(tolerance > 0);
+         assert(tolerance * 2 < 1);
+         assert(infinity > 1);
 
          if( bound <= -infinity )
             return -infinity;
          else if( bound >= infinity )
             return infinity;
-         else if( abs(bound) < 1.0 )
+         else if( abs(bound) < 1 )
             return bound + (increase ? tolerance : -tolerance);
-         else if( (abs(bound) + 1.0) * tolerance > 1.0 )
-            return bound + (increase ? 1.0 - tolerance : tolerance - 1.0);
-         else if( bound < 0.0 )
-            return bound * (1.0 + (increase ? -tolerance : tolerance));
+         else if( (abs(bound) + 1) * tolerance > 1 )
+            return bound + (increase ? 1 - tolerance : tolerance - 1);
+         else if( bound < 0 )
+            return bound * (1 + (increase ? -tolerance : tolerance));
          else
-            return bound * (1.0 + (increase ? tolerance : -tolerance));
+            return bound * (1 + (increase ? tolerance : -tolerance));
       }
 
       char
@@ -364,7 +364,7 @@ namespace bugger
       char
       check_count_number(const REAL& dual, const REAL& primal, const long long int& count, const REAL& infinity)
       {
-         assert(infinity > 1.0);
+         assert(infinity > 1);
 
          if( abs(dual) > infinity || (model->getObjective().sense ? primal : -primal) != infinity || count < -1 )
          {
