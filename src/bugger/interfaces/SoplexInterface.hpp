@@ -310,6 +310,7 @@ namespace bugger
 } // namespace bugger
 
 #include "SoplexRealInterface.hpp"
+#include "SoplexRationalInterface.hpp"
 
 
 namespace bugger
@@ -328,7 +329,7 @@ namespace bugger
       void
       addParameters(ParameterSet& parameterset) override
       {
-         parameterset.addParameter("soplex.arithmetic", "arithmetic soplex type (0: double)", parameters.arithmetic, 0, 0);
+         parameterset.addParameter("soplex.arithmetic", "arithmetic soplex type (0: double, 1: rational)", parameters.arithmetic, 0, 1);
          parameterset.addParameter("soplex.mode", "solve soplex mode (-1: optimize)", parameters.mode, -1, -1);
          parameterset.addParameter("soplex.limitspace", "relative margin when restricting limits or -1 for no restriction", parameters.limitspace, -1.0);
          parameterset.addParameter("soplex.setduallimit", "terminate when dual solution is better than reference solution (affecting)", parameters.set_dual_limit);
@@ -341,8 +342,19 @@ namespace bugger
       std::unique_ptr<SolverInterface<REAL>>
       create_solver(const Message& msg) override
       {
-         assert(parameters.arithmetic == 0);
-         auto soplex = std::unique_ptr<SolverInterface<REAL>>( new SoplexRealInterface<REAL>( msg, parameters, limits ) );
+         std::unique_ptr<SolverInterface<REAL>> soplex;
+         switch( parameters.arithmetic )
+         {
+         case 0:
+            soplex = std::unique_ptr<SolverInterface<REAL>>( new SoplexRealInterface<REAL>( msg, parameters, limits ) );
+            break;
+         case 1:
+            soplex = std::unique_ptr<SolverInterface<REAL>>( new SoplexRationalInterface<REAL>( msg, parameters, limits ) );
+            break;
+         default:
+            msg.error("unknown solver arithmetic\n");
+            return nullptr;
+         }
          if( initial )
          {
             // objective limits will be included in parseSettings() where sense is revealed

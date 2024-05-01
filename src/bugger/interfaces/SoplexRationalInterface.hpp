@@ -20,8 +20,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BUGGER_INTERFACES_SOPLEXREALINTERFACE_HPP__
-#define __BUGGER_INTERFACES_SOPLEXREALINTERFACE_HPP__
+#ifndef __BUGGER_INTERFACES_SOPLEXRATIONALINTERFACE_HPP__
+#define __BUGGER_INTERFACES_SOPLEXRATIONALINTERFACE_HPP__
 
 #include "SoplexInterface.hpp"
 
@@ -29,17 +29,17 @@
 namespace bugger
 {
    template <typename REAL>
-   class SoplexRealInterface : public SoplexInterface<REAL>
+   class SoplexRationalInterface : public SoplexInterface<REAL>
    {
    private:
 
-      typedef soplex::Real SOPLEX_Real;
+      typedef soplex::Rational SOPLEX_Real;
 
    public:
 
-      explicit SoplexRealInterface(const Message& _msg, SoplexParameters& _parameters,
-                                   HashMap<String, char>& _limits) : SoplexInterface<REAL>(_msg, _parameters, _limits)
-                                   { }
+      explicit SoplexRationalInterface(const Message& _msg, SoplexParameters& _parameters,
+                                       HashMap<String, char>& _limits) :
+                                       SoplexInterface<REAL>(_msg, _parameters, _limits) { }
 
       void
       doSetUp(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution) override
@@ -131,16 +131,16 @@ namespace bugger
 
                // check dual by reference solution objective
                if( retcode == SolverRetcode::OKAY && dual && this->soplex->isDualFeasible() )
-                  retcode = this->check_dual_bound( REAL(this->soplex->objValueReal()), REAL(std::max(this->soplex->realParam(SoPlex::FEASTOL), this->soplex->realParam(SoPlex::OPTTOL))), REAL(this->soplex->realParam(SoPlex::INFTY)) );
+                  retcode = this->check_dual_bound( REAL(this->soplex->objValueRational()), REAL(std::max(this->soplex->realParam(SoPlex::FEASTOL), this->soplex->realParam(SoPlex::OPTTOL))), REAL(this->soplex->realParam(SoPlex::INFTY)) );
 
                // check primal by generated solution values
                if( retcode == SolverRetcode::OKAY && ( primal && this->soplex->isPrimalFeasible() || objective ) )
                {
-                  DVectorReal sol(this->soplex->numCols());
+                  DVectorRational sol(this->soplex->numCols());
                   solution.resize(1);
                   solution[0].status = SolutionStatus::kFeasible;
                   solution[0].primal.resize(this->inds.size());
-                  this->soplex->getPrimalReal(sol.get_ptr(), sol.dim());
+                  this->soplex->getPrimalRational(sol);
 
                   for( int col = 0; col < solution[0].primal.size(); ++col )
                      solution[0].primal[col] = this->model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(sol[this->inds[col]]);
@@ -149,7 +149,7 @@ namespace bugger
                   {
                      solution[0].status = SolutionStatus::kUnbounded;
                      solution[0].ray.resize(this->inds.size());
-                     this->soplex->getPrimalRayReal(sol.get_ptr(), sol.dim());
+                     this->soplex->getPrimalRayRational(sol);
 
                      for( int col = 0; col < solution[0].ray.size(); ++col )
                         solution[0].ray[col] = this->model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(sol[this->inds[col]]);
@@ -165,7 +165,7 @@ namespace bugger
                   if( solution.size() == 0 )
                      solution.emplace_back(SolutionStatus::kInfeasible);
 
-                  retcode = this->check_objective_value( REAL(this->soplex->objValueReal()), solution[0], REAL(std::max(this->soplex->realParam(SoPlex::FEASTOL), this->soplex->realParam(SoPlex::OPTTOL))), REAL(this->soplex->realParam(SoPlex::INFTY)) );
+                  retcode = this->check_objective_value( REAL(this->soplex->objValueRational()), solution[0], REAL(std::max(this->soplex->realParam(SoPlex::FEASTOL), this->soplex->realParam(SoPlex::OPTTOL))), REAL(this->soplex->realParam(SoPlex::INFTY)) );
                }
             }
          }
@@ -250,13 +250,13 @@ namespace bugger
          builder.setNumCols(ncols);
          for( int col = 0; col < ncols; ++col )
          {
-            SOPLEX_Real lb = this->soplex->lowerReal(col);
-            SOPLEX_Real ub = this->soplex->upperReal(col);
+            SOPLEX_Real lb = this->soplex->lowerRational(col);
+            SOPLEX_Real ub = this->soplex->upperRational(col);
             builder.setColLb(col, REAL(lb));
             builder.setColUb(col, REAL(ub));
             builder.setColLbInf(col, -lb >= this->soplex->realParam(SoPlex::INFTY));
             builder.setColUbInf(col, ub >= this->soplex->realParam(SoPlex::INFTY));
-            builder.setObj(col, REAL(this->soplex->objReal(col)));
+            builder.setObj(col, REAL(this->soplex->objRational(col)));
             builder.setColName(col, this->colNames[col]);
          }
 
@@ -266,10 +266,9 @@ namespace bugger
          Vec<REAL> consvals(ncols);
          for( int row = 0; row < nrows; ++row )
          {
-            SOPLEX_Real lhs = this->soplex->lhsReal(row);
-            SOPLEX_Real rhs = this->soplex->rhsReal(row);
-            DSVectorReal cons;
-            this->soplex->getRowVectorReal(row, cons);
+            SOPLEX_Real lhs = this->soplex->lhsRational(row);
+            SOPLEX_Real rhs = this->soplex->rhsRational(row);
+            DSVectorRational cons { this->soplex->rowVectorRational(row) };
             for( int i = 0; i < cons.size(); ++i )
             {
                consinds[i] = cons.index(i);
@@ -302,7 +301,7 @@ namespace bugger
                );
       }
 
-      ~SoplexRealInterface( ) override = default;
+      ~SoplexRationalInterface( ) override = default;
 
    private:
 
@@ -343,7 +342,7 @@ namespace bugger
                this->inds[col] = -1;
             else
             {
-               LPColReal var { };
+               LPColRational var { };
                SOPLEX_Real lb = domains.flags[col].test(ColFlag::kLbInf)
                                 ? -this->soplex->realParam(SoPlex::INFTY)
                                 : SOPLEX_Real(domains.lower_bounds[col]);
@@ -355,7 +354,7 @@ namespace bugger
                var.setUpper(ub);
                var.setObj(obj.coefficients[col]);
                this->inds[col] = this->soplex->numCols();
-               this->soplex->addColReal(var);
+               this->soplex->addColRational(var);
                this->colNames.add(varNames[col].c_str());
             }
          }
@@ -374,14 +373,14 @@ namespace bugger
             SOPLEX_Real rhs = rflags[row].test(RowFlag::kRhsInf)
                               ? this->soplex->realParam(SoPlex::INFTY)
                               : SOPLEX_Real(rhs_values[row]);
-            DSVectorReal cons(rowvec.getLength( ));
+            DSVectorRational cons(rowvec.getLength( ));
             for( int i = 0; i < rowvec.getLength( ); ++i )
             {
                assert(!this->model->getColFlags( )[rowinds[i]].test(ColFlag::kFixed));
                assert(rowvals[i] != 0);
                cons.add(this->inds[rowinds[i]], rowvals[i]);
             }
-            this->soplex->addRowReal(LPRowReal(lhs, cons, rhs));
+            this->soplex->addRowRational(LPRowRational(lhs, cons, rhs));
             this->rowNames.add(consNames[row].c_str());
          }
 
