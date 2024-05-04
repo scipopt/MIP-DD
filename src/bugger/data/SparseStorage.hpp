@@ -23,7 +23,7 @@
 #ifndef _BUGGER_CORE_SPARSE_STORAGE_HPP_
 #define _BUGGER_CORE_SPARSE_STORAGE_HPP_
 
-#include "bugger/misc/MultiPrecision.hpp"
+#include "bugger/misc/Num.hpp"
 #include "bugger/misc/Vec.hpp"
 #include "bugger/external/pdqsort/pdqsort.h"
 #include <algorithm>
