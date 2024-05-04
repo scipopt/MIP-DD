@@ -152,20 +152,6 @@ endif()
 
 add_library(bugger-core INTERFACE)
 
-#
-# interface function for setting common library properties
-#
-function(setLibProperties targetname outputname)
-    set_target_properties(${targetname} PROPERTIES
-        OUTPUT_NAME ${outputname}
-        MACOSX_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
-endfunction(setLibProperties)
-if(MSVC)
-    setLibProperties(bugger-core "libbugger-core")
-else()
-    setLibProperties(bugger-core "bugger-core")
-endif()
-
 # define bugger arithmetic
 set(BUGGER_ARITHMETIC d CACHE STRING "arithmetic for reductions, problems, and solutions (f: float, d: double, l: long double, q: quad, r: rational)")
 if    ("float"      MATCHES ^${BUGGER_ARITHMETIC})
