@@ -371,7 +371,7 @@ namespace bugger
       }
 
       char
-      check_count_number(const REAL& dual, const REAL& primal, const long long int& count, const REAL& infinity)
+      check_count_number(const REAL& dual, const REAL& primal, const long long& count, const REAL& infinity)
       {
          assert(infinity > 1);
 

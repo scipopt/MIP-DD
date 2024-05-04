@@ -127,6 +127,24 @@ namespace bugger
       boost::optional<SolverSettings>
       parseSettings(const String& filename) const override
       {
+         bool success = filename.empty() || soplex->loadSettingsFile(filename.c_str());
+
+         switch( parameters.arithmetic )
+         {
+         case 0:
+            soplex->setIntParam(SoplexParameters::READ, SoPlex::READMODE_REAL);
+            soplex->setIntParam(SoplexParameters::SOLV, SoPlex::SOLVEMODE_REAL);
+            soplex->setIntParam(SoplexParameters::CHEC, SoPlex::CHECKMODE_REAL);
+            break;
+         case 1:
+            soplex->setIntParam(SoplexParameters::READ, SoPlex::READMODE_RATIONAL);
+            soplex->setIntParam(SoplexParameters::SOLV, SoPlex::SOLVEMODE_RATIONAL);
+            soplex->setIntParam(SoplexParameters::CHEC, SoPlex::CHECKMODE_RATIONAL);
+            break;
+         default:
+            SPX_MSG_ERROR(soplex->spxout << "unknown solver arithmetic\n");
+         }
+
          // include objective limits
          if( initial )
          {
@@ -162,7 +180,7 @@ namespace bugger
             }
          }
 
-         if( !filename.empty() && !soplex->loadSettingsFile(filename.c_str()) )
+         if( !success )
             return boost::none;
 
          Vec<std::pair<String, bool>> bool_settings;
@@ -195,12 +213,15 @@ namespace bugger
 
          for( int i = 0; i < SoPlex::INTPARAM_COUNT; ++i )
          {
-            if( i == SoplexParameters::VERB
-             || i == SoplexParameters::SENS
-             || i == SoplexParameters::READ
-             || i == SoplexParameters::SOLV
-             || i == SoplexParameters::CHEC )
+            switch( i )
+            {
+            case SoplexParameters::VERB:
+            case SoplexParameters::SENS:
+            case SoplexParameters::READ:
+            case SoplexParameters::SOLV:
+            case SoplexParameters::CHEC:
                continue;
+            }
             String name { 1, (char)i };
             auto limit = limits.find(name);
             if( limit != limits.end() )
@@ -244,8 +265,11 @@ namespace bugger
 
          for( int i = 0; i < SoPlex::REALPARAM_COUNT; ++i )
          {
-            if( i == SoplexParameters::OFFS )
+            switch( i )
+            {
+            case SoplexParameters::OFFS:
                continue;
+            }
             String name { 3, (char)i };
             auto limit = limits.find(name);
             if( limit != limits.end() )
@@ -256,7 +280,7 @@ namespace bugger
                case PRIM:
                   break;
                case TIME:
-                  limit_settings.emplace_back( name, min(ceil(soplex->realParam(SoPlex::RealParam(i))), (double)LLONG_MAX) );
+                  limit_settings.emplace_back( name, min(ceil(soplex->realParam(SoPlex::RealParam(i))), soplex::Real(LLONG_MAX)) );
                   break;
                case ITER:
                default:

@@ -108,9 +108,9 @@ namespace bugger
             if( this->parameters.mode == -1 )
             {
                // retrieve enabled checks
-               bool dual = true;
-               bool primal = true;
-               bool objective = true;
+               bool dual = this->soplex->isDualFeasible();
+               bool primal = this->soplex->isPrimalFeasible();
+               bool objective = this->soplex->hasSol();
 
                for( int passcode: passcodes )
                {
@@ -132,11 +132,11 @@ namespace bugger
                Vec<Solution<REAL>> solution;
 
                // check dual by reference solution objective
-               if( retcode == SolverRetcode::OKAY && dual && this->soplex->isDualFeasible() )
+               if( retcode == SolverRetcode::OKAY && dual )
                   retcode = this->check_dual_bound( REAL(this->soplex->objValueReal()), REAL(max(this->soplex->realParam(SoPlex::FEASTOL), this->soplex->realParam(SoPlex::OPTTOL))), REAL(this->soplex->realParam(SoPlex::INFTY)) );
 
                // check primal by generated solution values
-               if( retcode == SolverRetcode::OKAY && ( primal && this->soplex->isPrimalFeasible() || objective ) )
+               if( retcode == SolverRetcode::OKAY && ( primal || objective ) )
                {
                   DVectorReal sol(this->soplex->numCols());
                   solution.resize(1);
@@ -264,8 +264,8 @@ namespace bugger
 
          // set up rows
          builder.setNumRows(nrows);
-         Vec<int> consinds(ncols);
-         Vec<REAL> consvals(ncols);
+         Vec<int> rowinds(ncols);
+         Vec<REAL> rowvals(ncols);
          for( int row = 0; row < nrows; ++row )
          {
             SOPLEX_Real lhs = this->soplex->lhsReal(row);
@@ -274,14 +274,14 @@ namespace bugger
             this->soplex->getRowVectorReal(row, cons);
             for( int i = 0; i < cons.size(); ++i )
             {
-               consinds[i] = cons.index(i);
-               consvals[i] = REAL(cons.value(i));
+               rowinds[i] = cons.index(i);
+               rowvals[i] = REAL(cons.value(i));
             }
             builder.setRowLhs(row, REAL(lhs));
             builder.setRowRhs(row, REAL(rhs));
             builder.setRowLhsInf(row, -lhs >= this->soplex->realParam(SoPlex::INFTY));
             builder.setRowRhsInf(row, rhs >= this->soplex->realParam(SoPlex::INFTY));
-            builder.addRowEntries(row, cons.size(), consinds.data(), consvals.data());
+            builder.addRowEntries(row, cons.size(), rowinds.data(), rowvals.data());
             builder.setRowName(row, this->rowNames[row]);
          }
 
@@ -326,15 +326,12 @@ namespace bugger
          const auto& rhs_values = consMatrix.getRightHandSides( );
          const auto& rflags = this->model->getRowFlags( );
 
-         this->soplex->setIntParam(SoplexParameters::READ, SoPlex::READMODE_REAL);
-         this->soplex->setIntParam(SoplexParameters::SOLV, SoPlex::SOLVEMODE_REAL);
-         this->soplex->setIntParam(SoplexParameters::CHEC, SoPlex::CHECKMODE_REAL);
          this->set_parameters( );
          this->soplex->setRealParam(SoplexParameters::OFFS, soplex::Real(obj.offset));
          this->soplex->setIntParam(SoplexParameters::SENS, obj.sense ? SoPlex::OBJSENSE_MINIMIZE : SoPlex::OBJSENSE_MAXIMIZE);
-         this->colNames.reMax(this->model->getNCols( ));
-         this->rowNames.reMax(this->model->getNRows( ));
-         this->inds.resize(this->model->getNCols( ));
+         this->colNames.reMax(ncols);
+         this->rowNames.reMax(nrows);
+         this->inds.resize(ncols);
          if( solution_exists )
             this->value = this->get_primal_objective(solution);
          else if( this->reference->status == SolutionStatus::kUnbounded )
@@ -371,16 +368,17 @@ namespace bugger
                continue;
             assert(!rflags[row].test(RowFlag::kLhsInf) || !rflags[row].test(RowFlag::kRhsInf));
             const auto& rowvec = consMatrix.getRowCoefficients(row);
-            const auto& rowvals = rowvec.getValues( );
             const auto& rowinds = rowvec.getIndices( );
+            const auto& rowvals = rowvec.getValues( );
+            int nrowcols = rowvec.getLength( );
             SOPLEX_Real lhs = rflags[row].test(RowFlag::kLhsInf)
                               ? -this->soplex->realParam(SoPlex::INFTY)
                               : SOPLEX_Real(lhs_values[row]);
             SOPLEX_Real rhs = rflags[row].test(RowFlag::kRhsInf)
                               ? this->soplex->realParam(SoPlex::INFTY)
                               : SOPLEX_Real(rhs_values[row]);
-            DSVectorReal cons(rowvec.getLength( ));
-            for( int i = 0; i < rowvec.getLength( ); ++i )
+            DSVectorReal cons(nrowcols);
+            for( int i = 0; i < nrowcols; ++i )
             {
                assert(!this->model->getColFlags( )[rowinds[i]].test(ColFlag::kFixed));
                assert(rowvals[i] != 0);

@@ -94,16 +94,12 @@ namespace bugger
       {
          SCIPprintVersion(scip, nullptr);
 
-         int length = SCIPgetNExternalCodes(scip);
-         auto description = SCIPgetExternalCodeDescriptions(scip);
          auto names = SCIPgetExternalCodeNames(scip);
+         auto description = SCIPgetExternalCodeDescriptions(scip);
+         int length = SCIPgetNExternalCodes(scip);
 
          for( int i = 0; i < length; ++i )
-         {
-            String n { names[i] };
-            String d { description[i] };
-            this->msg.info("\t{:20} {}\n", n, d);
-         }
+            this->msg.info("\t{:20} {}\n", names[i], description[i]);
       }
 
       bool
@@ -115,7 +111,9 @@ namespace bugger
       boost::optional<SolverSettings>
       parseSettings(const String& filename) const override
       {
-         if( !filename.empty() && SCIPreadParams(scip, filename.c_str()) != SCIP_OKAY )
+         bool success = filename.empty() || SCIPreadParams(scip, filename.c_str()) == SCIP_OKAY;
+
+         if( !success )
             return boost::none;
 
          Vec<std::pair<String, bool>> bool_settings;
@@ -146,18 +144,18 @@ namespace bugger
                case SOLU:
                case REST:
                   limit_settings.emplace_back( name, param->data.intparam.valueptr == nullptr
-                                                   ? param->data.intparam.curvalue
-                                                   : *param->data.intparam.valueptr );
+                                                     ? param->data.intparam.curvalue
+                                                     : *param->data.intparam.valueptr );
                   break;
                case TOTA:
                   limit_settings.emplace_back( name, param->data.longintparam.valueptr == nullptr
-                                                   ? param->data.longintparam.curvalue
-                                                   : *param->data.longintparam.valueptr );
+                                                     ? param->data.longintparam.curvalue
+                                                     : *param->data.longintparam.valueptr );
                   break;
                case TIME:
                   limit_settings.emplace_back( name, min(ceil(param->data.realparam.valueptr == nullptr
-                                                            ? param->data.realparam.curvalue
-                                                            : *param->data.realparam.valueptr), (double)LLONG_MAX) );
+                                                              ? param->data.realparam.curvalue
+                                                              : *param->data.realparam.valueptr), SCIP_Real(LLONG_MAX)) );
                   break;
                default:
                   SCIPerrorMessage("unknown limit type\n");
@@ -169,33 +167,33 @@ namespace bugger
                {
                case SCIP_PARAMTYPE_BOOL:
                   bool_settings.emplace_back( name, param->data.boolparam.valueptr == nullptr
-                                                  ? param->data.boolparam.curvalue
-                                                  : *param->data.boolparam.valueptr );
+                                                    ? param->data.boolparam.curvalue
+                                                    : *param->data.boolparam.valueptr );
                   break;
                case SCIP_PARAMTYPE_INT:
                   int_settings.emplace_back( name, param->data.intparam.valueptr == nullptr
-                                                 ? param->data.intparam.curvalue
-                                                 : *param->data.intparam.valueptr );
+                                                   ? param->data.intparam.curvalue
+                                                   : *param->data.intparam.valueptr );
                   break;
                case SCIP_PARAMTYPE_LONGINT:
                   long_settings.emplace_back( name, param->data.longintparam.valueptr == nullptr
-                                                  ? param->data.longintparam.curvalue
-                                                  : *param->data.longintparam.valueptr );
+                                                    ? param->data.longintparam.curvalue
+                                                    : *param->data.longintparam.valueptr );
                   break;
                case SCIP_PARAMTYPE_REAL:
                   double_settings.emplace_back( name, param->data.realparam.valueptr == nullptr
-                                                    ? param->data.realparam.curvalue
-                                                    : *param->data.realparam.valueptr );
+                                                      ? param->data.realparam.curvalue
+                                                      : *param->data.realparam.valueptr );
                   break;
                case SCIP_PARAMTYPE_CHAR:
                   char_settings.emplace_back( name, param->data.charparam.valueptr == nullptr
-                                                  ? param->data.charparam.curvalue
-                                                  : *param->data.charparam.valueptr );
+                                                    ? param->data.charparam.curvalue
+                                                    : *param->data.charparam.valueptr );
                   break;
                case SCIP_PARAMTYPE_STRING:
                   string_settings.emplace_back( name, param->data.stringparam.valueptr == nullptr
-                                                    ? param->data.stringparam.curvalue
-                                                    : *param->data.stringparam.valueptr );
+                                                      ? param->data.stringparam.curvalue
+                                                      : *param->data.stringparam.valueptr );
                   break;
                default:
                   SCIPerrorMessage("unknown setting type\n");
@@ -271,7 +269,7 @@ namespace bugger
 
                // check dual by reference solution objective
                if( retcode == SolverRetcode::OKAY && dual )
-                  retcode = this->check_dual_bound( SCIPgetDualbound(scip), SCIPsumepsilon(scip), SCIPinfinity(scip) );
+                  retcode = this->check_dual_bound( REAL(SCIPgetDualbound(scip)), REAL(SCIPsumepsilon(scip)), REAL(SCIPinfinity(scip)) );
 
                // check primal by generated solution values
                if( retcode == SolverRetcode::OKAY )
@@ -299,7 +297,7 @@ namespace bugger
                      }
 
                      if( primal )
-                        retcode = this->check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
+                        retcode = this->check_primal_solution( solution, REAL(SCIPsumepsilon(scip)), REAL(SCIPinfinity(scip)) );
                   }
                   else if( nsols != 0 && primal )
                      retcode = SolverRetcode::PRIMALFAIL;
@@ -314,7 +312,7 @@ namespace bugger
                   if( solution.size() == 0 )
                      solution.emplace_back(SolutionStatus::kInfeasible);
 
-                  retcode = this->check_objective_value( bound, solution[0], SCIPsumepsilon(scip), SCIPinfinity(scip) );
+                  retcode = this->check_objective_value( bound, solution[0], REAL(SCIPsumepsilon(scip)), REAL(SCIPinfinity(scip)) );
                }
             }
             else
@@ -322,11 +320,10 @@ namespace bugger
                // check count by primal solution existence
                if( retcode == SolverRetcode::OKAY )
                {
-                  long long int count;
-                  unsigned int valid;
+                  SCIP_Bool valid;
+                  long long count = SCIPgetNCountedSols(scip, &valid);
 
-                  count = SCIPgetNCountedSols(scip, &valid);
-                  retcode = this->check_count_number( SCIPgetDualbound(scip), SCIPgetPrimalbound(scip), (valid ? count : -1), SCIPinfinity(scip) );
+                  retcode = this->check_count_number( REAL(SCIPgetDualbound(scip)), REAL(SCIPgetPrimalbound(scip)), valid ? count : -1, REAL(SCIPinfinity(scip)) );
                }
             }
 
@@ -517,12 +514,12 @@ namespace bugger
          SCIP_CONS** probconss = SCIPgetConss(scip);
          for( int row = 0; row < nrows; ++row )
          {
-            int nconsvars = 0;
+            int nrowcols = 0;
             SCIP_Bool success = FALSE;
-            SCIPgetConsNVars(scip, probconss[row], &nconsvars, &success);
+            SCIPgetConsNVars(scip, probconss[row], &nrowcols, &success);
             if( !success )
                return { settings, boost::none };
-            nnz += nconsvars;
+            nnz += nrowcols;
          }
          builder.reserve(nnz, nrows, ncols);
 
@@ -534,13 +531,13 @@ namespace bugger
             SCIP_Real lb = SCIPvarGetLbGlobal(var);
             SCIP_Real ub = SCIPvarGetUbGlobal(var);
             SCIP_VARTYPE vartype = SCIPvarGetType(var);
-            builder.setColLb(col, lb);
-            builder.setColUb(col, ub);
+            builder.setColLb(col, REAL(lb));
+            builder.setColUb(col, REAL(ub));
             builder.setColLbInf(col, SCIPisInfinity(scip, -lb));
             builder.setColUbInf(col, SCIPisInfinity(scip, ub));
             builder.setColIntegral(col, vartype == SCIP_VARTYPE_BINARY || vartype == SCIP_VARTYPE_INTEGER);
             builder.setColImplInt(col, vartype != SCIP_VARTYPE_CONTINUOUS);
-            builder.setObj(col, SCIPvarGetObj(var));
+            builder.setObj(col, REAL(SCIPvarGetObj(var)));
             builder.setColName(col, SCIPvarGetName(var));
          }
 
@@ -548,7 +545,8 @@ namespace bugger
          builder.setNumRows(nrows);
          Vec<SCIP_VAR*> consvars(ncols);
          Vec<SCIP_Real> consvals(ncols);
-         Vec<int> consinds(ncols);
+         Vec<int> rowinds(ncols);
+         Vec<REAL> rowvals(ncols);
          for( int row = 0; row < nrows; ++row )
          {
             SCIP_CONS* cons = probconss[row];
@@ -559,8 +557,8 @@ namespace bugger
             SCIP_Real rhs = SCIPconsGetRhs(scip, cons, &success);
             if( !success )
                return { settings, boost::none };
-            int nconsvars = 0;
-            SCIPgetConsNVars(scip, cons, &nconsvars, &success);
+            int nrowcols = 0;
+            SCIPgetConsNVars(scip, cons, &nrowcols, &success);
             if( !success )
                return { settings, boost::none };
             SCIPgetConsVars(scip, cons, consvars.data(), ncols, &success);
@@ -569,16 +567,16 @@ namespace bugger
             SCIPgetConsVals(scip, cons, consvals.data(), ncols, &success);
             if( !success )
                return { settings, boost::none };
-            for( int i = 0; i < nconsvars; ++i )
+            for( int i = 0; i < nrowcols; ++i )
             {
-               consinds[i] = SCIPvarGetProbindex(consvars[i]);
-               assert(strcmp(SCIPvarGetName(consvars[i]), SCIPvarGetName(probvars[consinds[i]])) == 0);
+               rowinds[i] = SCIPvarGetProbindex(consvars[i]);
+               rowvals[i] = REAL(consvals[i]);
             }
-            builder.setRowLhs(row, lhs);
-            builder.setRowRhs(row, rhs);
+            builder.setRowLhs(row, REAL(lhs));
+            builder.setRowRhs(row, REAL(rhs));
             builder.setRowLhsInf(row, SCIPisInfinity(scip, -lhs));
             builder.setRowRhsInf(row, SCIPisInfinity(scip, rhs));
-            builder.addRowEntries(row, nconsvars, consinds.data(), consvals.data());
+            builder.addRowEntries(row, nrowcols, rowinds.data(), rowvals.data());
             builder.setRowName(row, SCIPconsGetName(cons));
          }
 
@@ -624,10 +622,10 @@ namespace bugger
          const auto& rflags = this->model->getRowFlags( );
 
          set_parameters( );
-         SCIP_CALL(SCIPcreateProbBasic(scip, this->model->getName( ).c_str( )));
-         SCIP_CALL(SCIPaddOrigObjoffset(scip, obj.offset));
+         SCIP_CALL(SCIPcreateProbBasic(scip, this->model->getName( ).c_str()));
+         SCIP_CALL(SCIPaddOrigObjoffset(scip, SCIP_Real(obj.offset)));
          SCIP_CALL(SCIPsetObjsense(scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
-         vars.resize(this->model->getNCols( ));
+         vars.resize(ncols);
          if( solution_exists )
             this->value = this->get_primal_objective(solution);
          else if( this->reference->status == SolutionStatus::kUnbounded )
@@ -661,23 +659,25 @@ namespace bugger
                   type = SCIP_VARTYPE_IMPLINT;
                else
                   type = SCIP_VARTYPE_CONTINUOUS;
-               SCIP_CALL(SCIPcreateVarBasic(scip, &var, varNames[col].c_str( ), lb, ub, obj.coefficients[col], type));
+               SCIP_CALL(SCIPcreateVarBasic(scip, &var, varNames[col].c_str(), lb, ub,
+                                            SCIP_Real(obj.coefficients[col]), type));
                vars[col] = var;
                SCIP_CALL(SCIPaddVar(scip, var));
                SCIP_CALL(SCIPreleaseVar(scip, &var));
             }
          }
 
-         Vec<SCIP_VAR*> consvars(this->model->getNCols( ));
-         Vec<SCIP_Real> consvals(this->model->getNCols( ));
+         Vec<SCIP_VAR*> consvars(ncols);
+         Vec<SCIP_Real> consvals(ncols);
          for( int row = 0; row < nrows; ++row )
          {
             if( rflags[row].test(RowFlag::kRedundant) )
                continue;
             assert(!rflags[row].test(RowFlag::kLhsInf) || !rflags[row].test(RowFlag::kRhsInf));
             const auto& rowvec = consMatrix.getRowCoefficients(row);
-            const auto& rowvals = rowvec.getValues( );
             const auto& rowinds = rowvec.getIndices( );
+            const auto& rowvals = rowvec.getValues( );
+            int nrowcols = rowvec.getLength( );
             SCIP_Real lhs = rflags[row].test(RowFlag::kLhsInf)
                             ? -SCIPinfinity(scip)
                             : SCIP_Real(lhs_values[row]);
@@ -685,16 +685,14 @@ namespace bugger
                             ? SCIPinfinity(scip)
                             : SCIP_Real(rhs_values[row]);
             SCIP_CONS* cons;
-            int length = 0;
-            for( int i = 0; i < rowvec.getLength( ); ++i )
+            for( int i = 0; i < nrowcols; ++i )
             {
                assert(!this->model->getColFlags( )[rowinds[i]].test(ColFlag::kFixed));
                assert(rowvals[i] != 0);
-               consvars[length] = vars[rowinds[i]];
-               consvals[length] = rowvals[i];
-               ++length;
+               consvars[i] = vars[rowinds[i]];
+               consvals[i] = SCIP_Real(rowvals[i]);
             }
-            SCIP_CALL(SCIPcreateConsBasicLinear(scip, &cons, consNames[row].c_str( ), length, consvars.data( ),
+            SCIP_CALL(SCIPcreateConsBasicLinear(scip, &cons, consNames[row].c_str(), nrowcols, consvars.data( ),
                                                 consvals.data( ), lhs, rhs));
             SCIP_CALL(SCIPaddCons(scip, cons));
             SCIP_CALL(SCIPreleaseCons(scip, &cons));
@@ -707,10 +705,10 @@ namespace bugger
                switch( pair.second )
                {
                case DUAL:
-                  SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), this->relax( this->value, obj.sense, 2 * SCIPsumepsilon(scip), SCIPinfinity(scip) )));
+                  SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), SCIP_Real(this->relax( this->value, obj.sense, 2 * SCIPsumepsilon(scip), SCIPinfinity(scip) ))));
                   break;
                case PRIM:
-                  SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), this->value));
+                  SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), SCIP_Real(this->value)));
                   break;
                }
             }
@@ -788,8 +786,16 @@ namespace bugger
       std::unique_ptr<SolverInterface<REAL>>
       create_solver(const Message& msg) override
       {
-         //TODO: auto scip = std::unique_ptr<SolverInterface<REAL>>( parameters.arithmetic == 0 ? new ScipInterface<REAL>( msg, parameters, limits ) : EXACT_SCIP);
-         auto scip = std::unique_ptr<SolverInterface<REAL>>( new ScipInterface<REAL>( msg, parameters, limits ) );
+         std::unique_ptr<SolverInterface<REAL>> scip;
+         switch( parameters.arithmetic )
+         {
+         case 0:
+            scip = std::unique_ptr<SolverInterface<REAL>>( new ScipInterface<REAL>( msg, parameters, limits ) );
+            break;
+         default:
+            msg.error("unknown solver arithmetic\n");
+            return nullptr;
+         }
          if( initial )
          {
             String name;
