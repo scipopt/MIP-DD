@@ -48,6 +48,8 @@ float
 double
 #elif defined(BUGGER_LONGDOUBLE)
 long double
+#elif defined(BUGGER_QUAD)
+Quad
 #endif
 REAL;
 

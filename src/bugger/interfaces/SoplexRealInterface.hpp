@@ -325,7 +325,7 @@ namespace bugger
          const auto& rflags = this->model->getRowFlags( );
 
          this->set_parameters( );
-         this->soplex->setRealParam(SoPlex::OBJ_OFFSET, obj.offset);
+         this->soplex->setRealParam(SoPlex::OBJ_OFFSET, soplex::Real(obj.offset));
          this->soplex->setIntParam(SoPlex::OBJSENSE, obj.sense ? SoPlex::OBJSENSE_MINIMIZE : SoPlex::OBJSENSE_MAXIMIZE);
          this->colNames.reMax(this->model->getNCols( ));
          this->rowNames.reMax(this->model->getNRows( ));
@@ -353,7 +353,7 @@ namespace bugger
                assert(!domains.flags[col].test(ColFlag::kInactive) || lb == ub);
                var.setLower(lb);
                var.setUpper(ub);
-               var.setObj(obj.coefficients[col]);
+               var.setObj(SOPLEX_Real(obj.coefficients[col]));
                this->inds[col] = this->soplex->numCols();
                this->soplex->addColReal(var);
                this->colNames.add(varNames[col].c_str());
@@ -379,7 +379,7 @@ namespace bugger
             {
                assert(!this->model->getColFlags( )[rowinds[i]].test(ColFlag::kFixed));
                assert(rowvals[i] != 0);
-               cons.add(this->inds[rowinds[i]], rowvals[i]);
+               cons.add(this->inds[rowinds[i]], SOPLEX_Real(rowvals[i]));
             }
             this->soplex->addRowReal(LPRowReal(lhs, cons, rhs));
             this->rowNames.add(consNames[row].c_str());
@@ -396,7 +396,7 @@ namespace bugger
                   SoPlex::RealParam param = SoPlex::RealParam(doublesettings[index].first.back());
                   if( ( param == SoPlex::OBJLIMIT_LOWER || param == SoPlex::OBJLIMIT_UPPER ) && abs(this->soplex->realParam(param)) < this->soplex->realParam(SoPlex::INFTY) )
                   {
-                     this->soplex->setRealParam(param, std::max(std::min(this->soplex->realParam(param) - this->value, this->soplex->realParam(SoPlex::INFTY)), -this->soplex->realParam(SoPlex::INFTY)));
+                     this->soplex->setRealParam(param, std::max(std::min(this->soplex->realParam(param) - soplex::Real(this->value), this->soplex->realParam(SoPlex::INFTY)), -this->soplex->realParam(SoPlex::INFTY)));
                      this->adjustment->setDoubleSettings(index, this->soplex->realParam(param));
                   }
                }
@@ -407,9 +407,9 @@ namespace bugger
          if( solution_exists )
          {
             if( abs(this->soplex->realParam(SoPlex::OBJLIMIT_LOWER)) < this->soplex->realParam(SoPlex::INFTY) )
-               this->soplex->setRealParam(SoPlex::OBJLIMIT_LOWER, std::max(std::min(this->soplex->realParam(SoPlex::OBJLIMIT_LOWER) + this->value, this->soplex->realParam(SoPlex::INFTY)), -this->soplex->realParam(SoPlex::INFTY)));
+               this->soplex->setRealParam(SoPlex::OBJLIMIT_LOWER, std::max(std::min(this->soplex->realParam(SoPlex::OBJLIMIT_LOWER) + soplex::Real(this->value), this->soplex->realParam(SoPlex::INFTY)), -this->soplex->realParam(SoPlex::INFTY)));
             if( abs(this->soplex->realParam(SoPlex::OBJLIMIT_UPPER)) < this->soplex->realParam(SoPlex::INFTY) )
-               this->soplex->setRealParam(SoPlex::OBJLIMIT_UPPER, std::max(std::min(this->soplex->realParam(SoPlex::OBJLIMIT_UPPER) + this->value, this->soplex->realParam(SoPlex::INFTY)), -this->soplex->realParam(SoPlex::INFTY)));
+               this->soplex->setRealParam(SoPlex::OBJLIMIT_UPPER, std::max(std::min(this->soplex->realParam(SoPlex::OBJLIMIT_UPPER) + soplex::Real(this->value), this->soplex->realParam(SoPlex::INFTY)), -this->soplex->realParam(SoPlex::INFTY)));
             if( this->parameters.set_dual_limit || this->parameters.set_prim_limit )
             {
                for( const auto& pair : this->limits )
@@ -417,10 +417,10 @@ namespace bugger
                   switch( pair.second )
                   {
                   case DUAL:
-                     this->soplex->setRealParam(SoPlex::RealParam(pair.first.back()), this->relax( this->value, obj.sense, 2 * std::max(this->soplex->realParam(SoPlex::FEASTOL), this->soplex->realParam(SoPlex::OPTTOL)), this->soplex->realParam(SoPlex::INFTY) ));
+                     this->soplex->setRealParam(SoPlex::RealParam(pair.first.back()), soplex::Real(this->relax( this->value, obj.sense, 2 * std::max(this->soplex->realParam(SoPlex::FEASTOL), this->soplex->realParam(SoPlex::OPTTOL)), this->soplex->realParam(SoPlex::INFTY) )));
                      break;
                   case PRIM:
-                     this->soplex->setRealParam(SoPlex::RealParam(pair.first.back()), this->value);
+                     this->soplex->setRealParam(SoPlex::RealParam(pair.first.back()), soplex::Real(this->value));
                      break;
                   }
                }

@@ -31,49 +31,31 @@
 
 #ifdef BUGGER_HAVE_FLOAT128
 #include <boost/multiprecision/float128.hpp>
-namespace bugger
-{
 using Quad = boost::multiprecision::float128;
-} // namespace bugger
 #elif defined( BUGGER_HAVE_GMP )
 #include <boost/multiprecision/gmp.hpp>
-
-namespace bugger
-{
-using Quad =
-    boost::multiprecision::number<boost::multiprecision::gmp_float<35>>;
-} // namespace bugger
+using Quad = boost::multiprecision::number<boost::multiprecision::gmp_float<35>>;
 BOOST_SERIALIZATION_SPLIT_FREE( papilo::Quad )
-
 #else
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <boost/serialization/nvp.hpp>
-namespace bugger
-{
 using Quad = boost::multiprecision::cpp_bin_float_quad;
-} // namespace bugger
 #endif
 
 #ifdef BUGGER_HAVE_GMP
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <boost/multiprecision/gmp.hpp>
 #include <boost/serialization/nvp.hpp>
-
 // unfortunately the multiprecision gmp types do not provide an overload for
 // serialization
-namespace bugger
-{
 using Rational = boost::multiprecision::mpq_rational;
 using Float100 = boost::multiprecision::mpf_float_100;
 using Float500 = boost::multiprecision::mpf_float_500;
 using Float1000 = boost::multiprecision::mpf_float_1000;
-} // namespace bugger
-
 BOOST_SERIALIZATION_SPLIT_FREE( papilo::Rational )
 BOOST_SERIALIZATION_SPLIT_FREE( papilo::Float100 )
 BOOST_SERIALIZATION_SPLIT_FREE( papilo::Float500 )
 BOOST_SERIALIZATION_SPLIT_FREE( papilo::Float1000 )
-
 namespace boost
 {
 namespace serialization
@@ -122,22 +104,14 @@ load( Archive& ar,
 
 } // namespace serialization
 } // namespace boost
-
 #else
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/serialization/nvp.hpp>
-
-namespace bugger
-{
 using Rational = boost::multiprecision::cpp_rational;
-using Float100 =
-    boost::multiprecision::number<boost::multiprecision::cpp_bin_float<100>>;
-using Float500 =
-    boost::multiprecision::number<boost::multiprecision::cpp_bin_float<500>>;
-using Float1000 =
-    boost::multiprecision::number<boost::multiprecision::cpp_bin_float<1000>>;
-} // namespace bugger
+using Float100 = boost::multiprecision::number<boost::multiprecision::cpp_bin_float<100>>;
+using Float500 = boost::multiprecision::number<boost::multiprecision::cpp_bin_float<500>>;
+using Float1000 = boost::multiprecision::number<boost::multiprecision::cpp_bin_float<1000>>;
 #endif
 
 #endif
