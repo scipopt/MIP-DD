@@ -25,8 +25,6 @@
 
 #include "bugger/Config.hpp"
 
-// work around build failure with boost on Fedora 37
-#include <memory>
 #include <boost/serialization/split_free.hpp>
 
 #ifdef BUGGER_HAVE_FLOAT128
@@ -48,6 +46,7 @@ using Quad = boost::multiprecision::cpp_bin_float_quad;
 #include <boost/serialization/nvp.hpp>
 // unfortunately the multiprecision gmp types do not provide an overload for
 // serialization
+using Integral = boost::multiprecision::mpq_int;
 using Rational = boost::multiprecision::mpq_rational;
 using Float100 = boost::multiprecision::mpf_float_100;
 using Float500 = boost::multiprecision::mpf_float_500;
@@ -108,10 +107,47 @@ load( Archive& ar,
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/serialization/nvp.hpp>
+using Integral = boost::multiprecision::cpp_int;
 using Rational = boost::multiprecision::cpp_rational;
 using Float100 = boost::multiprecision::number<boost::multiprecision::cpp_bin_float<100>>;
 using Float500 = boost::multiprecision::number<boost::multiprecision::cpp_bin_float<500>>;
 using Float1000 = boost::multiprecision::number<boost::multiprecision::cpp_bin_float<1000>>;
 #endif
+
+namespace bugger
+{
+   Rational round(const Rational& number)
+   {
+      Integral integer { number };
+      Rational fraction { 2 * (number - integer) };
+
+      if( fraction >= 1 )
+         return integer + 1;
+      else if( fraction <= -1 )
+         return integer - 1;
+      else
+         return integer;
+   }
+
+   Rational floor(const Rational& number)
+   {
+      Integral integer { number };
+
+      if( integer > number )
+         return integer - 1;
+      else
+         return integer;
+   }
+
+   Rational ceil(const Rational& number)
+   {
+      Integral integer { number };
+
+      if( integer < number )
+         return integer + 1;
+      else
+         return integer;
+   }
+}
 
 #endif

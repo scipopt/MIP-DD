@@ -27,7 +27,6 @@
 #include "bugger/io/MpsWriter.hpp"
 #include "bugger/io/SolParser.hpp"
 #include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/MultiPrecision.hpp"
 #include "bugger/modules/SettingModul.hpp"
 
 
@@ -252,10 +251,10 @@ namespace bugger
                }
             }
 
-            if( problem.getColFlags()[col].test( ColFlag::kIntegral ) && solution.primal[col] != rint(solution.primal[col]) )
+            if( problem.getColFlags()[col].test( ColFlag::kIntegral ) && solution.primal[col] != round(solution.primal[col]) )
             {
-               msg.detailed( "\tColumn {:<3} violates integrality property ({:<3} != {:<3})\n", problem.getVariableNames()[col], solution.primal[col], rint(solution.primal[col]) );
-               viol = abs(solution.primal[col] - rint(solution.primal[col]));
+               msg.detailed( "\tColumn {:<3} violates integrality property ({:<3} != {:<3})\n", problem.getVariableNames()[col], solution.primal[col], round(solution.primal[col]) );
+               viol = abs(solution.primal[col] - round(solution.primal[col]));
                if( viol > maxviol )
                {
                   maxviol = viol;
@@ -320,7 +319,7 @@ namespace bugger
          int largestValue = static_cast<int>( bugger::ModulStatus::kDidNotRun );
 
          for( int module = 0; module < parameters.maxstages; ++module )
-            largestValue = std::max(largestValue, static_cast<int>( results[ module ] ));
+            largestValue = max(largestValue, static_cast<int>( results[ module ] ));
 
          return static_cast<bugger::ModulStatus>( largestValue );
       }

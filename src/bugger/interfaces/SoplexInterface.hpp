@@ -34,10 +34,10 @@
 #include "bugger/interfaces/SolverInterface.hpp"
 
 
-using namespace soplex;
-
 namespace bugger
 {
+   using namespace soplex;
+
    enum SoplexLimit : char
    {
       DUAL = 1,
@@ -242,7 +242,7 @@ namespace bugger
                case PRIM:
                   break;
                case TIME:
-                  limit_settings.emplace_back( name, std::min(std::ceil(soplex->realParam(SoPlex::RealParam(i))), (double)LLONG_MAX) );
+                  limit_settings.emplace_back( name, min(ceil(soplex->realParam(SoPlex::RealParam(i))), (double)LLONG_MAX) );
                   break;
                case ITER:
                default:

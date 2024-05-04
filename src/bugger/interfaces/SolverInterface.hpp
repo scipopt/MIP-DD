@@ -186,7 +186,7 @@ namespace bugger
          else if( abs(bound) < 1 )
             return bound + (increase ? tolerance : -tolerance);
          else if( (abs(bound) + 1) * tolerance > 1 )
-            return bound + (increase ? 1 - tolerance : tolerance - 1);
+            return bound + (increase ? REAL(1 - tolerance) : REAL(tolerance - 1));
          else if( bound < 0 )
             return bound * (1 + (increase ? -tolerance : tolerance));
          else
@@ -244,7 +244,7 @@ namespace bugger
 
                   if( solution[i].primal[col] < relax( model->getColFlags()[col].test( ColFlag::kLbInf ) ? -infinity : model->getLowerBounds()[col], false, tolerance, infinity )
                    || solution[i].primal[col] > relax( model->getColFlags()[col].test( ColFlag::kUbInf ) ?  infinity : model->getUpperBounds()[col], true,  tolerance, infinity )
-                   || ( model->getColFlags()[col].test( ColFlag::kIntegral ) && abs(solution[i].primal[col] - rint(solution[i].primal[col])) > tolerance ) )
+                   || ( model->getColFlags()[col].test( ColFlag::kIntegral ) && abs(solution[i].primal[col] - round(solution[i].primal[col])) > tolerance ) )
                   {
                      msg.detailed( "\tColumn {:<3} outside domain (value {:<3}) in solution {:<3}\n", model->getVariableNames()[col], solution[i].primal[col], i );
                      return PRIMALFAIL;
@@ -275,7 +275,7 @@ namespace bugger
 
                for( int col = 0; col < model->getNCols(); ++col )
                   if( !model->getColFlags()[col].test( ColFlag::kFixed ) )
-                     scale = std::max(scale, abs(solution[i].ray[col]));
+                     scale = max(scale, abs(solution[i].ray[col]));
 
                scale *= tolerance;
 
@@ -331,7 +331,7 @@ namespace bugger
 
             for( int col = 0; col < model->getNCols(); ++col )
                if( !model->getColFlags()[col].test( ColFlag::kFixed ) )
-                  scale = std::max(scale, abs(solution.ray[col]));
+                  scale = max(scale, abs(solution.ray[col]));
 
             scale *= tolerance;
 

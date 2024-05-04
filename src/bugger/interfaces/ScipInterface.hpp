@@ -155,9 +155,9 @@ namespace bugger
                                                    : *param->data.longintparam.valueptr );
                   break;
                case TIME:
-                  limit_settings.emplace_back( name, std::min(std::ceil(param->data.realparam.valueptr == nullptr
-                                                                      ? param->data.realparam.curvalue
-                                                                      : *param->data.realparam.valueptr), (double)LLONG_MAX) );
+                  limit_settings.emplace_back( name, min(ceil(param->data.realparam.valueptr == nullptr
+                                                            ? param->data.realparam.curvalue
+                                                            : *param->data.realparam.valueptr), (double)LLONG_MAX) );
                   break;
                default:
                   SCIPerrorMessage("unknown limit type\n");
@@ -420,35 +420,35 @@ namespace bugger
                   {
                   case BEST:
                      // incremented to continue after finding the last best solution
-                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetNBestSolsFound(scip) + 1.0, 1.0));
+                     bound = ceil(max((1.0 + parameters.limitspace) * SCIPgetNBestSolsFound(scip) + 1.0, 1.0));
                      if( bound > INT_MAX )
                         continue;
                      else
                         break;
                   case SOLU:
                      // incremented to continue after finding the last solution
-                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetNSolsFound(scip) + 1.0, 1.0));
+                     bound = ceil(max((1.0 + parameters.limitspace) * SCIPgetNSolsFound(scip) + 1.0, 1.0));
                      if( bound > INT_MAX )
                         continue;
                      else
                         break;
                   case REST:
                      // decremented from runs to restarts
-                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * (SCIPgetNRuns(scip) - 1.0), 1.0));
+                     bound = ceil(max((1.0 + parameters.limitspace) * (SCIPgetNRuns(scip) - 1.0), 1.0));
                      if( bound > INT_MAX )
                         continue;
                      else
                         break;
                   case TOTA:
                      // assumes last node is processed
-                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetNTotalNodes(scip), 1.0));
+                     bound = ceil(max((1.0 + parameters.limitspace) * SCIPgetNTotalNodes(scip), 1.0));
                      if( bound > LONG_MAX )
                         continue;
                      else
                         break;
                   case TIME:
                      // sensitive to processor speed variability
-                     bound = std::ceil(std::max((1.0 + parameters.limitspace) * SCIPgetSolvingTime(scip), 1.0));
+                     bound = ceil(max((1.0 + parameters.limitspace) * SCIPgetSolvingTime(scip), 1.0));
                      if( bound > LLONG_MAX )
                         continue;
                      else

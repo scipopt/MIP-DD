@@ -50,6 +50,8 @@ double
 long double
 #elif defined(BUGGER_QUAD)
 Quad
+#elif defined(BUGGER_RATIONAL)
+Rational
 #endif
 REAL;
 
