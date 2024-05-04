@@ -77,7 +77,7 @@ namespace bugger
       const ScipParameters& parameters;
       const HashMap<String, char>& limits;
       SCIP* scip = nullptr;
-      Vec<SCIP_VAR*> vars;
+      Vec<SCIP_VAR*> vars { };
 
    public:
 

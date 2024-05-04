@@ -82,10 +82,10 @@ namespace bugger
 
       SoplexParameters& parameters;
       HashMap<String, char>& limits;
-      SoPlex* soplex;
+      SoPlex* soplex = nullptr;
       NameSet colNames { };
       NameSet rowNames { };
-      Vec<int> inds;
+      Vec<int> inds { };
 
    public:
 
