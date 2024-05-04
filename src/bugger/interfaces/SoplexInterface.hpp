@@ -51,6 +51,11 @@ namespace bugger
    public:
 
       static const SoPlex::IntParam VERB;
+      static const SoPlex::IntParam SENS;
+      static const SoPlex::RealParam OFFS;
+      static const SoPlex::IntParam READ;
+      static const SoPlex::IntParam SOLV;
+      static const SoPlex::IntParam CHEC;
 
       int arithmetic = 0;
       int mode = -1;
@@ -62,6 +67,11 @@ namespace bugger
    };
 
    const SoPlex::IntParam SoplexParameters::VERB { SoPlex::VERBOSITY };
+   const SoPlex::IntParam SoplexParameters::SENS { SoPlex::OBJSENSE };
+   const SoPlex::RealParam SoplexParameters::OFFS { SoPlex::OBJ_OFFSET };
+   const SoPlex::IntParam SoplexParameters::READ { SoPlex::READMODE };
+   const SoPlex::IntParam SoplexParameters::SOLV { SoPlex::SOLVEMODE };
+   const SoPlex::IntParam SoplexParameters::CHEC { SoPlex::CHECKMODE };
 
    template <typename REAL>
    class SoplexInterface : public SolverInterface<REAL>
@@ -129,7 +139,7 @@ namespace bugger
             {
                if( parameters.set_dual_limit )
                {
-                  String name { 3, (char)(soplex->intParam(SoPlex::OBJSENSE) == SoPlex::OBJSENSE_MINIMIZE ? SoPlex::OBJLIMIT_UPPER : SoPlex::OBJLIMIT_LOWER) };
+                  String name { 3, (char)(soplex->intParam(SoplexParameters::SENS) == SoPlex::OBJSENSE_MINIMIZE ? SoPlex::OBJLIMIT_UPPER : SoPlex::OBJLIMIT_LOWER) };
                   if( has_setting(name) )
                      limits[name] = DUAL;
                   else
@@ -140,7 +150,7 @@ namespace bugger
                }
                if( parameters.set_prim_limit )
                {
-                  String name { 3, (char)(soplex->intParam(SoPlex::OBJSENSE) == SoPlex::OBJSENSE_MINIMIZE ? SoPlex::OBJLIMIT_LOWER : SoPlex::OBJLIMIT_UPPER) };
+                  String name { 3, (char)(soplex->intParam(SoplexParameters::SENS) == SoPlex::OBJSENSE_MINIMIZE ? SoPlex::OBJLIMIT_LOWER : SoPlex::OBJLIMIT_UPPER) };
                   if( has_setting(name) )
                      limits[name] = PRIM;
                   else
@@ -185,7 +195,11 @@ namespace bugger
 
          for( int i = 0; i < SoPlex::INTPARAM_COUNT; ++i )
          {
-            if( i == SoplexParameters::VERB || i == SoPlex::OBJSENSE )
+            if( i == SoplexParameters::VERB
+             || i == SoplexParameters::SENS
+             || i == SoplexParameters::READ
+             || i == SoplexParameters::SOLV
+             || i == SoplexParameters::CHEC )
                continue;
             String name { 1, (char)i };
             auto limit = limits.find(name);
@@ -230,7 +244,7 @@ namespace bugger
 
          for( int i = 0; i < SoPlex::REALPARAM_COUNT; ++i )
          {
-            if( i == SoPlex::OBJ_OFFSET )
+            if( i == SoplexParameters::OFFS )
                continue;
             String name { 3, (char)i };
             auto limit = limits.find(name);

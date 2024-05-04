@@ -238,9 +238,9 @@ namespace bugger
          ProblemBuilder<REAL> builder;
 
          // set objective offset
-         builder.setObjOffset(this->soplex->realParam(SoPlex::OBJ_OFFSET));
+         builder.setObjOffset(this->soplex->realParam(SoplexParameters::OFFS));
          // set objective sense
-         builder.setObjSense(this->soplex->intParam(SoPlex::OBJSENSE) == SoPlex::OBJSENSE_MINIMIZE);
+         builder.setObjSense(this->soplex->intParam(SoplexParameters::SENS) == SoPlex::OBJSENSE_MINIMIZE);
 
          // reserve problem memory
          int ncols = this->soplex->numCols();
@@ -326,9 +326,12 @@ namespace bugger
          const auto& rhs_values = consMatrix.getRightHandSides( );
          const auto& rflags = this->model->getRowFlags( );
 
+         this->soplex->setIntParam(SoplexParameters::READ, SoPlex::READMODE_REAL);
+         this->soplex->setIntParam(SoplexParameters::SOLV, SoPlex::SOLVEMODE_REAL);
+         this->soplex->setIntParam(SoplexParameters::CHEC, SoPlex::CHECKMODE_REAL);
          this->set_parameters( );
-         this->soplex->setRealParam(SoPlex::OBJ_OFFSET, soplex::Real(obj.offset));
-         this->soplex->setIntParam(SoPlex::OBJSENSE, obj.sense ? SoPlex::OBJSENSE_MINIMIZE : SoPlex::OBJSENSE_MAXIMIZE);
+         this->soplex->setRealParam(SoplexParameters::OFFS, soplex::Real(obj.offset));
+         this->soplex->setIntParam(SoplexParameters::SENS, obj.sense ? SoPlex::OBJSENSE_MINIMIZE : SoPlex::OBJSENSE_MAXIMIZE);
          this->colNames.reMax(this->model->getNCols( ));
          this->rowNames.reMax(this->model->getNRows( ));
          this->inds.resize(this->model->getNCols( ));
