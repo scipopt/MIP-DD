@@ -5,7 +5,7 @@ Features
 --------
 
 - enable SCIP interface to restrict limits automatically with respect to a variability margin defined by parameter scip.limitspace
-- create SoPlex interface
+- support SoPlex as underlying solver
 
 Performance improvements
 ------------------------
@@ -32,7 +32,7 @@ Build system
 - backdate fmt from 8 to 7 to conform c++ standard 14
 - add compile option -ffp-contract=off or /fp:precise to enhance reproducibility across different systems
 - provide symlink to scip library in bugger build directory for a reliable unique link at runtime
-- introduce cmake parameter BUGGER_ARITHMETIC to select reduction arithmetic throughout templated bugger modules among float, double, and longdouble
+- introduce cmake parameter BUGGER_ARITHMETIC to select reduction arithmetic throughout templated bugger modules among float, double, longdouble, quad, and rational
 
 
 @section Release Notes MIP-Bugger 1.0
