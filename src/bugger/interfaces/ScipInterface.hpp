@@ -718,7 +718,7 @@ namespace bugger
       }
 
       void
-      set_parameters( )
+      set_parameters( ) const
       {
          for( const auto& pair : this->adjustment->getBoolSettings( ) )
             SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);

@@ -133,23 +133,7 @@ namespace bugger
       {
          bool success = filename.empty() || soplex->loadSettingsFile(filename.c_str());
 
-         switch( parameters.arithmetic )
-         {
-         case 0:
-            soplex->setIntParam(SoplexParameters::READ, SoPlex::READMODE_REAL);
-            soplex->setIntParam(SoplexParameters::SOLV, SoPlex::SOLVEMODE_REAL);
-            soplex->setIntParam(SoplexParameters::CHEC, SoPlex::CHECKMODE_REAL);
-            soplex->setIntParam(SoplexParameters::SYNC, SoPlex::SYNCMODE_ONLYREAL);
-            break;
-         case 1:
-            soplex->setIntParam(SoplexParameters::READ, SoPlex::READMODE_RATIONAL);
-            soplex->setIntParam(SoplexParameters::SOLV, SoPlex::SOLVEMODE_RATIONAL);
-            soplex->setIntParam(SoplexParameters::CHEC, SoPlex::CHECKMODE_RATIONAL);
-            soplex->setIntParam(SoplexParameters::SYNC, SoPlex::SYNCMODE_AUTO);
-            break;
-         default:
-            SPX_MSG_ERROR(soplex->spxout << "unknown solver arithmetic\n");
-         }
+         set_arithmetic( );
 
          // include objective limits
          if( initial )
@@ -323,7 +307,7 @@ namespace bugger
    protected:
 
       void
-      set_parameters( )
+      set_parameters( ) const
       {
          for( const auto& pair : this->adjustment->getBoolSettings( ) )
             soplex->setBoolParam(SoPlex::BoolParam(pair.first.back()), pair.second);
@@ -350,6 +334,31 @@ namespace bugger
             default:
                SPX_MSG_ERROR(soplex->spxout << "unknown limit type\n");
             }
+         }
+         set_arithmetic( );
+      }
+
+   private:
+
+      void
+      set_arithmetic( ) const
+      {
+         switch( parameters.arithmetic )
+         {
+         case 0:
+            soplex->setIntParam(SoplexParameters::READ, SoPlex::READMODE_REAL);
+            soplex->setIntParam(SoplexParameters::SOLV, SoPlex::SOLVEMODE_REAL);
+            soplex->setIntParam(SoplexParameters::CHEC, SoPlex::CHECKMODE_REAL);
+            soplex->setIntParam(SoplexParameters::SYNC, SoPlex::SYNCMODE_ONLYREAL);
+            break;
+         case 1:
+            soplex->setIntParam(SoplexParameters::READ, SoPlex::READMODE_RATIONAL);
+            soplex->setIntParam(SoplexParameters::SOLV, SoPlex::SOLVEMODE_RATIONAL);
+            soplex->setIntParam(SoplexParameters::CHEC, SoPlex::CHECKMODE_RATIONAL);
+            soplex->setIntParam(SoplexParameters::SYNC, SoPlex::SYNCMODE_AUTO);
+            break;
+         default:
+            SPX_MSG_ERROR(soplex->spxout << "unknown solver arithmetic\n");
          }
       }
    };
