@@ -42,8 +42,9 @@ namespace bugger
    {
       DUAL = 1,
       PRIM = 2,
-      ITER = 3,
-      TIME = 4
+      REFI = 3,
+      ITER = 4,
+      TIME = 5
    };
 
    class SoplexParameters
@@ -62,6 +63,7 @@ namespace bugger
       double limitspace = 1.0;
       bool set_dual_limit = false;
       bool set_prim_limit = false;
+      bool set_refi_limit = true;
       bool set_iter_limit = false;
       bool set_time_limit = false;
    };
@@ -201,6 +203,7 @@ namespace bugger
                {
                case DUAL:
                case PRIM:
+               case REFI:
                case ITER:
                case TIME:
                default:
@@ -228,6 +231,7 @@ namespace bugger
             {
                switch( limit->second )
                {
+               case REFI:
                case ITER:
                   limit_settings.emplace_back( name, soplex->intParam(SoPlex::IntParam(i)) );
                   break;
@@ -253,6 +257,7 @@ namespace bugger
                {
                case DUAL:
                case PRIM:
+               case REFI:
                case ITER:
                case TIME:
                default:
@@ -282,6 +287,7 @@ namespace bugger
                case TIME:
                   limit_settings.emplace_back( name, min(ceil(soplex->realParam(SoPlex::RealParam(i))), soplex::Real(LLONG_MAX)) );
                   break;
+               case REFI:
                case ITER:
                default:
                   SPX_MSG_ERROR(soplex->spxout << "unknown limit type\n");
@@ -327,6 +333,7 @@ namespace bugger
          {
             switch( limits.find(pair.first)->second )
             {
+            case REFI:
             case ITER:
                soplex->setIntParam(SoPlex::IntParam(pair.first.back()), pair.second);
                break;
@@ -372,9 +379,10 @@ namespace bugger
          parameterset.addParameter("soplex.limitspace", "relative margin when restricting limits or -1 for no restriction", parameters.limitspace, -1.0);
          parameterset.addParameter("soplex.setduallimit", "terminate when dual solution is better than reference solution (affecting)", parameters.set_dual_limit);
          parameterset.addParameter("soplex.setprimlimit", "terminate when prim solution is as good as reference solution (affecting)", parameters.set_prim_limit);
+         parameterset.addParameter("soplex.setrefilimit", "restrict number of refinements automatically", parameters.set_refi_limit);
          parameterset.addParameter("soplex.setiterlimit", "restrict number of iterations automatically (effortbounding)", parameters.set_iter_limit);
          parameterset.addParameter("soplex.settimelimit", "restrict time automatically (unreproducible)", parameters.set_time_limit);
-         //TODO: Restrict monotonous limits by default
+         // stalling number of refinements is unrestrictable because it is not monotonously increasing
       }
 
       std::unique_ptr<SolverInterface<REAL>>
@@ -398,11 +406,23 @@ namespace bugger
             // objective limits will be included in parseSettings() where sense is revealed
             if( parameters.limitspace < 0.0 )
             {
+               parameters.set_refi_limit = false;
                parameters.set_iter_limit = false;
                parameters.set_time_limit = false;
             }
             else
             {
+               if( parameters.set_refi_limit )
+               {
+                  String name { 1, (char)SoPlex::REFLIMIT };
+                  if( soplex->has_setting(name) )
+                     limits[name] = REFI;
+                  else
+                  {
+                     msg.info("Refinement limit disabled.\n");
+                     parameters.set_refi_limit = false;
+                  }
+               }
                if( parameters.set_iter_limit )
                {
                   String name { 1, (char)SoPlex::ITERLIMIT };

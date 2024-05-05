@@ -197,6 +197,16 @@ namespace bugger
                   const char* name;
                   switch( this->limits.find(limitsettings[index].first)->second )
                   {
+                  case REFI:
+                     // assumes last refinement is finished
+                     name = this->soplex->settings().intParam.name[SoPlex::IntParam(limitsettings[index].first.back())].data();
+                     //TODO: Number of refinements
+                     //bound = ceil(max((1.0 + this->parameters.limitspace) * this->soplex->_statistics->refinements, 1.0));
+                     bound = DBL_MAX;
+                     if( bound > INT_MAX )
+                        continue;
+                     else
+                        break;
                   case ITER:
                      // assumes last iteration is finished
                      name = this->soplex->settings().intParam.name[SoPlex::IntParam(limitsettings[index].first.back())].data();
