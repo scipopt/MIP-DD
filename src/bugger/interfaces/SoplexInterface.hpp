@@ -403,8 +403,7 @@ namespace bugger
             soplex = std::unique_ptr<SolverInterface<REAL>>( new SoplexRationalInterface<REAL>( msg, parameters, limits ) );
             break;
          default:
-            msg.error("unknown solver arithmetic\n");
-            return nullptr;
+            throw std::runtime_error("unknown solver arithmetic");
          }
          if( initial )
          {
