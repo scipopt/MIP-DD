@@ -57,6 +57,7 @@ namespace bugger
       static const SoPlex::IntParam READ;
       static const SoPlex::IntParam SOLV;
       static const SoPlex::IntParam CHEC;
+      static const SoPlex::IntParam SYNC;
 
       int arithmetic = 0;
       int mode = -1;
@@ -74,6 +75,7 @@ namespace bugger
    const SoPlex::IntParam SoplexParameters::READ { SoPlex::READMODE };
    const SoPlex::IntParam SoplexParameters::SOLV { SoPlex::SOLVEMODE };
    const SoPlex::IntParam SoplexParameters::CHEC { SoPlex::CHECKMODE };
+   const SoPlex::IntParam SoplexParameters::SYNC { SoPlex::SYNCMODE };
 
    template <typename REAL>
    class SoplexInterface : public SolverInterface<REAL>
@@ -137,11 +139,13 @@ namespace bugger
             soplex->setIntParam(SoplexParameters::READ, SoPlex::READMODE_REAL);
             soplex->setIntParam(SoplexParameters::SOLV, SoPlex::SOLVEMODE_REAL);
             soplex->setIntParam(SoplexParameters::CHEC, SoPlex::CHECKMODE_REAL);
+            soplex->setIntParam(SoplexParameters::SYNC, SoPlex::SYNCMODE_ONLYREAL);
             break;
          case 1:
             soplex->setIntParam(SoplexParameters::READ, SoPlex::READMODE_RATIONAL);
             soplex->setIntParam(SoplexParameters::SOLV, SoPlex::SOLVEMODE_RATIONAL);
             soplex->setIntParam(SoplexParameters::CHEC, SoPlex::CHECKMODE_RATIONAL);
+            soplex->setIntParam(SoplexParameters::SYNC, SoPlex::SYNCMODE_AUTO);
             break;
          default:
             SPX_MSG_ERROR(soplex->spxout << "unknown solver arithmetic\n");
@@ -223,6 +227,7 @@ namespace bugger
             case SoplexParameters::READ:
             case SoplexParameters::SOLV:
             case SoplexParameters::CHEC:
+            case SoplexParameters::SYNC:
                continue;
             }
             String name { 1, (char)i };
