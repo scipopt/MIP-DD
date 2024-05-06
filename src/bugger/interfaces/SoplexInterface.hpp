@@ -127,7 +127,9 @@ namespace bugger
       boost::optional<SolverSettings>
       parseSettings(const String& filename) const override
       {
+         soplex->setIntParam(SoplexParameters::VERB, SoPlex::VERBOSITY_DEBUG);
          bool success = filename.empty() || soplex->loadSettingsFile(filename.c_str());
+         soplex->setIntParam(SoplexParameters::VERB, SoPlex::VERBOSITY_NORMAL);
 
          set_arithmetic( );
 
