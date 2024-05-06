@@ -302,11 +302,7 @@ namespace bugger
       writeInstance(const String& filename, const bool& writesettings) const override
       {
          if( writesettings || this->limits.size() >= 1 )
-         {
-            this->soplex->setIntParam(SoplexParameters::VERB, SoPlex::VERBOSITY_NORMAL);
             this->soplex->saveSettingsFile((filename + ".set").c_str(), true);
-            this->soplex->setIntParam(SoplexParameters::VERB, SoPlex::VERBOSITY_DEBUG);
-         }
          return this->soplex->writeFile((filename + ".lp").c_str(), &this->rowNames, &this->colNames
 #if SOPLEX_APIVERSION >= 15
                , nullptr, true, true

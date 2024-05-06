@@ -97,16 +97,12 @@ namespace bugger
                       SolverInterface<REAL>(_msg), parameters(_parameters), limits(_limits)
       {
          soplex = new SoPlex();
-         // suppress setting messages
-         soplex->setIntParam(SoplexParameters::VERB, SoPlex::VERBOSITY_DEBUG);
       }
 
       void
       print_header( ) const override
       {
-         soplex->setIntParam(SoplexParameters::VERB, SoPlex::VERBOSITY_NORMAL);
          soplex->printVersion();
-         soplex->setIntParam(SoplexParameters::VERB, SoPlex::VERBOSITY_DEBUG);
       }
 
       bool
