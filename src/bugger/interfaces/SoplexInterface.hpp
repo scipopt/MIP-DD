@@ -425,7 +425,11 @@ namespace bugger
             {
                if( parameters.set_refi_limit )
                {
+#if SOPLEX_APIVERSION >= 16
                   String name { 1, (char)SoPlex::REFLIMIT };
+#else
+                  String name { 1, (char)SoPlex::INTPARAM_COUNT };
+#endif
                   if( soplex->has_setting(name) )
                      limits[name] = REFI;
                   else

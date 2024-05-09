@@ -200,9 +200,11 @@ namespace bugger
                   case REFI:
                      // assumes last refinement is finished
                      name = this->soplex->settings().intParam.name[SoPlex::IntParam(limitsettings[index].first.back())].data();
-                     //TODO: Number of refinements
-                     //bound = ceil(max((1.0 + this->parameters.limitspace) * this->soplex->_statistics->refinements, 1.0));
+#if SOPLEX_APIVERSION >= 16
+                     bound = ceil(max((1.0 + this->parameters.limitspace) * this->soplex->numRefinements(), 1.0));
+#else
                      bound = DBL_MAX;
+#endif
                      if( bound > INT_MAX )
                         continue;
                      else
