@@ -43,17 +43,47 @@ stages:
     - export CFLAGS="-Werror"
     - export CXXFLAGS="-Werror"
     - export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
-    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_DEBUG} -DSCIP_DIR=/usr/local/lib/cmake/scip
+
+    # build soplex-double-debug bugger
+    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_DEBUG} -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=/usr/local/lib/cmake/soplex
     - make -j$(nproc)
     - bin/bugger --help
-    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_RELEASE} -DSCIP_DIR=/usr/local/lib/cmake/scip
+
+    # build soplex-double-optimized bugger
+    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_RELEASE} -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=/usr/local/lib/cmake/soplex
     - make -j$(nproc)
     - bin/bugger --help
+
+    # build soplex-rational-debug bugger
+    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_DEBUG} -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=/usr/local/lib/cmake/soplex
+    - make -j$(nproc)
+    - bin/bugger --help
+
+    # build soplex-rational-optimized bugger
+    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_RELEASE} -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=/usr/local/lib/cmake/soplex
+    - make -j$(nproc)
+    - bin/bugger --help
+
+    # reset solver directory
     - rm CMakeCache.txt
-    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_DEBUG} -DSOPLEX_DIR=/usr/local/lib/cmake/soplex
+
+    # build scip-double-debug bugger
+    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_DEBUG} -DBUGGER_ARITHMETIC=d -DSCIP_DIR=/usr/local/lib/cmake/scip
     - make -j$(nproc)
     - bin/bugger --help
-    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_RELEASE} -DSOPLEX_DIR=/usr/local/lib/cmake/soplex
+
+    # build scip-double-optimized bugger
+    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_RELEASE} -DBUGGER_ARITHMETIC=d -DSCIP_DIR=/usr/local/lib/cmake/scip
+    - make -j$(nproc)
+    - bin/bugger --help
+
+    # build scip-rational-debug bugger
+    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_DEBUG} -DBUGGER_ARITHMETIC=r -DSCIP_DIR=/usr/local/lib/cmake/scip
+    - make -j$(nproc)
+    - bin/bugger --help
+
+    # build scip-rational-optimized bugger
+    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_RELEASE} -DBUGGER_ARITHMETIC=r -DSCIP_DIR=/usr/local/lib/cmake/scip
     - make -j$(nproc)
     - bin/bugger --help
 
