@@ -1,16 +1,23 @@
 variables:
   SOPLEX_REVISION: bugfix-70
   SCIP_REVISION: v90-bugfix
+  BOOST_VERSION: 1.80.0
+  MIPDD_DIR: ${CI_PROJECT_DIR}/builds/MIP-DD
+  SOPLEX_DIR: /usr/local/lib/cmake/soplex
+  SCIP_DIR: /usr/local/lib/cmake/scip
 
 stages:
-  - test
+  - setup
+  - build
 
-.ctest:
-  stage: test
+setup:
+  stage: setup
   image:
     name: gcc:10
-  tags:
-    - compile
+  rules:
+    - if: $CI_MERGE_REQUEST_TITLE =~ /^Draft:/
+      when: manual
+    - if: $CI_MERGE_REQUEST_ID
   before_script:
     - apt-get update
     - apt-get install -y cmake libtbb-dev
@@ -27,7 +34,7 @@ stages:
     - cd ${CI_PROJECT_DIR}/soplex && git checkout ${SOPLEX_REVISION}
     - mkdir -p ${CI_PROJECT_DIR}/soplex/build
     - cd ${CI_PROJECT_DIR}/soplex/build
-    - cmake .. -DCMAKE_BUILD_TYPE=Release
+    - cmake ..
     - make -j$(nproc) && make install
 
     # clone, build and install scip
@@ -35,7 +42,7 @@ stages:
     - cd ${CI_PROJECT_DIR}/scip && git checkout ${SCIP_REVISION}
     - mkdir -p ${CI_PROJECT_DIR}/scip/build
     - cd ${CI_PROJECT_DIR}/scip/build
-    - cmake .. -DCMAKE_BUILD_TYPE=Release -DZIMPL=off -DREADLINE=off -DGMP=off -DPAPILO=off -DIPOPT=off
+    - cmake .. -DZIMPL=off -DREADLINE=off -DGMP=off -DPAPILO=off -DIPOPT=off
     - make -j$(nproc) && make install
 
     - mkdir -p ${CI_PROJECT_DIR}/builds/MIP-DD
@@ -44,56 +51,106 @@ stages:
     - export CXXFLAGS="-Werror"
     - export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
 
-    # build soplex-double-debug bugger
-    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_DEBUG} -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=/usr/local/lib/cmake/soplex
-    - make -j$(nproc)
-    - bin/bugger --help
-
-    # build soplex-double-optimized bugger
-    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_RELEASE} -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=/usr/local/lib/cmake/soplex
-    - make -j$(nproc)
-    - bin/bugger --help
-
-    # build soplex-rational-debug bugger
-    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_DEBUG} -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=/usr/local/lib/cmake/soplex
-    - make -j$(nproc)
-    - bin/bugger --help
-
-    # build soplex-rational-optimized bugger
-    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_RELEASE} -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=/usr/local/lib/cmake/soplex
-    - make -j$(nproc)
-    - bin/bugger --help
-
-    # reset solver directory
-    - rm CMakeCache.txt
-
-    # build scip-double-debug bugger
-    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_DEBUG} -DBUGGER_ARITHMETIC=d -DSCIP_DIR=/usr/local/lib/cmake/scip
-    - make -j$(nproc)
-    - bin/bugger --help
-
-    # build scip-double-optimized bugger
-    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_RELEASE} -DBUGGER_ARITHMETIC=d -DSCIP_DIR=/usr/local/lib/cmake/scip
-    - make -j$(nproc)
-    - bin/bugger --help
-
-    # build scip-rational-debug bugger
-    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_DEBUG} -DBUGGER_ARITHMETIC=r -DSCIP_DIR=/usr/local/lib/cmake/scip
-    - make -j$(nproc)
-    - bin/bugger --help
-
-    # build scip-rational-optimized bugger
-    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_RELEASE} -DBUGGER_ARITHMETIC=r -DSCIP_DIR=/usr/local/lib/cmake/scip
-    - make -j$(nproc)
-    - bin/bugger --help
-
-"build":
-  extends: .ctest
-  rules:
-    - if: $CI_MERGE_REQUEST_TITLE =~ /^Draft:/
-      when: manual
-    - if: $CI_MERGE_REQUEST_ID
+"soplex double debug":
+  stage: build
+  needs: [setup]
   variables:
-    CMAKE_FLAGS_DEBUG: "-DCMAKE_BUILD_TYPE=Debug"
-    CMAKE_FLAGS_RELEASE: "-DCMAKE_BUILD_TYPE=Release"
-    BOOST_VERSION: 1.80.0
+    NAME: soplex_double_debug
+  script:
+    - cd ${MIPDD_DIR}
+    - mkdir ${NAME}
+    - cd ${NAME}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${SOPLEX_DIR}
+    - make -j$(nproc)
+    - bin/bugger --help
+
+"soplex double optimized":
+  stage: build
+  needs: [setup]
+  variables:
+    NAME: soplex_double_optimized
+  script:
+    - cd ${MIPDD_DIR}
+    - mkdir ${NAME}
+    - cd ${NAME}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${SOPLEX_DIR}
+    - make -j$(nproc)
+    - bin/bugger --help
+
+"soplex rational debug":
+  stage: build
+  needs: [setup]
+  variables:
+    NAME: soplex_rational_debug
+  script:
+    - cd ${MIPDD_DIR}
+    - mkdir ${NAME}
+    - cd ${NAME}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=${SOPLEX_DIR}
+    - make -j$(nproc)
+    - bin/bugger --help
+
+"soplex rational optimized":
+  stage: build
+  needs: [setup]
+  variables:
+    NAME: soplex_rational_optimized
+  script:
+    - cd ${MIPDD_DIR}
+    - mkdir ${NAME}
+    - cd ${NAME}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=${SOPLEX_DIR}
+    - make -j$(nproc)
+    - bin/bugger --help
+
+"scip double debug":
+  stage: build
+  needs: [setup]
+  variables:
+    NAME: scip_double_debug
+  script:
+    - cd ${MIPDD_DIR}
+    - mkdir ${NAME}
+    - cd ${NAME}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSCIP_DIR=${SCIP_DIR}
+    - make -j$(nproc)
+    - bin/bugger --help
+
+"scip double optimized":
+  stage: build
+  needs: [setup]
+  variables:
+    NAME: scip_double_optimized
+  script:
+    - cd ${MIPDD_DIR}
+    - mkdir ${NAME}
+    - cd ${NAME}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSCIP_DIR=/${SCIP_DIR}
+    - make -j$(nproc)
+    - bin/bugger --help
+
+"scip rational debug":
+  stage: build
+  needs: [setup]
+  variables:
+    NAME: scip_rational_debug
+  script:
+    - cd ${MIPDD_DIR}
+    - mkdir ${NAME}
+    - cd ${NAME}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSCIP_DIR=${SCIP_DIR}
+    - make -j$(nproc)
+    - bin/bugger --help
+
+"scip rational optimized":
+  stage: build
+  needs: [setup]
+  variables:
+    NAME: scip_rational_optimized
+  script:
+    - cd ${MIPDD_DIR}
+    - mkdir ${NAME}
+    - cd ${NAME}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSCIP_DIR=${SCIP_DIR}
+    - make -j$(nproc)
+    - bin/bugger --help
