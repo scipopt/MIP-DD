@@ -10,14 +10,17 @@ stages:
   - setup
   - build
 
-setup:
-  stage: setup
-  image:
-    name: gcc:10
+.common:
   rules:
     - if: $CI_MERGE_REQUEST_TITLE =~ /^Draft:/
       when: manual
     - if: $CI_MERGE_REQUEST_ID
+
+"boost soplex scip":
+  extends: .common
+  stage: setup
+  image:
+    name: gcc:10
   before_script:
     - apt-get update
     - apt-get install -y cmake libtbb-dev
@@ -52,8 +55,9 @@ setup:
     - export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
 
 "soplex double debug":
+  extends: .common
   stage: build
-  needs: [setup]
+  needs: ["boost soplex scip"]
   variables:
     NAME: soplex_double_debug
   script:
@@ -65,8 +69,9 @@ setup:
     - bin/bugger --help
 
 "soplex double optimized":
+  extends: .common
   stage: build
-  needs: [setup]
+  needs: ["boost soplex scip"]
   variables:
     NAME: soplex_double_optimized
   script:
@@ -78,8 +83,9 @@ setup:
     - bin/bugger --help
 
 "soplex rational debug":
+  extends: .common
   stage: build
-  needs: [setup]
+  needs: ["boost soplex scip"]
   variables:
     NAME: soplex_rational_debug
   script:
@@ -91,8 +97,9 @@ setup:
     - bin/bugger --help
 
 "soplex rational optimized":
+  extends: .common
   stage: build
-  needs: [setup]
+  needs: ["boost soplex scip"]
   variables:
     NAME: soplex_rational_optimized
   script:
@@ -104,8 +111,9 @@ setup:
     - bin/bugger --help
 
 "scip double debug":
+  extends: .common
   stage: build
-  needs: [setup]
+  needs: ["boost soplex scip"]
   variables:
     NAME: scip_double_debug
   script:
@@ -117,8 +125,9 @@ setup:
     - bin/bugger --help
 
 "scip double optimized":
+  extends: .common
   stage: build
-  needs: [setup]
+  needs: ["boost soplex scip"]
   variables:
     NAME: scip_double_optimized
   script:
@@ -130,8 +139,9 @@ setup:
     - bin/bugger --help
 
 "scip rational debug":
+  extends: .common
   stage: build
-  needs: [setup]
+  needs: ["boost soplex scip"]
   variables:
     NAME: scip_rational_debug
   script:
@@ -143,8 +153,9 @@ setup:
     - bin/bugger --help
 
 "scip rational optimized":
+  extends: .common
   stage: build
-  needs: [setup]
+  needs: ["boost soplex scip"]
   variables:
     NAME: scip_rational_optimized
   script:
