@@ -3,7 +3,7 @@ variables:
   SOPLEX_REVISION: bugfix-70
   SCIP_REVISION: v90-bugfix
   SETUP_DIR: ${CI_PROJECT_DIR}/setups
-  INSTALL_DIR: ${CI_PROJECT_DIR}/installs
+  INSTALL_DIR: ${CI_PROJECT_DIR}/../installs
   BUILD_DIR: ${CI_PROJECT_DIR}/builds
   BOOST_DIR: ${SETUP_DIR}/boost
   SOPLEX_DIR: ${SETUP_DIR}/soplex
@@ -22,7 +22,7 @@ stages:
     name: gcc:10
   before_script:
     - apt-get update
-    - apt-get install -y cmake
+    - apt-get install -y cmake tbb-dev
     - export CFLAGS="-Werror"
     - export CXXFLAGS="-Werror"
     - export LD_LIBRARY_PATH=${INSTALL_DIR}/lib:${LD_LIBRARY_PATH}
