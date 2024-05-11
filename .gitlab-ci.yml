@@ -27,10 +27,10 @@ stages:
     - export CXXFLAGS="-Werror"
     - export LD_LIBRARY_PATH=${INSTALL_DIR}/lib:${LD_LIBRARY_PATH}
     - export BOOST_ROOT=${INSTALL_DIR}
-    - mkdir -p ${CI_PROJECT_DIR}/install
-    - mv ${CI_PROJECT_DIR}/install ${INSTALL_DIR}
+    - mkdir -p ${CI_PROJECT_DIR}/installs
+    - mv ${CI_PROJECT_DIR}/installs ${INSTALL_DIR}
   after_script:
-    - mv ${INSTALL_DIR} ${CI_PROJECT_DIR}/install
+    - mv ${INSTALL_DIR} ${CI_PROJECT_DIR}/installs
 
 boost-soplex-scip:
   extends: .common
