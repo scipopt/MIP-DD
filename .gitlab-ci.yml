@@ -2,9 +2,12 @@ variables:
   BOOST_VERSION: 1.80.0
   SOPLEX_REVISION: bugfix-70
   SCIP_REVISION: v90-bugfix
-  MIPDD_DIR: ${CI_PROJECT_DIR}/builds
-  SOPLEX_DIR: /usr/local/lib/cmake/soplex
-  SCIP_DIR: /usr/local/lib/cmake/scip
+  SETUP_DIR: ${CI_PROJECT_DIR}/setups
+  INSTALL_DIR: ${CI_PROJECT_DIR}/installs
+  BUILD_DIR: ${CI_PROJECT_DIR}/builds
+  BOOST_DIR: ${SETUP_DIR}/boost
+  SOPLEX_DIR: ${SETUP_DIR}/soplex
+  SCIP_DIR: ${SETUP_DIR}/scip
 
 stages:
   - setup
@@ -15,156 +18,144 @@ stages:
     - if: $CI_MERGE_REQUEST_TITLE =~ /^Draft:/
       when: manual
     - if: $CI_MERGE_REQUEST_ID
-  script:
-    - export CFLAGS="-Werror"
-    - export CXXFLAGS="-Werror"
-    - export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
-
-"boost soplex scip":
-  extends: .common
-  stage: setup
   image:
     name: gcc:10
   before_script:
     - apt-get update
-    - apt-get install -y cmake libtbb-dev
+    - apt-get install -y cmake
+    - export CFLAGS="-Werror"
+    - export CXXFLAGS="-Werror"
+    - export LD_LIBRARY_PATH=${INSTALL_DIR}/lib:${LD_LIBRARY_PATH}
+
+boost-soplex-scip:
+  extends: .common
+  stage: setup
   artifacts:
     paths:
-      - /usr/local/lib
-      - ${MIPDD_DIR}
+      - ${INSTALL_DIR}
+  before_script:
+    - mkdir -p ${SETUP_DIR}
+    - mkdir -p ${INSTALL_DIR}
   script:
-    # download, build and install boost
-    - wget https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_$(echo ${BOOST_VERSION} | tr . _).tar.gz
-    - tar -xzf boost_$(echo ${BOOST_VERSION} | tr . _).tar.gz
-    - cd boost_$(echo ${BOOST_VERSION} | tr . _)
-    - ./bootstrap.sh --with-libraries=program_options,serialization,iostreams,regex
-    - ./b2 -j$(nproc) install
+    # boost
+    - wget https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_$(echo ${BOOST_VERSION} | tr . _).tar.gz -O ${BOOST_DIR}.tar.gz
+    - tar -xzf ${BOOST_DIR}.tar.gz
+    - cd ${BOOST_DIR}
+    - ./bootstrap.sh --prefix=${INSTALL_DIR} --with-libraries=program_options,serialization,iostreams,regex
+    - ./b2 --prefix=${INSTALL_DIR} -j$(nproc) install
+    # soplex
+    - git clone https://github.com/scipopt/soplex.git ${SOPLEX_DIR}
+    - cd ${SOPLEX_DIR}
+    - git checkout ${SOPLEX_REVISION}
+    - cmake . -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
+    - make -j$(nproc) install
+    # scip
+    - git clone https://github.com/scipopt/scip.git ${SCIP_DIR}
+    - cd ${SCIP_DIR}
+    - git checkout ${SCIP_REVISION}
+    - cmake . -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DZIMPL=off -DREADLINE=off -DGMP=off -DPAPILO=off -DIPOPT=off
+    - make -j$(nproc) install
 
-    # clone, build and install soplex
-    - git clone https://github.com/scipopt/soplex.git ${CI_PROJECT_DIR}/soplex
-    - cd ${CI_PROJECT_DIR}/soplex && git checkout ${SOPLEX_REVISION}
-    - mkdir -p ${CI_PROJECT_DIR}/soplex/build
-    - cd ${CI_PROJECT_DIR}/soplex/build
-    - cmake ..
-    - make -j$(nproc) && make install
-
-    # clone, build and install scip
-    - git clone https://github.com/scipopt/scip.git ${CI_PROJECT_DIR}/scip
-    - cd ${CI_PROJECT_DIR}/scip && git checkout ${SCIP_REVISION}
-    - mkdir -p ${CI_PROJECT_DIR}/scip/build
-    - cd ${CI_PROJECT_DIR}/scip/build
-    - cmake .. -DZIMPL=off -DREADLINE=off -DGMP=off -DPAPILO=off -DIPOPT=off
-    - make -j$(nproc) && make install
-    - mkdir -p ${MIPDD_DIR}
-
-"soplex double debug":
+soplex_double_debug:
   extends: .common
   stage: build
-  dependencies: ["boost soplex scip"]
-  variables:
-    NAME: soplex_double_debug
+  dependencies: [boost-soplex-scip]
+  before_script:
+    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
   script:
-    - cd ${MIPDD_DIR}
-    - mkdir ${NAME}
-    - cd ${NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${SOPLEX_DIR}
+    - cd ${BUILD_DIR}
+    - cd ${CI_JOB_NAME}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${INSTALL_DIR}
     - make -j$(nproc)
     - bin/bugger --help
 
-"soplex double optimized":
+soplex_double_optimized:
   extends: .common
   stage: build
-  dependencies: ["boost soplex scip"]
-  variables:
-    NAME: soplex_double_optimized
+  dependencies: [boost-soplex-scip]
+  before_script:
+    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
   script:
-    - cd ${MIPDD_DIR}
-    - mkdir ${NAME}
-    - cd ${NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${SOPLEX_DIR}
+    - cd ${BUILD_DIR}
+    - cd ${CI_JOB_NAME}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${INSTALL_DIR}
     - make -j$(nproc)
     - bin/bugger --help
 
-"soplex rational debug":
+soplex_rational_debug:
   extends: .common
   stage: build
-  dependencies: ["boost soplex scip"]
-  variables:
-    NAME: soplex_rational_debug
+  dependencies: [boost-soplex-scip]
+  before_script:
+    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
   script:
-    - cd ${MIPDD_DIR}
-    - mkdir ${NAME}
-    - cd ${NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=${SOPLEX_DIR}
+    - cd ${BUILD_DIR}
+    - cd ${CI_JOB_NAME}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=${INSTALL_DIR}
     - make -j$(nproc)
     - bin/bugger --help
 
-"soplex rational optimized":
+soplex_rational_optimized:
   extends: .common
   stage: build
-  dependencies: ["boost soplex scip"]
-  variables:
-    NAME: soplex_rational_optimized
+  dependencies: [boost-soplex-scip]
+  before_script:
+    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
   script:
-    - cd ${MIPDD_DIR}
-    - mkdir ${NAME}
-    - cd ${NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=${SOPLEX_DIR}
+    - cd ${BUILD_DIR}
+    - cd ${CI_JOB_NAME}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=${INSTALL_DIR}
     - make -j$(nproc)
     - bin/bugger --help
 
-"scip double debug":
+scip_double_debug:
   extends: .common
   stage: build
-  dependencies: ["boost soplex scip"]
-  variables:
-    NAME: scip_double_debug
+  dependencies: [boost-soplex-scip]
+  before_script:
+    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
   script:
-    - cd ${MIPDD_DIR}
-    - mkdir ${NAME}
-    - cd ${NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSCIP_DIR=${SCIP_DIR}
+    - cd ${BUILD_DIR}
+    - cd ${CI_JOB_NAME}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSCIP_DIR=${INSTALL_DIR}
     - make -j$(nproc)
     - bin/bugger --help
 
-"scip double optimized":
+scip_double_optimized:
   extends: .common
   stage: build
-  dependencies: ["boost soplex scip"]
-  variables:
-    NAME: scip_double_optimized
+  dependencies: [boost-soplex-scip]
+  before_script:
+    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
   script:
-    - cd ${MIPDD_DIR}
-    - mkdir ${NAME}
-    - cd ${NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSCIP_DIR=/${SCIP_DIR}
+    - cd ${BUILD_DIR}
+    - cd ${CI_JOB_NAME}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSCIP_DIR=${INSTALL_DIR}
     - make -j$(nproc)
     - bin/bugger --help
 
-"scip rational debug":
+scip_rational_debug:
   extends: .common
   stage: build
-  dependencies: ["boost soplex scip"]
-  variables:
-    NAME: scip_rational_debug
+  dependencies: [boost-soplex-scip]
+  before_script:
+    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
   script:
-    - cd ${MIPDD_DIR}
-    - mkdir ${NAME}
-    - cd ${NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSCIP_DIR=${SCIP_DIR}
+    - cd ${BUILD_DIR}
+    - cd ${CI_JOB_NAME}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSCIP_DIR=${INSTALL_DIR}
     - make -j$(nproc)
     - bin/bugger --help
 
-"scip rational optimized":
+scip_rational_optimized:
   extends: .common
   stage: build
-  dependencies: ["boost soplex scip"]
-  variables:
-    NAME: scip_rational_optimized
+  dependencies: [boost-soplex-scip]
+  before_script:
+    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
   script:
-    - cd ${MIPDD_DIR}
-    - mkdir ${NAME}
-    - cd ${NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSCIP_DIR=${SCIP_DIR}
+    - cd ${BUILD_DIR}
+    - cd ${CI_JOB_NAME}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSCIP_DIR=${INSTALL_DIR}
     - make -j$(nproc)
     - bin/bugger --help
