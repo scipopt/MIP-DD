@@ -33,10 +33,9 @@ boost-soplex-scip:
   artifacts:
     paths:
       - ${INSTALL_DIR}
-  before_script:
+  script:
     - mkdir -p ${SETUP_DIR}
     - mkdir -p ${INSTALL_DIR}
-  script:
     # boost
     - wget https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_$(echo ${BOOST_VERSION} | tr . _).tar.gz -O ${BOOST_DIR}.tar.gz
     - mkdir -p ${BOOST_DIR}
@@ -61,11 +60,9 @@ soplex_double_debug:
   extends: .common
   stage: build
   dependencies: [boost-soplex-scip]
-  before_script:
-    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
   script:
-    - cd ${BUILD_DIR}
-    - cd ${CI_JOB_NAME}
+    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
+    - cd ${BUILD_DIR}/${CI_JOB_NAME}
     - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${INSTALL_DIR}
     - make -j$(nproc)
     - bin/bugger --help
@@ -74,11 +71,9 @@ soplex_double_optimized:
   extends: .common
   stage: build
   dependencies: [boost-soplex-scip]
-  before_script:
-    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
   script:
-    - cd ${BUILD_DIR}
-    - cd ${CI_JOB_NAME}
+    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
+    - cd ${BUILD_DIR}/${CI_JOB_NAME}
     - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${INSTALL_DIR}
     - make -j$(nproc)
     - bin/bugger --help
@@ -87,11 +82,9 @@ soplex_rational_debug:
   extends: .common
   stage: build
   dependencies: [boost-soplex-scip]
-  before_script:
-    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
   script:
-    - cd ${BUILD_DIR}
-    - cd ${CI_JOB_NAME}
+    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
+    - cd ${BUILD_DIR}/${CI_JOB_NAME}
     - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=${INSTALL_DIR}
     - make -j$(nproc)
     - bin/bugger --help
@@ -100,11 +93,9 @@ soplex_rational_optimized:
   extends: .common
   stage: build
   dependencies: [boost-soplex-scip]
-  before_script:
-    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
   script:
-    - cd ${BUILD_DIR}
-    - cd ${CI_JOB_NAME}
+    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
+    - cd ${BUILD_DIR}/${CI_JOB_NAME}
     - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=${INSTALL_DIR}
     - make -j$(nproc)
     - bin/bugger --help
@@ -113,11 +104,9 @@ scip_double_debug:
   extends: .common
   stage: build
   dependencies: [boost-soplex-scip]
-  before_script:
-    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
   script:
-    - cd ${BUILD_DIR}
-    - cd ${CI_JOB_NAME}
+    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
+    - cd ${BUILD_DIR}/${CI_JOB_NAME}
     - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSCIP_DIR=${INSTALL_DIR}
     - make -j$(nproc)
     - bin/bugger --help
@@ -126,11 +115,9 @@ scip_double_optimized:
   extends: .common
   stage: build
   dependencies: [boost-soplex-scip]
-  before_script:
-    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
   script:
-    - cd ${BUILD_DIR}
-    - cd ${CI_JOB_NAME}
+    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
+    - cd ${BUILD_DIR}/${CI_JOB_NAME}
     - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSCIP_DIR=${INSTALL_DIR}
     - make -j$(nproc)
     - bin/bugger --help
@@ -139,11 +126,9 @@ scip_rational_debug:
   extends: .common
   stage: build
   dependencies: [boost-soplex-scip]
-  before_script:
-    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
   script:
-    - cd ${BUILD_DIR}
-    - cd ${CI_JOB_NAME}
+    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
+    - cd ${BUILD_DIR}/${CI_JOB_NAME}
     - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSCIP_DIR=${INSTALL_DIR}
     - make -j$(nproc)
     - bin/bugger --help
@@ -152,11 +137,9 @@ scip_rational_optimized:
   extends: .common
   stage: build
   dependencies: [boost-soplex-scip]
-  before_script:
-    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
   script:
-    - cd ${BUILD_DIR}
-    - cd ${CI_JOB_NAME}
+    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
+    - cd ${BUILD_DIR}/${CI_JOB_NAME}
     - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSCIP_DIR=${INSTALL_DIR}
     - make -j$(nproc)
     - bin/bugger --help
