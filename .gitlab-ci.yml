@@ -37,7 +37,7 @@ boost-soplex-scip:
   stage: setup
   artifacts:
     paths:
-      - ${CI_PROJECT_DIR}/install
+      - ${CI_PROJECT_DIR}/installs
   script:
     - mkdir -p ${SETUP_DIR}
     - export CFLAGS=""
