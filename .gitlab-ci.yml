@@ -36,6 +36,8 @@ boost-soplex-scip:
   script:
     - mkdir -p ${SETUP_DIR}
     - mkdir -p ${INSTALL_DIR}
+    - export CFLAGS=""
+    - export CXXFLAGS=""
     # boost
     - wget https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_$(echo ${BOOST_VERSION} | tr . _).tar.gz -O ${BOOST_DIR}.tar.gz
     - mkdir -p ${BOOST_DIR}
