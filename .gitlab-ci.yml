@@ -1,8 +1,8 @@
 variables:
+  BOOST_VERSION: 1.80.0
   SOPLEX_REVISION: bugfix-70
   SCIP_REVISION: v90-bugfix
-  BOOST_VERSION: 1.80.0
-  MIPDD_DIR: ${CI_PROJECT_DIR}/builds/MIP-DD
+  MIPDD_DIR: ${CI_PROJECT_DIR}/builds
   SOPLEX_DIR: /usr/local/lib/cmake/soplex
   SCIP_DIR: /usr/local/lib/cmake/scip
 
@@ -15,6 +15,10 @@ stages:
     - if: $CI_MERGE_REQUEST_TITLE =~ /^Draft:/
       when: manual
     - if: $CI_MERGE_REQUEST_ID
+  script:
+    - export CFLAGS="-Werror"
+    - export CXXFLAGS="-Werror"
+    - export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
 
 "boost soplex scip":
   extends: .common
@@ -24,6 +28,10 @@ stages:
   before_script:
     - apt-get update
     - apt-get install -y cmake libtbb-dev
+  artifacts:
+    paths:
+      - /usr/local/lib
+      - ${MIPDD_DIR}
   script:
     # download, build and install boost
     - wget https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_$(echo ${BOOST_VERSION} | tr . _).tar.gz
@@ -47,17 +55,12 @@ stages:
     - cd ${CI_PROJECT_DIR}/scip/build
     - cmake .. -DZIMPL=off -DREADLINE=off -DGMP=off -DPAPILO=off -DIPOPT=off
     - make -j$(nproc) && make install
-
-    - mkdir -p ${CI_PROJECT_DIR}/builds/MIP-DD
-    - cd ${CI_PROJECT_DIR}/builds/MIP-DD
-    - export CFLAGS="-Werror"
-    - export CXXFLAGS="-Werror"
-    - export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
+    - mkdir -p ${MIPDD_DIR}
 
 "soplex double debug":
   extends: .common
   stage: build
-  needs: ["boost soplex scip"]
+  dependencies: ["boost soplex scip"]
   variables:
     NAME: soplex_double_debug
   script:
@@ -71,7 +74,7 @@ stages:
 "soplex double optimized":
   extends: .common
   stage: build
-  needs: ["boost soplex scip"]
+  dependencies: ["boost soplex scip"]
   variables:
     NAME: soplex_double_optimized
   script:
@@ -85,7 +88,7 @@ stages:
 "soplex rational debug":
   extends: .common
   stage: build
-  needs: ["boost soplex scip"]
+  dependencies: ["boost soplex scip"]
   variables:
     NAME: soplex_rational_debug
   script:
@@ -99,7 +102,7 @@ stages:
 "soplex rational optimized":
   extends: .common
   stage: build
-  needs: ["boost soplex scip"]
+  dependencies: ["boost soplex scip"]
   variables:
     NAME: soplex_rational_optimized
   script:
@@ -113,7 +116,7 @@ stages:
 "scip double debug":
   extends: .common
   stage: build
-  needs: ["boost soplex scip"]
+  dependencies: ["boost soplex scip"]
   variables:
     NAME: scip_double_debug
   script:
@@ -127,7 +130,7 @@ stages:
 "scip double optimized":
   extends: .common
   stage: build
-  needs: ["boost soplex scip"]
+  dependencies: ["boost soplex scip"]
   variables:
     NAME: scip_double_optimized
   script:
@@ -141,7 +144,7 @@ stages:
 "scip rational debug":
   extends: .common
   stage: build
-  needs: ["boost soplex scip"]
+  dependencies: ["boost soplex scip"]
   variables:
     NAME: scip_rational_debug
   script:
@@ -155,7 +158,7 @@ stages:
 "scip rational optimized":
   extends: .common
   stage: build
-  needs: ["boost soplex scip"]
+  dependencies: ["boost soplex scip"]
   variables:
     NAME: scip_rational_optimized
   script:
