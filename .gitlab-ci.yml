@@ -26,6 +26,7 @@ stages:
     - export CFLAGS="-Werror"
     - export CXXFLAGS="-Werror"
     - export LD_LIBRARY_PATH=${INSTALL_DIR}/lib:${LD_LIBRARY_PATH}
+    - export BOOST_ROOT=${INSTALL_DIR}
 
 boost-soplex-scip:
   extends: .common
