@@ -38,6 +38,7 @@ boost-soplex-scip:
   artifacts:
     paths:
       - ${CI_PROJECT_DIR}/installs
+    expire_in: 1 minute
   script:
     - mkdir -p ${SETUP_DIR}
     - export CFLAGS=""
