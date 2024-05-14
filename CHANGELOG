@@ -1,4 +1,4 @@
-@section Release Notes MIP-Bugger NEXT
+@section Release Notes MIP-DD NEXT
 ***************************
 
 Features
@@ -22,7 +22,7 @@ Build system
 - provide symlink to scip library in bugger build directory for a reliable unique link at runtime
 
 
-@section Release Notes MIP-Bugger 1.0
+@section Release Notes MIP-DD 1.0.0
 ***************************
 
 Features
