@@ -1,4 +1,4 @@
-@section Release Notes MIP-Bugger NEXT
+@section Release Notes MIP-DD NEXT
 ***************************
 
 Features
@@ -34,7 +34,7 @@ Build system
 - introduce cmake parameter BUGGER_ARITHMETIC to select reduction arithmetic throughout templated bugger modules among float, double, and longdouble
 
 
-@section Release Notes MIP-Bugger 1.0
+@section Release Notes MIP-DD 1.0.0
 ***************************
 
 Features
