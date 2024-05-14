@@ -354,7 +354,7 @@ class ProblemBuilder
       for( int i = 0; i != len; ++i )
       {
          assert( vals[i] != 0 );
-         matrix_buffer.addEntry( rows[i], col, REAL{ vals[i] } );
+         matrix_buffer.addEntry( rows[i], col, vals[i] );
       }
    }
 

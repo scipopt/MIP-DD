@@ -85,23 +85,23 @@ namespace bugger
                {
                   fixedval = solution.primal[ col ];
                   if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
-                     fixedval = this->num.round(fixedval);
+                     fixedval = round(fixedval);
                }
                else
                {
                   if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
                   {
                      if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
-                        fixedval = this->num.min(fixedval, this->num.epsFloor(copy.getUpperBounds( )[ col ]));
+                        fixedval = min(fixedval, this->num.epsFloor(copy.getUpperBounds( )[ col ]));
                      if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) )
-                        fixedval = this->num.max(fixedval, this->num.epsCeil(copy.getLowerBounds( )[ col ]));
+                        fixedval = max(fixedval, this->num.epsCeil(copy.getLowerBounds( )[ col ]));
                   }
                   else
                   {
                      if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
-                        fixedval = this->num.min(fixedval, copy.getUpperBounds( )[ col ]);
+                        fixedval = min(fixedval, copy.getUpperBounds( )[ col ]);
                      if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) )
-                        fixedval = this->num.max(fixedval, copy.getLowerBounds( )[ col ]);
+                        fixedval = max(fixedval, copy.getLowerBounds( )[ col ]);
                   }
                }
                copy.getColFlags( )[ col ].unset(ColFlag::kLbInf);

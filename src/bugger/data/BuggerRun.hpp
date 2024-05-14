@@ -27,7 +27,6 @@
 #include "bugger/io/MpsWriter.hpp"
 #include "bugger/io/SolParser.hpp"
 #include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/MultiPrecision.hpp"
 #include "bugger/modules/SettingModul.hpp"
 
 
@@ -113,6 +112,8 @@ namespace bugger
          std::pair<char, SolverStatus> last_result = { SolverRetcode::OKAY, SolverStatus::kUnknown };
          int last_round = -1;
          int last_module = -1;
+         auto solver = factory->create_solver(msg);
+         solver->doSetUp(settings, problem, solution);
          if( parameters.mode == 1 )
          {
             if( parameters.expenditure < 0 )
@@ -120,8 +121,6 @@ namespace bugger
          }
          else
          {
-            auto solver = factory->create_solver(msg);
-            solver->doSetUp(settings, problem, solution);
             last_result = solver->solve(Vec<int>{ });
             last_effort = solver->getSolvingEffort( );
             msg.info("Original solve returned code {} with status {} and effort {}.\n", (int)last_result.first, last_result.second, last_effort);
@@ -150,7 +149,7 @@ namespace bugger
                //TODO: Clean matrix in each round
                //TODO: Simplify solver handling
                //TODO: Free solver afterwards
-               auto solver = factory->create_solver(msg);
+               solver = factory->create_solver(msg);
                solver->doSetUp(settings, problem, solution);
                if( !solver->writeInstance(filename + std::to_string(round), setting->isEnabled()) )
                   MpsWriter<REAL>::writeProb(filename + std::to_string(round) + ".mps", problem);
@@ -252,10 +251,10 @@ namespace bugger
                }
             }
 
-            if( problem.getColFlags()[col].test( ColFlag::kIntegral ) && solution.primal[col] != rint(solution.primal[col]) )
+            if( problem.getColFlags()[col].test( ColFlag::kIntegral ) && solution.primal[col] != round(solution.primal[col]) )
             {
-               msg.detailed( "\tColumn {:<3} violates integrality property ({:<3} != {:<3})\n", problem.getVariableNames()[col], solution.primal[col], rint(solution.primal[col]) );
-               viol = abs(solution.primal[col] - rint(solution.primal[col]));
+               msg.detailed( "\tColumn {:<3} violates integrality property ({:<3} != {:<3})\n", problem.getVariableNames()[col], solution.primal[col], round(solution.primal[col]) );
+               viol = abs(solution.primal[col] - round(solution.primal[col]));
                if( viol > maxviol )
                {
                   maxviol = viol;
@@ -320,7 +319,7 @@ namespace bugger
          int largestValue = static_cast<int>( bugger::ModulStatus::kDidNotRun );
 
          for( int module = 0; module < parameters.maxstages; ++module )
-            largestValue = std::max(largestValue, static_cast<int>( results[ module ] ));
+            largestValue = max(largestValue, static_cast<int>( results[ module ] ));
 
          return static_cast<bugger::ModulStatus>( largestValue );
       }

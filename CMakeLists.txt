@@ -150,34 +150,20 @@ else()
    set(BUGGER_USE_STANDARD_HASHMAP 1)
 endif()
 
-add_library(bugger-core STATIC
-        src/bugger/data/VariableDomains.cpp
-        src/bugger/data/SparseStorage.cpp
-        src/bugger/data/ConstraintMatrix.cpp
-)
-
-#
-# interface function for setting common library properties
-#
-function(setLibProperties targetname outputname)
-    set_target_properties(${targetname} PROPERTIES
-        OUTPUT_NAME ${outputname}
-        MACOSX_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
-endfunction(setLibProperties)
-if(MSVC)
-    setLibProperties(bugger-core "libbugger-core")
-else()
-    setLibProperties(bugger-core "bugger-core")
-endif()
+add_library(bugger-core INTERFACE)
 
 # define bugger arithmetic
-set(BUGGER_ARITHMETIC d CACHE STRING "arithmetic for reductions, problems, and solutions (f: float, d: double, l: long double)")
+set(BUGGER_ARITHMETIC d CACHE STRING "arithmetic for reductions, problems, and solutions (f: float, d: double, l: long double, q: quad, r: rational)")
 if    ("float"      MATCHES ^${BUGGER_ARITHMETIC})
-    target_compile_definitions(bugger-core PUBLIC BUGGER_FLOAT)
+    target_compile_definitions(bugger-core INTERFACE BUGGER_FLOAT)
 elseif("double"     MATCHES ^${BUGGER_ARITHMETIC})
-    target_compile_definitions(bugger-core PUBLIC BUGGER_DOUBLE)
+    target_compile_definitions(bugger-core INTERFACE BUGGER_DOUBLE)
 elseif("longdouble" MATCHES ^${BUGGER_ARITHMETIC})
-    target_compile_definitions(bugger-core PUBLIC BUGGER_LONGDOUBLE)
+    target_compile_definitions(bugger-core INTERFACE BUGGER_LONGDOUBLE)
+elseif("quad"       MATCHES ^${BUGGER_ARITHMETIC})
+    target_compile_definitions(bugger-core INTERFACE BUGGER_QUAD)
+elseif("rational"   MATCHES ^${BUGGER_ARITHMETIC})
+    target_compile_definitions(bugger-core INTERFACE BUGGER_RATIONAL)
 else()
     message(FATAL_ERROR "Arithmetic not supported!")
 endif()
@@ -194,8 +180,7 @@ check_cxx_source_compiles(
     int main() { auto decomp = boost::iostreams::bzip2_decompressor(); (void)decomp; return 0; }"
    BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2 )
 
-target_link_libraries(bugger-core bugger ${Boost_LIBRARIES})
-target_compile_definitions(bugger-core PRIVATE BUGGER_USE_EXTERN_TEMPLATES)
+target_link_libraries(bugger-core INTERFACE bugger ${Boost_LIBRARIES})
 
 add_subdirectory(binaries)
 

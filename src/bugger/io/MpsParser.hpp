@@ -957,6 +957,14 @@ MpsParser<REAL>::read_number( const std::string &s )
    ss << s;
    ss >> number;
 
+   if( ss.fail() || !ss.eof() )
+   {
+      fmt::print( stderr,
+                  "WARNING: {} not of arithmetic {}!\n",
+                  s, typeid(REAL).name() );
+      number = 0;
+   }
+
    return number;
 }
 

@@ -98,8 +98,8 @@ namespace bugger
             {
                admissible = true;
                const auto& data = matrix.getRowCoefficients(row);
-               REAL lhs { this->num.round(matrix.getLeftHandSides( )[ row ]) };
-               REAL rhs { this->num.round(matrix.getRightHandSides( )[ row ]) };
+               REAL lhs { round(matrix.getLeftHandSides( )[ row ]) };
+               REAL rhs { round(matrix.getRightHandSides( )[ row ]) };
                REAL activity { };
                for( int index = 0; index < data.getLength( ); ++index )
                {
@@ -107,7 +107,7 @@ namespace bugger
                   {
                      if( !this->num.isZetaIntegral(data.getValues( )[ index ]) )
                      {
-                        REAL coeff { this->num.round(data.getValues( )[ index ]) };
+                        REAL coeff { round(data.getValues( )[ index ]) };
                         batches_coeff.emplace_back(row, data.getIndices( )[ index ], coeff);
                         activity += solution.primal[ data.getIndices( )[ index ] ] * coeff;
                      }
@@ -117,13 +117,13 @@ namespace bugger
                   else
                   {
                      if( !this->num.isZetaIntegral(data.getValues( )[ index ]) )
-                        batches_coeff.emplace_back(row, data.getIndices( )[ index ], this->num.round(data.getValues( )[ index ]));
+                        batches_coeff.emplace_back(row, data.getIndices( )[ index ], round(data.getValues( )[ index ]));
                   }
                }
                if( solution.status == SolutionStatus::kFeasible )
                {
-                  lhs = this->num.min(lhs, this->num.epsFloor(activity));
-                  rhs = this->num.max(rhs, this->num.epsCeil(activity));
+                  lhs = min(lhs, this->num.epsFloor(activity));
+                  rhs = max(rhs, this->num.epsCeil(activity));
                }
                if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) && !this->num.isZetaEq(matrix.getLeftHandSides()[ row ], lhs) )
                {

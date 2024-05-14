@@ -381,7 +381,7 @@ class Problem
                                double( variableDomains.lower_bounds[i] ), i,
                                double( sol[i] ), double( thisviol ) );
 
-            boundviolation = num.max( boundviolation, thisviol );
+            boundviolation = max( boundviolation, thisviol );
          }
 
          if( !variableDomains.flags[i].test( ColFlag::kUbInf ) &&
@@ -396,12 +396,12 @@ class Problem
                                double( variableDomains.upper_bounds[i] ), i,
                                double( sol[i] ), double( thisviol ) );
 
-            boundviolation = num.max( boundviolation, thisviol );
+            boundviolation = max( boundviolation, thisviol );
          }
 
          if( variableDomains.flags[i].test( ColFlag::kIntegral ) )
          {
-            REAL thisviol = abs( num.round( sol[i] ) - sol[i] );
+            REAL thisviol = abs( round( sol[i] ) - sol[i] );
 
             if( !num.isFeasZero( thisviol ) )
                Message::debug( this,
@@ -409,7 +409,7 @@ class Problem
                                "{} is violated by {}\n",
                                i, double( sol[i] ), double( thisviol ) );
 
-            intviolation = num.max( intviolation, thisviol );
+            intviolation = max( intviolation, thisviol );
          }
       }
 
@@ -438,7 +438,7 @@ class Problem
                             "the activity {} of constraint {}  "
                             "{} is greater than the righthandside {}\n",
                             activity, i, rhs[i] );
-            rowviolation = num.max( rowviolation, activity - rhs[i] );
+            rowviolation = max( rowviolation, activity - rhs[i] );
          }
 
          if( !rflags[i].test( RowFlag::kLhsInf )
@@ -448,7 +448,7 @@ class Problem
                             "the activity {} of constraint {}  "
                             "{} is greater than the lefthandside {}\n",
                             activity, i, lhs[i] );
-            rowviolation = num.max( rowviolation, lhs[i] - activity );
+            rowviolation = max( rowviolation, lhs[i] - activity );
          }
       }
 

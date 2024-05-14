@@ -93,17 +93,17 @@ namespace bugger
             if( isVarroundAdmissible(copy, col) )
             {
                admissible = true;
-               REAL lb { this->num.round(copy.getLowerBounds( )[ col ]) };
-               REAL ub { this->num.round(copy.getUpperBounds( )[ col ]) };
+               REAL lb { round(copy.getLowerBounds( )[ col ]) };
+               REAL ub { round(copy.getUpperBounds( )[ col ]) };
                if( solution.status == SolutionStatus::kFeasible )
                {
                   REAL value { solution.primal[ col ] };
-                  lb = this->num.min(lb, this->num.epsFloor(value));
-                  ub = this->num.max(ub, this->num.epsCeil(value));
+                  lb = min(lb, this->num.epsFloor(value));
+                  ub = max(ub, this->num.epsCeil(value));
                }
                if( !this->num.isZetaIntegral(copy.getObjective( ).coefficients[ col ]) )
                {
-                  REAL obj { this->num.round(copy.getObjective( ).coefficients[ col ]) };
+                  REAL obj { round(copy.getObjective( ).coefficients[ col ]) };
                   copy.getObjective( ).coefficients[ col ] = obj;
                   batches_obj.emplace_back(col, obj);
                }

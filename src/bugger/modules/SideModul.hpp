@@ -97,23 +97,23 @@ namespace bugger
                {
                   fixedval = this->get_linear_activity(data, solution);
                   if( integral )
-                     fixedval = this->num.round(fixedval);
+                     fixedval = round(fixedval);
                }
                else
                {
                   if( integral )
                   {
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
-                        fixedval = this->num.min(fixedval, this->num.epsFloor(matrix.getRightHandSides( )[ row ]));
+                        fixedval = min(fixedval, this->num.epsFloor(matrix.getRightHandSides( )[ row ]));
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
-                        fixedval = this->num.max(fixedval, this->num.epsCeil(matrix.getLeftHandSides( )[ row ]));
+                        fixedval = max(fixedval, this->num.epsCeil(matrix.getLeftHandSides( )[ row ]));
                   }
                   else
                   {
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
-                        fixedval = this->num.min(fixedval, matrix.getRightHandSides( )[ row ]);
+                        fixedval = min(fixedval, matrix.getRightHandSides( )[ row ]);
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
-                        fixedval = this->num.max(fixedval, matrix.getLeftHandSides( )[ row ]);
+                        fixedval = max(fixedval, matrix.getLeftHandSides( )[ row ]);
                   }
                }
                matrix.modifyLeftHandSide( row, this->num, fixedval );

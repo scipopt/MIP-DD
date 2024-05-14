@@ -37,6 +37,8 @@
 #include "bugger/modules/ConsroundModul.hpp"
 #if   defined(BUGGER_WITH_SCIP)
 #include "bugger/interfaces/ScipInterface.hpp"
+#elif defined(BUGGER_WITH_SOPLEX)
+#include "bugger/interfaces/SoplexInterface.hpp"
 #endif
 
 typedef
@@ -46,6 +48,10 @@ float
 double
 #elif defined(BUGGER_LONGDOUBLE)
 long double
+#elif defined(BUGGER_QUAD)
+Quad
+#elif defined(BUGGER_RATIONAL)
+Rational
 #endif
 REAL;
 
