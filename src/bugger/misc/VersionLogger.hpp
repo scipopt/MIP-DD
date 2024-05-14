@@ -30,7 +30,7 @@ template <typename REAL>
 void
 print_header()
 {
-   fmt::print( "MIP-Bugger version {}.{}.{} ", BUGGER_VERSION_MAJOR, BUGGER_VERSION_MINOR, BUGGER_VERSION_PATCH);
+   fmt::print( "MIP-DD version {}.{}.{} ", BUGGER_VERSION_MAJOR, BUGGER_VERSION_MINOR, BUGGER_VERSION_PATCH);
 
    fmt::print("[arithmetic: {}]", typeid(REAL).name());
 
