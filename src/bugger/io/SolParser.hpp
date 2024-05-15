@@ -143,24 +143,65 @@ struct SolParser
    }
 
    static REAL
-   read_number( const std::string &s )
-   {
-      std::stringstream ss;
-      REAL number;
-
-      ss << s;
-      ss >> number;
-
-      if( ss.fail() || !ss.eof() )
-      {
-         fmt::print( stderr,
-                     "WARNING: {} not of arithmetic {}!\n",
-                     s, typeid(REAL).name() );
-         number = 0;
+   read_number(const std::string& s) {
+      bool failed = false;
+      REAL answer = 0;
+      bool negated = false;
+      bool dot = false;
+      bool exponent = false;
+      int exp = 0;
+      bool exp_negated = false;
+      int digits_after_dot = 0;
+      for (char c : s) {
+         if ('0' <= c && c <= '9') {
+            int digit = c - '0';
+            if(exponent)
+            {
+               exp *= 10;
+               exp += digit;
+            }
+            else if( !dot )
+            {
+               answer *= 10;
+               answer += digit;
+            }
+            else
+            {
+               digits_after_dot++;
+               answer += digit /  pow( 10, digits_after_dot );
+            }
+         }
+         else if (c == '.' && !dot)
+         {
+            assert(digits_after_dot == 0);
+            assert(!exponent);
+            dot = true;
+         }
+         else if (c == '-' && ((exponent && !exp_negated) || !negated))
+         {
+            if(exponent)
+               exp_negated = true;
+            else
+               negated = true;
+         }
+         else if (c == '+' && ((exponent && !exp_negated) || !negated))
+         {
+         }
+         else if( ( c == 'E' || c == 'e' ) && !exponent )
+            exponent = true;
+         else
+         {
+            failed = true;
+            assert(false);
+         }
       }
-
-      return number;
+      if( !exp_negated )
+         answer *= pow( 10,  exp );
+      else
+         answer /= pow( 10,  exp );
+      return  negated ? -answer : answer;
    }
+
 };
 
 } // namespace bugger
