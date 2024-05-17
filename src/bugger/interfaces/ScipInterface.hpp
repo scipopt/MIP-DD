@@ -449,12 +449,12 @@ namespace bugger
       }
 
       bool
-      writeInstance(const String& filename, const bool& writesettings) override
+      writeInstance(const String& filename, const bool& writesettings) const override
       {
          if( writesettings || parameters.set_dual_limit || parameters.set_prim_limit )
             SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
          return SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
-      };
+      }
 
       ~ScipInterface( ) override
       {
