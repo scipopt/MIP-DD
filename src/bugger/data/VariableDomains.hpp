@@ -89,12 +89,6 @@ struct VariableDomains
    }
 };
 
-#ifdef BUGGER_USE_EXTERN_TEMPLATES
-extern template struct VariableDomains<double>;
-extern template struct VariableDomains<Quad>;
-extern template struct VariableDomains<Rational>;
-#endif
-
 template <typename REAL>
 void
 VariableDomains<REAL>::compress( const Vec<int>& colmapping, bool full )

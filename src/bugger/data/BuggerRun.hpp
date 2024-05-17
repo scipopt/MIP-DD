@@ -27,26 +27,26 @@
 #include "bugger/io/MpsWriter.hpp"
 #include "bugger/io/SolParser.hpp"
 #include "bugger/misc/OptionsParser.hpp"
-#include "bugger/misc/MultiPrecision.hpp"
 #include "bugger/modules/SettingModul.hpp"
 
 
 namespace bugger
 {
+   template <typename REAL>
    class BuggerRun
    {
    private:
 
       const Message& msg;
-      const Num<double>& num;
-      const BuggerParameters& parameters;
-      const std::shared_ptr<SolverFactory>& factory;
-      const Vec<std::unique_ptr<BuggerModul>>& modules;
+      const Num<REAL>& num;
+      BuggerParameters& parameters;
+      const std::shared_ptr<SolverFactory<REAL>>& factory;
+      const Vec<std::unique_ptr<BuggerModul<REAL>>>& modules;
       Vec<ModulStatus> results;
 
    public:
 
-      explicit BuggerRun(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters, const std::shared_ptr<SolverFactory>& _factory, const Vec<std::unique_ptr<BuggerModul>>& _modules)
+      explicit BuggerRun(const Message& _msg, const Num<REAL>& _num, BuggerParameters& _parameters, const std::shared_ptr<SolverFactory<REAL>>& _factory, const Vec<std::unique_ptr<BuggerModul<REAL>>>& _modules)
             : msg(_msg), num(_num), parameters(_parameters), factory(_factory), modules(_modules), results(_modules.size()) { }
 
       bool
@@ -56,7 +56,7 @@ namespace bugger
       }
 
       void
-      apply(const OptionsInfo& optionsInfo, SettingModul* const setting)
+      apply(const OptionsInfo& optionsInfo, SettingModul<REAL>* const setting)
       {
          msg.info("\nMIP Solver:\n");
          factory->create_solver(msg)->print_header();
@@ -80,7 +80,7 @@ namespace bugger
          if( !instance.second )
          {
             msg.info("Parser of the solver failed. Using internal parser...");
-            instance.second = MpsParser<double>::loadProblem(optionsInfo.problem_file);
+            instance.second = MpsParser<REAL>::loadProblem(optionsInfo.problem_file);
             if( !instance.second )
             {
                msg.error("error loading problem {}\n", optionsInfo.problem_file);
@@ -89,7 +89,7 @@ namespace bugger
          }
          auto settings = instance.first.get();
          auto problem = instance.second.get();
-         Solution<double> solution;
+         Solution<REAL> solution;
          if( !optionsInfo.solution_file.empty( ) )
          {
             if( boost::iequals(optionsInfo.solution_file, "infeasible") )
@@ -98,7 +98,7 @@ namespace bugger
                solution.status = SolutionStatus::kUnbounded;
             else if( !boost::iequals(optionsInfo.solution_file, "unknown") )
             {
-               bool success = SolParser<double>::read(optionsInfo.solution_file, problem.getVariableNames( ), solution);
+               bool success = SolParser<REAL>::read(optionsInfo.solution_file, problem.getVariableNames( ), solution);
                if( !success )
                {
                   msg.error("error loading solution {}\n", optionsInfo.solution_file);
@@ -108,15 +108,30 @@ namespace bugger
          }
 
          check_feasibility_of_solution(problem, solution);
-         std::pair<char, SolverStatus> final_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
-         int final_round = -1;
-         int final_module = -1;
-         if( parameters.mode != 1 )
+         long long last_effort = -1;
+         std::pair<char, SolverStatus> last_result = { SolverRetcode::OKAY, SolverStatus::kUnknown };
+         int last_round = -1;
+         int last_module = -1;
+         auto solver = factory->create_solver(msg);
+         solver->doSetUp(settings, problem, solution);
+         if( parameters.mode == 1 )
          {
-            final_result = getOriginalSolveStatus(settings, problem, solution, factory);
-            msg.info("Original solve returned code {} with status {}.\n\n", (int)final_result.first, final_result.second);
+            if( parameters.expenditure < 0 )
+               parameters.expenditure = 0;
+         }
+         else
+         {
+            last_result = solver->solve(Vec<int>{ });
+            last_effort = solver->getSolvingEffort( );
+            msg.info("Original solve returned code {} with status {} and effort {}.\n", (int)last_result.first, last_result.second, last_effort);
             if( parameters.mode == 0 )
                return;
+            if( parameters.expenditure < 0 && ( parameters.nbatches <= 0 || last_effort <= 0 || (parameters.expenditure = parameters.nbatches * last_effort) / last_effort != parameters.nbatches ) )
+            {
+               msg.info("Batch adaption disabled.\n");
+               parameters.expenditure = 0;
+            }
+            msg.info("\n");
          }
 
          int ending = optionsInfo.problem_file.rfind('.');
@@ -134,15 +149,19 @@ namespace bugger
                //TODO: Clean matrix in each round
                //TODO: Simplify solver handling
                //TODO: Free solver afterwards
-               auto solver = factory->create_solver(msg);
+               solver = factory->create_solver(msg);
                solver->doSetUp(settings, problem, solution);
                if( !solver->writeInstance(filename + std::to_string(round), setting->isEnabled()) )
-                  MpsWriter<double>::writeProb(filename + std::to_string(round) + ".mps", problem);
+                  MpsWriter<REAL>::writeProb(filename + std::to_string(round) + ".mps", problem);
 
                if( is_time_exceeded(timer) )
                   break;
 
-               msg.info("Round {} Stage {}\n", round+1, stage+1);
+               // adapt batch number
+               if( parameters.expenditure > 0 && last_effort >= 0 )
+                  parameters.nbatches = last_effort >= 1 ? ( parameters.expenditure - 1) / last_effort + 1 : 0;
+
+               msg.info("Round {} Stage {} Batch {}\n", round+1, stage+1, parameters.nbatches);
 
                for( int module = 0; module <= stage && stage < parameters.maxstages; ++module )
                {
@@ -150,9 +169,12 @@ namespace bugger
 
                   if( results[ module ] == bugger::ModulStatus::kSuccessful )
                   {
-                     final_result = modules[ module ]->getFinalResult( );
-                     final_round = round;
-                     final_module = module;
+                     long long effort = modules[ module ]->getLastSolvingEffort( );
+                     if( effort >= 0 )
+                        last_effort = effort;
+                     last_result = modules[ module ]->getLastResult( );
+                     last_round = round;
+                     last_module = module;
                      success = module;
                   }
                   else if( success == module )
@@ -166,30 +188,30 @@ namespace bugger
 
             assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModulStatus::kSuccessful );
          }
-         printStats(time, final_result, final_round, final_module);
+         printStats(time, last_result, last_round, last_module, last_effort);
       }
 
    private:
 
-      double
-      get_linear_activity(const SparseVectorView<double>& data, const Solution<double>& solution) const
+      REAL
+      get_linear_activity(const SparseVectorView<REAL>& data, const Solution<REAL>& solution) const
       {
-         StableSum<double> sum;
+         StableSum<REAL> sum;
          for( int i = 0; i < data.getLength( ); ++i )
             sum.add(data.getValues( )[ i ] * solution.primal[ data.getIndices( )[ i ] ]);
          return sum.get( );
       }
 
       void
-      check_feasibility_of_solution(const Problem<double>& problem, const Solution<double>& solution)
+      check_feasibility_of_solution(const Problem<REAL>& problem, const Solution<REAL>& solution)
       {
          if( solution.status != SolutionStatus::kFeasible )
             return;
 
-         const Vec<double>& lb = problem.getLowerBounds();
-         const Vec<double>& ub = problem.getUpperBounds();
-         double viol;
-         double maxviol = 0.0;
+         const auto& lb = problem.getLowerBounds();
+         const auto& ub = problem.getUpperBounds();
+         REAL viol;
+         REAL maxviol { };
          int maxindex = -1;
          bool maxrow = false;
          bool maxupper = false;
@@ -229,10 +251,10 @@ namespace bugger
                }
             }
 
-            if( problem.getColFlags()[col].test( ColFlag::kIntegral ) && solution.primal[col] != rint(solution.primal[col]) )
+            if( problem.getColFlags()[col].test( ColFlag::kIntegral ) && solution.primal[col] != round(solution.primal[col]) )
             {
-               msg.detailed( "\tColumn {:<3} violates integrality property ({:<3} != {:<3})\n", problem.getVariableNames()[col], solution.primal[col], rint(solution.primal[col]) );
-               viol = abs(solution.primal[col] - rint(solution.primal[col]));
+               msg.detailed( "\tColumn {:<3} violates integrality property ({:<3} != {:<3})\n", problem.getVariableNames()[col], solution.primal[col], round(solution.primal[col]) );
+               viol = abs(solution.primal[col] - round(solution.primal[col]));
                if( viol > maxviol )
                {
                   maxviol = viol;
@@ -244,15 +266,15 @@ namespace bugger
             }
          }
 
-         const Vec<double>& lhs = problem.getConstraintMatrix().getLeftHandSides();
-         const Vec<double>& rhs = problem.getConstraintMatrix().getRightHandSides();
+         const auto& lhs = problem.getConstraintMatrix().getLeftHandSides();
+         const auto& rhs = problem.getConstraintMatrix().getRightHandSides();
 
          for( int row = 0; row < problem.getNRows(); row++ )
          {
             if( problem.getRowFlags()[row].test( RowFlag::kRedundant ) )
                continue;
 
-            double activity = get_linear_activity(problem.getConstraintMatrix().getRowCoefficients(row), solution);
+            REAL activity { get_linear_activity(problem.getConstraintMatrix().getRowCoefficients(row), solution) };
 
             if( !problem.getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < lhs[row] )
             {
@@ -283,20 +305,12 @@ namespace bugger
             }
          }
 
+         msg.info("Solution is {}.\n", num.isEpsGT(maxviol, 0.0) ? "infeasible" : num.isZetaGT(maxviol, 0.0) ? "tolerable" : "feasible");
          if( maxindex >= 0 )
-            msg.info("Solution is infeasible.\nMaximum violation {:<3} of {} {:<3} {}.", maxviol, maxrow ? "row" : "column", (maxrow ? problem.getConstraintNames() : problem.getVariableNames())[maxindex], maxintegral ? "integral" : (maxrow ? (maxupper ? "right" : "left") : (maxupper ? "upper" : "lower")));
+            msg.info("Maximum violation {:<3} of {} {:<3} {}.\n", maxviol, maxrow ? "row" : "column", (maxrow ? problem.getConstraintNames() : problem.getVariableNames())[maxindex], maxintegral ? "integral" : (maxrow ? (maxupper ? "right" : "left") : (maxupper ? "upper" : "lower")));
          else
-            msg.info("Solution is feasible.\nNo violations detected.");
-         msg.info("\n\n");
-      }
-
-      std::pair<char, SolverStatus>
-      getOriginalSolveStatus(const SolverSettings& settings, const Problem<double>& problem, Solution<double>& solution, const std::shared_ptr<SolverFactory>& factory)
-      {
-         auto solver = factory->create_solver(msg);
-         solver->doSetUp(settings, problem, solution);
-         Vec<int> empty_passcodes{};
-         return solver->solve(empty_passcodes);
+            msg.info("No violations detected.\n");
+         msg.info("\n");
       }
 
       bugger::ModulStatus
@@ -305,13 +319,13 @@ namespace bugger
          int largestValue = static_cast<int>( bugger::ModulStatus::kDidNotRun );
 
          for( int module = 0; module < parameters.maxstages; ++module )
-            largestValue = std::max(largestValue, static_cast<int>( results[ module ] ));
+            largestValue = max(largestValue, static_cast<int>( results[ module ] ));
 
          return static_cast<bugger::ModulStatus>( largestValue );
       }
 
       void
-      printStats(const double& time, const std::pair<char, SolverStatus>& final_result, int final_round, int final_module)
+      printStats(const double& time, const std::pair<char, SolverStatus>& last_result, int last_round, int last_module, long long last_effort)
       {
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n",
                   "modules", "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
@@ -321,20 +335,21 @@ namespace bugger
             module->printStats(msg);
             nsolves += module->getNSolves();
          }
-         if( final_round == -1 )
+         if( last_round == -1 )
          {
-            assert(final_module == -1);
+            assert(last_module == -1);
             if( parameters.mode == 1 )
             {
-               assert(final_result.first == SolverInterface::OKAY);
-               assert(final_result.second == SolverStatus::kUnknown);
+               assert(last_result.first == SolverRetcode::OKAY);
+               assert(last_result.second == SolverStatus::kUnknown);
+               assert(last_effort == -1);
             }
             msg.info("\nNo reductions found by the bugger!");
          }
          else
          {
-            assert(final_module != -1);
-            msg.info("\nFinal solve returned code {} with status {} in round {} by module {}.", (int)final_result.first, final_result.second, final_round + 1, modules[ final_module ]->getName( ));
+            assert(last_module != -1);
+            msg.info("\nFinal solve returned code {} with status {} and effort {} in round {} by module {}.", (int)last_result.first, last_result.second, last_effort, last_round + 1, modules[ last_module ]->getName( ));
          }
          msg.info( "\nbugging took {:.3f} seconds with {} solver invocations", time, nsolves );
          if( parameters.mode != 1 )

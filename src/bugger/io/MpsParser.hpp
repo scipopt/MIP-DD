@@ -109,10 +109,9 @@ class MpsParser
       problem.setName( std::move( parser.probname ) );
       problem.setConstraintNames( std::move( parser.rownames ) );
 
-      problem.setInputTolerance(
-          REAL{ pow( typename RealParseType<REAL>::type{ 10 },
-                     -std::numeric_limits<
-                         typename RealParseType<REAL>::type>::digits10 ) } );
+      problem.setInputTolerance( pow( typename RealParseType<REAL>::type{ 10 },
+                                      -std::numeric_limits<typename RealParseType<REAL>::type>::digits10 ) );
+
       return problem;
    }
 
@@ -948,10 +947,25 @@ MpsParser<REAL>::parse( boost::iostreams::filtering_istream& file )
    return true;
 }
 
-template<>
-double
-MpsParser<double>::read_number(const std::string &s) {
-   return std::stod(s);
+template <typename REAL>
+REAL
+MpsParser<REAL>::read_number( const std::string &s )
+{
+   std::stringstream ss;
+   REAL number;
+
+   ss << s;
+   ss >> number;
+
+   if( ss.fail() || !ss.eof() )
+   {
+      fmt::print( stderr,
+                  "WARNING: {} not of arithmetic {}!\n",
+                  s, typeid(REAL).name() );
+      number = 0;
+   }
+
+   return number;
 }
 
 } // namespace bugger
