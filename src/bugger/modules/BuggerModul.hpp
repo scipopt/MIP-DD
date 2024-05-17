@@ -212,7 +212,7 @@ namespace bugger
          auto solver = factory->create_solver(msg);
          solver->doSetUp(settings, problem, solution);
          if( !parameters.debug_filename.empty( ) )
-            solver->writeInstance(parameters.debug_filename, true);
+            solver->writeInstance(parameters.debug_filename, true, true);
          std::pair<char, SolverStatus> result = solver->solve(parameters.passcodes);
          if( !SolverStatusCheck::is_value(result.second) )
          {

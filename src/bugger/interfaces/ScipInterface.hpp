@@ -279,22 +279,7 @@ namespace bugger
                      solution.resize(primal ? nsols : objective ? 1 : 0);
 
                      for( int i = solution.size() - 1; i >= 0; --i )
-                     {
-                        solution[i].status = SolutionStatus::kFeasible;
-                        solution[i].primal.resize(vars.size());
-
-                        for( int col = 0; col < solution[i].primal.size(); ++col )
-                           solution[i].primal[col] = this->model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(SCIPgetSolVal(scip, sols[i], vars[col]));
-                     }
-
-                     if( solution.size() >= 1 && SCIPhasPrimalRay(scip) )
-                     {
-                        solution[0].status = SolutionStatus::kUnbounded;
-                        solution[0].ray.resize(vars.size());
-
-                        for( int col = 0; col < solution[0].ray.size(); ++col )
-                           solution[0].ray[col] = this->model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(SCIPgetPrimalRayVal(scip, vars[col]));
-                     }
+                        translateSolution(sols[i], i == 0 && SCIPhasPrimalRay(scip), *this->model, solution[i]);
 
                      if( primal )
                         retcode = this->check_primal_solution( solution, REAL(SCIPsumepsilon(scip)), REAL(SCIPinfinity(scip)) );
@@ -491,12 +476,15 @@ namespace bugger
          }
       }
 
-      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>>
-      readInstance(const String& settings_filename, const String& problem_filename) override
+      std::tuple<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>, boost::optional<Solution<REAL>>>
+      readInstance(const String& settings_filename, const String& problem_filename, const String& solution_filename) override
       {
-         auto settings = parseSettings(settings_filename);
+         auto parsed_settings = parseSettings(settings_filename);
+         if( !parsed_settings )
+            return { boost::none, boost::none, boost::none };
+         SolverSettings settings { parsed_settings.get() };
          if( SCIPreadProb(scip, problem_filename.c_str(), nullptr) != SCIP_OKAY )
-            return { settings, boost::none };
+            return { settings, boost::none, boost::none };
          ProblemBuilder<REAL> builder;
 
          // set problem name
@@ -518,7 +506,7 @@ namespace bugger
             SCIP_Bool success = FALSE;
             SCIPgetConsNVars(scip, probconss[row], &nrowcols, &success);
             if( !success )
-               return { settings, boost::none };
+               return { settings, boost::none, boost::none };
             nnz += nrowcols;
          }
          builder.reserve(nnz, nrows, ncols);
@@ -553,20 +541,20 @@ namespace bugger
             SCIP_Bool success = FALSE;
             SCIP_Real lhs = SCIPconsGetLhs(scip, cons, &success);
             if( !success )
-               return { settings, boost::none };
+               return { settings, boost::none, boost::none };
             SCIP_Real rhs = SCIPconsGetRhs(scip, cons, &success);
             if( !success )
-               return { settings, boost::none };
+               return { settings, boost::none, boost::none };
             int nrowcols = 0;
             SCIPgetConsNVars(scip, cons, &nrowcols, &success);
             if( !success )
-               return { settings, boost::none };
+               return { settings, boost::none, boost::none };
             SCIPgetConsVars(scip, cons, consvars.data(), ncols, &success);
             if( !success )
-               return { settings, boost::none };
+               return { settings, boost::none, boost::none };
             SCIPgetConsVals(scip, cons, consvals.data(), ncols, &success);
             if( !success )
-               return { settings, boost::none };
+               return { settings, boost::none, boost::none };
             for( int i = 0; i < nrowcols; ++i )
             {
                rowinds[i] = SCIPvarGetProbindex(consvars[i]);
@@ -580,15 +568,63 @@ namespace bugger
             builder.setRowName(row, SCIPconsGetName(cons));
          }
 
-         return { settings, builder.build() };
+         Problem<REAL> problem { builder.build() };
+         Solution<REAL> solution { };
+         if( !solution_filename.empty() )
+         {
+            SCIP_SOL* sol = nullptr;
+            SCIP_Bool error = TRUE;
+            bool success = true;
+            if( success && SCIPcreateSol(scip, &sol, nullptr) != SCIP_OKAY )
+            {
+               sol = nullptr;
+               success = false;
+            }
+            if( success && ( SCIPreadSolFile(scip, solution_filename.c_str(), sol, FALSE, NULL, &error) != SCIP_OKAY || error ) )
+               success = false;
+            if( success )
+               translateSolution(sol, FALSE, problem, solution);
+            if( sol != nullptr )
+               SCIPfreeSol(scip, &sol);
+            if( !success )
+               return { settings, problem, boost::none };
+         }
+
+         return { settings, problem, solution };
       }
 
       bool
-      writeInstance(const String& filename, const bool& writesettings) const override
+      writeInstance(const String& filename, const bool& writesettings, const bool& writesolution) const override
       {
          if( writesettings || limits.size() >= 1 )
             SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
-         return SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
+
+         bool okay = SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
+
+         if( writesolution && this->reference->status == SolutionStatus::kFeasible )
+         {
+            SCIP_SOL* sol = nullptr;
+            FILE* file = nullptr;
+            bool success = true;
+            if( success && SCIPcreateSol(scip, &sol, nullptr) != SCIP_OKAY )
+            {
+               sol = nullptr;
+               success = false;
+            }
+            for( int col = 0; success && col < this->reference->primal.size(); ++col )
+            {
+               if( !this->model->getColFlags()[col].test( ColFlag::kFixed ) && SCIPsetSolVal(scip, sol, vars[col], SCIP_Real(this->reference->primal[col])) != SCIP_OKAY )
+                  success = false;
+            }
+            if( success && ( (file = fopen((filename + ".sol").c_str(), "w")) == nullptr || SCIPprintSol(scip, sol, file, FALSE) != SCIP_OKAY ) )
+               success = false;
+            if( file != nullptr )
+               fclose(file);
+            if( sol != nullptr )
+               SCIPfreeSol(scip, &sol);
+         }
+
+         return okay;
       }
 
       ~ScipInterface( ) override
@@ -602,6 +638,21 @@ namespace bugger
       }
 
    private:
+
+      void
+      translateSolution(SCIP_SOL* const sol, const SCIP_Bool ray, const Problem<REAL>& problem, Solution<REAL>& solution) const
+      {
+         solution.status = ray ? SolutionStatus::kUnbounded : SolutionStatus::kFeasible;
+         solution.primal.resize(problem.getNCols());
+         for( int col = 0; col < solution.primal.size(); ++col )
+            solution.primal[col] = problem.getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(SCIPgetSolVal(scip, sol, vars[col]));
+         if( ray )
+         {
+            solution.ray.resize(problem.getNCols());
+            for( int col = 0; col < solution.ray.size(); ++col )
+               solution.ray[col] = problem.getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(SCIPgetPrimalRayVal(scip, vars[col]));
+         }
+      }
 
       SCIP_RETCODE
       setup(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution)

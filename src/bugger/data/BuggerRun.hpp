@@ -66,47 +66,48 @@ namespace bugger
             auto target_settings = factory->create_solver(msg)->parseSettings(optionsInfo.target_settings_file);
             if( !target_settings )
             {
-               msg.error("error loading targets {}\n", optionsInfo.target_settings_file);
+               msg.error("Error loading targets {}\n", optionsInfo.target_settings_file);
                return;
             }
             setting->target_settings = target_settings.get();
          }
-         auto instance = factory->create_solver(msg)->readInstance(optionsInfo.settings_file, optionsInfo.problem_file);
-         if( !instance.first )
+         SolutionStatus status { };
+         if( boost::iequals(optionsInfo.solution_file, "infeasible") )
+            status = SolutionStatus::kInfeasible;
+         else if( boost::iequals(optionsInfo.solution_file, "unbounded") )
+            status = SolutionStatus::kUnbounded;
+         else if( !optionsInfo.solution_file.empty() && !boost::iequals(optionsInfo.solution_file, "unknown") )
+            status = SolutionStatus::kFeasible;
+         auto instance = factory->create_solver(msg)->readInstance(optionsInfo.settings_file, optionsInfo.problem_file, status == SolutionStatus::kFeasible ? optionsInfo.solution_file : "");
+         if( !std::get<0>(instance) )
          {
-            msg.error("error loading settings {}\n", optionsInfo.settings_file);
+            msg.error("Error loading settings {}\n", optionsInfo.settings_file);
             return;
          }
-         if( !instance.second )
+         auto settings = std::get<0>(instance).get();
+         if( !std::get<1>(instance) )
          {
-            msg.info("Parser of the solver failed. Using internal parser...");
-            instance.second = MpsParser<REAL>::loadProblem(optionsInfo.problem_file);
-            if( !instance.second )
+            msg.info("Problem parser of the solver failed. Trying general parser...");
+            std::get<1>(instance) = MpsParser<REAL>::loadProblem(optionsInfo.problem_file);
+            if( !std::get<1>(instance) )
             {
-               msg.error("error loading problem {}\n", optionsInfo.problem_file);
+               msg.error("Error loading problem {}\n", optionsInfo.problem_file);
                return;
             }
          }
-         auto settings = instance.first.get();
-         auto problem = instance.second.get();
-         Solution<REAL> solution;
-         if( !optionsInfo.solution_file.empty( ) )
+         auto problem = std::get<1>(instance).get();
+         if( !std::get<2>(instance) )
          {
-            if( boost::iequals(optionsInfo.solution_file, "infeasible") )
-               solution.status = SolutionStatus::kInfeasible;
-            else if( boost::iequals(optionsInfo.solution_file, "unbounded") )
-               solution.status = SolutionStatus::kUnbounded;
-            else if( !boost::iequals(optionsInfo.solution_file, "unknown") )
+            msg.info("Solution parser of the solver failed. Trying general parser...");
+            std::get<2>(instance) = SolParser<REAL>::read(optionsInfo.solution_file, problem.getVariableNames( ));
+            if( !std::get<2>(instance) )
             {
-               bool success = SolParser<REAL>::read(optionsInfo.solution_file, problem.getVariableNames( ), solution);
-               if( !success )
-               {
-                  msg.error("error loading solution {}\n", optionsInfo.solution_file);
-                  return;
-               }
+               msg.error("Error loading solution {}\n", optionsInfo.solution_file);
+               return;
             }
          }
-
+         auto solution = std::get<2>(instance).get();
+         solution.status = status;
          check_feasibility_of_solution(problem, solution);
          long long last_effort = -1;
          std::pair<char, SolverStatus> last_result = { SolverRetcode::OKAY, SolverStatus::kUnknown };
@@ -133,7 +134,15 @@ namespace bugger
             }
             msg.info("\n");
          }
-
+         bool writesolution = false;
+         for( const auto& module: modules )
+         {
+            if( module->getName() == "fixing" )
+            {
+               writesolution = module->isEnabled();
+               break;
+            }
+         }
          int ending = optionsInfo.problem_file.rfind('.');
          if( optionsInfo.problem_file.substr(ending + 1) == "gz" ||
              optionsInfo.problem_file.substr(ending + 1) == "bz2" )
@@ -151,7 +160,7 @@ namespace bugger
                //TODO: Free solver afterwards
                solver = factory->create_solver(msg);
                solver->doSetUp(settings, problem, solution);
-               if( !solver->writeInstance(filename + std::to_string(round), setting->isEnabled()) )
+               if( !solver->writeInstance(filename + std::to_string(round), setting->isEnabled(), writesolution) )
                   MpsWriter<REAL>::writeProb(filename + std::to_string(round) + ".mps", problem);
 
                if( is_time_exceeded(timer) )
@@ -330,7 +339,7 @@ namespace bugger
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n",
                   "modules", "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
          int nsolves = 0;
-         for( const auto &module: modules )
+         for( const auto& module: modules )
          {
             module->printStats(msg);
             nsolves += module->getNSolves();

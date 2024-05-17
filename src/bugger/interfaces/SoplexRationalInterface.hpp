@@ -139,23 +139,11 @@ namespace bugger
                if( retcode == SolverRetcode::OKAY && ( primal || objective ) )
                {
                   DVectorRational sol(this->soplex->numCols());
-                  solution.resize(1);
-                  solution[0].status = SolutionStatus::kFeasible;
-                  solution[0].primal.resize(this->inds.size());
+                  DVectorRational ray(this->soplex->hasPrimalRay() ? this->soplex->numCols() : 0);
                   this->soplex->getPrimalRational(sol);
-
-                  for( int col = 0; col < solution[0].primal.size(); ++col )
-                     solution[0].primal[col] = this->model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(sol[this->inds[col]]);
-
-                  if( this->soplex->hasPrimalRay() )
-                  {
-                     solution[0].status = SolutionStatus::kUnbounded;
-                     solution[0].ray.resize(this->inds.size());
-                     this->soplex->getPrimalRayRational(sol);
-
-                     for( int col = 0; col < solution[0].ray.size(); ++col )
-                        solution[0].ray[col] = this->model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(sol[this->inds[col]]);
-                  }
+                  this->soplex->getPrimalRayRational(ray);
+                  solution.resize(1);
+                  translateSolution(sol, ray, *this->model, solution[0]);
 
                   if( primal )
                      retcode = this->check_primal_solution( solution, REAL(max(this->soplex->realParam(SoPlex::FEASTOL), this->soplex->realParam(SoPlex::OPTTOL))), REAL(this->soplex->realParam(SoPlex::INFTY)) );
@@ -241,12 +229,15 @@ namespace bugger
          return { retcode, solverstatus };
       }
 
-      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>>
-      readInstance(const String& settings_filename, const String& problem_filename) override
+      std::tuple<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>, boost::optional<Solution<REAL>>>
+      readInstance(const String& settings_filename, const String& problem_filename, const String& solution_filename) override
       {
-         auto settings = this->parseSettings(settings_filename);
+         auto parsed_settings = this->parseSettings(settings_filename);
+         if( !parsed_settings )
+            return { boost::none, boost::none, boost::none };
+         SolverSettings settings { parsed_settings.get() };
          if( !this->soplex->readFile(problem_filename.c_str(), &this->rowNames, &this->colNames) )
-            return { settings, boost::none };
+            return { settings, boost::none, boost::none };
          ProblemBuilder<REAL> builder;
 
          // set objective offset
@@ -296,24 +287,51 @@ namespace bugger
             builder.setRowName(row, this->rowNames[row]);
          }
 
-         return { settings, builder.build() };
+         Problem<REAL> problem { builder.build() };
+         Solution<REAL> solution { };
+         //TODO: SoPlex solution reader
+         if( !solution_filename.empty() )
+            return { settings, problem, boost::none };
+
+         return { settings, problem, solution };
       }
 
       bool
-      writeInstance(const String& filename, const bool& writesettings) const override
+      writeInstance(const String& filename, const bool& writesettings, const bool& writesolution) const override
       {
          if( writesettings || this->limits.size() >= 1 )
             this->soplex->saveSettingsFile((filename + ".set").c_str(), true);
-         return this->soplex->writeFile((filename + ".lp").c_str(), &this->rowNames, &this->colNames
+
+         bool okay = this->soplex->writeFile((filename + ".lp").c_str(), &this->rowNames, &this->colNames
 #if SOPLEX_APIVERSION >= 15
                , nullptr, true, true
 #endif
                );
+
+         //TODO: SoPlex solution setter
+         //if( writesolution && this->reference->status == SolutionStatus::kFeasible ) { }
+
+         return okay;
       }
 
       ~SoplexRationalInterface( ) override = default;
 
    private:
+
+      void
+      translateSolution(const DVectorRational& sol, const DVectorRational& ray, const Problem<REAL>& problem, Solution<REAL>& solution) const
+      {
+         solution.status = ray.dim() >= 1 ? SolutionStatus::kUnbounded : SolutionStatus::kFeasible;
+         solution.primal.resize(problem.getNCols());
+         for( int col = 0; col < solution.primal.size(); ++col )
+            solution.primal[col] = problem.getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(sol[this->inds[col]]);
+         if( ray.dim() >= 1 )
+         {
+            solution.ray.resize(problem.getNCols());
+            for( int col = 0; col < solution.ray.size(); ++col )
+               solution.ray[col] = problem.getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(ray[this->inds[col]]);
+         }
+      }
 
       void
       setup(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution)

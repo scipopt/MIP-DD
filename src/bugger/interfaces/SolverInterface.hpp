@@ -114,11 +114,11 @@ namespace bugger
        * @param problem_filename
        */
       virtual
-      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>>
-      readInstance(const String& settings_filename, const String& problem_filename)
+      std::tuple<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>, boost::optional<Solution<REAL>>>
+      readInstance(const String& settings_filename, const String& problem_filename, const String& solution_filename)
       {
-         return { boost::none, boost::none };
-      };
+         return { boost::none, boost::none, boost::none };
+      }
 
       /**
        * write stored setting-problem pair to files
@@ -127,7 +127,10 @@ namespace bugger
        */
       virtual
       bool
-      writeInstance(const String& filename, const bool& writesettings) const = 0;
+      writeInstance(const String& filename, const bool& writesettings, const bool& writesolution) const
+      {
+         return false;
+      }
 
       virtual
       ~SolverInterface() = default;
