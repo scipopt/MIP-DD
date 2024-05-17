@@ -115,10 +115,7 @@ namespace bugger
        */
       virtual
       std::tuple<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>, boost::optional<Solution<REAL>>>
-      readInstance(const String& settings_filename, const String& problem_filename, const String& solution_filename)
-      {
-         return { boost::none, boost::none, boost::none };
-      }
+      readInstance(const String& settings_filename, const String& problem_filename, const String& solution_filename) = 0;
 
       /**
        * write stored setting-problem pair to files
@@ -176,7 +173,7 @@ namespace bugger
       }
 
       REAL
-      relax(const REAL& bound, const bool& increase, const REAL& tolerance, const REAL& infinity)
+      relax(const REAL& bound, const bool& increase, const REAL& tolerance, const REAL& infinity) const
       {
          assert(tolerance > 0);
          assert(tolerance * 2 < 1);
@@ -197,7 +194,7 @@ namespace bugger
       }
 
       char
-      check_dual_bound(const REAL& dual, const REAL& tolerance, const REAL& infinity)
+      check_dual_bound(const REAL& dual, const REAL& tolerance, const REAL& infinity) const
       {
          if( abs(dual) > infinity )
          {
@@ -229,7 +226,7 @@ namespace bugger
       }
 
       char
-      check_primal_solution(const Vec<Solution<REAL>>& solution, const REAL& tolerance, const REAL& infinity)
+      check_primal_solution(const Vec<Solution<REAL>>& solution, const REAL& tolerance, const REAL& infinity) const
       {
          for( int i = solution.size() - 1; i >= 0; --i )
          {
@@ -314,7 +311,7 @@ namespace bugger
       }
 
       char
-      check_objective_value(const REAL& primal, const Solution<REAL>& solution, const REAL& tolerance, const REAL& infinity)
+      check_objective_value(const REAL& primal, const Solution<REAL>& solution, const REAL& tolerance, const REAL& infinity) const
       {
          if( abs(primal) > infinity )
          {
@@ -374,7 +371,7 @@ namespace bugger
       }
 
       char
-      check_count_number(const REAL& dual, const REAL& primal, const long long& count, const REAL& infinity)
+      check_count_number(const REAL& dual, const REAL& primal, const long long& count, const REAL& infinity) const
       {
          assert(infinity > 1);
 
@@ -414,12 +411,15 @@ namespace bugger
    public:
 
       virtual
-      void addParameters(ParameterSet& parameterset) = 0;
+      void
+      addParameters(ParameterSet& parameterset) = 0;
 
       virtual
-      std::unique_ptr<SolverInterface<REAL>> create_solver(const Message& msg) = 0;
+      std::unique_ptr<SolverInterface<REAL>>
+      create_solver(const Message& msg) = 0;
 
-      virtual ~SolverFactory() = default;
+      virtual
+      ~SolverFactory() = default;
    };
 
 } // namespace bugger
