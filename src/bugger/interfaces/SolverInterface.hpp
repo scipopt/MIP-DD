@@ -60,11 +60,12 @@ namespace bugger
        */
       virtual
       void
-      print_header() const = 0;
+      print_header( ) const = 0;
 
       /**
-       * reports whether given setting is available
+       * detects setting with given name
        * @param name
+       * @return whether setting is available
        */
       virtual
       bool
@@ -109,25 +110,25 @@ namespace bugger
       }
 
       /**
-       * read setting-problem pair from files
+       * read setting-problem-solution tuple from files
        * @param settings_filename
        * @param problem_filename
+       * @param solution_filename
        */
       virtual
       std::tuple<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>, boost::optional<Solution<REAL>>>
       readInstance(const String& settings_filename, const String& problem_filename, const String& solution_filename) = 0;
 
       /**
-       * write stored setting-problem pair to files
+       * write stored setting-problem-solution tuple to files
        * @param filename
        * @param writesettings
+       * @param writesolution
+       * @return whether problem is written successful
        */
       virtual
       bool
-      writeInstance(const String& filename, const bool& writesettings, const bool& writesolution) const
-      {
-         return false;
-      }
+      writeInstance(const String& filename, const bool& writesettings, const bool& writesolution) const = 0;
 
       virtual
       ~SolverInterface() = default;
