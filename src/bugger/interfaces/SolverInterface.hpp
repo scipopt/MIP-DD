@@ -32,24 +32,24 @@
 
 namespace bugger
 {
+   enum SolverRetcode : char
+   {
+      OKAY          = 0,
+      DUALFAIL      = 1,
+      PRIMALFAIL    = 2,
+      OBJECTIVEFAIL = 3
+   };
+
+   template <typename REAL>
    class SolverInterface
    {
-   public:
-
-      enum Retcode : char
-      {
-         OKAY          = 0,
-         DUALFAIL      = 1,
-         PRIMALFAIL    = 2,
-         OBJECTIVEFAIL = 3
-      };
-
    protected:
 
       const Message& msg;
-      const Problem<double>* model = nullptr;
-      const Solution<double>* reference = nullptr;
-      double value = std::numeric_limits<double>::signaling_NaN();
+      SolverSettings* adjustment = nullptr;
+      const Problem<REAL>* model = nullptr;
+      const Solution<REAL>* reference = nullptr;
+      REAL value { std::numeric_limits<REAL>::signaling_NaN() };
 
    public:
 
@@ -86,7 +86,7 @@ namespace bugger
        */
       virtual
       void
-      doSetUp(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) = 0;
+      doSetUp(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution) = 0;
 
       /**
        * solves the instance
@@ -98,12 +98,23 @@ namespace bugger
       solve(const Vec<int>& passcodes) = 0;
 
       /**
+       * provides measure for the solving effort to adapt batch number
+       * @return a long long int: Non-negative value proportional to effort of the solve or -1 if unknown
+       */
+      virtual
+      long long
+      getSolvingEffort( ) const
+      {
+         return -1;
+      }
+
+      /**
        * read setting-problem pair from files
        * @param settings_filename
        * @param problem_filename
        */
       virtual
-      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>>
+      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>>
       readInstance(const String& settings_filename, const String& problem_filename) = 0;
 
       /**
@@ -120,67 +131,67 @@ namespace bugger
 
    protected:
 
-      double
-      get_primal_activity(const SparseVectorView<double>& data, const Solution<double>& solution) const
+      REAL
+      get_primal_activity(const SparseVectorView<REAL>& data, const Solution<REAL>& solution) const
       {
-         StableSum<double> sum;
+         StableSum<REAL> sum;
          for( int i = 0; i < data.getLength( ); ++i )
             sum.add(data.getValues( )[ i ] * solution.primal[ data.getIndices( )[ i ] ]);
          return sum.get( );
       }
 
-      double
-      get_ray_activity(const SparseVectorView<double>& data, const Solution<double>& solution) const
+      REAL
+      get_ray_activity(const SparseVectorView<REAL>& data, const Solution<REAL>& solution) const
       {
-         StableSum<double> sum;
+         StableSum<REAL> sum;
          for( int i = 0; i < data.getLength( ); ++i )
             sum.add(data.getValues( )[ i ] * solution.ray[ data.getIndices( )[ i ] ]);
          return sum.get( );
       }
 
-      double
-      get_primal_objective(const Solution<double>& solution) const
+      REAL
+      get_primal_objective(const Solution<REAL>& solution) const
       {
-         StableSum<double> sum { model->getObjective().offset };
+         StableSum<REAL> sum { model->getObjective().offset };
          for( int i = 0; i < model->getNCols(); ++i )
             if( !model->getColFlags()[i].test( ColFlag::kFixed ) )
                sum.add(model->getObjective().coefficients[i] * solution.primal[i]);
          return sum.get( );
       }
 
-      double
-      get_ray_objective(const Solution<double>& solution) const
+      REAL
+      get_ray_objective(const Solution<REAL>& solution) const
       {
-         StableSum<double> sum;
+         StableSum<REAL> sum;
          for( int i = 0; i < model->getNCols(); ++i )
             if( !model->getColFlags()[i].test( ColFlag::kFixed ) )
                sum.add(model->getObjective().coefficients[i] * solution.ray[i]);
          return sum.get( );
       }
 
-      double
-      relax(const double& bound, const bool& increase, const double& tolerance, const double& infinity) const
+      REAL
+      relax(const REAL& bound, const bool& increase, const REAL& tolerance, const REAL& infinity) const
       {
-         assert(tolerance > 0.0);
-         assert(tolerance < 0.5);
-         assert(infinity > 1.0);
+         assert(tolerance > 0);
+         assert(tolerance * 2 < 1);
+         assert(infinity > 1);
 
          if( bound <= -infinity )
             return -infinity;
          else if( bound >= infinity )
             return infinity;
-         else if( abs(bound) < 1.0 )
+         else if( abs(bound) < 1 )
             return bound + (increase ? tolerance : -tolerance);
-         else if( (abs(bound) + 1.0) * tolerance > 1.0 )
-            return bound + (increase ? 1.0 - tolerance : tolerance - 1.0);
-         else if( bound < 0.0 )
-            return bound * (1.0 + (increase ? -tolerance : tolerance));
+         else if( (abs(bound) + 1) * tolerance > 1 )
+            return bound + (increase ? REAL(1 - tolerance) : REAL(tolerance - 1));
+         else if( bound < 0 )
+            return bound * (1 + (increase ? -tolerance : tolerance));
          else
-            return bound * (1.0 + (increase ? tolerance : -tolerance));
+            return bound * (1 + (increase ? tolerance : -tolerance));
       }
 
       char
-      check_dual_bound(const double& dual, const double& tolerance, const double& infinity) const
+      check_dual_bound(const REAL& dual, const REAL& tolerance, const REAL& infinity) const
       {
          if( abs(dual) > infinity )
          {
@@ -212,7 +223,7 @@ namespace bugger
       }
 
       char
-      check_primal_solution(const Vec<Solution<double>>& solution, const double& tolerance, const double& infinity) const
+      check_primal_solution(const Vec<Solution<REAL>>& solution, const REAL& tolerance, const REAL& infinity) const
       {
          for( int i = solution.size() - 1; i >= 0; --i )
          {
@@ -230,7 +241,7 @@ namespace bugger
 
                   if( solution[i].primal[col] < relax( model->getColFlags()[col].test( ColFlag::kLbInf ) ? -infinity : model->getLowerBounds()[col], false, tolerance, infinity )
                    || solution[i].primal[col] > relax( model->getColFlags()[col].test( ColFlag::kUbInf ) ?  infinity : model->getUpperBounds()[col], true,  tolerance, infinity )
-                   || ( model->getColFlags()[col].test( ColFlag::kIntegral ) && abs(solution[i].primal[col] - rint(solution[i].primal[col])) > tolerance ) )
+                   || ( model->getColFlags()[col].test( ColFlag::kIntegral ) && abs(solution[i].primal[col] - round(solution[i].primal[col])) > tolerance ) )
                   {
                      msg.detailed( "\tColumn {:<3} outside domain (value {:<3}) in solution {:<3}\n", model->getVariableNames()[col], solution[i].primal[col], i );
                      return PRIMALFAIL;
@@ -242,7 +253,7 @@ namespace bugger
                   if( model->getRowFlags()[row].test( RowFlag::kRedundant ) )
                      continue;
 
-                  double activity = get_primal_activity(model->getConstraintMatrix().getRowCoefficients(row), solution[i]);
+                  REAL activity { get_primal_activity(model->getConstraintMatrix().getRowCoefficients(row), solution[i]) };
 
                   if( ( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < relax( model->getConstraintMatrix().getLeftHandSides()[row],  false, tolerance, infinity ) )
                    || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity > relax( model->getConstraintMatrix().getRightHandSides()[row], true,  tolerance, infinity ) ) )
@@ -257,11 +268,11 @@ namespace bugger
             {
                assert(solution[i].ray.size() == model->getNCols());
 
-               double scale = 0.0;
+               REAL scale { };
 
                for( int col = 0; col < model->getNCols(); ++col )
                   if( !model->getColFlags()[col].test( ColFlag::kFixed ) )
-                     scale = std::max(scale, abs(solution[i].ray[col]));
+                     scale = max(scale, abs(solution[i].ray[col]));
 
                scale *= tolerance;
 
@@ -281,7 +292,7 @@ namespace bugger
                   if( model->getRowFlags()[row].test( RowFlag::kRedundant ) )
                      continue;
 
-                  double activity = get_ray_activity(model->getConstraintMatrix().getRowCoefficients(row), solution[i]);
+                  REAL activity { get_ray_activity(model->getConstraintMatrix().getRowCoefficients(row), solution[i]) };
 
                   if( ( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < -scale )
                    || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity >  scale ) )
@@ -297,7 +308,7 @@ namespace bugger
       }
 
       char
-      check_objective_value(const double& primal, const Solution<double>& solution, const double& tolerance, const double& infinity) const
+      check_objective_value(const REAL& primal, const Solution<REAL>& solution, const REAL& tolerance, const REAL& infinity) const
       {
          if( abs(primal) > infinity )
          {
@@ -312,12 +323,12 @@ namespace bugger
          {
             assert(solution.ray.size() == model->getNCols());
 
-            double slope = get_ray_objective(solution);
-            double scale = 0.0;
+            REAL slope { get_ray_objective(solution) };
+            REAL scale { };
 
             for( int col = 0; col < model->getNCols(); ++col )
                if( !model->getColFlags()[col].test( ColFlag::kFixed ) )
-                  scale = std::max(scale, abs(solution.ray[col]));
+                  scale = max(scale, abs(solution.ray[col]));
 
             scale *= tolerance;
 
@@ -325,7 +336,7 @@ namespace bugger
                return OKAY;
          }
 
-         double result;
+         REAL result;
 
          if( solution.status == SolutionStatus::kInfeasible )
             result = model->getObjective().sense ? infinity : -infinity;
@@ -357,9 +368,9 @@ namespace bugger
       }
 
       char
-      check_count_number(const double& dual, const double& primal, const long long int& count, const double& infinity) const
+      check_count_number(const REAL& dual, const REAL& primal, const long long& count, const REAL& infinity) const
       {
-         assert(infinity > 1.0);
+         assert(infinity > 1);
 
          if( abs(dual) > infinity || (model->getObjective().sense ? primal : -primal) != infinity || count < -1 )
          {
@@ -391,6 +402,7 @@ namespace bugger
       }
    };
 
+   template <typename REAL>
    class SolverFactory
    {
    public:
@@ -400,7 +412,7 @@ namespace bugger
       addParameters(ParameterSet& parameterset) = 0;
 
       virtual
-      std::unique_ptr<SolverInterface>
+      std::unique_ptr<SolverInterface<REAL>>
       create_solver(const Message& msg) = 0;
 
       virtual

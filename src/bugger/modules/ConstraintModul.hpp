@@ -28,12 +28,14 @@
 
 namespace bugger
 {
-   class ConstraintModul : public BuggerModul
+   template <typename REAL>
+   class ConstraintModul : public BuggerModul<REAL>
    {
    public:
 
-      explicit ConstraintModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
-                               std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory)
+      explicit ConstraintModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+                               std::shared_ptr<SolverFactory<REAL>>& _factory)
+                               : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
       {
          this->setName("constraint");
       }
@@ -41,7 +43,7 @@ namespace bugger
    private:
 
       bool
-      isConstraintAdmissible(const Problem<double>& problem, const int& row) const
+      isConstraintAdmissible(const Problem<REAL>& problem, const int& row) const
       {
          if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant) )
             return false;
@@ -49,26 +51,26 @@ namespace bugger
       }
 
       ModulStatus
-      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override
+      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
          if( solution.status == SolutionStatus::kInfeasible )
             return ModulStatus::kNotAdmissible;
 
-         int batchsize = 1;
+         long long batchsize = 1;
 
-         if( parameters.nbatches > 0 )
+         if( this->parameters.nbatches > 0 )
          {
-            batchsize = parameters.nbatches - 1;
+            batchsize = this->parameters.nbatches - 1;
             for( int i = problem.getNRows( ) - 1; i >= 0; --i )
                if( isConstraintAdmissible(problem, i) )
                   ++batchsize;
-            if( batchsize == parameters.nbatches - 1 )
+            if( batchsize == this->parameters.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
-            batchsize /= parameters.nbatches;
+            batchsize /= this->parameters.nbatches;
          }
 
          bool admissible = false;
-         auto copy = Problem<double>(problem);
+         auto copy = Problem<REAL>(problem);
          Vec<int> applied_reductions { };
          Vec<int> batches { };
          batches.reserve(batchsize);
@@ -85,10 +87,10 @@ namespace bugger
 
             if( !batches.empty() && ( batches.size() >= batchsize || row <= 0 ) )
             {
-               if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
+               if( this->call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
-                  copy = Problem<double>(problem);
-                  for( const auto &item: applied_reductions )
+                  copy = Problem<REAL>(problem);
+                  for( const auto& item: applied_reductions )
                   {
                      assert(!copy.getRowFlags( )[ item ].test(RowFlag::kRedundant));
                      copy.getRowFlags( )[ item ].set(RowFlag::kRedundant);
@@ -105,7 +107,7 @@ namespace bugger
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
          problem = copy;
-         ndeletedrows += applied_reductions.size();
+         this->ndeletedrows += applied_reductions.size();
          return ModulStatus::kSuccessful;
       }
    };

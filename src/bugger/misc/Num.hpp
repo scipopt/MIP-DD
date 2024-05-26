@@ -23,11 +23,8 @@
 #ifndef _BUGGER_MISC_NUM_HPP_
 #define _BUGGER_MISC_NUM_HPP_
 
-#include "bugger/misc/ParameterSet.hpp"
-#include <cmath>
-#include <cstdint>
-#include <limits>
-#include <utility>
+#include "bugger/misc/MultiPrecision.hpp"
+
 
 namespace bugger
 {
@@ -92,45 +89,14 @@ class provides_numerator_and_denominator_overloads
        num_traits<decltype( test_denominator<T>( 0 ) )>::is_integer;
 };
 
-template <typename Rational,
-          typename std::enable_if<
-              num_traits<Rational>::is_rational &&
-                  provides_numerator_and_denominator_overloads<Rational>::value,
-              int>::type = 0>
-Rational
-floor( const Rational& x, ... )
-{
-   if( x >= 0 )
-      return numerator( x ) / denominator( x );
-
-   if( numerator( x ) < 0 )
-      return -1 + ( numerator( x ) + 1 ) / denominator( x );
-
-   return -1 + ( numerator( x ) - 1 ) / denominator( x );
-}
-
-template <typename Rational,
-          typename std::enable_if<
-              num_traits<Rational>::is_rational &&
-                  provides_numerator_and_denominator_overloads<Rational>::value,
-              int>::type = 0>
-Rational
-ceil( const Rational& x, ... )
-{
-   if( x <= 0 )
-      return numerator( x ) / denominator( x );
-
-   if( numerator( x ) < 0 )
-      return 1 + ( numerator( x ) + 1 ) / denominator( x );
-
-   return 1 + ( numerator( x ) - 1 ) / denominator( x );
-}
-
+using std::min;
+using std::max;
 using std::abs;
+using std::floor;
 using std::ceil;
+using std::round;
 using std::copysign;
 using std::exp;
-using std::floor;
 using std::frexp;
 using std::ldexp;
 using std::log;
@@ -143,17 +109,8 @@ class Num
 {
  public:
    Num()
-       : zeta( REAL{ 0 } ), epsilon( REAL{ 1e-9}), feastol( REAL{ 1e-6 } ),
-         hugeval( REAL{ 1e8 } )
-   {
-   }
-
-   template <typename R>
-   static constexpr REAL
-   round( const R& x )
-   {
-      return floor( REAL( x + REAL( 0.5 ) ) );
-   }
+       : zeta( REAL{ 0 } ), epsilon( REAL{ 1e-9 }), feastol( REAL{ 1e-6 } ),
+         hugeval( REAL{ 1e8 } ) { }
 
    template <typename R1, typename R2>
    bool
@@ -247,21 +204,6 @@ class Num
    {
       return a - b < -feastol;
    }
-
-   template <typename R1, typename R2>
-   static REAL
-   max( const R1& a, const R2& b )
-   {
-      return a > b ? REAL( a ) : REAL( b );
-   }
-
-   template <typename R1, typename R2>
-   static REAL
-   min( const R1& a, const R2& b )
-   {
-      return a < b ? REAL( a ) : REAL( b );
-   }
-
 
    template <typename R>
    REAL

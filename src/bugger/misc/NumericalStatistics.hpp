@@ -79,17 +79,17 @@ class NumericalStatistics
          // matrixMin/Max
          const SparseVectorView<REAL>& row = cm.getRowCoefficients( r );std::pair<REAL, REAL> minmax = row.getMinMaxAbsValue();
 
-         stats.matrixMax = std::max( minmax.second, stats.matrixMax );
+         stats.matrixMax = max( minmax.second, stats.matrixMax );
          if( r == 0 )
             stats.matrixMin = stats.matrixMax;
          else
-            stats.matrixMin = std::min( minmax.first, stats.matrixMin );
+            stats.matrixMin = min( minmax.first, stats.matrixMin );
 
          // Row dynamism
          if(minmax.first != 0)
          {
             REAL dyn = minmax.second / minmax.first;
-            stats.rowDynamism = std::max( dyn, stats.rowDynamism );
+            stats.rowDynamism = max( dyn, stats.rowDynamism );
          }
 
          // RHS min/max
@@ -100,7 +100,7 @@ class NumericalStatistics
             rhsMinSet = true;
             if( !rf[r].test( RowFlag::kLhsInf ) &&
                 !rf[r].test( RowFlag::kRhsInf ) && lhs[r] != 0 && rhs[r] != 0 )
-               stats.rhsMin = std::min( abs( lhs[r] ), abs( rhs[r] ) );
+               stats.rhsMin = min( abs( lhs[r] ), abs( rhs[r] ) );
             else if( !rf[r].test( RowFlag::kLhsInf ) && lhs[r] != 0 )
                stats.rhsMin = abs( lhs[r] );
             else if( !rf[r].test( RowFlag::kRhsInf ) && rhs[r] != 0 )
@@ -112,24 +112,20 @@ class NumericalStatistics
          {
             if( !rf[r].test( RowFlag::kLhsInf ) &&
                 !rf[r].test( RowFlag::kRhsInf ) && lhs[r] != 0 && rhs[r] != 0 )
-               stats.rhsMin =
-                   std::min( stats.rhsMin,
-                             REAL( std::min( abs( lhs[r] ), abs( rhs[r] ) ) ) );
+               stats.rhsMin = min( stats.rhsMin, min( abs( lhs[r] ), abs( rhs[r] ) ) );
             else if( !rf[r].test( RowFlag::kLhsInf ) && lhs[r] != 0 )
-               stats.rhsMin = std::min( stats.rhsMin, REAL( abs( lhs[r] ) ) );
+               stats.rhsMin = min( stats.rhsMin, abs( lhs[r] ) );
             else if( !rf[r].test( RowFlag::kRhsInf ) && rhs[r] != 0 )
-               stats.rhsMin = std::min( stats.rhsMin, REAL( abs( rhs[r] ) ) );
+               stats.rhsMin = min( stats.rhsMin, abs( rhs[r] ) );
          }
 
          if( !rf[r].test( RowFlag::kLhsInf ) &&
              !rf[r].test( RowFlag::kRhsInf ) )
-            stats.rhsMax =
-                std::max( stats.rhsMax,
-                          REAL( std::max( abs( lhs[r] ), abs( rhs[r] ) ) ) );
+            stats.rhsMax = max( stats.rhsMax, max( abs( lhs[r] ), abs( rhs[r] ) ) );
          else if( !rf[r].test( RowFlag::kLhsInf ) )
-            stats.rhsMax = std::max( stats.rhsMax, REAL( abs( lhs[r] ) ) );
+            stats.rhsMax = max( stats.rhsMax, abs( lhs[r] ) );
          else if( !rf[r].test( RowFlag::kRhsInf ) )
-            stats.rhsMax = std::max( stats.rhsMax, REAL( abs( rhs[r] ) ) );
+            stats.rhsMax = max( stats.rhsMax, abs( rhs[r] ) );
       }
 
       stats.colDynamism = 0.0;
@@ -145,7 +141,7 @@ class NumericalStatistics
          std::pair<REAL, REAL> minmax = col.getMinMaxAbsValue();
 
          REAL dyn = minmax.first == 0 ? (REAL) 0 : minmax.second / minmax.first;
-         stats.colDynamism = std::max( dyn, stats.colDynamism );
+         stats.colDynamism = max( dyn, stats.colDynamism );
 
          // Bounds
 
@@ -156,8 +152,7 @@ class NumericalStatistics
             if( !vd.flags[c].test( ColFlag::kLbInf ) &&
                 !vd.flags[c].test( ColFlag::kUbInf ) &&
                 vd.lower_bounds[c] != 0 && vd.upper_bounds[c] != 0 )
-               stats.boundsMin = std::min( abs( vd.lower_bounds[c] ),
-                                           abs( vd.upper_bounds[c] ) );
+               stats.boundsMin = min( abs( vd.lower_bounds[c] ), abs( vd.upper_bounds[c] ) );
             else if( !vd.flags[c].test( ColFlag::kLbInf ) &&
                      vd.lower_bounds[c] != 0 )
                stats.boundsMin = abs( vd.lower_bounds[c] );
@@ -172,32 +167,22 @@ class NumericalStatistics
             if( !vd.flags[c].test( ColFlag::kLbInf ) &&
                 !vd.flags[c].test( ColFlag::kUbInf ) &&
                 vd.lower_bounds[c] != 0 && vd.upper_bounds[c] != 0 )
-               stats.boundsMin =
-                   std::min( stats.boundsMin,
-                             REAL( std::min( abs( vd.lower_bounds[c] ),
-                                             abs( vd.upper_bounds[c] ) ) ) );
+               stats.boundsMin = min( stats.boundsMin, min( abs( vd.lower_bounds[c] ), abs( vd.upper_bounds[c] ) ) );
             else if( !vd.flags[c].test( ColFlag::kLbInf ) &&
                      vd.lower_bounds[c] != 0 )
-               stats.boundsMin = std::min( stats.boundsMin,
-                                           REAL( abs( vd.lower_bounds[c] ) ) );
+               stats.boundsMin = min( stats.boundsMin, abs( vd.lower_bounds[c] ) );
             else if( !vd.flags[c].test( ColFlag::kUbInf ) &&
                      vd.upper_bounds[c] != 0 )
-               stats.boundsMin = std::min( stats.boundsMin,
-                                           REAL( abs( vd.upper_bounds[c] ) ) );
+               stats.boundsMin = min( stats.boundsMin, abs( vd.upper_bounds[c] ) );
          }
 
          if( !vd.flags[c].test( ColFlag::kLbInf ) &&
              !vd.flags[c].test( ColFlag::kUbInf ) )
-            stats.boundsMax =
-                std::max( stats.boundsMax,
-                          REAL( std::max( abs( vd.lower_bounds[c] ),
-                                          abs( vd.upper_bounds[c] ) ) ) );
+            stats.boundsMax = max( stats.boundsMax, max( abs( vd.lower_bounds[c] ), abs( vd.upper_bounds[c] ) ) );
          else if( !vd.flags[c].test( ColFlag::kLbInf ) )
-            stats.boundsMax =
-                std::max( stats.boundsMax, REAL( abs( vd.lower_bounds[c] ) ) );
+            stats.boundsMax = max( stats.boundsMax, abs( vd.lower_bounds[c] ) );
          else if( !vd.flags[c].test( ColFlag::kUbInf ) )
-            stats.boundsMax =
-                std::max( stats.boundsMax, REAL( abs( vd.upper_bounds[c] ) ) );
+            stats.boundsMax = max( stats.boundsMax, abs( vd.upper_bounds[c] ) );
       }
 
       if(stats.matrixMin != 0)
@@ -214,16 +199,14 @@ class NumericalStatistics
       {
          if( obj.coefficients[i] != 0 )
          {
-            stats.objMax =
-                std::max( stats.objMax, REAL( abs( obj.coefficients[i] ) ) );
+            stats.objMax = max( stats.objMax, abs( obj.coefficients[i] ) );
             if( !objMinSet )
             {
                stats.objMin = abs( obj.coefficients[i] );
                objMinSet = true;
             }
             else
-               stats.objMin =
-                   std::min( stats.objMin, REAL( abs( obj.coefficients[i] ) ) );
+               stats.objMin = min( stats.objMin, abs( obj.coefficients[i] ) );
          }
       }
    }
