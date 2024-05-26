@@ -25,10 +25,7 @@
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
 
-#include "scip/cons_linear.h"
 #include "scip/scip.h"
-#include "scip/pub_cons.h"
-#include "scip/scip_param.h"
 #include "scip/scipdefplugins.h"
 #include "scip/struct_paramset.h"
 #include "bugger/data/Problem.hpp"
@@ -61,7 +58,7 @@ namespace bugger
 
       const ScipParameters& parameters;
       SCIP* scip = nullptr;
-      Vec<SCIP_VAR*> vars;
+      Vec<SCIP_VAR*> vars { };
 
    public:
 
@@ -122,38 +119,38 @@ namespace bugger
                continue;
             switch( param->paramtype )
             {
-               case SCIP_PARAMTYPE_BOOL:
-                  bool_settings.emplace_back( name, param->data.boolparam.valueptr == nullptr
-                                                  ? param->data.boolparam.curvalue
-                                                  : *param->data.boolparam.valueptr );
-                  break;
-               case SCIP_PARAMTYPE_INT:
-                  int_settings.emplace_back( name, param->data.intparam.valueptr == nullptr
-                                                 ? param->data.intparam.curvalue
-                                                 : *param->data.intparam.valueptr );
-                  break;
-               case SCIP_PARAMTYPE_LONGINT:
-                  long_settings.emplace_back( name, param->data.longintparam.valueptr == nullptr
-                                                  ? param->data.longintparam.curvalue
-                                                  : *param->data.longintparam.valueptr );
-                  break;
-               case SCIP_PARAMTYPE_REAL:
-                  double_settings.emplace_back( name, param->data.realparam.valueptr == nullptr
-                                                    ? param->data.realparam.curvalue
-                                                    : *param->data.realparam.valueptr );
-                  break;
-               case SCIP_PARAMTYPE_CHAR:
-                  char_settings.emplace_back( name, param->data.charparam.valueptr == nullptr
-                                                  ? param->data.charparam.curvalue
-                                                  : *param->data.charparam.valueptr );
-                  break;
-               case SCIP_PARAMTYPE_STRING:
-                  string_settings.emplace_back( name, param->data.stringparam.valueptr == nullptr
-                                                    ? param->data.stringparam.curvalue
-                                                    : *param->data.stringparam.valueptr );
-                  break;
-               default:
-                  SCIPerrorMessage("unknown setting type\n");
+            case SCIP_PARAMTYPE_BOOL:
+               bool_settings.emplace_back( name, param->data.boolparam.valueptr == nullptr
+                                                 ? param->data.boolparam.curvalue
+                                                 : *param->data.boolparam.valueptr );
+               break;
+            case SCIP_PARAMTYPE_INT:
+               int_settings.emplace_back( name, param->data.intparam.valueptr == nullptr
+                                                ? param->data.intparam.curvalue
+                                                : *param->data.intparam.valueptr );
+               break;
+            case SCIP_PARAMTYPE_LONGINT:
+               long_settings.emplace_back( name, param->data.longintparam.valueptr == nullptr
+                                                 ? param->data.longintparam.curvalue
+                                                 : *param->data.longintparam.valueptr );
+               break;
+            case SCIP_PARAMTYPE_REAL:
+               double_settings.emplace_back( name, param->data.realparam.valueptr == nullptr
+                                                   ? param->data.realparam.curvalue
+                                                   : *param->data.realparam.valueptr );
+               break;
+            case SCIP_PARAMTYPE_CHAR:
+               char_settings.emplace_back( name, param->data.charparam.valueptr == nullptr
+                                                 ? param->data.charparam.curvalue
+                                                 : *param->data.charparam.valueptr );
+               break;
+            case SCIP_PARAMTYPE_STRING:
+               string_settings.emplace_back( name, param->data.stringparam.valueptr == nullptr
+                                                   ? param->data.stringparam.curvalue
+                                                   : *param->data.stringparam.valueptr );
+               break;
+            default:
+               SCIPerrorMessage("unknown setting type\n");
             }
          }
 
@@ -281,64 +278,64 @@ namespace bugger
             // translate solver status
             switch( SCIPgetStatus(scip) )
             {
-               case SCIP_STATUS_UNKNOWN:
-                  solverstatus = SolverStatus::kUnknown;
-                  break;
-               case SCIP_STATUS_TOTALNODELIMIT:
-                  solverstatus = SolverStatus::kTotalNodeLimit;
-                  break;
-               case SCIP_STATUS_STALLNODELIMIT:
-                  solverstatus = SolverStatus::kStallNodeLimit;
-                  break;
-               case SCIP_STATUS_NODELIMIT:
-                  solverstatus = SolverStatus::kNodeLimit;
-                  break;
-               case SCIP_STATUS_TIMELIMIT:
-                  solverstatus = SolverStatus::kTimeLimit;
-                  break;
-               case SCIP_STATUS_GAPLIMIT:
-                  solverstatus = SolverStatus::kGapLimit;
-                  break;
-#if SCIP_APIVERSION >= 115
-               case SCIP_STATUS_PRIMALLIMIT:
-                  solverstatus = SolverStatus::kPrimalLimit;
-                  break;
-               case SCIP_STATUS_DUALLIMIT:
-                  solverstatus = SolverStatus::kDualLimit;
-                  break;
-#endif
-               case SCIP_STATUS_MEMLIMIT:
-                  solverstatus = SolverStatus::kMemLimit;
-                  break;
-               case SCIP_STATUS_SOLLIMIT:
-                  solverstatus = SolverStatus::kSolLimit;
-                  break;
-               case SCIP_STATUS_BESTSOLLIMIT:
-                  solverstatus = SolverStatus::kBestSolLimit;
-                  break;
-               case SCIP_STATUS_RESTARTLIMIT:
-                  solverstatus = SolverStatus::kRestartLimit;
-                  break;
-               case SCIP_STATUS_USERINTERRUPT:
-                  solverstatus = SolverStatus::kInterrupt;
-                  break;
+            case SCIP_STATUS_UNKNOWN:
+               solverstatus = SolverStatus::kUnknown;
+               break;
+            case SCIP_STATUS_USERINTERRUPT:
+               solverstatus = SolverStatus::kInterrupt;
+               break;
 #if SCIP_APIVERSION >= 22
-               case SCIP_STATUS_TERMINATE:
-                  solverstatus = SolverStatus::kTerminate;
-                  break;
+            case SCIP_STATUS_TERMINATE:
+               solverstatus = SolverStatus::kTerminate;
+               break;
 #endif
-               case SCIP_STATUS_INFORUNBD:
-                  solverstatus = SolverStatus::kInfeasibleOrUnbounded;
-                  break;
-               case SCIP_STATUS_INFEASIBLE:
-                  solverstatus = SolverStatus::kInfeasible;
-                  break;
-               case SCIP_STATUS_UNBOUNDED:
-                  solverstatus = SolverStatus::kUnbounded;
-                  break;
-               case SCIP_STATUS_OPTIMAL:
-                  solverstatus = SolverStatus::kOptimal;
-                  break;
+            case SCIP_STATUS_NODELIMIT:
+               solverstatus = SolverStatus::kNodeLimit;
+               break;
+            case SCIP_STATUS_TOTALNODELIMIT:
+               solverstatus = SolverStatus::kTotalNodeLimit;
+               break;
+            case SCIP_STATUS_STALLNODELIMIT:
+               solverstatus = SolverStatus::kStallNodeLimit;
+               break;
+            case SCIP_STATUS_TIMELIMIT:
+               solverstatus = SolverStatus::kTimeLimit;
+               break;
+            case SCIP_STATUS_MEMLIMIT:
+               solverstatus = SolverStatus::kMemLimit;
+               break;
+            case SCIP_STATUS_GAPLIMIT:
+               solverstatus = SolverStatus::kGapLimit;
+               break;
+#if SCIP_APIVERSION >= 115
+            case SCIP_STATUS_PRIMALLIMIT:
+               solverstatus = SolverStatus::kPrimalLimit;
+               break;
+            case SCIP_STATUS_DUALLIMIT:
+               solverstatus = SolverStatus::kDualLimit;
+               break;
+#endif
+            case SCIP_STATUS_SOLLIMIT:
+               solverstatus = SolverStatus::kSolLimit;
+               break;
+            case SCIP_STATUS_BESTSOLLIMIT:
+               solverstatus = SolverStatus::kBestSolLimit;
+               break;
+            case SCIP_STATUS_RESTARTLIMIT:
+               solverstatus = SolverStatus::kRestartLimit;
+               break;
+            case SCIP_STATUS_OPTIMAL:
+               solverstatus = SolverStatus::kOptimal;
+               break;
+            case SCIP_STATUS_INFEASIBLE:
+               solverstatus = SolverStatus::kInfeasible;
+               break;
+            case SCIP_STATUS_UNBOUNDED:
+               solverstatus = SolverStatus::kUnbounded;
+               break;
+            case SCIP_STATUS_INFORUNBD:
+               solverstatus = SolverStatus::kInfeasibleOrUnbounded;
+               break;
             }
          }
          else
@@ -460,9 +457,29 @@ namespace bugger
       {
          if( scip != nullptr )
          {
-            auto retcode = SCIPfree(&scip);
-            UNUSED(retcode);
-            assert(retcode == SCIP_OKAY);
+            switch( SCIPgetStage(scip) )
+            {
+            case SCIP_STAGE_INITSOLVE:
+            case SCIP_STAGE_EXITSOLVE:
+            case SCIP_STAGE_FREETRANS:
+            case SCIP_STAGE_FREE:
+               // avoid errors in stages above
+               scip = nullptr;
+            case SCIP_STAGE_INIT:
+            case SCIP_STAGE_PROBLEM:
+            case SCIP_STAGE_TRANSFORMING:
+            case SCIP_STAGE_TRANSFORMED:
+            case SCIP_STAGE_INITPRESOLVE:
+            case SCIP_STAGE_PRESOLVING:
+            case SCIP_STAGE_PRESOLVED:
+            case SCIP_STAGE_EXITPRESOLVE:
+            case SCIP_STAGE_SOLVING:
+            case SCIP_STAGE_SOLVED:
+            default:
+               if( scip == nullptr || SCIPfree(&scip) != SCIP_OKAY )
+                  msg.warn("could not free SCIP\n");
+               break;
+            }
          }
       }
 
@@ -649,7 +666,7 @@ namespace bugger
    std::shared_ptr<SolverFactory>
    load_solver_factory( )
    {
-      return std::shared_ptr<SolverFactory>(new ScipFactory( ));
+      return std::shared_ptr<SolverFactory>( new ScipFactory( ) );
    }
 
 } // namespace bugger
