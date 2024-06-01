@@ -37,21 +37,19 @@
 
 namespace bugger
 {
-
 template <typename REAL>
 struct SolParser
 {
-
-   static bool
-   read( const std::string& filename,
-         const Vec<String>& colnames, Solution<REAL>& sol)
+   static boost::optional<Solution<REAL>>
+   read( const std::string& filename, const Vec<String>& colnames )
    {
       std::ifstream file( filename, std::ifstream::in );
       boost::iostreams::filtering_istream in;
 
       if( !file )
-         return false;
-      sol = Solution<REAL>(SolutionStatus::kFeasible);
+         return boost::none;
+
+      Solution<REAL> sol { };
 
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
       if( boost::algorithm::ends_with( filename, ".gz" ) )
@@ -100,7 +98,7 @@ struct SolParser
       }
       while( getline( in, strline ) );
 
-      return true;
+      return sol;
    }
 
  private:
