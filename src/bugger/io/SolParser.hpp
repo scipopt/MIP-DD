@@ -27,6 +27,7 @@
 #include "bugger/misc/String.hpp"
 #include "bugger/misc/Vec.hpp"
 #include "bugger/data/Solution.hpp"
+#include "bugger/misc/MultiPrecision.hpp"
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include <fstream>
@@ -144,7 +145,26 @@ struct SolParser
 
    static REAL
    read_number(const std::string& s) {
-      bool failed = false;
+
+      bool is_rational = !std::is_same<REAL, Rational>::value;
+      if(!is_rational)
+      {
+         std::stringstream ss;
+         REAL number;
+
+         ss << s;
+         ss >> number;
+
+         if( ss.fail() || !ss.eof() )
+         {
+            fmt::print( stderr,
+                        "WARNING: {} not of arithmetic {}!\n",
+                        s, typeid(REAL).name() );
+            number = 0;
+         }
+         return number;
+      }
+
       REAL answer = 0;
       bool negated = false;
       bool dot = false;
@@ -190,10 +210,7 @@ struct SolParser
          else if( ( c == 'E' || c == 'e' ) && !exponent )
             exponent = true;
          else
-         {
-            failed = true;
             assert(false);
-         }
       }
       if( !exp_negated )
          answer *= pow( 10,  exp );
