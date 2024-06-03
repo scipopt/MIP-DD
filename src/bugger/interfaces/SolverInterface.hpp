@@ -67,7 +67,7 @@ namespace bugger
        */
       virtual
       void
-      print_header( ) const = 0;
+      print_header( ) const { };
 
       /** **optional**
        * detects setting with given name
@@ -76,7 +76,7 @@ namespace bugger
        */
       virtual
       bool
-      has_setting(const String& name) const = 0;
+      has_setting(const String& name) const { return false; };
 
       /** **optional**
        * parse Settings
@@ -85,7 +85,7 @@ namespace bugger
        */
       virtual
       boost::optional<SolverSettings>
-      parseSettings(const String& filename) const = 0;
+      parseSettings(const String& filename) const { return boost::none; };
 
       /**
        * loads settings, problem, and solution
@@ -127,7 +127,9 @@ namespace bugger
        */
       virtual
       std::tuple<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>, boost::optional<Solution<REAL>>>
-      readInstance(const String& settings_filename, const String& problem_filename, const String& solution_filename) = 0;
+      readInstance(const String& settings_filename, const String& problem_filename, const String& solution_filename) {
+         return {boost::none, boost::none, boost::none};
+      };
 
       /** **optional**
        * write stored setting-problem-solution tuple to files
