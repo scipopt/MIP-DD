@@ -57,14 +57,14 @@ namespace bugger
 
       SolverInterface(const Message& _msg) : msg(_msg) { }
 
-      /**
+      /** **optional**
        * prints the header of the used solver
        */
       virtual
       void
       print_header( ) const = 0;
 
-      /**
+      /** **optional**
        * detects setting with given name
        * @param name
        * @return whether setting is available
@@ -73,8 +73,9 @@ namespace bugger
       bool
       has_setting(const String& name) const = 0;
 
-      /**
+      /** **optional**
        * parse Settings
+       * _if returned boost::none for setting, then debugging with the settings modul is not supported_
        * @param filename
        */
       virtual
@@ -100,7 +101,7 @@ namespace bugger
       std::pair<char, SolverStatus>
       solve(const Vec<int>& passcodes) = 0;
 
-      /**
+      /** **optional**
        * provides measure for the solving effort to adapt batch number
        * @return a long long int: Non-negative value proportional to effort of the solve or -1 if unknown
        */
@@ -111,8 +112,10 @@ namespace bugger
          return -1;
       }
 
-      /**
+      /** **optional**
        * read setting-problem-solution tuple from files
+       * _if returned boost::none for instance or solution, MIP-DD calls internal parser as fallback option_
+       * _if returned boost::none for setting, then debugging with the settings modul is not supported_
        * @param settings_filename
        * @param problem_filename
        * @param solution_filename
