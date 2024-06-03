@@ -16,11 +16,11 @@ Performance improvements
 Interface changes
 ----------
 
-SolverInterface:
-- templatize SolverInterface to allow debugging in customized arithmetic (numerical exact for example)
-- changed signature and return-type of SolverInterface-readInstance to support also parsing the solution additional to the settings and instance
-- Retcode renamed to SolverRetcode and moved out of the SolverInterface
-- parameters of doSetup made const
+## SolverInterface:
+- templatize arithmetic type to allow instance precision to be independent from solver precision
+- add solution information to signature and return of readInstance() to enable parsing the reference solution
+- move out Retcode and rename to SolverRetcode in order to simplify handling return codes
+- make argument settings of doSetup() variable to restrict limit settings
 - add method getSolvingEffort() to adapt batch number
 
 New parameters

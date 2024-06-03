@@ -78,15 +78,15 @@ limitations under the License.
 
 The paper is currently submitted and under review. Therefore, please cite:
 ```bibtex
-  @misc{HKG24MIPDD,
+@misc{HKG24MIPDD,
         title={MIP-DD: A Delta Debugger for Mixed Integer Programming Solvers}, 
         author={Alexander Hoen and Dominik Kamp and Ambros Gleixner},
-        institution = {Zuse Institute Berlin},
+        institution={Zuse Institute Berlin and University of Bayreuth},
         year={2024},
         eprint={2405.19770},
         archivePrefix={arXiv},
         primaryClass={math.OC},
-        code = {https://scipopt.org}
+        code={https://github.com/scipopt/MIP-DD}
   }
 ```
 
