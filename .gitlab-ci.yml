@@ -63,90 +63,71 @@ boost-soplex-scip:
     - cmake . -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DZIMPL=off -DREADLINE=off -DGMP=off -DPAPILO=off -DIPOPT=off
     - make -j$(nproc) install
 
-soplex_double_debug:
+.test:
   extends: .common
   stage: build
   dependencies: [boost-soplex-scip]
   script:
     - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
     - cd ${BUILD_DIR}/${CI_JOB_NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${INSTALL_DIR} -DSOPLEX=on -DSCIP=off
+    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS}
     - make -j$(nproc)
     - bin/bugger --help
+
+soplex_double_debug:
+  extends: .test
+  stage: build
+  dependencies: [ boost-soplex-scip ]
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${INSTALL_DIR} -DSOPLEX=on -DSCIP=off"
 
 soplex_double_optimized:
   extends: .common
   stage: build
   dependencies: [boost-soplex-scip]
-  script:
-    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
-    - cd ${BUILD_DIR}/${CI_JOB_NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${INSTALL_DIR} -DSOPLEX=on -DSCIP=off
-    - make -j$(nproc)
-    - bin/bugger --help
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${INSTALL_DIR} -DSOPLEX=on -DSCIP=off"
 
 soplex_rational_debug:
   extends: .common
   stage: build
   dependencies: [boost-soplex-scip]
-  script:
-    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
-    - cd ${BUILD_DIR}/${CI_JOB_NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=${INSTALL_DIR} -DSOPLEX=on -DSCIP=off
-    - make -j$(nproc)
-    - bin/bugger --help
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=${INSTALL_DIR} -DSOPLEX=on -DSCIP=off"
+
 
 soplex_rational_optimized:
   extends: .common
   stage: build
   dependencies: [boost-soplex-scip]
-  script:
-    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
-    - cd ${BUILD_DIR}/${CI_JOB_NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=${INSTALL_DIR} -DSOPLEX=on -DSCIP=off
-    - make -j$(nproc)
-    - bin/bugger --help
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=${INSTALL_DIR} -DSOPLEX=on -DSCIP=off"
+
 
 scip_double_debug:
   extends: .common
   stage: build
   dependencies: [boost-soplex-scip]
-  script:
-    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
-    - cd ${BUILD_DIR}/${CI_JOB_NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSCIP_DIR=${INSTALL_DIR}
-    - make -j$(nproc)
-    - bin/bugger --help
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSCIP_DIR=${INSTALL_DIR}"
 
 scip_double_optimized:
   extends: .common
   stage: build
   dependencies: [boost-soplex-scip]
-  script:
-    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
-    - cd ${BUILD_DIR}/${CI_JOB_NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSCIP_DIR=${INSTALL_DIR}
-    - make -j$(nproc)
-    - bin/bugger --help
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSCIP_DIR=${INSTALL_DIR}"
 
 scip_rational_debug:
   extends: .common
   stage: build
   dependencies: [boost-soplex-scip]
-  script:
-    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
-    - cd ${BUILD_DIR}/${CI_JOB_NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSCIP_DIR=${INSTALL_DIR}
-    - make -j$(nproc)
-    - bin/bugger --help
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSCIP_DIR=${INSTALL_DIR}"
 
 scip_rational_optimized:
   extends: .common
   stage: build
   dependencies: [boost-soplex-scip]
-  script:
-    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
-    - cd ${BUILD_DIR}/${CI_JOB_NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSCIP_DIR=${INSTALL_DIR}
-    - make -j$(nproc)
-    - bin/bugger --help
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSCIP_DIR=${INSTALL_DIR}"
