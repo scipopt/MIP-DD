@@ -37,6 +37,7 @@
 #include <map>
 #include <sstream>
 
+
 namespace bugger
 {
 template <typename REAL>
@@ -147,78 +148,124 @@ struct SolParser
    static REAL
    read_number( const std::string& s )
    {
-      REAL number { };
-      bool is_rational = !std::is_same<REAL, Rational>::value;
-      if( !is_rational )
+      REAL number;
+      std::stringstream ss;
+      ss << s;
+      ss >> number;
+      if( ss.fail() || !ss.eof() )
       {
-         std::stringstream ss;
-         ss << s;
-         ss >> number;
-         if( ss.fail() || !ss.eof() )
+         Integral numerator = 0;
+         Integral denominator = 1;
+         int exponent = 0;
+         int phase = 0;
+         bool num_negated = false;
+         bool exp_negated = false;
+         bool success = true;
+         for( char c : s )
+         {
+            int digit = '0' <= c && c <= '9' ? c - '0' : -1;
+            switch( phase )
+            {
+            // number sign
+            case 0:
+               ++phase;
+               if( c == '+' )
+                  break;
+               else if( c == '-' )
+               {
+                  num_negated = true;
+                  break;
+               }
+            // before delimiter
+            case 1:
+               if( digit >= 0 )
+               {
+                  numerator *= 10;
+                  numerator += digit;
+                  break;
+               }
+               else
+               {
+                  ++phase;
+                  if( num_traits<REAL>::is_rational )
+                  {
+                     if( c == '.' )
+                        break;
+                  }
+                  else
+                  {
+                     if( c == '/' )
+                     {
+                        denominator = 0;
+                        break;
+                     }
+                  }
+               }
+            // after delimiter
+            case 2:
+               if( digit >= 0 )
+               {
+                  if( num_traits<REAL>::is_rational )
+                  {
+                     numerator *= 10;
+                     numerator += digit;
+                     denominator *= 10;
+                  }
+                  else
+                  {
+                     denominator *= 10;
+                     denominator += digit;
+                  }
+               }
+               else if( ( c == 'e' || c == 'E' ) && num_traits<REAL>::is_rational )
+                  ++phase;
+               else
+                  success = false;
+               break;
+            // exponent sign
+            case 3:
+               ++phase;
+               if( c == '+' )
+                  break;
+               else if( c == '-' )
+               {
+                  exp_negated = true;
+                  break;
+               }
+            // exponent value
+            case 4:
+               if( digit >= 0 )
+               {
+                  exponent *= 10;
+                  exponent += digit;
+                  break;
+               }
+               else
+                  ++phase;
+            default:
+               success = false;
+               break;
+            }
+            if( !success )
+               break;
+         }
+         if( success )
+         {
+            if( num_negated )
+               numerator *= -1;
+            if( exp_negated )
+               exponent *= -1;
+            number = REAL(Rational(numerator, denominator) * pow(10, exponent));
+         }
+         else
          {
             fmt::print( stderr,
-                        "WARNING: {} not of arithmetic {}!\n",
+                        "WARNING: {} is not representable in arithmetic {}!\n",
                         s, typeid(REAL).name() );
             number = 0;
          }
-         return number;
       }
-      bool negated = false;
-      bool dot = false;
-      bool exponent = false;
-      int exp = 0;
-      bool exp_negated = false;
-      int digits_after_dot = 0;
-      for( char c : s )
-      {
-         if( '0' <= c && c <= '9' )
-         {
-            int digit = c - '0';
-            if( exponent )
-            {
-               exp *= 10;
-               exp += digit;
-            }
-            else if( !dot )
-            {
-               number *= 10;
-               number += digit;
-            }
-            else
-            {
-               ++digits_after_dot;
-               number += digit / pow(10, digits_after_dot);
-            }
-         }
-         else if( c == '.' && !dot )
-         {
-            assert(digits_after_dot == 0);
-            assert(!exponent);
-            dot = true;
-         }
-         else if( ( c == 'E' || c == 'e' ) && !exponent )
-            exponent = true;
-         else if( c == '-' && ( ( exponent && !exp_negated ) || !negated ) )
-         {
-            if( exponent )
-               exp_negated = true;
-            else
-               negated = true;
-         }
-         else if( c != '+' || ( ( !exponent || exp_negated ) && negated ) )
-         {
-            fmt::print( stderr,
-                        "WARNING: {} not of arithmetic {}!\n",
-                        s, typeid(REAL).name() );
-            number = 0;
-            break;
-         }
-      }
-      if( !exp_negated )
-         number *= pow(10, exp);
-      else
-         number /= pow(10, exp);
-      return negated ? -number : number;
+      return number;
    }
 };
 
