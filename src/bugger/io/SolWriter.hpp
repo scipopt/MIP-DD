@@ -133,7 +133,7 @@ struct SolWriter
 
       fmt::print( out, "{: <50} {: <18.15}\n", "=obj=", double( solobj ) );
 
-      for( int i = 0; i < (int) sol.size(); ++i )
+      for( int i = 0; i < (int)sol.size(); ++i )
       {
          if( sol[i] != 0.0 )
          {
@@ -145,7 +145,6 @@ struct SolWriter
          }
       }
    }
-
 };
 
 } // namespace papilo
