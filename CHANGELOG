@@ -21,7 +21,7 @@ SolverInterface:
 - changed signature and return-type of SolverInterface-readInstance to support also parsing the solution additional to the settings and instance
 - Retcode renamed to SolverRetcode and moved out of the SolverInterface
 - parameters of doSetup made const
-- added function getSolvingEffort
+- add method getSolvingEffort() to adapt batch number
 
 New parameters
 ----------
