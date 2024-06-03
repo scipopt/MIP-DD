@@ -19,7 +19,7 @@ Building the bugger works with the standard cmake workflow:
 ```
 mkdir build
 cd build
-cmake .. -DSOLVER_DIR=PATH_TO_SOLVER -DSOLVER=on
+cmake .. -DSOLVER=on -DSOLVER_DIR=PATH_TO_SOLVER
 make
 ```
 Here, SOLVER stands for one of the interfaced solvers for which the installation subdirectory PATH_TO_SOLVER contains the file solver-targets.cmake required to link its shared library.
