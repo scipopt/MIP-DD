@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    BUGGER --- Parallel Presolve for Integer and Linear Optimization       */
+/*                            MIP-DD                                         */
 /*                                                                           */
 /* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
