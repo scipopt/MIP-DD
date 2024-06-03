@@ -82,14 +82,14 @@ soplex_double_debug:
     CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${INSTALL_DIR} -DSOPLEX=on -DSCIP=off"
 
 soplex_double_optimized:
-  extends: .common
+  extends: .test
   stage: build
   dependencies: [boost-soplex-scip]
   variables:
     CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${INSTALL_DIR} -DSOPLEX=on -DSCIP=off"
 
 soplex_rational_debug:
-  extends: .common
+  extends: .test
   stage: build
   dependencies: [boost-soplex-scip]
   variables:
@@ -97,7 +97,7 @@ soplex_rational_debug:
 
 
 soplex_rational_optimized:
-  extends: .common
+  extends: .test
   stage: build
   dependencies: [boost-soplex-scip]
   variables:
@@ -105,28 +105,28 @@ soplex_rational_optimized:
 
 
 scip_double_debug:
-  extends: .common
+  extends: .test
   stage: build
   dependencies: [boost-soplex-scip]
   variables:
     CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSCIP_DIR=${INSTALL_DIR}"
 
 scip_double_optimized:
-  extends: .common
+  extends: .test
   stage: build
   dependencies: [boost-soplex-scip]
   variables:
     CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSCIP_DIR=${INSTALL_DIR}"
 
 scip_rational_debug:
-  extends: .common
+  extends: .test
   stage: build
   dependencies: [boost-soplex-scip]
   variables:
     CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSCIP_DIR=${INSTALL_DIR}"
 
 scip_rational_optimized:
-  extends: .common
+  extends: .test
   stage: build
   dependencies: [boost-soplex-scip]
   variables:
