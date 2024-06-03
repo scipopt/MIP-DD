@@ -51,7 +51,8 @@ Please refer to parameters.txt for the list of default parameters.
 
 # Integrating a MIP Solver to MIP-DD
 
-To integrating a solver into the MIP-DD's API, a new class has to be created that inherits SolverInterface. Function that are not required and provide additional functionality are marked with **optional**.
+To integrate a solver into the MIP-DD's API, a new class has to be created that inherits from SolverInterface.
+Methods that are not required but enable additional functionality are marked with **optional**.
 This specific SolverInterface interacts with the solver by
 * parsing the settings and problem files as well as loading the data into the internal data structures (`parseSettings`, `readInstance`)
 * loading the internal settings and problem into the solver (`doSetup`)
