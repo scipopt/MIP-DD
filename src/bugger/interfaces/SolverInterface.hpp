@@ -114,8 +114,8 @@ namespace bugger
 
       /** **optional**
        * read setting-problem-solution tuple from files
-       * _if returned boost::none for instance or solution, MIP-DD calls internal parser as fallback option_
-       * _if returned boost::none for setting, then debugging with the settings modul is not supported_
+       * _if returned boost::none for problem or solution, MIP-DD calls internal parsers as fallback_
+       * _if returned boost::none for setting, module Setting will be deactivated_
        * @param settings_filename
        * @param problem_filename
        * @param solution_filename
