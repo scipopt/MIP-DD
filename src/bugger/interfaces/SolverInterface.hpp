@@ -124,7 +124,7 @@ namespace bugger
       std::tuple<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>, boost::optional<Solution<REAL>>>
       readInstance(const String& settings_filename, const String& problem_filename, const String& solution_filename) = 0;
 
-      /**
+      /** **optional**
        * write stored setting-problem-solution tuple to files
        * @param filename
        * @param writesettings
