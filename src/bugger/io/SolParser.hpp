@@ -27,7 +27,6 @@
 #include "bugger/misc/String.hpp"
 #include "bugger/misc/Vec.hpp"
 #include "bugger/data/Solution.hpp"
-#include "bugger/misc/MultiPrecision.hpp"
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include <fstream>
@@ -144,17 +143,15 @@ struct SolParser
    }
 
    static REAL
-   read_number(const std::string& s) {
-
+   read_number( const std::string& s )
+   {
+      REAL number { };
       bool is_rational = !std::is_same<REAL, Rational>::value;
-      if(!is_rational)
+      if( !is_rational )
       {
          std::stringstream ss;
-         REAL number;
-
          ss << s;
          ss >> number;
-
          if( ss.fail() || !ss.eof() )
          {
             fmt::print( stderr,
@@ -164,61 +161,63 @@ struct SolParser
          }
          return number;
       }
-
-      REAL answer = 0;
       bool negated = false;
       bool dot = false;
       bool exponent = false;
       int exp = 0;
       bool exp_negated = false;
       int digits_after_dot = 0;
-      for (char c : s) {
-         if ('0' <= c && c <= '9') {
+      for( char c : s )
+      {
+         if( '0' <= c && c <= '9' )
+         {
             int digit = c - '0';
-            if(exponent)
+            if( exponent )
             {
                exp *= 10;
                exp += digit;
             }
             else if( !dot )
             {
-               answer *= 10;
-               answer += digit;
+               number *= 10;
+               number += digit;
             }
             else
             {
-               digits_after_dot++;
-               answer += digit /  pow( 10, digits_after_dot );
+               ++digits_after_dot;
+               number += digit / pow(10, digits_after_dot);
             }
          }
-         else if (c == '.' && !dot)
+         else if( c == '.' && !dot )
          {
             assert(digits_after_dot == 0);
             assert(!exponent);
             dot = true;
          }
-         else if (c == '-' && ((exponent && !exp_negated) || !negated))
+         else if( ( c == 'E' || c == 'e' ) && !exponent )
+            exponent = true;
+         else if( c == '-' && ( ( exponent && !exp_negated ) || !negated ) )
          {
-            if(exponent)
+            if( exponent )
                exp_negated = true;
             else
                negated = true;
          }
-         else if (c == '+' && ((exponent && !exp_negated) || !negated))
+         else if( c != '+' || ( ( !exponent || exp_negated ) && negated ) )
          {
+            fmt::print( stderr,
+                        "WARNING: {} not of arithmetic {}!\n",
+                        s, typeid(REAL).name() );
+            number = 0;
+            break;
          }
-         else if( ( c == 'E' || c == 'e' ) && !exponent )
-            exponent = true;
-         else
-            assert(false);
       }
       if( !exp_negated )
-         answer *= pow( 10,  exp );
+         number *= pow(10, exp);
       else
-         answer /= pow( 10,  exp );
-      return  negated ? -answer : answer;
+         number /= pow(10, exp);
+      return negated ? -number : number;
    }
-
 };
 
 } // namespace bugger
