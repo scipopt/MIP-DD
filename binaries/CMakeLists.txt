@@ -1,5 +1,8 @@
 include(GenerateExportHeader)
 
+option(SCIP "should SCIP library be linked" ON)
+option(SOPLEX "should SoPlex library be linked" OFF)
+
 set(CMAKE_CXX_STANDARD 14)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
@@ -9,7 +12,7 @@ set_target_properties(bugger-executable PROPERTIES OUTPUT_NAME bugger RUNTIME_OU
 set(DEFINED_SOLVER FALSE)
 
 # Link solver SCIP
-if(DEFINED SCIP_DIR)
+if(SCIP AND DEFINED SCIP_DIR)
     if(DEFINED_SOLVER)
         message(FATAL_ERROR "Multiple solvers provided!")
     else()
@@ -24,7 +27,7 @@ if(DEFINED SCIP_DIR)
 endif()
 
 # Link solver SoPlex
-if(DEFINED SOPLEX_DIR)
+if(SOPLEX AND DEFINED SOPLEX_DIR)
     if(DEFINED_SOLVER)
         message(FATAL_ERROR "Multiple solvers provided!")
     else()
