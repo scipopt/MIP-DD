@@ -70,7 +70,7 @@ struct SolWriter
 
       for( int i = 0; i != (int)sol.size(); ++i )
       {
-         if( sol[i] != 0.0 )
+         if( sol[i] != 0 )
          {
             fmt::print( out, "{: <50} {: <18.15}   obj({:.15})\n", colnames[i],
                         double( sol[i] ), double( objective[i] ) );
