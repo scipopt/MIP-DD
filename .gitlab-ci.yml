@@ -70,7 +70,7 @@ soplex_double_debug:
   script:
     - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
     - cd ${BUILD_DIR}/${CI_JOB_NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${INSTALL_DIR}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${INSTALL_DIR} -DSOPLEX=on -DSCIP=off
     - make -j$(nproc)
     - bin/bugger --help
 
@@ -81,7 +81,7 @@ soplex_double_optimized:
   script:
     - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
     - cd ${BUILD_DIR}/${CI_JOB_NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${INSTALL_DIR}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${INSTALL_DIR} -DSOPLEX=on -DSCIP=off
     - make -j$(nproc)
     - bin/bugger --help
 
@@ -92,7 +92,7 @@ soplex_rational_debug:
   script:
     - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
     - cd ${BUILD_DIR}/${CI_JOB_NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=${INSTALL_DIR}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=${INSTALL_DIR} -DSOPLEX=on -DSCIP=off
     - make -j$(nproc)
     - bin/bugger --help
 
@@ -103,7 +103,7 @@ soplex_rational_optimized:
   script:
     - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
     - cd ${BUILD_DIR}/${CI_JOB_NAME}
-    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=${INSTALL_DIR}
+    - cmake ${CI_PROJECT_DIR} -DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=${INSTALL_DIR} -DSOPLEX=on -DSCIP=off
     - make -j$(nproc)
     - bin/bugger --help
 
