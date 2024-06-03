@@ -13,7 +13,16 @@ Performance improvements
 - restrict solver limit settings automatically in order to accelerate the process by default
 - adjust number of batches every round automatically in order to maintain expenditure by default
 
-New parameters:
+Interface changes
+----------
+
+SolverInterface:
+- changed signature and return-type of SolverInterface-readInstance to support also parsing the solution additional to the settings and instance
+- Retcode renamed to SolverRetcode and moved out of the SolverInterface
+- parameters of doSetup made const
+- added getSolvingEffort
+
+New parameters
 ----------
 
 - expenditure = -1 : calculate the number of batches by ceiled division of the solving effort defined in the solver interface (-1: use original, 0: keep batches)
