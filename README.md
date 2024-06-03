@@ -19,14 +19,14 @@ Building the bugger works with the standard cmake workflow:
 ```
 mkdir build
 cd build
-cmake .. -DSOLVER_DIR=PATH_TO_SOLVER
+cmake .. -DSOLVER_DIR=PATH_TO_SOLVER -DSOLVER=on
 make
 ```
 Here, SOLVER stands for one of the interfaced solvers for which the installation subdirectory PATH_TO_SOLVER contains the file solver-targets.cmake required to link its shared library.
 Currently supported solvers:
 
-- SOPLEX (https://soplex.zib.de/doc/html/INSTALL.php)
-- SCIP (https://scipopt.org/doc/html/INSTALL.php)
+- SCIP (https://scipopt.org/doc/html/INSTALL.php) _(automatically enabled)_
+- SOPLEX (https://soplex.zib.de/doc/html/INSTALL.php) _(automatically disabled)_
 
 It is necessary to build the solver in optimized mode since the MIP-DD is not designed to handle assertions directly in order to keep the process performant.
 Nevertheless, it is usually possible to handle assertions indirectly by reformulating the solver code to return a suitable error under the negated assertion condition.
@@ -76,7 +76,19 @@ limitations under the License.
 
 # How to cite
 
-The paper will be published soon.
+The paper is currently submitted and under review. Therefore, please cite:
+```bibtex
+  @misc{HKG24MIPDD,
+        title={MIP-DD: A Delta Debugger for Mixed Integer Programming Solvers}, 
+        author={Alexander Hoen and Dominik Kamp and Ambros Gleixner},
+        institution = {Zuse Institute Berlin},
+        year={2024},
+        eprint={2405.19770},
+        archivePrefix={arXiv},
+        primaryClass={math.OC},
+        code = {https://scipopt.org}
+  }
+```
 
 # Contributors
 
