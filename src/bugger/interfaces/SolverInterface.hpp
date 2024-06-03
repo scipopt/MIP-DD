@@ -42,6 +42,11 @@ namespace bugger
       OBJECTIVEFAIL = 3
    };
 
+   /**
+    * API that allows MIP-DD to access the solver
+    * Optional functions are marked with **optionally**. This might lead to a loos of functionality.
+    * @tparam REAL arithemtic type of the solver
+    */
    template <typename REAL>
    class SolverInterface
    {
