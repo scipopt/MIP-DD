@@ -66,15 +66,12 @@ struct SolWriter
 
       out.push( file );
 
-      fmt::print( out, "{: <50} {: <18.15}\n", "=obj=", REAL( solobj ) );
+      fmt::print( out, "{: <50} {: <18.15}\n", "=obj=", solobj );
 
       for( int i = 0; i != (int)sol.size(); ++i )
       {
          if( sol[i] != 0 )
-         {
-            fmt::print( out, "{: <50} {: <18.15}   obj({:.15})\n", colnames[i],
-                        REAL( sol[i] ), REAL( objective[i] ) );
-         }
+            fmt::print( out, "{: <50} {: <18.15}   obj({:.15})\n", colnames[i], sol[i], objective[i] );
       }
    }
 
@@ -97,18 +94,12 @@ struct SolWriter
 
       out.push( file );
 
-      fmt::print( out, "{: <50} {: <18.15}\n", "=obj=", REAL( obj_value ) );
+      fmt::print( out, "{: <50} {: <18.15}\n", "=obj=", obj_value );
 
       for( int i = 0; i < (int)sol.size(); ++i )
       {
          if( sol[i] != 0 )
-         {
-            REAL objective = lhs[i];
-            if( sol[i] < 0 )
-               objective = rhs[i];
-            fmt::print( out, "{: <50} {: <18.15}   obj({:.15})\n", row_names[i],
-                        REAL( sol[i] ), REAL( objective ) );
-         }
+            fmt::print( out, "{: <50} {: <18.15}   obj({:.15})\n", row_names[i], sol[i], sol[i] < 0 : rhs[i] ? lhs[i] );
       }
    }
 
@@ -131,18 +122,12 @@ struct SolWriter
 
       out.push( file );
 
-      fmt::print( out, "{: <50} {: <18.15}\n", "=obj=", REAL( solobj ) );
+      fmt::print( out, "{: <50} {: <18.15}\n", "=obj=", solobj );
 
       for( int i = 0; i < (int)sol.size(); ++i )
       {
          if( sol[i] != 0 )
-         {
-            REAL objective = lb[i];
-            if( sol[i] < 0 )
-               objective = ub[i];
-            fmt::print( out, "{: <50} {: <18.15}   obj({:.15})\n", col_names[i],
-                        REAL( sol[i] ), REAL( objective ) );
-         }
+            fmt::print( out, "{: <50} {: <18.15}   obj({:.15})\n", col_names[i], sol[i], sol[i] < 0 ? ub[i] : lb[i] );
       }
    }
 };
