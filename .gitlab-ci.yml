@@ -77,41 +77,41 @@ boost-soplex-scip:
 soplex_double_debug:
   extends: .test
   variables:
-    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${INSTALL_DIR} -DSOPLEX=on -DSCIP=off"
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSOPLEX=on -DSOPLEX_DIR=${INSTALL_DIR}"
 
 soplex_double_optimized:
   extends: .test
   variables:
-    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSOPLEX_DIR=${INSTALL_DIR} -DSOPLEX=on -DSCIP=off"
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSOPLEX=on -DSOPLEX_DIR=${INSTALL_DIR}"
 
 soplex_rational_debug:
   extends: .test
   variables:
-    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=${INSTALL_DIR} -DSOPLEX=on -DSCIP=off"
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSOPLEX=on -DSOPLEX_DIR=${INSTALL_DIR}"
 
 
 soplex_rational_optimized:
   extends: .test
   variables:
-    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSOPLEX_DIR=${INSTALL_DIR} -DSOPLEX=on -DSCIP=off"
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSOPLEX=on -DSOPLEX_DIR=${INSTALL_DIR}"
 
 
 scip_double_debug:
   extends: .test
   variables:
-    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSCIP_DIR=${INSTALL_DIR}"
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}"
 
 scip_double_optimized:
   extends: .test
   variables:
-    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSCIP_DIR=${INSTALL_DIR}"
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}"
 
 scip_rational_debug:
   extends: .test
   variables:
-    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSCIP_DIR=${INSTALL_DIR}"
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}"
 
 scip_rational_optimized:
   extends: .test
   variables:
-    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSCIP_DIR=${INSTALL_DIR}"
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}"
