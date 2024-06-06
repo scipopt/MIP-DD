@@ -53,13 +53,17 @@ Please refer to parameters.txt for the list of default parameters.
 
 To integrate a solver into the MIP-DD's API, a new class has to be created that inherits from SolverInterface.
 Methods that are not required but enable additional functionality are marked with **optional**.
-This specific SolverInterface interacts with the solver by
+The specific SolverInterface interacts with the solver by
 * parsing the settings and problem files as well as loading the data into the internal data structures (`parseSettings`, `readInstance`)
 * loading the internal settings and problem into the solver (`doSetup`)
 * writing the internal settings and problem to files (`writeInstance`) and
 * solving the instance and checking for bugs (`solve`).
-  The `solve` function returns a pair<char, SolverStatus>. The signed char encodes the validity of the solving process. Negative values are reserved for solver internal errors, 0 means that no bug is detected, while positive values represent externally detected issues identifying 1 as dual fail, 2 as primal fail, and 3 as objective fail. The SolverStatus primarily serves to provide additional information about the solution status in the log for example infeasible, unbounded, optimal, or that a specific limit is reached. To suppress certain fails, the parameter `passcodes` is the vector of codes that must not be interpreted as bugs.
-  The general SolverInterface already provides functions to detect dual, primal, and objective fails based on the resulting solution information to be supplied in the 'solve' function.
+The `solve` function returns a pair<char, SolverStatus>. The signed char encodes the validity of the solving process. Negative values are reserved for solver internal errors, 0 means that no bug is detected, while positive values represent externally detected issues identifying 1 as dual fail, 2 as primal fail, and 3 as objective fail. The SolverStatus primarily serves to provide additional information about the solution status in the log for example infeasible, unbounded, optimal, or that a specific limit is reached. To suppress certain fails, the parameter `passcodes` is the vector of codes that must not be interpreted as bugs.
+The general SolverInterface already provides functions to detect dual, primal, and objective fails based on the resulting solution information to be supplied in the 'solve' function.
+Finally, the solver can be integrated in the cmake system.
+For this, in binaries/CMakeLists.txt only a solver switch and a corresponding case needs to be added to the top of the present if-statement.
+In this case, the solver should be found using find_package(), the library linked using target_link_libraries(bugger-executable), and for reliability symlinked using add_custom_target(bugger-symlink ALL COMMAND ${CMAKE_COMMAND} -E create_symlink).
+Good luck and happy bugging!
 
 # Licensing
 
