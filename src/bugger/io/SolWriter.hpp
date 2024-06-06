@@ -43,7 +43,7 @@
 
 namespace bugger
 {
-/// Writer to write problem structures into an mps file
+/// Writer to write solution structures into a sol file
 template <typename REAL>
 struct SolWriter
 {
