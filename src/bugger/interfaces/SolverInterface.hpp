@@ -43,9 +43,9 @@ namespace bugger
    };
 
    /**
-    * API that allows MIP-DD to access the solver
-    * Optional functions are marked with **optionally**. This might lead to a loos of functionality.
-    * @tparam REAL arithemtic type of the solver
+    * API to access the solver
+    * Optional methods are marked with **optional**. They should be implemented to enable further functionality.
+    * @tparam REAL arithmetic type of problem, solution, and modifications
     */
    template <typename REAL>
    class SolverInterface
@@ -64,28 +64,36 @@ namespace bugger
 
       /** **optional**
        * prints the header of the used solver
+       * _if not implemented, then the solver specification will not be contained in the log_
        */
       virtual
       void
-      print_header( ) const { };
+      print_header( ) const { }
 
       /** **optional**
        * detects setting with given name
+       * _if not implemented, then it can not be used for automatic limit settings_
        * @param name
        * @return whether setting is available
        */
       virtual
       bool
-      has_setting(const String& name) const { return false; };
+      has_setting(const String& name) const
+      {
+         return false;
+      }
 
       /** **optional**
        * parse Settings
-       * _if returned boost::none for setting, then debugging with the settings modul is not supported_
+       * _if returned boost::none, then module Setting will be deactivated_
        * @param filename
        */
       virtual
       boost::optional<SolverSettings>
-      parseSettings(const String& filename) const { return boost::none; };
+      parseSettings(const String& filename) const
+      {
+         return boost::none;
+      }
 
       /**
        * loads settings, problem, and solution
@@ -108,6 +116,7 @@ namespace bugger
 
       /** **optional**
        * provides measure for the solving effort to adapt batch number
+       * _if returned -1 initially, then automatic batch adaption will be deactivated_
        * @return a long long int: Non-negative value proportional to effort of the solve or -1 if unknown
        */
       virtual
@@ -119,20 +128,22 @@ namespace bugger
 
       /** **optional**
        * read setting-problem-solution tuple from files
-       * _if returned boost::none for problem or solution, MIP-DD calls internal parsers as fallback_
        * _if returned boost::none for setting, module Setting will be deactivated_
+       * _if returned boost::none for problem or solution, then internal parsers give a try_
        * @param settings_filename
        * @param problem_filename
        * @param solution_filename
        */
       virtual
       std::tuple<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>, boost::optional<Solution<REAL>>>
-      readInstance(const String& settings_filename, const String& problem_filename, const String& solution_filename) {
-         return {boost::none, boost::none, boost::none};
-      };
+      readInstance(const String& settings_filename, const String& problem_filename, const String& solution_filename)
+      {
+         return { boost::none, boost::none, boost::none };
+      }
 
       /** **optional**
        * write stored setting-problem-solution tuple to files
+       * _if returned false, then internal writers give a try_
        * @param filename
        * @param writesettings
        * @param writesolution
@@ -140,7 +151,10 @@ namespace bugger
        */
       virtual
       bool
-      writeInstance(const String& filename, const bool& writesettings, const bool& writesolution) const = 0;
+      writeInstance(const String& filename, const bool& writesettings, const bool& writesolution) const
+      {
+         return false;
+      }
 
       virtual
       ~SolverInterface() = default;
