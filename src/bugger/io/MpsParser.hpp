@@ -972,4 +972,4 @@ MpsParser<REAL>::read_number( const std::string &s )
 
 } // namespace bugger
 
-#endif /* _PARSING_MPS_PARSER_HPP_ */
+#endif

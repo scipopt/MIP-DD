@@ -77,7 +77,7 @@ struct SolWriter
 
    static void
    writeDualSol( const std::string& filename, const Vec<REAL>& sol,
-                 const Vec<REAL>& rhs, const Vec<REAL>& lhs,
+                 const Vec<REAL>& lhs, const Vec<REAL>& rhs,
                  const REAL& obj_value, const Vec<std::string>& row_names )
    {
       std::ofstream file( filename, std::ofstream::out );
@@ -105,7 +105,7 @@ struct SolWriter
 
    static void
    writeReducedCostsSol( const std::string& filename, const Vec<REAL>& sol,
-                         const Vec<REAL>& ub, const Vec<REAL>& lb,
+                         const Vec<REAL>& lb, const Vec<REAL>& ub,
                          const REAL& solobj, const Vec<std::string>& col_names )
    {
       std::ofstream file( filename, std::ofstream::out );
@@ -132,6 +132,6 @@ struct SolWriter
    }
 };
 
-} // namespace papilo
+} // namespace bugger
 
 #endif
