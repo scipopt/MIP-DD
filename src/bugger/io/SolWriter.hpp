@@ -101,7 +101,7 @@ struct SolWriter
 
       for( int i = 0; i < (int)sol.size(); ++i )
       {
-         if( sol[i] != 0.0 )
+         if( sol[i] != 0 )
          {
             REAL objective = lhs[i];
             if( sol[i] < 0 )
