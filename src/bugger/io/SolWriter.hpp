@@ -33,11 +33,11 @@
 #include <fstream>
 #include <iostream>
 
-#ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2
-#include <boost/iostreams/filter/bzip2.hpp>
-#endif
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
 #include <boost/iostreams/filter/gzip.hpp>
+#endif
+#ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2
+#include <boost/iostreams/filter/bzip2.hpp>
 #endif
 
 
@@ -72,62 +72,6 @@ struct SolWriter
       {
          if( sol[i] != 0 )
             fmt::print( out, "{: <50} {: <18.15}   obj({:.15})\n", colnames[i], sol[i], objective[i] );
-      }
-   }
-
-   static void
-   writeDualSol( const std::string& filename, const Vec<REAL>& sol,
-                 const Vec<REAL>& lhs, const Vec<REAL>& rhs,
-                 const REAL& obj_value, const Vec<std::string>& row_names )
-   {
-      std::ofstream file( filename, std::ofstream::out );
-      boost::iostreams::filtering_ostream out;
-
-#ifdef PAPILO_USE_BOOST_IOSTREAMS_WITH_ZLIB
-      if( boost::algorithm::ends_with( filename, ".gz" ) )
-         out.push( boost::iostreams::gzip_compressor() );
-#endif
-#ifdef PAPILO_USE_BOOST_IOSTREAMS_WITH_BZIP2
-      if( boost::algorithm::ends_with( filename, ".bz2" ) )
-         out.push( boost::iostreams::bzip2_compressor() );
-#endif
-
-      out.push( file );
-
-      fmt::print( out, "{: <50} {: <18.15}\n", "=obj=", obj_value );
-
-      for( int i = 0; i < (int)sol.size(); ++i )
-      {
-         if( sol[i] != 0 )
-            fmt::print( out, "{: <50} {: <18.15}   obj({:.15})\n", row_names[i], sol[i], sol[i] < 0 : rhs[i] ? lhs[i] );
-      }
-   }
-
-   static void
-   writeReducedCostsSol( const std::string& filename, const Vec<REAL>& sol,
-                         const Vec<REAL>& lb, const Vec<REAL>& ub,
-                         const REAL& solobj, const Vec<std::string>& col_names )
-   {
-      std::ofstream file( filename, std::ofstream::out );
-      boost::iostreams::filtering_ostream out;
-
-#ifdef PAPILO_USE_BOOST_IOSTREAMS_WITH_ZLIB
-      if( boost::algorithm::ends_with( filename, ".gz" ) )
-         out.push( boost::iostreams::gzip_compressor() );
-#endif
-#ifdef PAPILO_USE_BOOST_IOSTREAMS_WITH_BZIP2
-      if( boost::algorithm::ends_with( filename, ".bz2" ) )
-         out.push( boost::iostreams::bzip2_compressor() );
-#endif
-
-      out.push( file );
-
-      fmt::print( out, "{: <50} {: <18.15}\n", "=obj=", solobj );
-
-      for( int i = 0; i < (int)sol.size(); ++i )
-      {
-         if( sol[i] != 0 )
-            fmt::print( out, "{: <50} {: <18.15}   obj({:.15})\n", col_names[i], sol[i], sol[i] < 0 ? ub[i] : lb[i] );
       }
    }
 };
