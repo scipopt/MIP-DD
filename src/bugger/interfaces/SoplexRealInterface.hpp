@@ -361,7 +361,7 @@ namespace bugger
          this->rowNames.reMax(nrows);
          this->inds.resize(ncols);
          if( solution_exists )
-            this->value = this->get_primal_objective(solution);
+            this->value = this->model->getPrimalObjective(solution);
          else if( this->reference->status == SolutionStatus::kUnbounded )
             this->value = obj.sense ? -this->soplex->realParam(SoPlex::INFTY) : this->soplex->realParam(SoPlex::INFTY);
          else if( this->reference->status == SolutionStatus::kInfeasible )

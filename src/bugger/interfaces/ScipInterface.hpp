@@ -720,7 +720,7 @@ namespace bugger
          SCIP_CALL(SCIPsetObjsense(scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
          vars.resize(ncols);
          if( solution_exists )
-            this->value = this->get_primal_objective(solution);
+            this->value = this->model->getPrimalObjective(solution);
          else if( this->reference->status == SolutionStatus::kUnbounded )
             this->value = obj.sense ? -SCIPinfinity(scip) : SCIPinfinity(scip);
          else if( this->reference->status == SolutionStatus::kInfeasible )

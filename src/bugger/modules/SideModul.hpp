@@ -97,7 +97,7 @@ namespace bugger
                }
                if( solution.status == SolutionStatus::kFeasible )
                {
-                  fixedval = this->get_linear_activity(data, solution);
+                  fixedval = copy.getPrimalActivity(solution, row);
                   if( integral )
                      fixedval = round(fixedval);
                }

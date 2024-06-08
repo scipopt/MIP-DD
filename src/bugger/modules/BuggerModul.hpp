@@ -183,15 +183,6 @@ namespace bugger
 
    protected:
 
-      REAL
-      get_linear_activity(const SparseVectorView<REAL>& data, const Solution<REAL>& solution) const
-      {
-         StableSum<REAL> sum;
-         for( int i = 0; i < data.getLength( ); ++i )
-            sum.add(data.getValues( )[ i ] * solution.primal[ data.getIndices( )[ i ] ]);
-         return sum.get( );
-      }
-
       virtual ModulStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) = 0;
 

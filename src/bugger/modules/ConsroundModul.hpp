@@ -102,28 +102,14 @@ namespace bugger
                const auto& data = matrix.getRowCoefficients(row);
                REAL lhs { round(matrix.getLeftHandSides( )[ row ]) };
                REAL rhs { round(matrix.getRightHandSides( )[ row ]) };
-               REAL activity { };
                for( int index = 0; index < data.getLength( ); ++index )
                {
-                  if( solution.status == SolutionStatus::kFeasible )
-                  {
-                     if( !this->num.isZetaIntegral(data.getValues( )[ index ]) )
-                     {
-                        REAL coeff { round(data.getValues( )[ index ]) };
-                        batches_coeff.emplace_back(row, data.getIndices( )[ index ], coeff);
-                        activity += solution.primal[ data.getIndices( )[ index ] ] * coeff;
-                     }
-                     else
-                        activity += solution.primal[ data.getIndices( )[ index ] ] * data.getValues( )[ index ];
-                  }
-                  else
-                  {
-                     if( !this->num.isZetaIntegral(data.getValues( )[ index ]) )
-                        batches_coeff.emplace_back(row, data.getIndices( )[ index ], round(data.getValues( )[ index ]));
-                  }
+                  if( !this->num.isZetaIntegral(data.getValues( )[ index ]) )
+                     batches_coeff.emplace_back(row, data.getIndices( )[ index ], round(data.getValues( )[ index ]));
                }
                if( solution.status == SolutionStatus::kFeasible )
                {
+                  REAL activity { copy.getPrimalActivity(solution, row, true) };
                   lhs = min(lhs, this->num.epsFloor(activity));
                   rhs = max(rhs, this->num.epsCeil(activity));
                }
