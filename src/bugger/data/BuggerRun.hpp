@@ -28,6 +28,7 @@
 #include "bugger/io/MpsParser.hpp"
 #include "bugger/io/MpsWriter.hpp"
 #include "bugger/io/SolParser.hpp"
+#include "bugger/io/SolWriter.hpp"
 #include "bugger/misc/OptionsParser.hpp"
 #include "bugger/modules/SettingModul.hpp"
 
@@ -140,9 +141,9 @@ namespace bugger
          bool writesolution = false;
          for( const auto& module: modules )
          {
-            if( module->getName() == "fixing" )
+            if( module->isEnabled() && ( module->getName() == "fixing" || module->getName() == "objective" ) )
             {
-               writesolution = module->isEnabled();
+               writesolution = true;
                break;
             }
          }
@@ -164,7 +165,11 @@ namespace bugger
                solver = factory->create_solver(msg);
                solver->doSetUp(settings, problem, solution);
                if( !solver->writeInstance(filename + std::to_string(round), writesetting, writesolution) )
+               {
                   MpsWriter<REAL>::writeProb(filename + std::to_string(round) + ".mps", problem);
+                  if( writesolution )
+                     SolWriter<REAL>::writeSol(filename + std::to_string(round) + ".sol", problem, solution);
+               }
 
                if( is_time_exceeded(timer) )
                   break;

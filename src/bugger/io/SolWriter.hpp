@@ -48,13 +48,10 @@ template <typename REAL>
 struct SolWriter
 {
    static void
-   writePrimalSol( const std::string& filename, const Vec<REAL>& sol,
-                   const Vec<REAL>& objective, const REAL& solobj,
-                   const Vec<std::string>& colnames )
+   writeSol( const std::string& filename, const Problem<REAL>& prob, const Solution<REAL>& sol )
    {
       std::ofstream file( filename, std::ofstream::out );
       boost::iostreams::filtering_ostream out;
-
 #ifdef PAPILO_USE_BOOST_IOSTREAMS_WITH_ZLIB
       if( boost::algorithm::ends_with( filename, ".gz" ) )
          out.push( boost::iostreams::gzip_compressor() );
@@ -63,15 +60,13 @@ struct SolWriter
       if( boost::algorithm::ends_with( filename, ".bz2" ) )
          out.push( boost::iostreams::bzip2_compressor() );
 #endif
-
       out.push( file );
-
-      fmt::print( out, "{: <50} {: <18.15}\n", "=obj=", solobj );
-
-      for( int i = 0; i != (int)sol.size(); ++i )
+      fmt::print( out, "{: <50} {: <18.15}\n", "=obj=", prob.getPrimalObjective(sol) );
+      for( int i = 0; i < prob.getNCols(); ++i )
       {
-         if( sol[i] != 0 )
-            fmt::print( out, "{: <50} {: <18.15}   obj({:.15})\n", colnames[i], sol[i], objective[i] );
+         if( !prob.getColFlags()[i].test( ColFlag::kInactive ) && sol.primal[i] != 0 )
+            fmt::print( out, "{: <50} {: <18.15}   obj({:.15})\n",
+                        prob.getVariableNames()[i], sol.primal[i], prob.getObjective().coefficients[i] );
       }
    }
 };
