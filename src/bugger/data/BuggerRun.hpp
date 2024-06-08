@@ -136,6 +136,7 @@ namespace bugger
             }
             msg.info("\n");
          }
+         bool writesetting = setting->isEnabled();
          bool writesolution = false;
          for( const auto& module: modules )
          {
@@ -162,7 +163,7 @@ namespace bugger
                //TODO: Free solver afterwards
                solver = factory->create_solver(msg);
                solver->doSetUp(settings, problem, solution);
-               if( !solver->writeInstance(filename + std::to_string(round), setting->isEnabled(), writesolution) )
+               if( !solver->writeInstance(filename + std::to_string(round), writesetting, writesolution) )
                   MpsWriter<REAL>::writeProb(filename + std::to_string(round) + ".mps", problem);
 
                if( is_time_exceeded(timer) )
