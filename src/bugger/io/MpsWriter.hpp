@@ -77,7 +77,7 @@ struct MpsWriter
             auto data = consmatrix.getRowCoefficients(i);
             for( int j = 0; j < data.getLength(); ++j )
             {
-               if( data.getValues()[j] != 0.0 )
+               if( data.getValues()[j] != 0 )
                {
                   assert(!col_flags[data.getIndices()[j]].test(ColFlag::kFixed));
                   ++nnnz;
@@ -155,11 +155,10 @@ struct MpsWriter
             assert(
                 !col_flags[i].test( ColFlag::kFixed, ColFlag::kSubstituted ) );
 
-            if( obj.coefficients[i] != 0.0 )
+            if( obj.coefficients[i] != 0 )
             {
                fmt::print( out, "    {: <9} OBJ       {:.15}\n",
-                           varnames[i],
-                           double( obj.coefficients[i] ) );
+                           varnames[i], obj.coefficients[i] );
             }
 
             SparseVectorView<REAL> column =
@@ -179,8 +178,7 @@ struct MpsWriter
 
                // normal row
                fmt::print( out, "    {: <9} {: <9} {:.15}\n",
-                           varnames[i], consnames[r],
-                           double( colvals[j] ) );
+                           varnames[i], consnames[r], colvals[j] );
             }
          }
 
@@ -196,9 +194,9 @@ struct MpsWriter
 
       if( obj.offset != 0 )
       {
-         if( obj.offset != REAL{ 0.0 } )
+         if( obj.offset != 0 )
             fmt::print( out, "    B         {: <9} {:.15}\n", "OBJ",
-                        double( REAL( -obj.offset ) ) );
+                        -obj.offset );
       }
 
       for( int i = 0; i < consmatrix.getNRows(); ++i )
@@ -213,15 +211,15 @@ struct MpsWriter
 
          if( row_flags[i].test( RowFlag::kLhsInf ) )
          {
-            if( rhs[i] != REAL{ 0.0 } )
+            if( rhs[i] != 0 )
                fmt::print( out, "    B         {: <9} {:.15}\n",
-                           consnames[i], double( rhs[i] ) );
+                           consnames[i], rhs[i] );
          }
          else
          {
-            if( lhs[i] != REAL{ 0.0 } )
+            if( lhs[i] != 0 )
                fmt::print( out, "    B         {: <9} {:.15}\n",
-                           consnames[i], double( lhs[i] ) );
+                           consnames[i], lhs[i] );
          }
       }
 
@@ -234,7 +232,7 @@ struct MpsWriter
                                    RowFlag::kEquation, RowFlag::kRedundant ) )
                continue;
 
-            double rangeval = double( REAL( rhs[i] - lhs[i] ) );
+            REAL rangeval = rhs[i] - lhs[i];
 
             if( rangeval != 0 )
             {
@@ -256,25 +254,23 @@ struct MpsWriter
              lower_bounds[i] == upper_bounds[i] )
          {
             fmt::print( out, " FX BND       {: <9} {:.15}\n",
-                        varnames[i], double( lower_bounds[i] ) );
+                        varnames[i], lower_bounds[i] );
          }
          else
          {
-            if( col_flags[i].test( ColFlag::kLbInf ) || lower_bounds[i] != 0.0 )
+            if( col_flags[i].test( ColFlag::kLbInf ) || lower_bounds[i] != 0 )
             {
                if( col_flags[i].test( ColFlag::kLbInf ) )
                   fmt::print( out, " MI BND       {}\n",
                               varnames[i] );
                else
                   fmt::print( out, " LO BND       {: <9} {:.15}\n",
-                              varnames[i],
-                              double( lower_bounds[i] ) );
+                              varnames[i], lower_bounds[i] );
             }
 
             if( !col_flags[i].test( ColFlag::kUbInf ) )
                fmt::print( out, " UP BND       {: <9} {:.15}\n",
-                           varnames[i],
-                           double( upper_bounds[i] ) );
+                           varnames[i], upper_bounds[i] );
             else
                fmt::print( out, " PL BND       {: <9}\n",
                            varnames[i] );
