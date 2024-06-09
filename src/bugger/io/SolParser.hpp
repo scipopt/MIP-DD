@@ -43,7 +43,7 @@ template <typename REAL>
 struct SolParser
 {
    static boost::optional<Solution<REAL>>
-   read( const std::string& filename, const Vec<String>& colnames )
+   readSol( const std::string& filename, const Vec<String>& colnames )
    {
       std::ifstream file( filename, std::ifstream::in );
       boost::iostreams::filtering_istream in;

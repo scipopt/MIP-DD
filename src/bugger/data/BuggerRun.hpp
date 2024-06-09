@@ -67,12 +67,13 @@ namespace bugger
          if( setting->isEnabled() )
          {
             auto target_settings = factory->create_solver(msg)->parseSettings(optionsInfo.target_settings_file);
-            if( !target_settings )
+            if( target_settings )
+               setting->target_settings = target_settings.get();
+            else
             {
-               msg.error("Error loading targets {}\n", optionsInfo.target_settings_file);
-               return;
+               msg.info("Targets parser of the solver on {} failed.\n", optionsInfo.target_settings_file);
+               setting->setEnabled(false);
             }
-            setting->target_settings = target_settings.get();
          }
          SolutionStatus status { };
          if( boost::iequals(optionsInfo.solution_file, "infeasible") )
@@ -84,28 +85,33 @@ namespace bugger
          auto instance = factory->create_solver(msg)->readInstance(optionsInfo.settings_file, optionsInfo.problem_file, status == SolutionStatus::kFeasible ? optionsInfo.solution_file : "");
          if( !std::get<0>(instance) )
          {
-            msg.error("Error loading settings {}\n", optionsInfo.settings_file);
-            return;
+            msg.info("Settings parser of the solver on {} failed.\n", optionsInfo.settings_file);
+            setting->setEnabled(false);
+            std::get<0>(instance) = SolverSettings { };
          }
          auto settings = std::get<0>(instance).get();
          if( !std::get<1>(instance) )
          {
-            msg.info("Problem parser of the solver failed. Trying general parser...");
-            std::get<1>(instance) = MpsParser<REAL>::loadProblem(optionsInfo.problem_file);
-            if( !std::get<1>(instance) )
+            msg.info("Problem parser of the solver failed, general parser ");
+            std::get<1>(instance) = MpsParser<REAL>::readProb(optionsInfo.problem_file);
+            if( std::get<1>(instance) )
+               msg.info("successful.\n");
+            else
             {
-               msg.error("Error loading problem {}\n", optionsInfo.problem_file);
+               msg.info("on {} failed!\n", optionsInfo.problem_file);
                return;
             }
          }
          auto problem = std::get<1>(instance).get();
          if( !std::get<2>(instance) )
          {
-            msg.info("Solution parser of the solver failed. Trying general parser...");
-            std::get<2>(instance) = SolParser<REAL>::read(optionsInfo.solution_file, problem.getVariableNames( ));
-            if( !std::get<2>(instance) )
+            msg.info("Solution parser of the solver failed, general parser ");
+            std::get<2>(instance) = SolParser<REAL>::readSol(optionsInfo.solution_file, problem.getVariableNames( ));
+            if( std::get<2>(instance) )
+               msg.info("successful.\n");
+            else
             {
-               msg.error("Error loading solution {}\n", optionsInfo.solution_file);
+               msg.info("on {} failed!\n", optionsInfo.solution_file);
                return;
             }
          }

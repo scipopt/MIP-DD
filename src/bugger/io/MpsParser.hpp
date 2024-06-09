@@ -65,7 +65,7 @@ class MpsParser
 
 public:
    static boost::optional<Problem<REAL>>
-   loadProblem( const std::string& filename )
+   readProb( const std::string& filename )
    {
       MpsParser<REAL> parser;
 
