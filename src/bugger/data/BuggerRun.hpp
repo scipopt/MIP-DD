@@ -71,7 +71,7 @@ namespace bugger
                setting->target_settings = target_settings.get();
             else
             {
-               msg.info("Targets parser of the solver on {} failed.\n", optionsInfo.target_settings_file);
+               msg.info("Targets parser of the solver on {} failed!\n", optionsInfo.target_settings_file);
                setting->setEnabled(false);
             }
          }
@@ -85,7 +85,7 @@ namespace bugger
          auto instance = factory->create_solver(msg)->readInstance(optionsInfo.settings_file, optionsInfo.problem_file, status == SolutionStatus::kFeasible ? optionsInfo.solution_file : "");
          if( !std::get<0>(instance) )
          {
-            msg.info("Settings parser of the solver on {} failed.\n", optionsInfo.settings_file);
+            msg.info("Settings parser of the solver on {} failed!\n", optionsInfo.settings_file);
             setting->setEnabled(false);
             std::get<0>(instance) = SolverSettings { };
          }
