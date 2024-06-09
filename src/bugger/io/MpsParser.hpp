@@ -50,16 +50,16 @@
 #include <tuple>
 #include <utility>
 
-#ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2
-#include <boost/iostreams/filter/bzip2.hpp>
-#endif
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
 #include <boost/iostreams/filter/gzip.hpp>
 #endif
+#ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2
+#include <boost/iostreams/filter/bzip2.hpp>
+#endif
+
 
 namespace bugger
 {
-
 template <typename REAL, bool isfptype = num_traits<REAL>::is_floating_point>
 struct RealParseType
 {
@@ -80,7 +80,7 @@ class MpsParser
        num_traits<typename RealParseType<REAL>::type>::is_floating_point,
        "the parse type must be a floating point type" );
 
- public:
+public:
    static boost::optional<Problem<REAL>>
    loadProblem( const std::string& filename )
    {
@@ -93,7 +93,7 @@ class MpsParser
 
       assert( parser.nnz >= 0 );
 
-      Vec<REAL> obj_vec( size_t( parser.nCols ), REAL{ 0.0 } );
+      Vec<REAL> obj_vec( size_t( parser.nCols ) );
 
       for( auto i : parser.coeffobj )
          obj_vec[i.first] = i.second;
@@ -111,13 +111,12 @@ class MpsParser
       problem.setName( std::move( parser.probname ) );
       problem.setConstraintNames( std::move( parser.rownames ) );
 
-      problem.setInputTolerance( pow( typename RealParseType<REAL>::type{ 10 },
-                                      -std::numeric_limits<typename RealParseType<REAL>::type>::digits10 ) );
+      problem.setInputTolerance( 0 );
 
       return problem;
    }
 
- private:
+private:
    MpsParser() {}
 
    /// load LP from MPS file as transposed triplet matrix
@@ -351,22 +350,22 @@ MpsParser<REAL>::parseRows( boost::iostreams::filtering_istream& file,
 
       if( word_ref.front() == 'G' )
       {
-         rowlhs.push_back( REAL{ 0.0 } );
-         rowrhs.push_back( REAL{ 0.0 } );
+         rowlhs.push_back( 0 );
+         rowrhs.push_back( 0 );
          row_flags.emplace_back( RowFlag::kRhsInf );
          rowtype.push_back( boundtype::kGE );
       }
       else if( word_ref.front() == 'E' )
       {
-         rowlhs.push_back( REAL{ 0.0 } );
-         rowrhs.push_back( REAL{ 0.0 } );
+         rowlhs.push_back( 0 );
+         rowrhs.push_back( 0 );
          row_flags.emplace_back( RowFlag::kEquation );
          rowtype.push_back( boundtype::kEq );
       }
       else if( word_ref.front() == 'L' )
       {
-         rowlhs.push_back( REAL{ 0.0 } );
-         rowrhs.push_back( REAL{ 0.0 } );
+         rowlhs.push_back( 0 );
+         rowrhs.push_back( 0 );
          row_flags.emplace_back( RowFlag::kLhsInf );
          rowtype.push_back( boundtype::kLE );
       }
@@ -375,8 +374,8 @@ MpsParser<REAL>::parseRows( boost::iostreams::filtering_istream& file,
       {
          if( hasobj )
          {
-            rowlhs.push_back( REAL{ 0.0 } );
-            rowrhs.push_back( REAL{ 0.0 } );
+            rowlhs.push_back( 0 );
+            rowrhs.push_back( 0 );
             RowFlags rowf;
             rowf.set( RowFlag::kLhsInf, RowFlag::kRhsInf );
             row_flags.emplace_back( rowf );
@@ -516,13 +515,13 @@ MpsParser<REAL>::parseCols( boost::iostreams::filtering_istream& file,
          // initialize with default bounds
          if( integral_cols )
          {
-            lb4cols.push_back( REAL{ 0.0 } );
-            ub4cols.push_back( REAL{ 1.0 } );
+            lb4cols.push_back( 0 );
+            ub4cols.push_back( 1 );
          }
          else
          {
-            lb4cols.push_back( REAL{ 0.0 } );
-            ub4cols.push_back( REAL{ 0.0 } );
+            lb4cols.push_back( 0 );
+            ub4cols.push_back( 0 );
             col_flags.back().set( ColFlag::kUbInf );
          }
 
@@ -602,12 +601,12 @@ MpsParser<REAL>::parseRanges( boost::iostreams::filtering_istream& file )
             assert( rowrhs[rowidx] == rowlhs[rowidx] );
             assert( row_flags[rowidx].test(RowFlag::kEquation) );
 
-            if( val > REAL{ 0.0 } )
+            if( val > 0 )
             {
                row_flags[rowidx].unset( RowFlag::kEquation );
                rowrhs[rowidx] = rowrhs[rowidx] + REAL( val );
             }
-            else if( val < REAL{ 0.0 } )
+            else if( val < 0 )
             {
                rowlhs[rowidx] = rowlhs[rowidx] + REAL( val );
                row_flags[rowidx].unset( RowFlag::kEquation );
@@ -812,11 +811,11 @@ MpsParser<REAL>::parseBounds( boost::iostreams::filtering_istream& file )
          if( isintegral ) // binary
          {
             if( islb )
-               lb4cols[colidx] = REAL{ 0.0 };
+               lb4cols[colidx] = 0;
             if( isub )
             {
                col_flags[colidx].unset( ColFlag::kUbInf );
-               ub4cols[colidx] = REAL{ 1.0 };
+               ub4cols[colidx] = 1;
             }
             col_flags[colidx].set( ColFlag::kIntegral );
          }
@@ -857,12 +856,12 @@ MpsParser<REAL>::parseBounds( boost::iostreams::filtering_istream& file )
                         {
                            col_flags[colidx].set( ColFlag::kIntegral );
                            if( !islb && lb_is_default[colidx] )
-                              lb4cols[colidx] = REAL{ 0.0 };
+                              lb4cols[colidx] = 0;
                            if( !isub && ub_is_default[colidx] )
                               col_flags[colidx].set( ColFlag::kUbInf );
                         }
-                     } )] ),
-              ascii::space ) )
+                     }
+              )] ), ascii::space ) )
          return parsekey::kFail;
    }
 
@@ -878,17 +877,14 @@ MpsParser<REAL>::parseFile( const std::string& filename )
 
    if( !file )
       return false;
-
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
    if( boost::algorithm::ends_with( filename, ".gz" ) )
       in.push( boost::iostreams::gzip_decompressor() );
 #endif
-
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2
    if( boost::algorithm::ends_with( filename, ".bz2" ) )
       in.push( boost::iostreams::bzip2_decompressor() );
 #endif
-
    in.push( file );
 
    return parse( in );
