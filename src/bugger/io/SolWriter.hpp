@@ -25,13 +25,7 @@
 #ifndef _BUGGER_IO_SOL_WRITER_HPP_
 #define _BUGGER_IO_SOL_WRITER_HPP_
 
-#include "bugger/Config.hpp"
-#include "bugger/misc/Vec.hpp"
-#include "bugger/misc/fmt.hpp"
-#include <boost/iostreams/filtering_stream.hpp>
-#include <cmath>
-#include <fstream>
-#include <iostream>
+#include "bugger/data/Solution.hpp"
 
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
 #include <boost/iostreams/filter/gzip.hpp>

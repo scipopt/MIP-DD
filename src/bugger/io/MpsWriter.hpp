@@ -25,26 +25,18 @@
 #ifndef _BUGGER_IO_MPS_WRITER_
 #define _BUGGER_IO_MPS_WRITER_
 
-#include "bugger/Config.hpp"
 #include "bugger/data/Problem.hpp"
-#include "bugger/misc/Vec.hpp"
-#include "bugger/misc/fmt.hpp"
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
-#include <cmath>
-#include <fstream>
-#include <iostream>
 
-#ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2
-#include <boost/iostreams/filter/bzip2.hpp>
-#endif
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
 #include <boost/iostreams/filter/gzip.hpp>
 #endif
+#ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2
+#include <boost/iostreams/filter/bzip2.hpp>
+#endif
+
 
 namespace bugger
 {
-
 /// Writer to write problem structures into an mps file
 template <typename REAL>
 struct MpsWriter
@@ -63,17 +55,14 @@ struct MpsWriter
 
       std::ofstream file( filename, std::ofstream::out );
       boost::iostreams::filtering_ostream out;
-
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
       if( boost::algorithm::ends_with( filename, ".gz" ) )
          out.push( boost::iostreams::gzip_compressor() );
 #endif
-
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2
       if( boost::algorithm::ends_with( filename, ".bz2" ) )
          out.push( boost::iostreams::bzip2_compressor() );
 #endif
-
       out.push( file );
 
       int nrows = 0;

@@ -25,18 +25,16 @@
 #ifndef _BUGGER_IO_SOL_PARSER_HPP_
 #define _BUGGER_IO_SOL_PARSER_HPP_
 
-#include "bugger/misc/Hash.hpp"
-#include "bugger/misc/String.hpp"
-#include "bugger/misc/Vec.hpp"
-#include "bugger/data/Solution.hpp"
 #include "bugger/misc/Num.hpp"
-#include <algorithm>
-#include <boost/algorithm/string.hpp>
-#include <fstream>
-#include <iostream>
-#include <iterator>
-#include <map>
-#include <sstream>
+#include "bugger/data/Solution.hpp"
+#include "bugger/misc/Hash.hpp"
+
+#ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
+#include <boost/iostreams/filter/gzip.hpp>
+#endif
+#ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2
+#include <boost/iostreams/filter/bzip2.hpp>
+#endif
 
 
 namespace bugger

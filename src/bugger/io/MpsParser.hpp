@@ -25,30 +25,13 @@
 #ifndef _BUGGER_IO_MPS_PARSER_HPP_
 #define _BUGGER_IO_MPS_PARSER_HPP_
 
-#include "bugger/Config.hpp"
-#include "bugger/data/ConstraintMatrix.hpp"
-#include "bugger/data/Objective.hpp"
-#include "bugger/data/Problem.hpp"
-#include "bugger/data/VariableDomains.hpp"
-#include "bugger/misc/Flags.hpp"
-#include "bugger/misc/Hash.hpp"
-#include "bugger/misc/Num.hpp"
-#include "bugger/external/pdqsort/pdqsort.h"
-#include <algorithm>
 #include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/dynamic_bitset.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
-#include <boost/optional.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <boost/utility/string_ref.hpp>
-#include <fstream>
-#include <iostream>
-#include <iterator>
-#include <limits>
-#include <memory>
-#include <tuple>
-#include <utility>
+#include "bugger/misc/Num.hpp"
+#include "bugger/data/Problem.hpp"
+#include "bugger/misc/Hash.hpp"
 
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
 #include <boost/iostreams/filter/gzip.hpp>
