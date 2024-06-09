@@ -229,8 +229,6 @@ private:
 
    parsekey
    parseBounds( boost::iostreams::filtering_istream& file );
-
-   REAL read_number(const std::string &s);
 };
 
 template <typename REAL>
@@ -441,7 +439,7 @@ MpsParser<REAL>::parseCols( boost::iostreams::filtering_istream& file,
    };
 
    auto addtuple = [&rowidx, &ncols, this]( std::string coeff_as_string ) {
-      REAL coeff = read_number(coeff_as_string);
+      REAL coeff = parse_number<REAL>( coeff_as_string );
       if( rowidx >= 0 )
          entries.push_back(
              std::make_tuple( ncols - 1, rowidx, REAL{ coeff } ) );
@@ -943,27 +941,6 @@ MpsParser<REAL>::parse( boost::iostreams::filtering_istream& file )
    nRows = rowname2idx.size() - 1; // subtract obj row
 
    return true;
-}
-
-template <typename REAL>
-REAL
-MpsParser<REAL>::read_number( const std::string &s )
-{
-   std::stringstream ss;
-   REAL number;
-
-   ss << s;
-   ss >> number;
-
-   if( ss.fail() || !ss.eof() )
-   {
-      fmt::print( stderr,
-                  "WARNING: {} not of arithmetic {}!\n",
-                  s, typeid(REAL).name() );
-      number = 0;
-   }
-
-   return number;
 }
 
 } // namespace bugger

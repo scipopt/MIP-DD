@@ -29,6 +29,7 @@
 #include "bugger/misc/String.hpp"
 #include "bugger/misc/Vec.hpp"
 #include "bugger/data/Solution.hpp"
+#include "bugger/misc/Num.hpp"
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include <fstream>
@@ -53,17 +54,14 @@ struct SolParser
          return boost::none;
 
       Solution<REAL> sol { };
-
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
       if( boost::algorithm::ends_with( filename, ".gz" ) )
          in.push( boost::iostreams::gzip_decompressor() );
 #endif
-
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2
       if( boost::algorithm::ends_with( filename, ".bz2" ) )
       in.push( boost::iostreams::bzip2_decompressor() );
 #endif
-
       in.push( file );
 
       HashMap<String, int> nameToCol;
@@ -90,7 +88,7 @@ struct SolParser
          if( it != nameToCol.end() )
          {
             assert( tokens.size() > 1 );
-            sol.primal[it->second] = read_number( tokens[1] );
+            sol.primal[it->second] = parse_number<REAL>( tokens[1] );
          }
          else
          {
@@ -143,129 +141,6 @@ struct SolParser
       } while( 0 != *str );
 
       return tokens;
-   }
-
-   static REAL
-   read_number( const std::string& s )
-   {
-      REAL number;
-      std::stringstream ss;
-      ss << s;
-      ss >> number;
-      if( ss.fail() || !ss.eof() )
-      {
-         Integral numerator = 0;
-         Integral denominator = 1;
-         int exponent = 0;
-         int phase = 0;
-         bool num_negated = false;
-         bool exp_negated = false;
-         bool success = true;
-         for( char c : s )
-         {
-            int digit = '0' <= c && c <= '9' ? c - '0' : -1;
-            switch( phase )
-            {
-            // number sign
-            case 0:
-               ++phase;
-               if( c == '+' )
-                  break;
-               else if( c == '-' )
-               {
-                  num_negated = true;
-                  break;
-               }
-            // before delimiter
-            case 1:
-               if( digit >= 0 )
-               {
-                  numerator *= 10;
-                  numerator += digit;
-                  break;
-               }
-               else
-               {
-                  ++phase;
-                  if( num_traits<REAL>::is_rational )
-                  {
-                     if( c == '.' )
-                        break;
-                  }
-                  else
-                  {
-                     if( c == '/' )
-                     {
-                        denominator = 0;
-                        break;
-                     }
-                  }
-               }
-            // after delimiter
-            case 2:
-               if( digit >= 0 )
-               {
-                  if( num_traits<REAL>::is_rational )
-                  {
-                     numerator *= 10;
-                     numerator += digit;
-                     denominator *= 10;
-                  }
-                  else
-                  {
-                     denominator *= 10;
-                     denominator += digit;
-                  }
-               }
-               else if( ( c == 'e' || c == 'E' ) && num_traits<REAL>::is_rational )
-                  ++phase;
-               else
-                  success = false;
-               break;
-            // exponent sign
-            case 3:
-               ++phase;
-               if( c == '+' )
-                  break;
-               else if( c == '-' )
-               {
-                  exp_negated = true;
-                  break;
-               }
-            // exponent value
-            case 4:
-               if( digit >= 0 )
-               {
-                  exponent *= 10;
-                  exponent += digit;
-                  break;
-               }
-               else
-                  ++phase;
-            default:
-               success = false;
-               break;
-            }
-            if( !success )
-               break;
-         }
-         if( success )
-         {
-            if( num_negated )
-               numerator *= -1;
-            if( exp_negated )
-               exponent *= -1;
-            number = REAL(Rational(numerator, denominator) * pow(10, exponent));
-         }
-         else
-         {
-            fmt::print( stderr,
-                        "WARNING: {} is not representable in arithmetic {}!\n",
-                        s, typeid(REAL).name() );
-            number = 0;
-         }
-      }
-      return number;
    }
 };
 
