@@ -518,13 +518,14 @@ namespace bugger
          int ncols = SCIPgetNVars(scip);
          int nrows = SCIPgetNConss(scip);
          int nnz = 0;
-         SCIP_VAR** probvars = SCIPgetVars(scip);
-         SCIP_CONS** probconss = SCIPgetConss(scip);
+         vars.clear();
+         vars.insert(vars.end(), SCIPgetVars(scip), SCIPgetVars(scip) + ncols);
+         SCIP_CONS** conss = SCIPgetConss(scip);
          for( int row = 0; row < nrows; ++row )
          {
             int nrowcols = 0;
             SCIP_Bool success = FALSE;
-            SCIPgetConsNVars(scip, probconss[row], &nrowcols, &success);
+            SCIPgetConsNVars(scip, conss[row], &nrowcols, &success);
             if( !success )
                return { settings, boost::none, boost::none };
             nnz += nrowcols;
@@ -535,7 +536,7 @@ namespace bugger
          builder.setNumCols(ncols);
          for( int col = 0; col < ncols; ++col )
          {
-            SCIP_VAR* var = probvars[col];
+            SCIP_VAR* var = vars[col];
             SCIP_Real lb = SCIPvarGetLbGlobal(var);
             SCIP_Real ub = SCIPvarGetUbGlobal(var);
             SCIP_VARTYPE vartype = SCIPvarGetType(var);
@@ -557,7 +558,7 @@ namespace bugger
          Vec<REAL> rowvals(ncols);
          for( int row = 0; row < nrows; ++row )
          {
-            SCIP_CONS* cons = probconss[row];
+            SCIP_CONS* cons = conss[row];
             SCIP_Bool success = FALSE;
             SCIP_Real lhs = SCIPconsGetLhs(scip, cons, &success);
             if( !success )
