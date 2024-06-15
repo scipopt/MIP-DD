@@ -59,8 +59,12 @@ The specific SolverInterface interacts with the solver by
 * solving the instance and checking for bugs (`solve`) and
 * writing the internal settings, problem, and solution to files (`writeInstance`).
 Although there are general fallbacks for input and output of problem and solution, it is recommended to implement methods readInstance(), and writeInstance() as functional as possible in order to keep triggered bugs as reproducible as possible.
-The `solve` function returns a pair<char, SolverStatus>. The signed char encodes the validity of the solving process. Negative values are reserved for solver internal errors, 0 means that no bug is detected, while positive values represent externally detected issues identifying 1 as dual fail, 2 as primal fail, and 3 as objective fail. The SolverStatus primarily serves to provide additional information about the solution status in the log for example infeasible, unbounded, optimal, or that a specific limit is reached. To suppress certain fails, the parameter `passcodes` is the vector of codes that must not be interpreted as bugs.
-The general SolverInterface already provides functions to detect dual, primal, and objective fails based on the resulting solution information to be supplied in the 'solve' function.
+Method solve() returns a pair<char, SolverStatus>.
+The signed char encodes the validity of the solving process.
+Negative values are reserved for solver internal errors, 0 means that no bug is detected, while positive values represent externally detected issues identifying 1 as dual fail, 2 as primal fail, and 3 as objective fail.
+The SolverStatus primarily serves to provide additional information about the solution status in the log for example infeasible, unbounded, optimal, or that a specific limit is reached.
+To suppress certain fails, the parameter passcodes is the vector of codes that must not be interpreted as bugs.
+The general SolverInterface already provides functions to detect dual, primal, and objective fails based on the resulting solution information to be supplied in method solve().
 Finally, the solver can be integrated in the cmake system.
 For this, in binaries/CMakeLists.txt only a solver switch and a corresponding case needs to be added to the top of the present if-statement.
 In this case, the solver should be found using find_package(), the library linked using target_link_libraries(bugger-executable), and for reliability symlinked using add_custom_target(bugger-symlink ALL COMMAND ${CMAKE_COMMAND} -E create_symlink).
