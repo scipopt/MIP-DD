@@ -375,8 +375,9 @@ namespace bugger
          int ncols = SCIPgetNVars(scip);
          int nrows = SCIPgetNConss(scip);
          int nnz = 0;
-         SCIP_VAR **vars = SCIPgetVars(scip);
-         SCIP_CONS **conss = SCIPgetConss(scip);
+         vars.clear();
+         vars.insert(vars.end(), SCIPgetVars(scip), SCIPgetVars(scip) + ncols);
+         SCIP_CONS** conss = SCIPgetConss(scip);
          for( int i = 0; i < nrows; ++i )
          {
             int nconsvars = 0;
@@ -392,7 +393,7 @@ namespace bugger
          builder.setNumCols(ncols);
          for( int i = 0; i < ncols; ++i )
          {
-            SCIP_VAR *var = vars[ i ];
+            SCIP_VAR* var = vars[ i ];
             SCIP_Real lb = SCIPvarGetLbGlobal(var);
             SCIP_Real ub = SCIPvarGetUbGlobal(var);
             SCIP_VARTYPE vartype = SCIPvarGetType(var);
@@ -415,7 +416,7 @@ namespace bugger
          {
             int nconsvars = 0;
             SCIP_Bool success = FALSE;
-            SCIP_CONS *cons = conss[ i ];
+            SCIP_CONS* cons = conss[ i ];
             SCIPgetConsNVars(scip, cons, &nconsvars, &success);
             SCIPgetConsVars(scip, cons, consvars.data(), ncols, &success);
             if( !success )
@@ -520,7 +521,7 @@ namespace bugger
                vars[ col ] = nullptr;
             else
             {
-               SCIP_VAR *var;
+               SCIP_VAR* var;
                SCIP_Real lb = domains.flags[ col ].test(ColFlag::kLbInf)
                               ? -SCIPinfinity(scip)
                               : SCIP_Real(domains.lower_bounds[ col ]);
@@ -558,9 +559,9 @@ namespace bugger
             assert(!rflags[ row ].test(RowFlag::kLhsInf) || !rflags[ row ].test(RowFlag::kRhsInf));
 
             auto rowvec = consMatrix.getRowCoefficients(row);
-            const double *vals = rowvec.getValues( );
-            const int *inds = rowvec.getIndices( );
-            SCIP_CONS *cons;
+            const double* vals = rowvec.getValues( );
+            const int* inds = rowvec.getIndices( );
+            SCIP_CONS* cons;
 
             // the first length entries of consvars/-vals are the entries of the current constraint
             int length = 0;
