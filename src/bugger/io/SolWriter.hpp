@@ -44,6 +44,8 @@ struct SolWriter
    static void
    writeSol( const String& filename, const Problem<REAL>& prob, const Solution<REAL>& sol )
    {
+      if( sol.status != SolutionStatus::kFeasible )
+         return;
       std::ofstream file( filename, std::ofstream::out );
       boost::iostreams::filtering_ostream out;
 #ifdef PAPILO_USE_BOOST_IOSTREAMS_WITH_ZLIB

@@ -615,38 +615,36 @@ namespace bugger
          return { settings, problem, solution };
       }
 
-      bool
+      std::tuple<bool, bool, bool>
       writeInstance(const String& filename, const bool& writesettings, const bool& writesolution) const override
       {
-         if( writesettings || limits.size() >= 1 )
-            SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
-
-         bool okay = SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
+         bool successsettings = ( !writesettings && limits.size() == 0 ) || SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE) == SCIP_OKAY;
+         bool successproblem = SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
+         bool successsolution = true;
 
          if( writesolution && this->reference->status == SolutionStatus::kFeasible )
          {
             SCIP_SOL* sol = nullptr;
             FILE* file = nullptr;
-            bool success = true;
-            if( success && SCIPcreateSol(scip, &sol, nullptr) != SCIP_OKAY )
+            if( successsolution && SCIPcreateSol(scip, &sol, nullptr) != SCIP_OKAY )
             {
                sol = nullptr;
-               success = false;
+               successsolution = false;
             }
-            for( int col = 0; success && col < this->reference->primal.size(); ++col )
+            for( int col = 0; successsolution && col < this->reference->primal.size(); ++col )
             {
                if( !this->model->getColFlags()[col].test( ColFlag::kFixed ) && SCIPsetSolVal(scip, sol, vars[col], SCIP_Real(this->reference->primal[col])) != SCIP_OKAY )
-                  success = false;
+                  successsolution = false;
             }
-            if( success && ( (file = fopen((filename + ".sol").c_str(), "w")) == nullptr || SCIPprintSol(scip, sol, file, FALSE) != SCIP_OKAY ) )
-               success = false;
+            if( successsolution && ( (file = fopen((filename + ".sol").c_str(), "w")) == nullptr || SCIPprintSol(scip, sol, file, FALSE) != SCIP_OKAY ) )
+               successsolution = false;
             if( file != nullptr )
                fclose(file);
             if( sol != nullptr )
                SCIPfreeSol(scip, &sol);
          }
 
-         return okay;
+         return { successsettings, successproblem, successsolution };
       }
 
       ~ScipInterface( ) override

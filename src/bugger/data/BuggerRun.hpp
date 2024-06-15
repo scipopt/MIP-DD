@@ -170,12 +170,13 @@ namespace bugger
                //TODO: Free solver afterwards
                solver = factory->create_solver(msg);
                solver->doSetUp(settings, problem, solution);
-               if( !solver->writeInstance(filename + std::to_string(round), writesetting, writesolution) )
-               {
+               auto successwrite = solver->writeInstance(filename + std::to_string(round), writesetting, writesolution);
+               if( !std::get<0>(successwrite) )
+                  msg.info("Settings writer of the solver on {} failed!\n", filename + std::to_string(round) + ".set");
+               if( !std::get<1>(successwrite) )
                   MpsWriter<REAL>::writeProb(filename + std::to_string(round) + ".mps", problem);
-                  if( writesolution )
-                     SolWriter<REAL>::writeSol(filename + std::to_string(round) + ".sol", problem, solution);
-               }
+               if( !std::get<2>(successwrite) )
+                  SolWriter<REAL>::writeSol(filename + std::to_string(round) + ".sol", problem, solution);
 
                if( is_time_exceeded(timer) )
                   break;

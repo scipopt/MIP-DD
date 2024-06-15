@@ -133,6 +133,7 @@ namespace bugger
        * @param settings_filename
        * @param problem_filename
        * @param solution_filename
+       * @return optionalized tuple of setting, problem, and solution
        */
       virtual
       std::tuple<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>, boost::optional<Solution<REAL>>>
@@ -143,17 +144,18 @@ namespace bugger
 
       /** **optional**
        * write stored setting-problem-solution tuple to files
-       * _if returned false, then internal writers give a try_
+       * _if returned false for setting, no settings will be written which is deprecated_
+       * _if returned false for problem or solution, then internal writers giva a try_
        * @param filename
        * @param writesettings
        * @param writesolution
-       * @return whether problem is written successful
+       * @return boolean tuple whether setting, problem, and solution are not required or written successfully
        */
       virtual
-      bool
+      std::tuple<bool, bool, bool>
       writeInstance(const String& filename, const bool& writesettings, const bool& writesolution) const
       {
-         return false;
+         return { !writesettings, false, !writesolution };
       }
 
       virtual

@@ -299,22 +299,22 @@ namespace bugger
          return { settings, problem, solution };
       }
 
-      bool
+      std::tuple<bool, bool, bool>
       writeInstance(const String& filename, const bool& writesettings, const bool& writesolution) const override
       {
-         if( writesettings || this->limits.size() >= 1 )
-            this->soplex->saveSettingsFile((filename + ".set").c_str(), true);
-
-         bool okay = this->soplex->writeFile((filename + ".lp").c_str(), &this->rowNames, &this->colNames
+         bool successsettings = ( !writesettings && this->limits.size() == 0 ) || this->soplex->saveSettingsFile((filename + ".set").c_str(), true);
+         bool successproblem = this->soplex->writeFile((filename + ".lp").c_str(), &this->rowNames, &this->colNames
 #if SOPLEX_APIVERSION >= 15
                , nullptr, true, true
 #endif
                );
+         bool successsolution = true;
 
          //TODO: SoPlex solution setter
-         //if( writesolution && this->reference->status == SolutionStatus::kFeasible ) { }
+         if( writesolution && this->reference->status == SolutionStatus::kFeasible )
+            successsolution = false;
 
-         return okay;
+         return { successsettings, successproblem, successsolution };
       }
 
       ~SoplexRealInterface( ) override = default;
