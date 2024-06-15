@@ -26,11 +26,15 @@
 
 namespace bugger
 {
-
+template <typename REAL>
 void
 print_header()
 {
    fmt::print( "MIP-DD version {}.{}.{} ", BUGGER_VERSION_MAJOR, BUGGER_VERSION_MINOR, BUGGER_VERSION_PATCH);
+
+   fmt::print("[arithmetic: {}]", typeid(REAL).name());
+
+   fmt::print("[precision: {} bytes]", sizeof(REAL));
 
 #if defined(__INTEL_COMPILER)
    fmt::print("[Compiler: Intel {}]", __INTEL_COMPILER);

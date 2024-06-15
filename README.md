@@ -15,20 +15,23 @@ The external dependency that needs to be installed by the user is boost >= 1.65.
 
 # Building
 
-Building the bugger with SCIP as examined solver works with the standard cmake workflow:
+Building the bugger works with the standard cmake workflow:
 ```
 mkdir build
 cd build
-cmake .. -DSCIP_DIR=PATH_TO_SCIP
+cmake .. -DSOLVER_DIR=PATH_TO_SOLVER
 make
 ```
-Here, PATH_TO_SCIP represents the path to the SCIP installation subdirectory containing scip-targets.cmake required to link SCIP as shared library.
-It is necessary to build the solver in optimized mode since the MIP-DD is not designed to handle assertions in order to keep the process performant.
-Nevertheless, it is usually easily possible to handle assertion fails by reformulating the solver to return a suitable error code under the negated assertion condition.
+Here, SOLVER stands for one of the interfaced solvers for which the installation subdirectory PATH_TO_SOLVER contains the file solver-targets.cmake required to link its shared library.
+Currently supported solvers:
+
+- SOPLEX (https://soplex.zib.de/doc/html/INSTALL.php)
+- SCIP (https://scipopt.org/doc/html/INSTALL.php)
+
+It is necessary to build the solver in optimized mode since the MIP-DD is not designed to handle assertions directly in order to keep the process performant.
+Nevertheless, it is usually possible to handle assertions indirectly by reformulating the solver code to return a suitable error under the negated assertion condition.
 The MIP-DD will then identify the formerly failing assertion as a solver error.
-For information on building SCIP please refer to https://scipopt.org/doc.
-
-
+Optionally, the arithmetic type used for reductions, problems, and solutions can be selected by the cmake parameter BUGGER_ARITHMETIC, which is double by default.
 
 To run the bugger with parameters on a settings-problem-solution instance with respect to target settings, it can be invoked by
 ```
@@ -37,8 +40,8 @@ bin/bugger -p BUGGER_PARAMETERS -f PROBLEM -o SOLUTION -s SOLVER_SETTINGS -t TAR
 
 Before running the MIP-DD we recommend to regard the following hints to obtain a reasonable workflow:
 * Determine a reference solution that is as feasible as possible. To detect a suboptimality issue, the dual bound claimed by the solver must cut off this solution. For other issues, a reference solution is not required but helps to guide the process.
-* Define limits for the solver, for example time and node limits, so that the bug of interest is still reproducible. This way, reductions for which the bug would be reproduced beyond these limits, will be discarded. Usually, this accelerates the process and favors easy instances.
-* Define the parameter nbatches to limit the solve invocations per module. Each module determines the number of elementary modifications and then calculates the batch size to invoke the solver at most as many times as specified by parameter nbatches. Hence, the more batches, the smaller the changes in each test run. This makes acceptance of a reduction batch more likely at the cost of an increased runtime.
+* Define initial limits for the solver, for example on the total number of nodes in the branching tree, so that the bug of interest is still reproducible. This way, reductions for which the bug would be reproduced beyond these limits, will be discarded. The solver interface may restrict limits automatically with respect to some variability margin in order to accelerate the process and favor easy instances.
+* The initial number of batches is defined by parameter nbatches to bound the solve invocations per module. Each module determines the number of elementary modifications and then calculates the batch size to invoke the solver at most as many times as specified. Hence, the more batches, the smaller the changes in each test run. By default, it is set to 2, which initially leads to a bisection like approach suitable to quickly trying for lucky punches but might need to be increased for sensitive issues to achieve any reductions. After every bugger round, nbatches is redefined automatically in order to keep the anticipated expenditure based on the solving effort of the last failing run provided by the solver interface constant over all rounds.
 
 For further details please refer to the PAPER (to be published).
 

@@ -37,21 +37,19 @@
 
 namespace bugger
 {
-
 template <typename REAL>
 struct SolParser
 {
-
-   static bool
-   read( const std::string& filename,
-         const Vec<String>& colnames, Solution<REAL>& sol)
+   static boost::optional<Solution<REAL>>
+   read( const std::string& filename, const Vec<String>& colnames )
    {
       std::ifstream file( filename, std::ifstream::in );
       boost::iostreams::filtering_istream in;
 
       if( !file )
-         return false;
-      sol = Solution<REAL>(SolutionStatus::kFeasible);
+         return boost::none;
+
+      Solution<REAL> sol { };
 
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
       if( boost::algorithm::ends_with( filename, ".gz" ) )
@@ -79,25 +77,28 @@ struct SolParser
 
       do
       {
+         if( strline.empty() )
+            continue;
+
          auto tokens = split( strline.c_str() );
          assert( !tokens.empty() );
-
          auto it = nameToCol.find( tokens[0] );
+
          if( it != nameToCol.end() )
          {
             assert( tokens.size() > 1 );
-            sol.primal[it->second] = std::stod( tokens[1] );
+            sol.primal[it->second] = read_number( tokens[1] );
          }
-         else if(strline.empty()){}
          else
          {
             fmt::print( stderr,
-                        "WARNING: skipping unknown column {} in solution\n",
+                        "WARNING: Skipping unknown column {} in reference solution.\n",
                         tokens[0] );
          }
-      } while( getline( in, strline ) );
+      }
+      while( getline( in, strline ) );
 
-      return true;
+      return sol;
    }
 
  private:
@@ -117,7 +118,8 @@ struct SolParser
       }
    }
 
-   Vec<String> static split( const char* str )
+   static Vec<String>
+   split( const char* str )
    {
       Vec<String> tokens;
       char c1 = ' ';
@@ -138,6 +140,26 @@ struct SolParser
       } while( 0 != *str );
 
       return tokens;
+   }
+
+   static REAL
+   read_number( const std::string &s )
+   {
+      std::stringstream ss;
+      REAL number;
+
+      ss << s;
+      ss >> number;
+
+      if( ss.fail() || !ss.eof() )
+      {
+         fmt::print( stderr,
+                     "WARNING: {} not of arithmetic {}!\n",
+                     s, typeid(REAL).name() );
+         number = 0;
+      }
+
+      return number;
    }
 };
 

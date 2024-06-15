@@ -38,32 +38,52 @@
 
 namespace bugger
 {
+   enum ScipLimit : char
+   {
+      DUAL = 1,
+      PRIM = 2,
+      BEST = 3,
+      SOLU = 4,
+      REST = 5,
+      TOTA = 6,
+      TIME = 7
+   };
+
    class ScipParameters
    {
    public:
 
+      static const String VERB;
+
+      int arithmetic = 0;
       int mode = -1;
+      double limitspace = 1.0;
       bool set_dual_limit = true;
       bool set_prim_limit = true;
+      bool set_best_limit = true;
+      bool set_solu_limit = true;
+      bool set_rest_limit = true;
+      bool set_tota_limit = true;
+      bool set_time_limit = false;
    };
 
-   class ScipInterface : public SolverInterface
+   const String ScipParameters::VERB { "display/verblevel" };
+
+   template <typename REAL>
+   class ScipInterface : public SolverInterface<REAL>
    {
-   public:
-
-      static String DUAL;
-      static String PRIM;
-
    private:
 
       const ScipParameters& parameters;
+      const HashMap<String, char>& limits;
       SCIP* scip = nullptr;
       Vec<SCIP_VAR*> vars { };
 
    public:
 
-      explicit ScipInterface(const Message& _msg, const ScipParameters& _parameters) : SolverInterface(_msg),
-                             parameters(_parameters)
+      explicit ScipInterface(const Message& _msg, const ScipParameters& _parameters,
+                             const HashMap<String, char>& _limits) : SolverInterface<REAL>(_msg),
+                             parameters(_parameters), limits(_limits)
       {
          if( SCIPcreate(&scip) != SCIP_OKAY || SCIPincludeDefaultPlugins(scip) != SCIP_OKAY )
             throw std::runtime_error("could not create SCIP");
@@ -73,15 +93,13 @@ namespace bugger
       print_header( ) const override
       {
          SCIPprintVersion(scip, nullptr);
-         int length = SCIPgetNExternalCodes(scip);
-         auto description = SCIPgetExternalCodeDescriptions(scip);
+
          auto names = SCIPgetExternalCodeNames(scip);
+         auto description = SCIPgetExternalCodeDescriptions(scip);
+         int length = SCIPgetNExternalCodes(scip);
+
          for( int i = 0; i < length; ++i )
-         {
-            String n { names[i] };
-            String d { description[i] };
-            msg.info("\t{:20} {}\n", n,d);
-         }
+            this->msg.info("\t{:20} {}\n", names[i], description[i]);
       }
 
       bool
@@ -93,12 +111,10 @@ namespace bugger
       boost::optional<SolverSettings>
       parseSettings(const String& filename) const override
       {
-         if( !filename.empty() )
-         {
-            SCIP_RETCODE retcode = SCIPreadParams(scip, filename.c_str());
-            if( retcode != SCIP_OKAY )
-               return boost::none;
-         }
+         bool success = filename.empty() || SCIPreadParams(scip, filename.c_str()) == SCIP_OKAY;
+
+         if( !success )
+            return boost::none;
 
          Vec<std::pair<String, bool>> bool_settings;
          Vec<std::pair<String, int>> int_settings;
@@ -106,61 +122,93 @@ namespace bugger
          Vec<std::pair<String, double>> double_settings;
          Vec<std::pair<String, char>> char_settings;
          Vec<std::pair<String, String>> string_settings;
-         int nparams = SCIPgetNParams(scip);
+         Vec<std::pair<String, long long>> limit_settings;
          SCIP_PARAM** params = SCIPgetParams(scip);
+         int nparams = SCIPgetNParams(scip);
 
          for( int i = 0; i < nparams; ++i )
          {
             SCIP_PARAM* param = params[ i ];
             String name { param->name };
-            // drop interface settings
-            if( ( parameters.set_dual_limit && name == DUAL )
-             || ( parameters.set_prim_limit && name == PRIM ) )
+            if( name == ScipParameters::VERB )
                continue;
-            switch( param->paramtype )
+            auto limit = limits.find(name);
+            if( limit != limits.end() )
             {
-            case SCIP_PARAMTYPE_BOOL:
-               bool_settings.emplace_back( name, param->data.boolparam.valueptr == nullptr
-                                                 ? param->data.boolparam.curvalue
-                                                 : *param->data.boolparam.valueptr );
-               break;
-            case SCIP_PARAMTYPE_INT:
-               int_settings.emplace_back( name, param->data.intparam.valueptr == nullptr
-                                                ? param->data.intparam.curvalue
-                                                : *param->data.intparam.valueptr );
-               break;
-            case SCIP_PARAMTYPE_LONGINT:
-               long_settings.emplace_back( name, param->data.longintparam.valueptr == nullptr
-                                                 ? param->data.longintparam.curvalue
-                                                 : *param->data.longintparam.valueptr );
-               break;
-            case SCIP_PARAMTYPE_REAL:
-               double_settings.emplace_back( name, param->data.realparam.valueptr == nullptr
-                                                   ? param->data.realparam.curvalue
-                                                   : *param->data.realparam.valueptr );
-               break;
-            case SCIP_PARAMTYPE_CHAR:
-               char_settings.emplace_back( name, param->data.charparam.valueptr == nullptr
-                                                 ? param->data.charparam.curvalue
-                                                 : *param->data.charparam.valueptr );
-               break;
-            case SCIP_PARAMTYPE_STRING:
-               string_settings.emplace_back( name, param->data.stringparam.valueptr == nullptr
-                                                   ? param->data.stringparam.curvalue
-                                                   : *param->data.stringparam.valueptr );
-               break;
-            default:
-               SCIPerrorMessage("unknown setting type\n");
+               switch( limit->second )
+               {
+               case DUAL:
+               case PRIM:
+                  break;
+               case BEST:
+               case SOLU:
+               case REST:
+                  limit_settings.emplace_back( name, param->data.intparam.valueptr == nullptr
+                                                     ? param->data.intparam.curvalue
+                                                     : *param->data.intparam.valueptr );
+                  break;
+               case TOTA:
+                  limit_settings.emplace_back( name, param->data.longintparam.valueptr == nullptr
+                                                     ? param->data.longintparam.curvalue
+                                                     : *param->data.longintparam.valueptr );
+                  break;
+               case TIME:
+                  limit_settings.emplace_back( name, min(ceil(param->data.realparam.valueptr == nullptr
+                                                              ? param->data.realparam.curvalue
+                                                              : *param->data.realparam.valueptr), SCIP_Real(LLONG_MAX)) );
+                  break;
+               default:
+                  SCIPerrorMessage("unknown limit type\n");
+               }
+            }
+            else
+            {
+               switch( param->paramtype )
+               {
+               case SCIP_PARAMTYPE_BOOL:
+                  bool_settings.emplace_back( name, param->data.boolparam.valueptr == nullptr
+                                                    ? param->data.boolparam.curvalue
+                                                    : *param->data.boolparam.valueptr );
+                  break;
+               case SCIP_PARAMTYPE_INT:
+                  int_settings.emplace_back( name, param->data.intparam.valueptr == nullptr
+                                                   ? param->data.intparam.curvalue
+                                                   : *param->data.intparam.valueptr );
+                  break;
+               case SCIP_PARAMTYPE_LONGINT:
+                  long_settings.emplace_back( name, param->data.longintparam.valueptr == nullptr
+                                                    ? param->data.longintparam.curvalue
+                                                    : *param->data.longintparam.valueptr );
+                  break;
+               case SCIP_PARAMTYPE_REAL:
+                  double_settings.emplace_back( name, param->data.realparam.valueptr == nullptr
+                                                      ? param->data.realparam.curvalue
+                                                      : *param->data.realparam.valueptr );
+                  break;
+               case SCIP_PARAMTYPE_CHAR:
+                  char_settings.emplace_back( name, param->data.charparam.valueptr == nullptr
+                                                    ? param->data.charparam.curvalue
+                                                    : *param->data.charparam.valueptr );
+                  break;
+               case SCIP_PARAMTYPE_STRING:
+                  string_settings.emplace_back( name, param->data.stringparam.valueptr == nullptr
+                                                      ? param->data.stringparam.curvalue
+                                                      : *param->data.stringparam.valueptr );
+                  break;
+               default:
+                  SCIPerrorMessage("unknown setting type\n");
+               }
             }
          }
 
-         return SolverSettings(bool_settings, int_settings, long_settings, double_settings,char_settings, string_settings);
+         return SolverSettings(bool_settings, int_settings, long_settings, double_settings,char_settings, string_settings, limit_settings);
       }
 
       void
-      doSetUp(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) override
+      doSetUp(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution) override
       {
          auto retcode = setup(settings, problem, solution);
+         UNUSED(retcode);
          assert(retcode == SCIP_OKAY);
       }
 
@@ -169,7 +217,12 @@ namespace bugger
       {
          char retcode = SCIP_ERROR;
          SolverStatus solverstatus = SolverStatus::kUndefinedError;
-         SCIPsetMessagehdlrQuiet(scip, msg.getVerbosityLevel() < VerbosityLevel::kDetailed);
+
+         if( this->msg.getVerbosityLevel() < VerbosityLevel::kDetailed )
+            SCIPsetMessagehdlrQuiet(scip, TRUE);
+         else
+            SCIPsetIntParam(scip, ScipParameters::VERB.c_str(), 5);
+
          // optimize
          if( parameters.mode == -1 )
             retcode = SCIPsolve(scip);
@@ -184,7 +237,7 @@ namespace bugger
          if( retcode == SCIP_OKAY )
          {
             // reset return code
-            retcode = OKAY;
+            retcode = SolverRetcode::OKAY;
 
             if( parameters.mode == -1 )
             {
@@ -197,81 +250,65 @@ namespace bugger
                {
                   switch( passcode )
                   {
-                  case DUALFAIL:
+                  case SolverRetcode::DUALFAIL:
                      dual = false;
                      break;
-                  case PRIMALFAIL:
+                  case SolverRetcode::PRIMALFAIL:
                      primal = false;
                      break;
-                  case OBJECTIVEFAIL:
+                  case SolverRetcode::OBJECTIVEFAIL:
                      objective = false;
                      break;
                   }
                }
 
                // declare primal solution
-               Vec<Solution<double>> solution;
+               Vec<Solution<REAL>> solution;
                SCIP_SOL** sols = SCIPgetSols(scip);
                int nsols = SCIPgetNSols(scip);
 
                // check dual by reference solution objective
-               if( retcode == OKAY && dual )
-                  retcode = check_dual_bound( SCIPgetDualbound(scip), SCIPsumepsilon(scip), SCIPinfinity(scip) );
+               if( retcode == SolverRetcode::OKAY && dual )
+                  retcode = this->check_dual_bound( REAL(SCIPgetDualbound(scip)), REAL(SCIPsumepsilon(scip)), REAL(SCIPinfinity(scip)) );
 
                // check primal by generated solution values
-               if( retcode == OKAY )
+               if( retcode == SolverRetcode::OKAY )
                {
                   if( nsols >= 1 )
                   {
                      solution.resize(primal ? nsols : objective ? 1 : 0);
 
                      for( int i = solution.size() - 1; i >= 0; --i )
-                     {
-                        solution[i].status = SolutionStatus::kFeasible;
-                        solution[i].primal.resize(vars.size());
-
-                        for( int col = 0; col < solution[i].primal.size(); ++col )
-                           solution[i].primal[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetSolVal(scip, sols[i], vars[col]);
-                     }
-
-                     if( solution.size() >= 1 && SCIPhasPrimalRay(scip) )
-                     {
-                        solution[0].status = SolutionStatus::kUnbounded;
-                        solution[0].ray.resize(vars.size());
-
-                        for( int col = 0; col < solution[0].ray.size(); ++col )
-                           solution[0].ray[col] = model->getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<double>::signaling_NaN() : SCIPgetPrimalRayVal(scip, vars[col]);
-                     }
+                        translateSolution(sols[i], i == 0 && SCIPhasPrimalRay(scip), *this->model, solution[i]);
 
                      if( primal )
-                        retcode = check_primal_solution( solution, SCIPsumepsilon(scip), SCIPinfinity(scip) );
+                        retcode = this->check_primal_solution( solution, REAL(SCIPsumepsilon(scip)), REAL(SCIPinfinity(scip)) );
                   }
                   else if( nsols != 0 && primal )
-                     retcode = PRIMALFAIL;
+                     retcode = SolverRetcode::PRIMALFAIL;
                }
 
                // check objective by best solution evaluation
-               if( retcode == OKAY && objective )
+               if( retcode == SolverRetcode::OKAY && objective )
                {
                   // check solution objective instead of primal bound if no ray is provided
-                  double bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
+                  REAL bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
 
                   if( solution.size() == 0 )
                      solution.emplace_back(SolutionStatus::kInfeasible);
 
-                  retcode = check_objective_value( bound, solution[0], SCIPsumepsilon(scip), SCIPinfinity(scip) );
+                  retcode = this->check_objective_value( bound, solution[0], REAL(SCIPsumepsilon(scip)), REAL(SCIPinfinity(scip)) );
                }
             }
             else
             {
                // check count by primal solution existence
-               if( retcode == OKAY )
+               if( retcode == SolverRetcode::OKAY )
                {
-                  long long int count;
-                  unsigned int valid;
+                  SCIP_Bool valid;
+                  long long count = SCIPgetNCountedSols(scip, &valid);
 
-                  count = SCIPgetNCountedSols(scip, &valid);
-                  retcode = check_count_number( SCIPgetDualbound(scip), SCIPgetPrimalbound(scip), (valid ? count : -1), SCIPinfinity(scip) );
+                  retcode = this->check_count_number( REAL(SCIPgetDualbound(scip)), REAL(SCIPgetPrimalbound(scip)), valid ? count : -1, REAL(SCIPinfinity(scip)) );
                }
             }
 
@@ -343,29 +380,135 @@ namespace bugger
             // shift retcodes so that all errors have negative values
             --retcode;
          }
-         // progess certain passcodes as OKAY based on the user preferences
+         // interpret certain passcodes as OKAY based on the user preferences
          for( int passcode: passcodes )
          {
             if( passcode == retcode )
             {
-               retcode = OKAY;
+               retcode = SolverRetcode::OKAY;
+               break;
+            }
+         }
+         // restrict limit settings
+         if( retcode != SolverRetcode::OKAY )
+         {
+            const auto& limitsettings = this->adjustment->getLimitSettings( );
+            switch( SCIPgetStage(scip) )
+            {
+            case SCIP_STAGE_TRANSFORMING:
+            case SCIP_STAGE_TRANSFORMED:
+            case SCIP_STAGE_INITPRESOLVE:
+            case SCIP_STAGE_PRESOLVING:
+            case SCIP_STAGE_EXITPRESOLVE:
+            case SCIP_STAGE_PRESOLVED:
+            case SCIP_STAGE_INITSOLVE:
+            case SCIP_STAGE_SOLVING:
+            case SCIP_STAGE_SOLVED:
+            case SCIP_STAGE_EXITSOLVE:
+               for( int index = 0; index < limitsettings.size( ); ++index )
+               {
+                  if( limitsettings[index].second < 0 || limitsettings[index].second > 1 )
+                  {
+                     double bound;
+                     switch( limits.find(limitsettings[index].first)->second )
+                     {
+                     case BEST:
+                        // incremented to continue after finding the last best solution
+                        bound = ceil(max((1.0 + parameters.limitspace) * SCIPgetNBestSolsFound(scip) + 1.0, 1.0));
+                        if( bound > INT_MAX )
+                           continue;
+                        else
+                           break;
+                     case SOLU:
+                        // incremented to continue after finding the last solution
+                        bound = ceil(max((1.0 + parameters.limitspace) * SCIPgetNSolsFound(scip) + 1.0, 1.0));
+                        if( bound > INT_MAX )
+                           continue;
+                        else
+                           break;
+                     case REST:
+                        // decremented from runs to restarts
+                        bound = ceil(max((1.0 + parameters.limitspace) * (SCIPgetNRuns(scip) - 1.0), 1.0));
+                        if( bound > INT_MAX )
+                           continue;
+                        else
+                           break;
+                     case TOTA:
+                        // assumes last node is processed
+                        bound = ceil(max((1.0 + parameters.limitspace) * SCIPgetNTotalNodes(scip), 1.0));
+                        if( bound > LONG_MAX )
+                           continue;
+                        else
+                           break;
+                     case TIME:
+                        // sensitive to processor speed variability
+                        bound = ceil(max((1.0 + parameters.limitspace) * SCIPgetSolvingTime(scip), 1.0));
+                        if( bound > LLONG_MAX )
+                           continue;
+                        else
+                           break;
+                     case DUAL:
+                     case PRIM:
+                     default:
+                        SCIPerrorMessage("unknown limit type\n");
+                     }
+                     if( limitsettings[index].second < 0 || bound < limitsettings[index].second )
+                     {
+                        this->msg.info("\t\t{} = {}\n", limitsettings[index].first, (long long)bound);
+                        this->adjustment->setLimitSettings(index, bound);
+                     }
+                  }
+               }
+               break;
+            case SCIP_STAGE_INIT:
+            case SCIP_STAGE_PROBLEM:
+            case SCIP_STAGE_FREETRANS:
+            case SCIP_STAGE_FREE:
+            default:
                break;
             }
          }
          return { retcode, solverstatus };
       }
 
-      std::pair<boost::optional<SolverSettings>, boost::optional<Problem<double>>>
-      readInstance(const String& settings_filename, const String& problem_filename) override
+      long long
+      getSolvingEffort( ) const override
       {
-         auto settings = parseSettings(settings_filename);
-         SCIP_RETCODE retcode = SCIPreadProb(scip, problem_filename.c_str(), nullptr);
-         if( retcode != SCIP_OKAY )
-            return { settings, boost::none };
-         ProblemBuilder<SCIP_Real> builder;
+         switch( SCIPgetStage(scip) )
+         {
+         case SCIP_STAGE_PRESOLVING:
+         case SCIP_STAGE_PRESOLVED:
+         case SCIP_STAGE_SOLVING:
+         case SCIP_STAGE_SOLVED:
+            return SCIPgetNLPIterations(scip);
+         case SCIP_STAGE_INIT:
+         case SCIP_STAGE_PROBLEM:
+         case SCIP_STAGE_TRANSFORMING:
+         case SCIP_STAGE_TRANSFORMED:
+         case SCIP_STAGE_INITPRESOLVE:
+         case SCIP_STAGE_EXITPRESOLVE:
+         case SCIP_STAGE_INITSOLVE:
+         case SCIP_STAGE_EXITSOLVE:
+         case SCIP_STAGE_FREETRANS:
+         case SCIP_STAGE_FREE:
+         default:
+            return -1;
+         }
+      }
+
+      std::tuple<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>, boost::optional<Solution<REAL>>>
+      readInstance(const String& settings_filename, const String& problem_filename, const String& solution_filename) override
+      {
+         auto parsed_settings = parseSettings(settings_filename);
+         if( !parsed_settings )
+            return { boost::none, boost::none, boost::none };
+         SolverSettings settings { parsed_settings.get() };
+         if( SCIPreadProb(scip, problem_filename.c_str(), nullptr) != SCIP_OKAY )
+            return { settings, boost::none, boost::none };
+         ProblemBuilder<REAL> builder;
 
          // set problem name
-         builder.setProblemName(String(SCIPgetProbName(scip)));
+         builder.setProblemName(SCIPgetProbName(scip));
          // set objective offset
          builder.setObjOffset(SCIPgetOrigObjoffset(scip));
          // set objective sense
@@ -378,80 +521,131 @@ namespace bugger
          vars.clear();
          vars.insert(vars.end(), SCIPgetVars(scip), SCIPgetVars(scip) + ncols);
          SCIP_CONS** conss = SCIPgetConss(scip);
-         for( int i = 0; i < nrows; ++i )
+         for( int row = 0; row < nrows; ++row )
          {
-            int nconsvars = 0;
+            int nrowcols = 0;
             SCIP_Bool success = FALSE;
-            SCIPgetConsNVars(scip, conss[ i ], &nconsvars, &success);
+            SCIPgetConsNVars(scip, conss[row], &nrowcols, &success);
             if( !success )
-               return { settings, boost::none };
-            nnz += nconsvars;
+               return { settings, boost::none, boost::none };
+            nnz += nrowcols;
          }
          builder.reserve(nnz, nrows, ncols);
 
          // set up columns
          builder.setNumCols(ncols);
-         for( int i = 0; i < ncols; ++i )
+         for( int col = 0; col < ncols; ++col )
          {
-            SCIP_VAR* var = vars[ i ];
+            SCIP_VAR* var = vars[col];
             SCIP_Real lb = SCIPvarGetLbGlobal(var);
             SCIP_Real ub = SCIPvarGetUbGlobal(var);
             SCIP_VARTYPE vartype = SCIPvarGetType(var);
-            builder.setColLb(i, lb);
-            builder.setColUb(i, ub);
-            builder.setColLbInf(i, SCIPisInfinity(scip, -lb));
-            builder.setColUbInf(i, SCIPisInfinity(scip, ub));
-            builder.setColIntegral(i, vartype == SCIP_VARTYPE_BINARY || vartype == SCIP_VARTYPE_INTEGER);
-            builder.setColImplInt(i, vartype != SCIP_VARTYPE_CONTINUOUS);
-            builder.setColName(i, SCIPvarGetName(var));
-            builder.setObj(i, SCIPvarGetObj(var));
+            builder.setColLb(col, REAL(lb));
+            builder.setColUb(col, REAL(ub));
+            builder.setColLbInf(col, SCIPisInfinity(scip, -lb));
+            builder.setColUbInf(col, SCIPisInfinity(scip, ub));
+            builder.setColIntegral(col, vartype == SCIP_VARTYPE_BINARY || vartype == SCIP_VARTYPE_INTEGER);
+            builder.setColImplInt(col, vartype != SCIP_VARTYPE_CONTINUOUS);
+            builder.setObj(col, REAL(SCIPvarGetObj(var)));
+            builder.setColName(col, SCIPvarGetName(var));
          }
 
          // set up rows
+         builder.setNumRows(nrows);
          Vec<SCIP_VAR*> consvars(ncols);
          Vec<SCIP_Real> consvals(ncols);
-         Vec<int> indices(ncols);
-         builder.setNumRows(nrows);
-         for( int i = 0; i < nrows; ++i )
+         Vec<int> rowinds(ncols);
+         Vec<REAL> rowvals(ncols);
+         for( int row = 0; row < nrows; ++row )
          {
-            int nconsvars = 0;
+            SCIP_CONS* cons = conss[row];
             SCIP_Bool success = FALSE;
-            SCIP_CONS* cons = conss[ i ];
-            SCIPgetConsNVars(scip, cons, &nconsvars, &success);
-            SCIPgetConsVars(scip, cons, consvars.data(), ncols, &success);
-            if( !success )
-               return { settings, boost::none };
-            SCIPgetConsVals(scip, cons, consvals.data(), ncols, &success);
-            if( !success )
-               return { settings, boost::none };
-            for( int j = 0; j < nconsvars; ++j )
-            {
-               indices[ j ] = SCIPvarGetProbindex(consvars[ j ]);
-               assert(strcmp(SCIPvarGetName(consvars[ j ]), SCIPvarGetName(vars[ indices[ j ] ])) == 0);
-            }
-            builder.addRowEntries(i, nconsvars, indices.data(), consvals.data());
             SCIP_Real lhs = SCIPconsGetLhs(scip, cons, &success);
             if( !success )
-               return { settings, boost::none };
+               return { settings, boost::none, boost::none };
             SCIP_Real rhs = SCIPconsGetRhs(scip, cons, &success);
             if( !success )
-               return { settings, boost::none };
-            builder.setRowLhs(i, lhs);
-            builder.setRowRhs(i, rhs);
-            builder.setRowLhsInf(i, SCIPisInfinity(scip, -lhs));
-            builder.setRowRhsInf(i, SCIPisInfinity(scip, rhs));
-            builder.setRowName(i, SCIPconsGetName(cons));
+               return { settings, boost::none, boost::none };
+            int nrowcols = 0;
+            SCIPgetConsNVars(scip, cons, &nrowcols, &success);
+            if( !success )
+               return { settings, boost::none, boost::none };
+            SCIPgetConsVars(scip, cons, consvars.data(), ncols, &success);
+            if( !success )
+               return { settings, boost::none, boost::none };
+            SCIPgetConsVals(scip, cons, consvals.data(), ncols, &success);
+            if( !success )
+               return { settings, boost::none, boost::none };
+            for( int i = 0; i < nrowcols; ++i )
+            {
+               rowinds[i] = SCIPvarGetProbindex(consvars[i]);
+               rowvals[i] = REAL(consvals[i]);
+            }
+            builder.setRowLhs(row, REAL(lhs));
+            builder.setRowRhs(row, REAL(rhs));
+            builder.setRowLhsInf(row, SCIPisInfinity(scip, -lhs));
+            builder.setRowRhsInf(row, SCIPisInfinity(scip, rhs));
+            builder.addRowEntries(row, nrowcols, rowinds.data(), rowvals.data());
+            builder.setRowName(row, SCIPconsGetName(cons));
          }
 
-         return { settings, builder.build() };
+         Problem<REAL> problem { builder.build() };
+         Solution<REAL> solution { };
+         if( !solution_filename.empty() )
+         {
+            SCIP_SOL* sol = nullptr;
+            SCIP_Bool error = TRUE;
+            bool success = true;
+            if( success && SCIPcreateSol(scip, &sol, nullptr) != SCIP_OKAY )
+            {
+               sol = nullptr;
+               success = false;
+            }
+            if( success && ( SCIPreadSolFile(scip, solution_filename.c_str(), sol, FALSE, NULL, &error) != SCIP_OKAY || error ) )
+               success = false;
+            if( success )
+               translateSolution(sol, FALSE, problem, solution);
+            if( sol != nullptr )
+               SCIPfreeSol(scip, &sol);
+            if( !success )
+               return { settings, problem, boost::none };
+         }
+
+         return { settings, problem, solution };
       }
 
       bool
-      writeInstance(const String& filename, const bool& writesettings) const override
+      writeInstance(const String& filename, const bool& writesettings, const bool& writesolution) const override
       {
-         if( writesettings || parameters.set_dual_limit || parameters.set_prim_limit )
+         if( writesettings || limits.size() >= 1 )
             SCIPwriteParams(scip, (filename + ".set").c_str(), FALSE, TRUE);
-         return SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
+
+         bool okay = SCIPwriteOrigProblem(scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
+
+         if( writesolution && this->reference->status == SolutionStatus::kFeasible )
+         {
+            SCIP_SOL* sol = nullptr;
+            FILE* file = nullptr;
+            bool success = true;
+            if( success && SCIPcreateSol(scip, &sol, nullptr) != SCIP_OKAY )
+            {
+               sol = nullptr;
+               success = false;
+            }
+            for( int col = 0; success && col < this->reference->primal.size(); ++col )
+            {
+               if( !this->model->getColFlags()[col].test( ColFlag::kFixed ) && SCIPsetSolVal(scip, sol, vars[col], SCIP_Real(this->reference->primal[col])) != SCIP_OKAY )
+                  success = false;
+            }
+            if( success && ( (file = fopen((filename + ".sol").c_str(), "w")) == nullptr || SCIPprintSol(scip, sol, file, FALSE) != SCIP_OKAY ) )
+               success = false;
+            if( file != nullptr )
+               fclose(file);
+            if( sol != nullptr )
+               SCIPfreeSol(scip, &sol);
+         }
+
+         return okay;
       }
 
       ~ScipInterface( ) override
@@ -478,7 +672,7 @@ namespace bugger
             case SCIP_STAGE_SOLVED:
             default:
                if( scip == nullptr || SCIPfree(&scip) != SCIP_OKAY )
-                  msg.warn("could not free SCIP\n");
+                  this->msg.warn("could not free SCIP\n");
                break;
             }
          }
@@ -486,140 +680,181 @@ namespace bugger
 
    private:
 
-      SCIP_RETCODE
-      setup(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution)
+      void
+      translateSolution(SCIP_SOL* const sol, const SCIP_Bool ray, const Problem<REAL>& problem, Solution<REAL>& solution) const
       {
-         model = &problem;
-         reference = &solution;
-         bool solution_exists = reference->status == SolutionStatus::kFeasible;
-         int ncols = model->getNCols( );
-         int nrows = model->getNRows( );
-         const auto& varNames = model->getVariableNames( );
-         const auto& consNames = model->getConstraintNames( );
-         const auto& domains = model->getVariableDomains( );
-         const auto& obj = model->getObjective( );
-         const auto& consMatrix = model->getConstraintMatrix( );
+         solution.status = ray ? SolutionStatus::kUnbounded : SolutionStatus::kFeasible;
+         solution.primal.resize(problem.getNCols());
+         for( int col = 0; col < solution.primal.size(); ++col )
+            solution.primal[col] = problem.getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(SCIPgetSolVal(scip, sol, vars[col]));
+         if( ray )
+         {
+            solution.ray.resize(problem.getNCols());
+            for( int col = 0; col < solution.ray.size(); ++col )
+               solution.ray[col] = problem.getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(SCIPgetPrimalRayVal(scip, vars[col]));
+         }
+      }
+
+      SCIP_RETCODE
+      setup(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution)
+      {
+         this->adjustment = &settings;
+         this->model = &problem;
+         this->reference = &solution;
+         bool solution_exists = this->reference->status == SolutionStatus::kFeasible;
+         int ncols = this->model->getNCols( );
+         int nrows = this->model->getNRows( );
+         const auto& varNames = this->model->getVariableNames( );
+         const auto& consNames = this->model->getConstraintNames( );
+         const auto& domains = this->model->getVariableDomains( );
+         const auto& obj = this->model->getObjective( );
+         const auto& consMatrix = this->model->getConstraintMatrix( );
          const auto& lhs_values = consMatrix.getLeftHandSides( );
          const auto& rhs_values = consMatrix.getRightHandSides( );
-         const auto& rflags = model->getRowFlags( );
+         const auto& rflags = this->model->getRowFlags( );
 
-         set_parameters(settings);
-         SCIP_CALL(SCIPcreateProbBasic(scip, model->getName( ).c_str( )));
+         set_parameters( );
+         SCIP_CALL(SCIPcreateProbBasic(scip, this->model->getName( ).c_str()));
          SCIP_CALL(SCIPaddOrigObjoffset(scip, SCIP_Real(obj.offset)));
          SCIP_CALL(SCIPsetObjsense(scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
-         vars.resize(model->getNCols( ));
+         vars.resize(ncols);
          if( solution_exists )
-            value = get_primal_objective(solution);
-         else if( reference->status == SolutionStatus::kUnbounded )
-            value = obj.sense ? -SCIPinfinity(scip) : SCIPinfinity(scip);
-         else if( reference->status == SolutionStatus::kInfeasible )
-            value = obj.sense ? SCIPinfinity(scip) : -SCIPinfinity(scip);
+            this->value = this->get_primal_objective(solution);
+         else if( this->reference->status == SolutionStatus::kUnbounded )
+            this->value = obj.sense ? -SCIPinfinity(scip) : SCIPinfinity(scip);
+         else if( this->reference->status == SolutionStatus::kInfeasible )
+            this->value = obj.sense ? SCIPinfinity(scip) : -SCIPinfinity(scip);
 
          for( int col = 0; col < ncols; ++col )
          {
-            if( domains.flags[ col ].test(ColFlag::kFixed) )
-               vars[ col ] = nullptr;
+            if( domains.flags[col].test(ColFlag::kFixed) )
+               vars[col] = nullptr;
             else
             {
                SCIP_VAR* var;
-               SCIP_Real lb = domains.flags[ col ].test(ColFlag::kLbInf)
+               SCIP_Real lb = domains.flags[col].test(ColFlag::kLbInf)
                               ? -SCIPinfinity(scip)
-                              : SCIP_Real(domains.lower_bounds[ col ]);
-               SCIP_Real ub = domains.flags[ col ].test(ColFlag::kUbInf)
+                              : SCIP_Real(domains.lower_bounds[col]);
+               SCIP_Real ub = domains.flags[col].test(ColFlag::kUbInf)
                               ? SCIPinfinity(scip)
-                              : SCIP_Real(domains.upper_bounds[ col ]);
-               assert(!domains.flags[ col ].test(ColFlag::kInactive) || ( lb == ub ));
+                              : SCIP_Real(domains.upper_bounds[col]);
+               assert(!domains.flags[col].test(ColFlag::kInactive) || lb == ub);
                SCIP_VARTYPE type;
-               if( domains.flags[ col ].test(ColFlag::kIntegral) )
+               if( domains.flags[col].test(ColFlag::kIntegral) )
                {
-                  if( lb == 0 && ub == 1 )
+                  if( lb >= 0 && ub <= 1 )
                      type = SCIP_VARTYPE_BINARY;
                   else
                      type = SCIP_VARTYPE_INTEGER;
                }
-               else if( domains.flags[ col ].test(ColFlag::kImplInt) )
+               else if( domains.flags[col].test(ColFlag::kImplInt) )
                   type = SCIP_VARTYPE_IMPLINT;
                else
                   type = SCIP_VARTYPE_CONTINUOUS;
-               SCIP_CALL(SCIPcreateVarBasic(
-                     scip, &var, varNames[ col ].c_str( ), lb, ub,
-                     SCIP_Real(obj.coefficients[ col ]), type));
+               SCIP_CALL(SCIPcreateVarBasic(scip, &var, varNames[col].c_str(), lb, ub,
+                                            SCIP_Real(obj.coefficients[col]), type));
+               vars[col] = var;
                SCIP_CALL(SCIPaddVar(scip, var));
-               vars[ col ] = var;
                SCIP_CALL(SCIPreleaseVar(scip, &var));
             }
          }
 
-         Vec<SCIP_VAR*> consvars(model->getNCols( ));
-         Vec<SCIP_Real> consvals(model->getNCols( ));
+         Vec<SCIP_VAR*> consvars(ncols);
+         Vec<SCIP_Real> consvals(ncols);
          for( int row = 0; row < nrows; ++row )
          {
-            if( rflags[ row ].test(RowFlag::kRedundant) )
+            if( rflags[row].test(RowFlag::kRedundant) )
                continue;
-            assert(!rflags[ row ].test(RowFlag::kLhsInf) || !rflags[ row ].test(RowFlag::kRhsInf));
-
-            auto rowvec = consMatrix.getRowCoefficients(row);
-            const double* vals = rowvec.getValues( );
-            const int* inds = rowvec.getIndices( );
+            assert(!rflags[row].test(RowFlag::kLhsInf) || !rflags[row].test(RowFlag::kRhsInf));
+            const auto& rowvec = consMatrix.getRowCoefficients(row);
+            const auto& rowinds = rowvec.getIndices( );
+            const auto& rowvals = rowvec.getValues( );
+            int nrowcols = rowvec.getLength( );
+            SCIP_Real lhs = rflags[row].test(RowFlag::kLhsInf)
+                            ? -SCIPinfinity(scip)
+                            : SCIP_Real(lhs_values[row]);
+            SCIP_Real rhs = rflags[row].test(RowFlag::kRhsInf)
+                            ? SCIPinfinity(scip)
+                            : SCIP_Real(rhs_values[row]);
             SCIP_CONS* cons;
-
-            // the first length entries of consvars/-vals are the entries of the current constraint
-            int length = 0;
-            for( int k = 0; k != rowvec.getLength( ); ++k )
+            for( int i = 0; i < nrowcols; ++i )
             {
-               assert(!model->getColFlags( )[ inds[ k ] ].test(ColFlag::kFixed));
-               assert(vals[ k ] != 0.0);
-               consvars[ length ] = vars[ inds[ k ] ];
-               consvals[ length ] = SCIP_Real(vals[ k ]);
-               ++length;
+               assert(!this->model->getColFlags( )[rowinds[i]].test(ColFlag::kFixed));
+               assert(rowvals[i] != 0);
+               consvars[i] = vars[rowinds[i]];
+               consvals[i] = SCIP_Real(rowvals[i]);
             }
-
-            SCIP_CALL(SCIPcreateConsBasicLinear(
-                  scip, &cons, consNames[ row ].c_str( ), length,
-                  consvars.data( ), consvals.data( ),
-                  rflags[ row ].test(RowFlag::kLhsInf) ? -SCIPinfinity(scip) : SCIP_Real(lhs_values[ row ]),
-                  rflags[ row ].test(RowFlag::kRhsInf) ? SCIPinfinity(scip) : SCIP_Real(rhs_values[ row ])));
+            SCIP_CALL(SCIPcreateConsBasicLinear(scip, &cons, consNames[row].c_str(), nrowcols, consvars.data( ),
+                                                consvals.data( ), lhs, rhs));
             SCIP_CALL(SCIPaddCons(scip, cons));
             SCIP_CALL(SCIPreleaseCons(scip, &cons));
          }
 
-         if( solution_exists )
+         if( solution_exists && ( parameters.set_dual_limit || parameters.set_prim_limit ) )
          {
-            if( parameters.set_dual_limit )
-               SCIP_CALL(SCIPsetRealParam(scip, DUAL.c_str(), relax( value, obj.sense, 2.0 * SCIPsumepsilon(scip), SCIPinfinity(scip) )));
-            if( parameters.set_prim_limit )
-               SCIP_CALL(SCIPsetRealParam(scip, PRIM.c_str(), value));
+            for( const auto& pair : limits )
+            {
+               switch( pair.second )
+               {
+               case DUAL:
+                  SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), SCIP_Real(this->relax( this->value, obj.sense, 2 * SCIPsumepsilon(scip), SCIPinfinity(scip) ))));
+                  break;
+               case PRIM:
+                  SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), SCIP_Real(this->value)));
+                  break;
+               }
+            }
          }
 
          return SCIP_OKAY;
       }
 
       void
-      set_parameters(const SolverSettings &settings) const
+      set_parameters( ) const
       {
-         for( const auto& pair : settings.getBoolSettings( ) )
+         for( const auto& pair : this->adjustment->getBoolSettings( ) )
             SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);
-         for( const auto& pair : settings.getIntSettings( ) )
+         for( const auto& pair : this->adjustment->getIntSettings( ) )
             SCIPsetIntParam(scip, pair.first.c_str(), pair.second);
-         for( const auto& pair : settings.getLongSettings( ) )
+         for( const auto& pair : this->adjustment->getLongSettings( ) )
             SCIPsetLongintParam(scip, pair.first.c_str(), pair.second);
-         for( const auto& pair : settings.getDoubleSettings( ) )
+         for( const auto& pair : this->adjustment->getDoubleSettings( ) )
             SCIPsetRealParam(scip, pair.first.c_str(), pair.second);
-         for( const auto& pair : settings.getCharSettings( ) )
+         for( const auto& pair : this->adjustment->getCharSettings( ) )
             SCIPsetCharParam(scip, pair.first.c_str(), pair.second);
-         for( const auto& pair : settings.getStringSettings( ) )
+         for( const auto& pair : this->adjustment->getStringSettings( ) )
             SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
+         for( const auto& pair : this->adjustment->getLimitSettings( ) )
+         {
+            switch( limits.find(pair.first)->second )
+            {
+            case BEST:
+            case SOLU:
+            case REST:
+               SCIPsetIntParam(scip, pair.first.c_str(), pair.second);
+               break;
+            case TOTA:
+               SCIPsetLongintParam(scip, pair.first.c_str(), pair.second);
+               break;
+            case TIME:
+               SCIPsetRealParam(scip, pair.first.c_str(), pair.second);
+               break;
+            case DUAL:
+            case PRIM:
+            default:
+               SCIPerrorMessage("unknown limit type\n");
+            }
+         }
       }
    };
 
-   String ScipInterface::DUAL;
-   String ScipInterface::PRIM;
-
-   class ScipFactory : public SolverFactory
+   template <typename REAL>
+   class ScipFactory : public SolverFactory<REAL>
    {
    private:
 
       ScipParameters parameters { };
+      HashMap<String, char> limits { };
       bool initial = true;
 
    public:
@@ -627,35 +862,130 @@ namespace bugger
       void
       addParameters(ParameterSet& parameterset) override
       {
+         parameterset.addParameter("scip.arithmetic", "arithmetic scip type (0: double)", parameters.arithmetic, 0, 0);
          parameterset.addParameter("scip.mode", "solve scip mode (-1: optimize, 0: count)", parameters.mode, -1, 0);
+         parameterset.addParameter("scip.limitspace", "relative margin when restricting limits or -1 for no restriction", parameters.limitspace, -1.0);
          parameterset.addParameter("scip.setduallimit", "terminate when dual bound is better than reference solution", parameters.set_dual_limit);
          parameterset.addParameter("scip.setprimlimit", "terminate when prim bound is as good as reference solution", parameters.set_prim_limit);
+         parameterset.addParameter("scip.setbestlimit", "restrict best number of solutions automatically", parameters.set_best_limit);
+         parameterset.addParameter("scip.setsolulimit", "restrict total number of solutions automatically", parameters.set_solu_limit);
+         parameterset.addParameter("scip.setrestlimit", "restrict number of restarts automatically", parameters.set_rest_limit);
+         parameterset.addParameter("scip.settotalimit", "restrict total number of nodes automatically", parameters.set_tota_limit);
+         parameterset.addParameter("scip.settimelimit", "restrict time automatically (unreproducible)", parameters.set_time_limit);
+         // run and stalling number of nodes, memory, and gap are unrestrictable because they are not monotonously increasing
       }
 
-      std::unique_ptr<SolverInterface>
+      std::unique_ptr<SolverInterface<REAL>>
       create_solver(const Message& msg) override
       {
-         auto scip = std::unique_ptr<SolverInterface>( new ScipInterface( msg, parameters ) );
+         std::unique_ptr<SolverInterface<REAL>> scip;
+         switch( parameters.arithmetic )
+         {
+         case 0:
+            scip = std::unique_ptr<SolverInterface<REAL>>( new ScipInterface<REAL>( msg, parameters, limits ) );
+            break;
+         default:
+            throw std::runtime_error("unknown solver arithmetic");
+         }
          if( initial )
          {
+            String name;
             if( parameters.mode != -1 )
             {
                parameters.set_dual_limit = false;
                parameters.set_prim_limit = false;
+               parameters.set_best_limit = false;
+               parameters.set_solu_limit = false;
+               parameters.set_rest_limit = false;
             }
             else
             {
-               if( parameters.set_dual_limit && !scip->has_setting(ScipInterface::DUAL = "limits/dual") && !scip->has_setting(ScipInterface::DUAL = "limits/proofstop") )
+               if( parameters.set_dual_limit )
                {
-                  msg.info("Dual limit disabled.\n");
-                  parameters.set_dual_limit = false;
-                  ScipInterface::DUAL = "";
+                  if( scip->has_setting(name = "limits/dual") || scip->has_setting(name = "limits/proofstop") )
+                     limits[name] = DUAL;
+                  else
+                  {
+                     msg.info("Dual limit disabled.\n");
+                     parameters.set_dual_limit = false;
+                  }
                }
-               if( parameters.set_prim_limit && !scip->has_setting(ScipInterface::PRIM = "limits/primal") && !scip->has_setting(ScipInterface::PRIM = "limits/objectivestop") )
+               if( parameters.set_prim_limit )
                {
-                  msg.info("Primal limit disabled.\n");
-                  parameters.set_prim_limit = false;
-                  ScipInterface::PRIM = "";
+                  if( scip->has_setting(name = "limits/primal") || scip->has_setting(name = "limits/objectivestop") )
+                     limits[name] = PRIM;
+                  else
+                  {
+                     msg.info("Primal limit disabled.\n");
+                     parameters.set_prim_limit = false;
+                  }
+               }
+               if( parameters.limitspace < 0.0 )
+               {
+                  parameters.set_best_limit = false;
+                  parameters.set_solu_limit = false;
+                  parameters.set_rest_limit = false;
+               }
+               else
+               {
+                  if( parameters.set_best_limit )
+                  {
+                     if( scip->has_setting(name = "limits/bestsol") )
+                        limits[name] = BEST;
+                     else
+                     {
+                        msg.info("Bestsolution limit disabled.\n");
+                        parameters.set_best_limit = false;
+                     }
+                  }
+                  if( parameters.set_solu_limit )
+                  {
+                     if( scip->has_setting(name = "limits/solutions") )
+                        limits[name] = SOLU;
+                     else
+                     {
+                        msg.info("Solution limit disabled.\n");
+                        parameters.set_solu_limit = false;
+                     }
+                  }
+                  if( parameters.set_rest_limit )
+                  {
+                     if( scip->has_setting(name = "limits/restarts") )
+                        limits[name] = REST;
+                     else
+                     {
+                        msg.info("Restart limit disabled.\n");
+                        parameters.set_rest_limit = false;
+                     }
+                  }
+               }
+            }
+            if( parameters.limitspace < 0.0 )
+            {
+               parameters.set_tota_limit = false;
+               parameters.set_time_limit = false;
+            }
+            else
+            {
+               if( parameters.set_tota_limit )
+               {
+                  if( scip->has_setting(name = "limits/totalnodes") )
+                     limits[name] = TOTA;
+                  else
+                  {
+                     msg.info("Totalnode limit disabled.\n");
+                     parameters.set_tota_limit = false;
+                  }
+               }
+               if( parameters.set_time_limit )
+               {
+                  if( scip->has_setting(name = "limits/time") )
+                     limits[name] = TIME;
+                  else
+                  {
+                     msg.info("Time limit disabled.\n");
+                     parameters.set_time_limit = false;
+                  }
                }
             }
             initial = false;
@@ -664,10 +994,11 @@ namespace bugger
       }
    };
 
-   std::shared_ptr<SolverFactory>
+   template <typename REAL>
+   std::shared_ptr<SolverFactory<REAL>>
    load_solver_factory( )
    {
-      return std::shared_ptr<SolverFactory>( new ScipFactory( ) );
+      return std::shared_ptr<SolverFactory<REAL>>( new ScipFactory<REAL>( ) );
    }
 
 } // namespace bugger

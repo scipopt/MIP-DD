@@ -177,12 +177,12 @@ compareMatrixToTranspose( const SparseStorage<REAL>& first,
 
 template <typename REAL>
 bool
-compareMatrixToTranspose( const ConstraintMatrix<REAL>& constarint_matrix,
+compareMatrixToTranspose( const ConstraintMatrix<REAL>& constraint_matrix,
                           const Num<REAL>& num )
 {
-   const SparseStorage<REAL>& matrix = constarint_matrix.getConstraintMatrix();
+   const SparseStorage<REAL>& matrix = constraint_matrix.getConstraintMatrix();
    const SparseStorage<REAL>& transpose =
-       constarint_matrix.getMatrixTranspose();
+       constraint_matrix.getMatrixTranspose();
    return compareMatrixToTranspose( matrix, transpose, num );
 }
 

@@ -81,7 +81,7 @@ class SparseVectorView
       REAL maxabsval = 0.0;
 
       for( int i = 0; i != len; ++i )
-         maxabsval = std::max( REAL( abs( vals[i] ) ), maxabsval );
+         maxabsval = max( abs( vals[i] ), maxabsval );
 
       return maxabsval;
    }
@@ -96,8 +96,8 @@ class SparseVectorView
 
          for( int i = 1; i != len; ++i )
          {
-            maxabsval = std::max( REAL( abs( vals[i] ) ), maxabsval );
-            minabsval = std::min( REAL( abs( vals[i] ) ), minabsval );
+            maxabsval = max( abs( vals[i] ), maxabsval );
+            minabsval = min( abs( vals[i] ), minabsval );
          }
 
          return std::make_pair( minabsval, maxabsval );
@@ -613,12 +613,6 @@ class ConstraintMatrix
    Vec<int> colsize;
 };
 
-#ifdef BUGGER_USE_EXTERN_TEMPLATES
-extern template class ConstraintMatrix<double>;
-extern template class ConstraintMatrix<Quad>;
-extern template class ConstraintMatrix<Rational>;
-#endif
-
 template <typename REAL>
 std::pair<Vec<int>, Vec<int>>
 ConstraintMatrix<REAL>::compress( bool full )
@@ -886,7 +880,7 @@ ConstraintMatrix<REAL>::checkAggregationSparsityCondition(
    bool shift = true;
 
    indbuffer.clear();
-   indbuffer.reserve( std::max( length, len ) );
+   indbuffer.reserve( max( length, len ) );
 
    for( int k = 0; k < length; ++k )
    {
@@ -1358,8 +1352,8 @@ ConstraintMatrix<REAL>::aggregate(
           row, int{ 0 }, equalitylen,
           [&]( int k ) { return equalityindices[k]; },
           [&]( int k ) {
-             return k == freeColPos ? REAL( -freecolcoef[i] )
-                                    : REAL( equalityvalues[k] * eqscale );
+             return k == freeColPos ? -freecolcoef[i]
+                                    : equalityvalues[k] * eqscale;
           },
           mergeVal, updateActivity, valbuffer, indbuffer );
 
