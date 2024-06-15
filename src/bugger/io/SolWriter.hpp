@@ -42,7 +42,7 @@ template <typename REAL>
 struct SolWriter
 {
    static void
-   writeSol( const std::string& filename, const Problem<REAL>& prob, const Solution<REAL>& sol )
+   writeSol( const String& filename, const Problem<REAL>& prob, const Solution<REAL>& sol )
    {
       std::ofstream file( filename, std::ofstream::out );
       boost::iostreams::filtering_ostream out;

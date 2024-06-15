@@ -22,8 +22,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef _BUGGER_IO_MPS_WRITER_
-#define _BUGGER_IO_MPS_WRITER_
+#ifndef _BUGGER_IO_MPS_WRITER_HPP_
+#define _BUGGER_IO_MPS_WRITER_HPP_
 
 #include "bugger/data/Problem.hpp"
 
@@ -42,11 +42,11 @@ template <typename REAL>
 struct MpsWriter
 {
    static void
-   writeProb( const std::string& filename, const Problem<REAL>& prob )
+   writeProb( const String& filename, const Problem<REAL>& prob )
    {
       const ConstraintMatrix<REAL>& consmatrix = prob.getConstraintMatrix();
-      const Vec<std::string>& consnames = prob.getConstraintNames();
-      const Vec<std::string>& varnames = prob.getVariableNames();
+      const Vec<String>& consnames = prob.getConstraintNames();
+      const Vec<String>& varnames = prob.getVariableNames();
       const Vec<REAL>& lhs = consmatrix.getLeftHandSides();
       const Vec<REAL>& rhs = consmatrix.getRightHandSides();
       const Objective<REAL>& obj = prob.getObjective();

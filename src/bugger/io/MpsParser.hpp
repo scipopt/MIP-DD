@@ -26,9 +26,9 @@
 #define _BUGGER_IO_MPS_PARSER_HPP_
 
 #include <boost/algorithm/string.hpp>
+#include <boost/utility/string_ref.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/spirit/include/qi.hpp>
-#include <boost/utility/string_ref.hpp>
 #include "bugger/misc/Num.hpp"
 #include "bugger/data/Problem.hpp"
 #include "bugger/misc/Hash.hpp"
@@ -43,15 +43,14 @@
 
 namespace bugger
 {
-
 /// Parser for mps files in fixed and free format
 template <typename REAL>
 class MpsParser
 {
-
 public:
+
    static boost::optional<Problem<REAL>>
-   readProb( const std::string& filename )
+   readProb( const String& filename )
    {
       MpsParser<REAL> parser;
 
@@ -86,11 +85,12 @@ public:
    }
 
 private:
+
    MpsParser() {}
 
    /// load LP from MPS file as transposed triplet matrix
    bool
-   parseFile( const std::string& filename );
+   parseFile( const String& filename );
 
    bool
    parse( boost::iostreams::filtering_istream& file );
@@ -149,16 +149,16 @@ private:
     * data for mps problem
     */
 
-   std::string probname { };
+   String probname { };
    Vec<Triplet<REAL>> entries;
    Vec<std::pair<int, REAL>> coeffobj;
    Vec<REAL> rowlhs;
    Vec<REAL> rowrhs;
-   Vec<std::string> rownames;
-   Vec<std::string> colnames;
+   Vec<String> rownames;
+   Vec<String> colnames;
 
-   HashMap<std::string, int> rowname2idx;
-   HashMap<std::string, int> colname2idx;
+   HashMap<String, int> rowname2idx;
+   HashMap<String, int> colname2idx;
    Vec<REAL> lb4cols;
    Vec<REAL> ub4cols;
    Vec<boundtype> row_type;
@@ -173,8 +173,7 @@ private:
 
    /// checks first word of strline and wraps it by it_begin and it_end
    parsekey
-   checkFirstWord( std::string& strline, std::string::iterator& it,
-                   boost::string_ref& word_ref );
+   checkFirstWord( String& strline, String::iterator& it, boost::string_ref& word_ref );
 
    parsekey
    parseDefault( boost::iostreams::filtering_istream& file );
@@ -183,12 +182,10 @@ private:
    parseObjsense( boost::iostreams::filtering_istream& file );
 
    parsekey
-   parseRows( boost::iostreams::filtering_istream& file,
-              Vec<boundtype>& rowtype );
+   parseRows( boost::iostreams::filtering_istream& file, Vec<boundtype>& rowtype );
 
    parsekey
-   parseCols( boost::iostreams::filtering_istream& file,
-              const Vec<boundtype>& rowtype );
+   parseCols( boost::iostreams::filtering_istream& file, const Vec<boundtype>& rowtype );
 
    parsekey
    parseRhs( boost::iostreams::filtering_istream& file );
@@ -202,14 +199,12 @@ private:
 
 template <typename REAL>
 typename MpsParser<REAL>::parsekey
-MpsParser<REAL>::checkFirstWord( std::string& strline,
-                                 std::string::iterator& it,
-                                 boost::string_ref& word_ref )
+MpsParser<REAL>::checkFirstWord( String& strline, String::iterator& it, boost::string_ref& word_ref )
 {
    using namespace boost::spirit;
 
    it = strline.begin() + strline.find_first_not_of( " " );
-   std::string::iterator it_start = it;
+   String::iterator it_start = it;
 
    // TODO: Daniel
    qi::parse( it, strline.end(), qi::lexeme[+qi::graph] );
@@ -233,7 +228,7 @@ MpsParser<REAL>::checkFirstWord( std::string& strline,
    }
    else if( word == "NAME" )
    {
-      probname = boost::trim_copy( std::string( it_start+4, strline.end() ) );
+      probname = boost::trim_copy( String( it_start+4, strline.end() ) );
       return MpsParser<REAL>::parsekey::kNone;
    }
    else if( word == "OBJSENSE" )
@@ -252,10 +247,10 @@ template <typename REAL>
 typename MpsParser<REAL>::parsekey
 MpsParser<REAL>::parseDefault( boost::iostreams::filtering_istream& file )
 {
-   std::string strline;
+   String strline;
    getline( file, strline );
 
-   std::string::iterator it;
+   String::iterator it;
    boost::string_ref word_ref;
    return checkFirstWord( strline, it, word_ref );
 }
@@ -264,11 +259,11 @@ template <typename REAL>
 typename MpsParser<REAL>::parsekey
 MpsParser<REAL>::parseObjsense( boost::iostreams::filtering_istream& file )
 {
-   std::string strline;
+   String strline;
 
    while( getline( file, strline ) )
    {
-      std::string::iterator it;
+      String::iterator it;
       boost::string_ref word_ref;
       MpsParser<REAL>::parsekey key = checkFirstWord( strline, it, word_ref );
 
@@ -286,19 +281,18 @@ MpsParser<REAL>::parseObjsense( boost::iostreams::filtering_istream& file )
 
 template <typename REAL>
 typename MpsParser<REAL>::parsekey
-MpsParser<REAL>::parseRows( boost::iostreams::filtering_istream& file,
-                            Vec<boundtype>& rowtype )
+MpsParser<REAL>::parseRows( boost::iostreams::filtering_istream& file, Vec<boundtype>& rowtype )
 {
    using namespace boost::spirit;
 
-   std::string strline;
+   String strline;
    size_t nrows = 0;
    bool hasobj = false;
 
    while( getline( file, strline ) )
    {
       bool isobj = false;
-      std::string::iterator it;
+      String::iterator it;
       boost::string_ref word_ref;
       MpsParser<REAL>::parsekey key = checkFirstWord( strline, it, word_ref );
 
@@ -359,7 +353,7 @@ MpsParser<REAL>::parseRows( boost::iostreams::filtering_istream& file,
       else
          return parsekey::kFail;
 
-      std::string rowname = ""; // todo use ref
+      String rowname = ""; // todo use ref
 
       // get row name
       qi::phrase_parse( it, strline.end(), qi::lexeme[+qi::graph], ascii::space,
@@ -383,19 +377,19 @@ MpsParser<REAL>::parseRows( boost::iostreams::filtering_istream& file,
 
 template <typename REAL>
 typename MpsParser<REAL>::parsekey
-MpsParser<REAL>::parseCols( boost::iostreams::filtering_istream& file,
-                            const Vec<boundtype>& rowtype )
+MpsParser<REAL>::parseCols( boost::iostreams::filtering_istream& file, const Vec<boundtype>& rowtype )
 {
    using namespace boost::spirit;
 
-   std::string colname = "";
-   std::string strline;
+   String colname = "";
+   String strline;
    int rowidx;
    int ncols = 0;
    int colstart = 0;
    bool integral_cols = false;
 
-   auto parsename = [&rowidx, this]( std::string name ) {
+   auto parsename = [&rowidx, this]( String name )
+   {
       auto mit = rowname2idx.find( name );
 
       assert( mit != rowname2idx.end() );
@@ -407,18 +401,18 @@ MpsParser<REAL>::parseCols( boost::iostreams::filtering_istream& file,
          assert( -1 == rowidx );
    };
 
-   auto addtuple = [&rowidx, &ncols, this]( std::string sval) {
-      auto coeff = parse_number<REAL>(sval);
+   auto addtuple = [&rowidx, &ncols, this]( String sval )
+   {
+      REAL coeff = parse_number<REAL>( sval );
       if( rowidx >= 0 )
-         entries.push_back(
-             std::make_tuple( ncols - 1, rowidx, REAL{ coeff } ) );
+         entries.push_back( std::make_tuple( ncols - 1, rowidx, coeff ) );
       else
-         coeffobj.push_back( std::make_pair( ncols - 1, REAL{ coeff } ) );
+         coeffobj.push_back( std::make_pair( ncols - 1, coeff ) );
    };
 
    while( getline( file, strline ) )
    {
-      std::string::iterator it;
+      String::iterator it;
       boost::string_ref word_ref;
       MpsParser<REAL>::parsekey key = checkFirstWord( strline, it, word_ref );
 
@@ -435,8 +429,8 @@ MpsParser<REAL>::parseCols( boost::iostreams::filtering_istream& file,
       }
 
       // check for integrality marker
-      std::string marker = ""; // todo use ref
-      std::string::iterator it2 = it;
+      String marker = ""; // todo use ref
+      String::iterator it2 = it;
 
       qi::phrase_parse( it2, strline.end(), qi::lexeme[+qi::graph],
                         ascii::space, marker );
@@ -506,8 +500,8 @@ MpsParser<REAL>::parseCols( boost::iostreams::filtering_istream& file,
       assert( ncols > 0 );
 
       std::istringstream is( strline );
-      std::vector<std::string> tokens;
-      std::string tmp;
+      std::vector<String> tokens;
+      String tmp;
       while( is >> tmp )
          tokens.push_back( tmp );
       if( tokens.size() != 3 && tokens.size() != 5 )
@@ -529,12 +523,12 @@ typename MpsParser<REAL>::parsekey
 MpsParser<REAL>::parseRanges( boost::iostreams::filtering_istream& file )
 {
    using namespace boost::spirit;
-   std::string strline;
+   String strline;
    assert( rowrhs.size() == rowlhs.size() );
 
    while( getline( file, strline ) )
    {
-      std::string::iterator it;
+      String::iterator it;
       boost::string_ref word_ref;
       MpsParser<REAL>::parsekey key = checkFirstWord( strline, it, word_ref );
 
@@ -547,7 +541,8 @@ MpsParser<REAL>::parseRanges( boost::iostreams::filtering_istream& file )
 
       int rowidx;
 
-      auto parsename = [&rowidx, this]( std::string name ) {
+      auto parsename = [&rowidx, this]( String name )
+      {
          auto mit = rowname2idx.find( name );
 
          assert( mit != rowname2idx.end() );
@@ -556,19 +551,20 @@ MpsParser<REAL>::parseRanges( boost::iostreams::filtering_istream& file )
          assert( rowidx >= 0 && rowidx < nRows );
       };
 
-      auto addrange = [&rowidx, this]( std::string sval ) {
-         REAL val  = parse_number<REAL>(sval);
+      auto addrange = [&rowidx, this]( String sval )
+      {
+         REAL val = parse_number<REAL>( sval );
          assert( size_t( rowidx ) < rowrhs.size() );
 
          if( row_type[rowidx] == boundtype::kGE )
          {
             row_flags[rowidx].unset( RowFlag::kRhsInf );
-            rowrhs[rowidx] = rowlhs[rowidx] + REAL(abs( val ));
+            rowrhs[rowidx] = rowlhs[rowidx] + abs( val );
          }
          else if( row_type[rowidx] == boundtype::kLE )
          {
             row_flags[rowidx].unset( RowFlag::kLhsInf );
-            rowlhs[rowidx] = rowrhs[rowidx] - REAL(abs( val ));
+            rowlhs[rowidx] = rowrhs[rowidx] - abs( val );
          }
          else
          {
@@ -579,19 +575,19 @@ MpsParser<REAL>::parseRanges( boost::iostreams::filtering_istream& file )
             if( val > 0 )
             {
                row_flags[rowidx].unset( RowFlag::kEquation );
-               rowrhs[rowidx] = rowrhs[rowidx] + REAL( val );
+               rowrhs[rowidx] = rowrhs[rowidx] + val;
             }
             else if( val < 0 )
             {
-               rowlhs[rowidx] = rowlhs[rowidx] + REAL( val );
+               rowlhs[rowidx] = rowlhs[rowidx] + val;
                row_flags[rowidx].unset( RowFlag::kEquation );
             }
          }
       };
 
       std::istringstream is( strline );
-      std::vector<std::string> tokens;
-      std::string tmp;
+      std::vector<String> tokens;
+      String tmp;
       while( is >> tmp )
          tokens.push_back( tmp );
       if( tokens.size() != 3 && tokens.size() != 5 )
@@ -613,11 +609,11 @@ typename MpsParser<REAL>::parsekey
 MpsParser<REAL>::parseRhs( boost::iostreams::filtering_istream& file )
 {
    using namespace boost::spirit;
-   std::string strline;
+   String strline;
 
    while( getline( file, strline ) )
    {
-      std::string::iterator it;
+      String::iterator it;
       boost::string_ref word_ref;
       MpsParser<REAL>::parsekey key = checkFirstWord( strline, it, word_ref );
 
@@ -630,7 +626,8 @@ MpsParser<REAL>::parseRhs( boost::iostreams::filtering_istream& file )
 
       int rowidx;
 
-      auto parsename = [&rowidx, this]( std::string name ) {
+      auto parsename = [&rowidx, this]( String name )
+      {
          auto mit = rowname2idx.find( name );
 
          assert( mit != rowname2idx.end() );
@@ -640,18 +637,19 @@ MpsParser<REAL>::parseRhs( boost::iostreams::filtering_istream& file )
          assert( rowidx < nRows );
       };
 
-      auto addrhs = [&rowidx, this]( String sval ) {
-         REAL val = parse_number<REAL>(sval);
+      auto addrhs = [&rowidx, this]( String sval )
+      {
+         REAL val = parse_number<REAL>( sval );
          if( rowidx == -1 )
          {
-            objoffset = -REAL{ val };
+            objoffset = -val;
             return;
          }
          if( row_type[rowidx] == boundtype::kEq ||
              row_type[rowidx] == boundtype::kLE )
          {
             assert( size_t( rowidx ) < rowrhs.size() );
-            rowrhs[rowidx] = REAL{ val };
+            rowrhs[rowidx] = val;
             row_flags[rowidx].unset( RowFlag::kRhsInf );
          }
 
@@ -659,14 +657,14 @@ MpsParser<REAL>::parseRhs( boost::iostreams::filtering_istream& file )
              row_type[rowidx] == boundtype::kGE )
          {
             assert( size_t( rowidx ) < rowlhs.size() );
-            rowlhs[rowidx] = REAL{ val };
+            rowlhs[rowidx] = val;
             row_flags[rowidx].unset( RowFlag::kLhsInf );
          }
       };
 
       std::istringstream is( strline );
-      std::vector<std::string> tokens;
-      std::string tmp;
+      std::vector<String> tokens;
+      String tmp;
       while( is >> tmp )
          tokens.push_back( tmp );
       if( tokens.size() != 3 && tokens.size() != 5 )
@@ -688,14 +686,14 @@ typename MpsParser<REAL>::parsekey
 MpsParser<REAL>::parseBounds( boost::iostreams::filtering_istream& file )
 {
    using namespace boost::spirit;
-   std::string strline;
+   String strline;
 
    Vec<bool> ub_is_default( lb4cols.size(), true );
    Vec<bool> lb_is_default( lb4cols.size(), true );
 
    while( getline( file, strline ) )
    {
-      std::string::iterator it;
+      String::iterator it;
       boost::string_ref word_ref;
       MpsParser<REAL>::parsekey key = checkFirstWord( strline, it, word_ref );
 
@@ -768,7 +766,7 @@ MpsParser<REAL>::parseBounds( boost::iostreams::filtering_istream& file )
 
       int colidx;
 
-      auto parsename = [&colidx, this]( std::string name ) {
+      auto parsename = [&colidx, this]( String name ) {
          auto mit = colname2idx.find( name );
          assert( mit != colname2idx.end() );
          colidx = mit->second;
@@ -804,19 +802,18 @@ MpsParser<REAL>::parseBounds( boost::iostreams::filtering_istream& file )
          continue;
       }
 
-      auto adddomains = [&ub_is_default, &lb_is_default, &colidx, &islb, &isub, &isintegral, this]
-            ( std::string sval )
+      auto adddomains = [&ub_is_default, &lb_is_default, &colidx, &islb, &isub, &isintegral, this]( String sval )
       {
-         auto val = parse_number<REAL>(sval);
+         REAL val = parse_number<REAL>( sval );
          if( islb )
          {
-            lb4cols[colidx] = REAL{ val };
+            lb4cols[colidx] = val;
             lb_is_default[colidx] = false;
             col_flags[colidx].unset( ColFlag::kLbInf );
          }
          if( isub )
          {
-            ub4cols[colidx] = REAL{ val };
+            ub4cols[colidx] = val;
             ub_is_default[colidx] = false;
             col_flags[colidx].unset( ColFlag::kUbInf );
          }
@@ -828,15 +825,15 @@ MpsParser<REAL>::parseBounds( boost::iostreams::filtering_istream& file )
          {
             col_flags[colidx].set( ColFlag::kIntegral );
             if( !islb && lb_is_default[colidx] )
-               lb4cols[colidx] = REAL{ 0.0 };
+               lb4cols[colidx] = 0;
             if( !isub && ub_is_default[colidx] )
                col_flags[colidx].set( ColFlag::kUbInf );
          }
       };
 
       std::istringstream is( strline );
-      std::vector<std::string> tokens;
-      std::string tmp;
+      std::vector<String> tokens;
+      String tmp;
       while( is >> tmp )
          tokens.push_back( tmp );
       if( tokens.size() != 4 )
@@ -850,7 +847,7 @@ MpsParser<REAL>::parseBounds( boost::iostreams::filtering_istream& file )
 
 template <typename REAL>
 bool
-MpsParser<REAL>::parseFile( const std::string& filename )
+MpsParser<REAL>::parseFile( const String& filename )
 {
    std::ifstream file( filename, std::ifstream::in );
    boost::iostreams::filtering_istream in;

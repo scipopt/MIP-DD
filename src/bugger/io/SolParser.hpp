@@ -39,11 +39,12 @@
 
 namespace bugger
 {
+/// Parser for sol files storing solution information
 template <typename REAL>
 struct SolParser
 {
    static boost::optional<Solution<REAL>>
-   readSol( const std::string& filename, const Vec<String>& colnames )
+   readSol( const String& filename, const Vec<String>& colnames )
    {
       std::ifstream file( filename, std::ifstream::in );
       boost::iostreams::filtering_istream in;
@@ -69,7 +70,7 @@ struct SolParser
          nameToCol.emplace( colnames[i], i );
       }
 
-      sol.primal.resize( colnames.size(), REAL{ 0 } );
+      sol.primal.resize( colnames.size() );
       String strline;
 
       skip_header( colnames, in, strline );
@@ -100,12 +101,10 @@ struct SolParser
       return sol;
    }
 
- private:
+private:
 
    static void
-   skip_header( const Vec<String>& colnames,
-                boost::iostreams::filtering_istream& filteringIstream,
-                String& strline )
+   skip_header( const Vec<String>& colnames, boost::iostreams::filtering_istream& filteringIstream, String& strline )
    {
       while(getline( filteringIstream, strline ))
       {
