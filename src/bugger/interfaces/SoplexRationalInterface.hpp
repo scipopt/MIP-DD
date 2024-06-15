@@ -251,12 +251,14 @@ namespace bugger
          int ncols = this->soplex->numCols();
          int nrows = this->soplex->numRows();
          int nnz = this->soplex->numNonzeros();
+         this->inds.resize(ncols);
          builder.reserve(nnz, nrows, ncols);
 
          // set up columns
          builder.setNumCols(ncols);
          for( int col = 0; col < ncols; ++col )
          {
+            this->inds[col] = col;
             SOPLEX_Real lb = this->soplex->lowerRational(col);
             SOPLEX_Real ub = this->soplex->upperRational(col);
             builder.setColLb(col, REAL(lb));
