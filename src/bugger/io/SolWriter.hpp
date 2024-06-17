@@ -57,11 +57,11 @@ struct SolWriter
          out.push( boost::iostreams::bzip2_compressor() );
 #endif
       out.push( file );
-      fmt::print( out, "{: <50} {: <18.15}\n", "=obj=", prob.getPrimalObjective(sol) );
+      fmt::print( out, "{:<35} {:}\n", "=obj=", prob.getPrimalObjective(sol) );
       for( int i = 0; i < prob.getNCols(); ++i )
       {
          if( !prob.getColFlags()[i].test( ColFlag::kInactive ) && sol.primal[i] != 0 )
-            fmt::print( out, "{: <50} {: <18.15}   obj({:.15})\n",
+            fmt::print( out, "{:<35} {:<18} obj:{:}\n",
                         prob.getVariableNames()[i], sol.primal[i], prob.getObjective().coefficients[i] );
       }
    }
