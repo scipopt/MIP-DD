@@ -17,6 +17,7 @@ Interface changes
 ----------
 
 ## SolverInterface:
+
 - templatize arithmetic type to allow instance precision to be independent from solver precision
 - add solution information to signature and return of readInstance() to enable parsing the reference solution
 - move out Retcode and rename to SolverRetcode in order to simplify handling return codes
