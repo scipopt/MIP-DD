@@ -1,22 +1,24 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    BUGGER                                                                 */
+/*                            MIP-DD                                         */
 /*                                                                           */
 /* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
-/* This program is free software: you can redistribute it and/or modify      */
-/* it under the terms of the GNU Lesser General Public License as published  */
-/* by the Free Software Foundation, either version 3 of the License, or      */
-/* (at your option) any later version.                                       */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/* This program is distributed in the hope that it will be useful,           */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of            */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
-/* GNU Lesser General Public License for more details.                       */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
 /*                                                                           */
-/* You should have received a copy of the GNU Lesser General Public License  */
-/* along with this program.  If not, see <https://www.gnu.org/licenses/>.    */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with MIP-DD; see the file LICENSE. If not visit scipopt.org.       */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -298,22 +300,22 @@ namespace bugger
          return { settings, problem, solution };
       }
 
-      bool
+      std::tuple<bool, bool, bool>
       writeInstance(const String& filename, const bool& writesettings, const bool& writesolution) const override
       {
-         if( writesettings || this->limits.size() >= 1 )
-            this->soplex->saveSettingsFile((filename + ".set").c_str(), true);
-
-         bool okay = this->soplex->writeFile((filename + ".lp").c_str(), &this->rowNames, &this->colNames
+         bool successsettings = ( !writesettings && this->limits.size() == 0 ) || this->soplex->saveSettingsFile((filename + ".set").c_str(), true);
+         bool successproblem = this->soplex->writeFile((filename + ".lp").c_str(), &this->rowNames, &this->colNames
 #if SOPLEX_APIVERSION >= 15
                , nullptr, true, true
 #endif
                );
+         bool successsolution = true;
 
          //TODO: SoPlex solution setter
-         //if( writesolution && this->reference->status == SolutionStatus::kFeasible ) { }
+         if( writesolution && this->reference->status == SolutionStatus::kFeasible )
+            successsolution = false;
 
-         return okay;
+         return { successsettings, successproblem, successsolution };
       }
 
       ~SoplexRationalInterface( ) override = default;
@@ -360,7 +362,7 @@ namespace bugger
          this->rowNames.reMax(nrows);
          this->inds.resize(ncols);
          if( solution_exists )
-            this->value = this->get_primal_objective(solution);
+            this->value = this->model->getPrimalObjective(solution);
          else if( this->reference->status == SolutionStatus::kUnbounded )
             this->value = obj.sense ? -this->soplex->realParam(SoPlex::INFTY) : this->soplex->realParam(SoPlex::INFTY);
          else if( this->reference->status == SolutionStatus::kInfeasible )

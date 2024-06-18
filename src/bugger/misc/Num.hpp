@@ -1,22 +1,24 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    BUGGER                                                                 */
+/*                            MIP-DD                                         */
 /*                                                                           */
 /* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
-/* This program is free software: you can redistribute it and/or modify      */
-/* it under the terms of the GNU Lesser General Public License as published  */
-/* by the Free Software Foundation, either version 3 of the License, or      */
-/* (at your option) any later version.                                       */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/* This program is distributed in the hope that it will be useful,           */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of            */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
-/* GNU Lesser General Public License for more details.                       */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
 /*                                                                           */
-/* You should have received a copy of the GNU Lesser General Public License  */
-/* along with this program.  If not, see <https://www.gnu.org/licenses/>.    */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with MIP-DD; see the file LICENSE. If not visit scipopt.org.       */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -24,6 +26,7 @@
 #define _BUGGER_MISC_NUM_HPP_
 
 #include "bugger/misc/MultiPrecision.hpp"
+#include "bugger/misc/fmt.hpp"
 
 
 namespace bugger
@@ -357,6 +360,130 @@ class Num
    REAL zeta;
    REAL hugeval;
 };
+
+template <typename REAL>
+REAL
+parse_number( const std::string& s )
+{
+   REAL number;
+   std::stringstream ss;
+   ss << s;
+   ss >> number;
+   if( ss.fail() || !ss.eof() )
+   {
+      Integral numerator = 0;
+      Integral denominator = 1;
+      int exponent = 0;
+      int phase = 0;
+      bool num_negated = false;
+      bool exp_negated = false;
+      bool success = true;
+      for( char c : s )
+      {
+         int digit = '0' <= c && c <= '9' ? c - '0' : -1;
+         switch( phase )
+         {
+         // number sign
+         case 0:
+            ++phase;
+            if( c == '+' )
+               break;
+            else if( c == '-' )
+            {
+               num_negated = true;
+               break;
+            }
+         // before delimiter
+         case 1:
+            if( digit >= 0 )
+            {
+               numerator *= 10;
+               numerator += digit;
+               break;
+            }
+            else
+            {
+               ++phase;
+               if( num_traits<REAL>::is_rational )
+               {
+                  if( c == '.' )
+                     break;
+               }
+               else
+               {
+                  if( c == '/' )
+                  {
+                     denominator = 0;
+                     break;
+                  }
+               }
+            }
+         // after delimiter
+         case 2:
+            if( digit >= 0 )
+            {
+               if( num_traits<REAL>::is_rational )
+               {
+                  numerator *= 10;
+                  numerator += digit;
+                  denominator *= 10;
+               }
+               else
+               {
+                  denominator *= 10;
+                  denominator += digit;
+               }
+            }
+            else if( ( c == 'e' || c == 'E' ) && num_traits<REAL>::is_rational )
+               ++phase;
+            else
+               success = false;
+            break;
+         // exponent sign
+         case 3:
+            ++phase;
+            if( c == '+' )
+               break;
+            else if( c == '-' )
+            {
+               exp_negated = true;
+               break;
+            }
+         // exponent value
+         case 4:
+            if( digit >= 0 )
+            {
+               exponent *= 10;
+               exponent += digit;
+               break;
+            }
+            else
+               ++phase;
+         default:
+            success = false;
+            break;
+         }
+         if( !success )
+            break;
+      }
+      if( success )
+      {
+         if( num_negated )
+            numerator *= -1;
+         if( exp_negated )
+            exponent *= -1;
+         number = REAL(Rational(numerator, denominator) * pow(10, exponent));
+      }
+      else
+      {
+         fmt::print( stderr,
+                     "WARNING: {} is not representable in arithmetic {}!\n",
+                     s, typeid(REAL).name() );
+         number = 0;
+      }
+   }
+   return number;
+}
 
 } // namespace bugger
 

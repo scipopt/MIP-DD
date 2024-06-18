@@ -6,6 +6,7 @@ Features
 
 - enable SCIP interface to restrict limits automatically with respect to a variability margin defined by parameter scip.limitspace
 - support SoPlex as underlying solver
+- read and write files of problems and solutions in arbitrary arithmetics if the solver library does not provide the functionality
 
 Performance improvements
 ------------------------
@@ -13,7 +14,18 @@ Performance improvements
 - restrict solver limit settings automatically in order to accelerate the process by default
 - adjust number of batches every round automatically in order to maintain expenditure by default
 
-New parameters:
+Interface changes
+----------
+
+## SolverInterface:
+
+- templatize arithmetic type to allow instance precision to be independent from solver precision
+- add solution information to signature and return of readInstance() and writeInstance() to enable parsing and providing the reference solution
+- move out Retcode and rename to SolverRetcode in order to simplify handling return codes
+- make settings argument of doSetup() variable to restrict limit settings
+- add method getSolvingEffort() to adapt batch number
+
+New parameters
 ----------
 
 - expenditure = -1 : calculate the number of batches by ceiled division of the solving effort defined in the solver interface (-1: use original, 0: keep batches)

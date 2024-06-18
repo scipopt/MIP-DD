@@ -1,22 +1,24 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    BUGGER                                                                 */
+/*                            MIP-DD                                         */
 /*                                                                           */
 /* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
-/* This program is free software: you can redistribute it and/or modify      */
-/* it under the terms of the GNU Lesser General Public License as published  */
-/* by the Free Software Foundation, either version 3 of the License, or      */
-/* (at your option) any later version.                                       */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/* This program is distributed in the hope that it will be useful,           */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of            */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
-/* GNU Lesser General Public License for more details.                       */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
 /*                                                                           */
-/* You should have received a copy of the GNU Lesser General Public License  */
-/* along with this program.  If not, see <https://www.gnu.org/licenses/>.    */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with MIP-DD; see the file LICENSE. If not visit scipopt.org.       */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -40,6 +42,11 @@ namespace bugger
       OBJECTIVEFAIL = 3
    };
 
+   /**
+    * API to access the solver
+    * Optional methods are marked with **optional**. They should be implemented to enable further functionality.
+    * @tparam REAL arithmetic type of problem, solution, and modifications
+    */
    template <typename REAL>
    class SolverInterface
    {
@@ -55,29 +62,38 @@ namespace bugger
 
       SolverInterface(const Message& _msg) : msg(_msg) { }
 
-      /**
+      /** **optional**
        * prints the header of the used solver
+       * _if not implemented, then the solver specification will not be contained in the log_
        */
       virtual
       void
-      print_header( ) const = 0;
+      print_header( ) const { }
 
-      /**
+      /** **optional**
        * detects setting with given name
+       * _if not implemented, then it can not be used for automatic limit settings_
        * @param name
        * @return whether setting is available
        */
       virtual
       bool
-      has_setting(const String& name) const = 0;
+      has_setting(const String& name) const
+      {
+         return false;
+      }
 
-      /**
+      /** **optional**
        * parse Settings
+       * _if returned boost::none, then module Setting will be deactivated_
        * @param filename
        */
       virtual
       boost::optional<SolverSettings>
-      parseSettings(const String& filename) const = 0;
+      parseSettings(const String& filename) const
+      {
+         return boost::none;
+      }
 
       /**
        * loads settings, problem, and solution
@@ -98,8 +114,9 @@ namespace bugger
       std::pair<char, SolverStatus>
       solve(const Vec<int>& passcodes) = 0;
 
-      /**
+      /** **optional**
        * provides measure for the solving effort to adapt batch number
+       * _if returned -1 initially, then automatic batch adaption will be deactivated_
        * @return a long long int: Non-negative value proportional to effort of the solve or -1 if unknown
        */
       virtual
@@ -109,69 +126,42 @@ namespace bugger
          return -1;
       }
 
-      /**
+      /** **optional**
        * read setting-problem-solution tuple from files
+       * _if returned boost::none for setting, module Setting will be deactivated_
+       * _if returned boost::none for problem or solution, then internal parsers give a try_
        * @param settings_filename
        * @param problem_filename
        * @param solution_filename
+       * @return optionalized tuple of setting, problem, and solution
        */
       virtual
       std::tuple<boost::optional<SolverSettings>, boost::optional<Problem<REAL>>, boost::optional<Solution<REAL>>>
-      readInstance(const String& settings_filename, const String& problem_filename, const String& solution_filename) = 0;
+      readInstance(const String& settings_filename, const String& problem_filename, const String& solution_filename)
+      {
+         return { boost::none, boost::none, boost::none };
+      }
 
-      /**
+      /** **optional**
        * write stored setting-problem-solution tuple to files
+       * _if returned false for setting, no settings will be written which is deprecated_
+       * _if returned false for problem or solution, then internal writers giva a try_
        * @param filename
        * @param writesettings
        * @param writesolution
-       * @return whether problem is written successful
+       * @return boolean tuple whether setting, problem, and solution are not required or written successfully
        */
       virtual
-      bool
-      writeInstance(const String& filename, const bool& writesettings, const bool& writesolution) const = 0;
+      std::tuple<bool, bool, bool>
+      writeInstance(const String& filename, const bool& writesettings, const bool& writesolution) const
+      {
+         return { !writesettings, false, !writesolution };
+      }
 
       virtual
       ~SolverInterface() = default;
 
    protected:
-
-      REAL
-      get_primal_activity(const SparseVectorView<REAL>& data, const Solution<REAL>& solution) const
-      {
-         StableSum<REAL> sum;
-         for( int i = 0; i < data.getLength( ); ++i )
-            sum.add(data.getValues( )[ i ] * solution.primal[ data.getIndices( )[ i ] ]);
-         return sum.get( );
-      }
-
-      REAL
-      get_ray_activity(const SparseVectorView<REAL>& data, const Solution<REAL>& solution) const
-      {
-         StableSum<REAL> sum;
-         for( int i = 0; i < data.getLength( ); ++i )
-            sum.add(data.getValues( )[ i ] * solution.ray[ data.getIndices( )[ i ] ]);
-         return sum.get( );
-      }
-
-      REAL
-      get_primal_objective(const Solution<REAL>& solution) const
-      {
-         StableSum<REAL> sum { model->getObjective().offset };
-         for( int i = 0; i < model->getNCols(); ++i )
-            if( !model->getColFlags()[i].test( ColFlag::kFixed ) )
-               sum.add(model->getObjective().coefficients[i] * solution.primal[i]);
-         return sum.get( );
-      }
-
-      REAL
-      get_ray_objective(const Solution<REAL>& solution) const
-      {
-         StableSum<REAL> sum;
-         for( int i = 0; i < model->getNCols(); ++i )
-            if( !model->getColFlags()[i].test( ColFlag::kFixed ) )
-               sum.add(model->getObjective().coefficients[i] * solution.ray[i]);
-         return sum.get( );
-      }
 
       REAL
       relax(const REAL& bound, const bool& increase, const REAL& tolerance, const REAL& infinity) const
@@ -257,7 +247,7 @@ namespace bugger
                   if( model->getRowFlags()[row].test( RowFlag::kRedundant ) )
                      continue;
 
-                  REAL activity { get_primal_activity(model->getConstraintMatrix().getRowCoefficients(row), solution[i]) };
+                  REAL activity { model->getPrimalActivity(solution[i], row) };
 
                   if( ( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < relax( model->getConstraintMatrix().getLeftHandSides()[row],  false, tolerance, infinity ) )
                    || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity > relax( model->getConstraintMatrix().getRightHandSides()[row], true,  tolerance, infinity ) ) )
@@ -296,7 +286,7 @@ namespace bugger
                   if( model->getRowFlags()[row].test( RowFlag::kRedundant ) )
                      continue;
 
-                  REAL activity { get_ray_activity(model->getConstraintMatrix().getRowCoefficients(row), solution[i]) };
+                  REAL activity { model->getRayActivity(solution[i], row) };
 
                   if( ( !model->getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < -scale )
                    || ( !model->getRowFlags()[row].test( RowFlag::kRhsInf ) && activity >  scale ) )
@@ -327,7 +317,7 @@ namespace bugger
          {
             assert(solution.ray.size() == model->getNCols());
 
-            REAL slope { get_ray_objective(solution) };
+            REAL slope { model->getRayObjective(solution) };
             REAL scale { };
 
             for( int col = 0; col < model->getNCols(); ++col )
@@ -348,7 +338,7 @@ namespace bugger
          {
             assert(solution.primal.size() == model->getNCols());
 
-            result = get_primal_objective(solution);
+            result = model->getPrimalObjective(solution);
          }
 
          if( model->getObjective().sense )

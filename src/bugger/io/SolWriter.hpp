@@ -22,62 +22,50 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef _BUGGER_MISC_TIMER_HPP_
-#define _BUGGER_MISC_TIMER_HPP_
+#ifndef _BUGGER_IO_SOL_WRITER_HPP_
+#define _BUGGER_IO_SOL_WRITER_HPP_
 
-#ifdef BUGGER_TBB
-#include "bugger/misc/tbb.hpp"
-#else
-#include <chrono>
+#include "bugger/data/Solution.hpp"
+
+#ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
+#include <boost/iostreams/filter/gzip.hpp>
 #endif
+#ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2
+#include <boost/iostreams/filter/bzip2.hpp>
+#endif
+
 
 namespace bugger
 {
-
-#ifdef BUGGER_TBB
-class Timer
+/// Writer to write solution structures into a sol file
+template <typename REAL>
+struct SolWriter
 {
- public:
-   Timer( double& time_ ) : time( time_ ) { start = tbb::tick_count::now(); }
-
-
-   double
-   getTime() const
+   static void
+   writeSol( const String& filename, const Problem<REAL>& prob, const Solution<REAL>& sol )
    {
-      return ( tbb::tick_count::now() - start ).seconds();
-   }
-
-   ~Timer() { time += ( tbb::tick_count::now() - start ).seconds(); }
-
- private:
-   tbb::tick_count start;
-   double& time;
-};
-#else
-class Timer
-{
- public:
-   Timer( double& time_ ) : time( time_ ) { start = std::chrono::steady_clock::now(); }
-
-   double
-   getTime() const
-   {
-      return std::chrono::duration_cast<std::chrono::milliseconds>(
-                 std::chrono::steady_clock::now() - start )
-                 .count() /1000.0;
-   }
-
-   ~Timer() {
-      time += std::chrono::duration_cast<std::chrono::milliseconds>(
-                  std::chrono::steady_clock::now() - start )
-                  .count() /1000.0;
-   }
-
- private:
-   std::chrono::steady_clock::time_point start;
-   double& time;
-};
+      if( sol.status != SolutionStatus::kFeasible )
+         return;
+      std::ofstream file( filename, std::ofstream::out );
+      boost::iostreams::filtering_ostream out;
+#ifdef PAPILO_USE_BOOST_IOSTREAMS_WITH_ZLIB
+      if( boost::algorithm::ends_with( filename, ".gz" ) )
+         out.push( boost::iostreams::gzip_compressor() );
 #endif
+#ifdef PAPILO_USE_BOOST_IOSTREAMS_WITH_BZIP2
+      if( boost::algorithm::ends_with( filename, ".bz2" ) )
+         out.push( boost::iostreams::bzip2_compressor() );
+#endif
+      out.push( file );
+      fmt::print( out, "{:<35} {:}\n", "=obj=", prob.getPrimalObjective(sol) );
+      for( int i = 0; i < prob.getNCols(); ++i )
+      {
+         if( !prob.getColFlags()[i].test( ColFlag::kInactive ) && sol.primal[i] != 0 )
+            fmt::print( out, "{:<35} {:<18} obj:{:}\n",
+                        prob.getVariableNames()[i], sol.primal[i], prob.getObjective().coefficients[i] );
+      }
+   }
+};
 
 } // namespace bugger
 

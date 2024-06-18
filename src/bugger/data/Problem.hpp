@@ -1,22 +1,24 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    BUGGER                                                                 */
+/*                            MIP-DD                                         */
 /*                                                                           */
 /* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
-/* This program is free software: you can redistribute it and/or modify      */
-/* it under the terms of the GNU Lesser General Public License as published  */
-/* by the Free Software Foundation, either version 3 of the License, or      */
-/* (at your option) any later version.                                       */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/* This program is distributed in the hope that it will be useful,           */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of            */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
-/* GNU Lesser General Public License for more details.                       */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
 /*                                                                           */
-/* You should have received a copy of the GNU Lesser General Public License  */
-/* along with this program.  If not, see <https://www.gnu.org/licenses/>.    */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with MIP-DD; see the file LICENSE. If not visit scipopt.org.       */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -27,6 +29,7 @@
 #include "bugger/data/Objective.hpp"
 #include "bugger/data/SingleRow.hpp"
 #include "bugger/data/VariableDomains.hpp"
+#include "bugger/data/Solution.hpp"
 #include "bugger/io/Message.hpp"
 #include "bugger/misc/MultiPrecision.hpp"
 #include "bugger/misc/StableSum.hpp"
@@ -37,9 +40,9 @@
 #include "bugger/misc/tbb.hpp"
 #endif
 
+
 namespace bugger
 {
-
 /// struct to hold counters for up an downlocks of a column
 struct Locks
 {
@@ -351,121 +354,176 @@ class Problem
       return constraintMatrix.getRowSizes();
    }
 
-   /// substitute a variable in the objective using an equality constraint
-   /// given by a row index
-   void
-   substituteVarInObj( const Num<REAL>& num, int col, int equalityrow );
-
-   bool
-   computeSolViolations( const Num<REAL>& num, const Vec<REAL>& sol,
-                         REAL& boundviolation, REAL& rowviolation,
-                         REAL& intviolation ) const
+   /// get primal objective value for given solution
+   REAL
+   getPrimalObjective(const Solution<REAL>& solution) const
    {
-      if( (int) sol.size() != getNCols() )
-         return false;
-
-      boundviolation = 0;
-      intviolation = 0;
-
-      for( int i = 0; i != getNCols(); ++i )
-      {
-         if( !variableDomains.flags[i].test( ColFlag::kLbInf ) &&
-             sol[i] < variableDomains.lower_bounds[i] )
-         {
-            REAL thisviol = variableDomains.lower_bounds[i] - sol[i];
-
-            if( !num.isFeasZero( thisviol ) )
-               Message::debug( this,
-                               "lower bound {} of column {} with solution "
-                               "value {} is violated by {}\n",
-                               double( variableDomains.lower_bounds[i] ), i,
-                               double( sol[i] ), double( thisviol ) );
-
-            boundviolation = max( boundviolation, thisviol );
-         }
-
-         if( !variableDomains.flags[i].test( ColFlag::kUbInf ) &&
-             sol[i] > variableDomains.upper_bounds[i] )
-         {
-            REAL thisviol = sol[i] - variableDomains.upper_bounds[i];
-
-            if( !num.isFeasZero( thisviol ) )
-               Message::debug( this,
-                               "upper bound {} of column {} with solution "
-                               "value {} is violated by {}\n",
-                               double( variableDomains.upper_bounds[i] ), i,
-                               double( sol[i] ), double( thisviol ) );
-
-            boundviolation = max( boundviolation, thisviol );
-         }
-
-         if( variableDomains.flags[i].test( ColFlag::kIntegral ) )
-         {
-            REAL thisviol = abs( round( sol[i] ) - sol[i] );
-
-            if( !num.isFeasZero( thisviol ) )
-               Message::debug( this,
-                               "integrality of column {} with solution value "
-                               "{} is violated by {}\n",
-                               i, double( sol[i] ), double( thisviol ) );
-
-            intviolation = max( intviolation, thisviol );
-         }
-      }
-
-      rowviolation = 0;
-
-      const Vec<RowFlags>& rflags = getRowFlags();
-      const Vec<REAL>& lhs = constraintMatrix.getLeftHandSides();
-      const Vec<REAL>& rhs = constraintMatrix.getRightHandSides();
-
-      for( int i = 0; i != getNRows(); ++i )
-      {
-         auto rowvec = constraintMatrix.getRowCoefficients( i );
-         const REAL* vals = rowvec.getValues();
-         const int* inds = rowvec.getIndices();
-
-         StableSum<REAL> activitySum;
-         for( int j = 0; j != rowvec.getLength(); ++j )
-            activitySum.add( sol[inds[j]] * vals[j] );
-
-         REAL activity = activitySum.get();
-
-         if( !rflags[i].test( RowFlag::kRhsInf )
-             && num.isFeasGT( activity, rhs[i] ) )
-         {
-            Message::debug( this,
-                            "the activity {} of constraint {}  "
-                            "{} is greater than the righthandside {}\n",
-                            activity, i, rhs[i] );
-            rowviolation = max( rowviolation, activity - rhs[i] );
-         }
-
-         if( !rflags[i].test( RowFlag::kLhsInf )
-             && num.isFeasLT( activity, rhs[i] ) )
-         {
-            Message::debug( this,
-                            "the activity {} of constraint {}  "
-                            "{} is greater than the lefthandside {}\n",
-                            activity, i, lhs[i] );
-            rowviolation = max( rowviolation, lhs[i] - activity );
-         }
-      }
-
-      return num.isFeasZero( boundviolation ) &&
-             num.isFeasZero( intviolation ) && num.isFeasZero( rowviolation );
+      assert( solution.status == SolutionStatus::kFeasible || solution.status == SolutionStatus::kUnbounded );
+      assert( solution.primal.size() == getNCols() );
+      const auto& data = getObjective().coefficients;
+      StableSum<REAL> sum { getObjective().offset };
+      for( int i = 0; i < getNCols(); ++i )
+         if( !getColFlags()[i].test( ColFlag::kFixed ) )
+            sum.add(data[i] * solution.primal[i]);
+      return sum.get( );
    }
 
+   /// get ray objective value for given solution
    REAL
-   computeSolObjective( const Vec<REAL>& sol ) const
+   getRayObjective(const Solution<REAL>& solution) const
    {
-      assert( (int) sol.size() == getNCols() );
-
-      StableSum<REAL> obj( objective.offset );
+      assert( solution.status == SolutionStatus::kUnbounded );
+      assert( solution.ray.size() == getNCols() );
+      const auto& data = getObjective().coefficients;
+      StableSum<REAL> sum;
       for( int i = 0; i < getNCols(); ++i )
-         obj.add( sol[i] * objective.coefficients[i] );
+         if( !getColFlags()[i].test( ColFlag::kFixed ) )
+            sum.add(data[i] * solution.ray[i]);
+      return sum.get( );
+   }
 
-      return obj.get();
+   /// get primal activity value for given solution and index of optionally rounded row
+   REAL
+   getPrimalActivity(const Solution<REAL>& solution, int row, bool roundrow = false) const
+   {
+      assert( solution.status == SolutionStatus::kFeasible || solution.status == SolutionStatus::kUnbounded );
+      assert( solution.primal.size() == getNCols() );
+      const auto& data = getConstraintMatrix().getRowCoefficients(row);
+      StableSum<REAL> sum;
+      for( int i = 0; i < data.getLength( ); ++i )
+         sum.add((roundrow ? round(data.getValues( )[i]) : data.getValues( )[i]) * solution.primal[data.getIndices( )[i]]);
+      return sum.get( );
+   }
+
+   /// get ray activity value for given solution and index of optionally rounded row
+   REAL
+   getRayActivity(const Solution<REAL>& solution, int row, bool roundrow = false) const
+   {
+      assert( solution.status == SolutionStatus::kUnbounded );
+      assert( solution.ray.size() == getNCols() );
+      const auto& data = getConstraintMatrix().getRowCoefficients(row);
+      StableSum<REAL> sum;
+      for( int i = 0; i < data.getLength( ); ++i )
+         sum.add((roundrow ? round(data.getValues( )[i]) : data.getValues( )[i]) * solution.ray[data.getIndices( )[i]]);
+      return sum.get( );
+   }
+
+   /// print feasibility for given solution and return whether it is tolerable
+   bool
+   checkFeasibility(const Solution<REAL>& solution, const Num<REAL>& num, const Message& msg) const
+   {
+      msg.info("\nCheck:\n");
+      if( solution.status == SolutionStatus::kUnknown )
+      {
+         msg.info("Unknown.\n");
+         return true;
+      }
+      else if( solution.status == SolutionStatus::kInfeasible )
+      {
+         msg.info("Infeasible.\n");
+         return true;
+      }
+      else if( solution.status == SolutionStatus::kUnbounded )
+      {
+         msg.info("Unbounded.\n");
+         return true;
+      }
+      assert( solution.status == SolutionStatus::kFeasible );
+      assert( solution.primal.size() == getNCols() );
+      const auto& lb = getLowerBounds();
+      const auto& ub = getUpperBounds();
+      REAL viol;
+      REAL maxviol { };
+      int maxindex = -1;
+      bool maxrow = false;
+      bool maxupper = false;
+      bool maxintegral = false;
+      for( int col = 0; col < getNCols(); col++ )
+      {
+         if( getColFlags()[col].test( ColFlag::kInactive ) )
+            continue;
+         if( !getColFlags()[col].test( ColFlag::kLbInf ) && solution.primal[col] < lb[col] )
+         {
+            msg.detailed( "\tColumn {:<3} violates lower bound ({:<3} < {:<3})\n", getVariableNames()[col], solution.primal[col], lb[col] );
+            viol = lb[col] - solution.primal[col];
+            if( viol > maxviol )
+            {
+               maxviol = viol;
+               maxindex = col;
+               maxrow = false;
+               maxupper = false;
+               maxintegral = false;
+            }
+         }
+         if( !getColFlags()[col].test( ColFlag::kUbInf ) && solution.primal[col] > ub[col] )
+         {
+            msg.detailed( "\tColumn {:<3} violates upper bound ({:<3} > {:<3})\n", getVariableNames()[col], solution.primal[col], ub[col] );
+            viol = solution.primal[col] - ub[col];
+            if( viol > maxviol )
+            {
+               maxviol = viol;
+               maxindex = col;
+               maxrow = false;
+               maxupper = true;
+               maxintegral = false;
+            }
+         }
+         if( getColFlags()[col].test( ColFlag::kIntegral ) && solution.primal[col] != round(solution.primal[col]) )
+         {
+            msg.detailed( "\tColumn {:<3} violates integrality property ({:<3} != {:<3})\n", getVariableNames()[col], solution.primal[col], round(solution.primal[col]) );
+            viol = abs(solution.primal[col] - round(solution.primal[col]));
+            if( viol > maxviol )
+            {
+               maxviol = viol;
+               maxindex = col;
+               maxrow = false;
+               maxupper = false;
+               maxintegral = true;
+            }
+         }
+      }
+      const auto& lhs = getConstraintMatrix().getLeftHandSides();
+      const auto& rhs = getConstraintMatrix().getRightHandSides();
+      for( int row = 0; row < getNRows(); row++ )
+      {
+         if( getRowFlags()[row].test( RowFlag::kRedundant ) )
+            continue;
+         REAL activity { getPrimalActivity(solution, row) };
+         if( !getRowFlags()[row].test( RowFlag::kLhsInf ) && activity < lhs[row] )
+         {
+            msg.detailed( "\tRow {:<3} violates left side ({:<3} < {:<3})\n", getConstraintNames()[row], activity, lhs[row] );
+            viol = lhs[row] - activity;
+            if( viol > maxviol )
+            {
+               maxviol = viol;
+               maxindex = row;
+               maxrow = true;
+               maxupper = false;
+               maxintegral = false;
+            }
+         }
+         if( !getRowFlags()[row].test( RowFlag::kRhsInf ) && activity > rhs[row] )
+         {
+            msg.detailed( "\tRow {:<3} violates right side ({:<3} > {:<3})\n", getConstraintNames()[row], activity, rhs[row] );
+            viol = activity - rhs[row];
+            if( viol > maxviol )
+            {
+               maxviol = viol;
+               maxindex = row;
+               maxrow = true;
+               maxupper = true;
+               maxintegral = false;
+            }
+         }
+      }
+      bool infeasible = num.isEpsGT(maxviol, 0);
+      msg.info("Solution is {}.\n", infeasible ? "infeasible" : num.isZetaGT(maxviol, 0) ? "tolerable" : "feasible");
+      if( maxindex >= 0 )
+         msg.info("Maximum violation {:<3} of {} {:<3} {}.\n", maxviol, maxrow ? "row" : "column", (maxrow ? getConstraintNames() : getVariableNames())[maxindex], maxintegral ? "integral" : (maxrow ? (maxupper ? "right" : "left") : (maxupper ? "upper" : "lower")));
+      else
+         msg.info("No violations detected.\n");
+      msg.info("\n");
+      return !infeasible;
    }
 
    /// return const reference to vector of row activities
@@ -732,50 +790,6 @@ class Problem
    /// up and down locks for each column
    Vec<Locks> locks;
 };
-
-template <typename REAL>
-void
-Problem<REAL>::substituteVarInObj( const Num<REAL>& num, int col, int row )
-{
-   auto& consMatrix = getConstraintMatrix();
-   auto& objcoefficients = getObjective().coefficients;
-   REAL freevarCoefInObj = objcoefficients[col];
-
-   if( freevarCoefInObj == REAL{ 0 } )
-      return;
-
-   const auto equalityrow = consMatrix.getRowCoefficients( row );
-   const int length = equalityrow.getLength();
-   const REAL* values = equalityrow.getValues();
-   const int* indices = equalityrow.getIndices();
-
-   int consid = consMatrix.getSparseIndex( col, row );
-   assert( consid >= 0 );
-   assert( indices[consid] == col );
-   REAL freevarCoefInCons = values[consid];
-
-   REAL substscale = -freevarCoefInObj / freevarCoefInCons;
-
-   objcoefficients[col] = REAL{ 0.0 };
-   for( int j = 0; j < length; ++j )
-   {
-      if( indices[j] == col )
-         continue;
-
-      REAL newobjcoeff = objcoefficients[indices[j]] + values[j] * substscale;
-      if( num.isEpsZero(newobjcoeff) )
-         newobjcoeff = 0;
-
-      objcoefficients[indices[j]] = newobjcoeff;
-   }
-
-   assert( consMatrix.getRowFlags()[row].test( RowFlag::kEquation ) &&
-           !consMatrix.getRowFlags()[row].test( RowFlag::kRhsInf ) &&
-           !consMatrix.getRowFlags()[row].test( RowFlag::kLhsInf ) &&
-           consMatrix.getLeftHandSides()[row] ==
-               consMatrix.getRightHandSides()[row] );
-   getObjective().offset -= consMatrix.getLeftHandSides()[row] * substscale;
-}
 
 } // namespace bugger
 
