@@ -51,8 +51,6 @@ public:
 
 enum class SolverStatus : int {
 
-   kUncertified = -2,
-
    kUndefinedError = -1,
 
    kUnknown = 0,
@@ -96,7 +94,6 @@ enum class SolverStatus : int {
 };
 
 using SolverStatusCheck = EnumCheck< SolverStatus,
-      SolverStatus::kUncertified,
       SolverStatus::kUndefinedError,
       SolverStatus::kUnknown,
       SolverStatus::kOptimal,
@@ -122,9 +119,6 @@ std::ostream &operator<<(std::ostream &out, const SolverStatus status) {
    std::string val;
    switch( status )
    {
-      case SolverStatus::kUncertified:
-         val = "uncertified";
-         break;
       case SolverStatus::kInfeasible:
          val = "infeasible";
          break;
