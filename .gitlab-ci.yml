@@ -24,7 +24,7 @@ stages:
     name: gcc:10
   before_script:
     - apt-get update
-    - apt-get install -y cmake libtbb-dev libgmp-dev libmpfr-dev
+    - apt-get install -y cmake libtbb-dev libmpfr-dev
     - export CFLAGS="-Werror"
     - export CXXFLAGS="-Werror"
     - export LD_LIBRARY_PATH=${INSTALL_DIR}/lib:${LD_LIBRARY_PATH}
@@ -69,7 +69,7 @@ boost-soplex-scip:
     - git clone https://github.com/scipopt/scip.git ${SCIP_DIR}
     - cd ${SCIP_DIR}
     - git checkout ${SCIP_REVISION}
-    - cmake . -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DZIMPL=off -DREADLINE=off -DGMP=off -DPAPILO=off -DIPOPT=off
+    - cmake . -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DREADLINE=off -DGMP=off -DPAPILO=off -DZIMPL=off -DIPOPT=off
     - make -j$(nproc) install
 
 .test:
