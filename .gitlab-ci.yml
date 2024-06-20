@@ -2,7 +2,7 @@ variables:
   BOOST_VERSION: 1.80.0
   SOPLEX_REVISION: bugfix-70
   VIPR_REVISION: master
-  SCIP_REVISION: v90-bugfix
+  SCIP_REVISION: exact-rational
   SETUP_DIR: ${CI_PROJECT_DIR}/setups
   INSTALL_DIR: ${CI_PROJECT_DIR}/../installs
   BUILD_DIR: ${CI_PROJECT_DIR}/builds
