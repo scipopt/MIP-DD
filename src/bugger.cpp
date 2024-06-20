@@ -38,8 +38,11 @@
 #include "bugger/modules/VarroundModul.hpp"
 #include "bugger/modules/ConsroundModul.hpp"
 #if   defined(BUGGER_WITH_SCIP)
+#if   !defined(SCIP_WITH_EXACTSOLVE)
 #include "bugger/interfaces/ScipInterface.hpp"
+#else
 #include "bugger/interfaces/ScipExactInterface.hpp"
+#endif
 #elif defined(BUGGER_WITH_SOPLEX)
 #include "bugger/interfaces/SoplexInterface.hpp"
 #endif

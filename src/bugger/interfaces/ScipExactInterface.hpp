@@ -1068,6 +1068,13 @@ namespace bugger
       }
    };
 
+   template <typename REAL>
+   std::shared_ptr<SolverFactory<REAL>>
+   load_solver_factory( )
+   {
+      return std::shared_ptr<SolverFactory<REAL>>( new ScipExactFactory<REAL>( ) );
+   }
+
 } // namespace bugger
 
 #endif
