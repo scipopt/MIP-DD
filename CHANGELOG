@@ -7,6 +7,7 @@ Features
 - enable SCIP interface to restrict limits automatically with respect to a variability margin defined by parameter scip.limitspace
 - support SoPlex as underlying solver
 - read and write files of problems and solutions in arbitrary arithmetics if the solver library does not provide the functionality
+- add objective limit option to the SCIP interface
 
 Performance improvements
 ------------------------
