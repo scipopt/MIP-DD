@@ -59,6 +59,7 @@ namespace bugger
 
       int arithmetic = 0;
       int mode = -1;
+      double objectiverim = -1.0;
       double limitspace = 1.0;
       bool set_dual_limit = true;
       bool set_prim_limit = true;
@@ -293,8 +294,24 @@ namespace bugger
                // check objective by best solution evaluation
                if( retcode == SolverRetcode::OKAY && objective )
                {
-                  // check solution objective instead of primal bound if no ray is provided
-                  REAL bound = abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPgetPrimalbound(scip);
+                  // instead of primal bound use solution objective if no ray or infinity value if objective limit
+                  REAL bound { SCIPgetPrimalbound(scip) };
+
+                  if( abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible )
+                     bound = SCIPgetSolOrigObj(scip, sols[0]);
+                  else if( parameters.objectiverim >= 0.0 && parameters.objectiverim < SCIPinfinity(scip) )
+                  {
+                     if( this->model->getObjective( ).sense )
+                     {
+                        if( SCIPgetPrimalbound(scip) >= SCIP_Real(this->relax( SCIP_Real(parameters.objectiverim) + SCIP_Real(this->value), false, SCIPepsilon(scip), SCIPinfinity(scip) )) )
+                           bound = solution.size() >= 1 ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPinfinity(scip);
+                     }
+                     else
+                     {
+                        if( SCIPgetPrimalbound(scip) <= SCIP_Real(this->relax( SCIP_Real(-parameters.objectiverim) + SCIP_Real(this->value), true, SCIPepsilon(scip), SCIPinfinity(scip) )) )
+                           bound = solution.size() >= 1 ? SCIPgetSolOrigObj(scip, sols[0]) : -SCIPinfinity(scip);
+                     }
+                  }
 
                   if( solution.size() == 0 )
                      solution.emplace_back(SolutionStatus::kInfeasible);
@@ -790,18 +807,23 @@ namespace bugger
             SCIP_CALL(SCIPreleaseCons(scip, &cons));
          }
 
-         if( solution_exists && ( parameters.set_dual_limit || parameters.set_prim_limit ) )
+         if( solution_exists )
          {
-            for( const auto& pair : limits )
+            if( parameters.objectiverim >= 0.0 && parameters.objectiverim < SCIPinfinity(scip) )
+               SCIP_CALL(SCIPsetObjlimit(scip, max(min(SCIP_Real(obj.sense ? parameters.objectiverim : -parameters.objectiverim) + SCIP_Real(this->value), SCIPinfinity(scip)), -SCIPinfinity(scip))));
+            if( parameters.set_dual_limit || parameters.set_prim_limit )
             {
-               switch( pair.second )
+               for( const auto& pair : limits )
                {
-               case DUAL:
-                  SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), SCIP_Real(this->relax( this->value, obj.sense, 2 * SCIPsumepsilon(scip), SCIPinfinity(scip) ))));
-                  break;
-               case PRIM:
-                  SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), SCIP_Real(this->value)));
-                  break;
+                  switch( pair.second )
+                  {
+                  case DUAL:
+                     SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), SCIP_Real(this->relax( this->value, obj.sense, 2 * SCIPsumepsilon(scip), SCIPinfinity(scip) ))));
+                     break;
+                  case PRIM:
+                     SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), SCIP_Real(this->value)));
+                     break;
+                  }
                }
             }
          }
@@ -864,6 +886,7 @@ namespace bugger
       {
          parameterset.addParameter("scip.arithmetic", "arithmetic scip type (0: double)", parameters.arithmetic, 0, 0);
          parameterset.addParameter("scip.mode", "solve scip mode (-1: optimize, 0: count)", parameters.mode, -1, 0);
+         parameterset.addParameter("scip.objectiverim", "absolute margin for limiting objective or -1 for no limitation", parameters.objectiverim, -1.0);
          parameterset.addParameter("scip.limitspace", "relative margin when restricting limits or -1 for no restriction", parameters.limitspace, -1.0);
          parameterset.addParameter("scip.setduallimit", "terminate when dual bound is better than reference solution", parameters.set_dual_limit);
          parameterset.addParameter("scip.setprimlimit", "terminate when prim bound is as good as reference solution", parameters.set_prim_limit);
