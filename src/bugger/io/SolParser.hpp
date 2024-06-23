@@ -25,9 +25,9 @@
 #ifndef _BUGGER_IO_SOL_PARSER_HPP_
 #define _BUGGER_IO_SOL_PARSER_HPP_
 
-#include "bugger/misc/Num.hpp"
 #include "bugger/data/Solution.hpp"
 #include "bugger/misc/Hash.hpp"
+#include "bugger/misc/Num.hpp"
 
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
 #include <boost/iostreams/filter/gzip.hpp>
