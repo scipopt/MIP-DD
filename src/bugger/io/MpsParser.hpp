@@ -29,9 +29,9 @@
 #include <boost/utility/string_ref.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/spirit/include/qi.hpp>
-#include "bugger/misc/Num.hpp"
 #include "bugger/data/Problem.hpp"
 #include "bugger/misc/Hash.hpp"
+#include "bugger/misc/Num.hpp"
 
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
 #include <boost/iostreams/filter/gzip.hpp>
