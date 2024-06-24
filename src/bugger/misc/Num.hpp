@@ -366,11 +366,20 @@ template <typename REAL>
 REAL
 parse_number( const String& s )
 {
+   bool success = true;
    REAL number;
    std::stringstream ss;
    ss << s;
-   ss >> number;
-   if( ss.fail() || !ss.eof() )
+   // catch boost exception
+   try
+   {
+      ss >> number;
+   }
+   catch( boost::wrapexcept<std::runtime_error> const& )
+   {
+      success = false;
+   }
+   if( !success || ss.fail() || !ss.eof() )
    {
       Integral numerator = 0;
       Integral denominator = 1;
@@ -378,7 +387,7 @@ parse_number( const String& s )
       unsigned phase = 0;
       bool num_negated = false;
       bool exp_negated = false;
-      bool success = true;
+      success = true;
       for( char c : s )
       {
          int digit = '0' <= c && c <= '9' ? c - '0' : -1;
@@ -471,8 +480,12 @@ parse_number( const String& s )
       {
          if( num_negated )
             numerator *= -1;
-         number = exp_negated ? REAL(Rational(numerator, denominator) / boost::multiprecision::pow(Integral(10), exponent))
-                              : REAL(Rational(numerator, denominator) * boost::multiprecision::pow(Integral(10), exponent));
+         if( exp_negated )
+            denominator *= boost::multiprecision::pow( Integral(10), exponent );
+         else
+            numerator *= boost::multiprecision::pow( Integral(10), exponent );
+         // compute precise number
+         number = REAL( Rational( numerator, denominator ) );
       }
       else
       {
