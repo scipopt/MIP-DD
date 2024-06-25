@@ -31,9 +31,8 @@
 #include "bugger/data/Solution.hpp"
 #include "bugger/data/SparseStorage.hpp"
 #include "bugger/io/Message.hpp"
-#include "bugger/misc/Num.hpp"
 #include "bugger/misc/Vec.hpp"
-#include "bugger/misc/fmt.hpp"
+#include "bugger/misc/Num.hpp"
 #include <cassert>
 
 namespace bugger

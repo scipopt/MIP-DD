@@ -28,8 +28,8 @@
 #include "bugger/data/RowFlags.hpp"
 #include "bugger/data/VariableDomains.hpp"
 #include "bugger/misc/Flags.hpp"
-#include "bugger/misc/Num.hpp"
 #include "bugger/misc/Vec.hpp"
+#include "bugger/misc/Num.hpp"
 #include <tuple>
 
 namespace bugger
