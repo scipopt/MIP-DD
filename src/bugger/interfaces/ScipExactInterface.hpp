@@ -113,7 +113,7 @@ namespace bugger
    const String ScipExactParameters::CERT { "certificate/filename" };
 
    template <typename REAL>
-   class ScipExactInterface : public SolverInterface<REAL>, public Countable<ScipExactInterface>
+   class ScipExactInterface : public SolverInterface<REAL>, public Countable<ScipExactInterface<REAL>>
    {
    private:
 
@@ -909,15 +909,15 @@ namespace bugger
          switch( parameters.arithmetic )
          {
          case 0:
-            SCIP_CALL(SCIPsetBoolParam(scip, ScipExactParameters::EXAC.c_str(), FALSE));
+            SCIPsetBoolParam(scip, ScipExactParameters::EXAC.c_str(), FALSE);
             break;
          case 1:
-            SCIP_CALL(SCIPsetBoolParam(scip, ScipExactParameters::EXAC.c_str(), TRUE));
+            SCIPsetBoolParam(scip, ScipExactParameters::EXAC.c_str(), TRUE);
             break;
          default:
-            SPX_MSG_ERROR(soplex->spxout << "unknown solver arithmetic\n");
+            SCIPerrorMessage("unknown solver arithmetic\n");
          }
-         SCIP_CALL(SCIPsetStringParam(scip, ScipExactParameters::CERT.c_str(), parameters.certificate ? ("bugger" + std::to_string(this->count())).c_str() : ""));
+         SCIPsetStringParam(scip, ScipExactParameters::CERT.c_str(), parameters.certificate ? ("bugger" + std::to_string(this->count())).c_str() : "");
       }
    };
 
