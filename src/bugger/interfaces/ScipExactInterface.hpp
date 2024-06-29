@@ -27,11 +27,9 @@
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
 
-#include "boost/detail/atomic_count.hpp"
 #include "scip/scip.h"
 #include "scip/scipdefplugins.h"
 #include "scip/struct_paramset.h"
-#include "scip/certificate.h"
 #include "bugger/data/Problem.hpp"
 #include "bugger/data/ProblemBuilder.hpp"
 #include "bugger/data/SolverSettings.hpp"
@@ -57,11 +55,6 @@ namespace bugger
    public:
 
       Countable( )
-      {
-         ++cs_count_;
-      }
-
-      Countable(Countable const&)
       {
          ++cs_count_;
       }
@@ -832,8 +825,8 @@ namespace bugger
             const auto& rowvals = rowvec.getValues( );
             int nrowcols = rowvec.getLength( );
             SCIP_CONS* cons;
-            RatSetReal(lhs, rflags[ row ].test(RowFlag::kLhsInf) ? -SCIPinfinity(scip) : SCIP_Real(lhs_values[ row ]));
-            RatSetReal(rhs, rflags[ row ].test(RowFlag::kRhsInf) ? SCIPinfinity(scip) : SCIP_Real(rhs_values[ row ]));
+            RatSetReal(lhs, rflags[row].test(RowFlag::kLhsInf) ? -SCIPinfinity(scip) : SCIP_Real(lhs_values[row]));
+            RatSetReal(rhs, rflags[row].test(RowFlag::kRhsInf) ? SCIPinfinity(scip) : SCIP_Real(rhs_values[row]));
             for( int i = 0; i < nrowcols; ++i )
             {
                assert(!this->model->getColFlags( )[rowinds[i]].test(ColFlag::kFixed));
