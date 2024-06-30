@@ -22,8 +22,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BUGGER_INTERFACES_SCIPEXACTINTERFACE_HPP__
-#define __BUGGER_INTERFACES_SCIPEXACTINTERFACE_HPP__
+#ifndef __BUGGER_INTERFACES_SCIPRATIONALINTERFACE_HPP__
+#define __BUGGER_INTERFACES_SCIPRATIONALINTERFACE_HPP__
 
 #include "ScipInterface.hpp"
 
@@ -31,7 +31,7 @@
 namespace bugger
 {
    template <typename REAL>
-   class ScipExactInterface : public SolverInterface<REAL>
+   class ScipRationalInterface : public SolverInterface<REAL>
    {
    private:
 
@@ -42,9 +42,9 @@ namespace bugger
 
    public:
 
-      explicit ScipExactInterface(const Message& _msg, const ScipParameters& _parameters,
-                                  const HashMap<String, char>& _limits) : SolverInterface<REAL>(_msg),
-                                  parameters(_parameters), limits(_limits)
+      explicit ScipRationalInterface(const Message& _msg, const ScipParameters& _parameters,
+                                     const HashMap<String, char>& _limits) : SolverInterface<REAL>(_msg),
+                                     parameters(_parameters), limits(_limits)
       {
          if( SCIPcreate(&scip) != SCIP_OKAY || SCIPincludeDefaultPlugins(scip) != SCIP_OKAY )
             throw std::runtime_error("could not create SCIP");
@@ -620,7 +620,7 @@ namespace bugger
          return { successsettings, successproblem, successsolution };
       }
 
-      ~ScipExactInterface( ) override
+      ~ScipRationalInterface( ) override
       {
          if( scip != nullptr )
          {

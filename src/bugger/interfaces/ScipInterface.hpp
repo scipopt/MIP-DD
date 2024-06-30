@@ -332,7 +332,7 @@ namespace bugger
 } // namespace bugger
 
 #include "ScipRealInterface.hpp"
-#include "ScipExactInterface.hpp"
+#include "ScipRationalInterface.hpp"
 
 
 namespace bugger
@@ -375,7 +375,7 @@ namespace bugger
             scip = std::unique_ptr<SolverInterface<REAL>>( new ScipRealInterface<REAL>( msg, parameters, limits ) );
             break;
          case 1:
-            scip = std::unique_ptr<SolverInterface<REAL>>( new ScipExactInterface<REAL>( msg, parameters, limits ) );
+            scip = std::unique_ptr<SolverInterface<REAL>>( new ScipRationalInterface<REAL>( msg, parameters, limits ) );
             break;
          default:
             throw std::runtime_error("unknown solver arithmetic");
