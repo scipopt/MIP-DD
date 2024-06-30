@@ -25,7 +25,6 @@
 #include <fstream>
 #include <algorithm>
 #include <boost/program_options.hpp>
-
 #include "bugger/data/BuggerRun.hpp"
 #include "bugger/misc/VersionLogger.hpp"
 #include "bugger/modules/ConstraintModul.hpp"
@@ -38,7 +37,7 @@
 #include "bugger/modules/VarroundModul.hpp"
 #include "bugger/modules/ConsroundModul.hpp"
 #if   defined(BUGGER_WITH_SCIP)
-#include "bugger/interfaces/ScipExactInterface.hpp"
+#include "bugger/interfaces/ScipInterface.hpp"
 #elif defined(BUGGER_WITH_SOPLEX)
 #include "bugger/interfaces/SoplexInterface.hpp"
 #endif
