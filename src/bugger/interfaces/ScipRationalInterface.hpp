@@ -44,8 +44,8 @@ namespace bugger
       doSetUp(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution) override
       {
          auto retcode = setup(settings, problem, solution);
-         UNUSED(retcode);
          assert(retcode == SCIP_OKAY);
+         (void)retcode;
       }
 
       std::pair<char, SolverStatus>
@@ -505,7 +505,7 @@ namespace bugger
          const auto& rhs_values = consMatrix.getRightHandSides( );
          const auto& rflags = this->model->getRowFlags( );
 
-         this->set_parameters( );
+         SCIP_CALL(this->set_parameters( ));
          SCIP_CALL(SCIPcreateProbBasic(this->scip, this->model->getName( ).c_str()));
          SCIP_CALL(SCIPaddOrigObjoffset(this->scip, SCIP_Real(obj.offset)));
          SCIP_CALL(SCIPsetObjsense(this->scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
