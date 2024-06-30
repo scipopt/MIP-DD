@@ -138,7 +138,9 @@ namespace bugger
          {
             SCIP_PARAM* param = params[ i ];
             String name { param->name };
-            if( name == ScipParameters::VERB )
+            if( name == ScipParameters::VERB
+             || name == ScipParameters::EXAC
+             || name == ScipParameters::CERT )
                continue;
             auto limit = limits.find(name);
             if( limit != limits.end() )
