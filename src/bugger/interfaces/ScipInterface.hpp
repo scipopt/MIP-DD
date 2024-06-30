@@ -59,7 +59,7 @@ namespace bugger
 
       int arithmetic = 0;
       int mode = -1;
-      bool certificate = false;
+      int certificate = 0;
       double limitspace = 1.0;
       bool set_dual_limit = true;
       bool set_prim_limit = true;
@@ -322,9 +322,11 @@ namespace bugger
          case 0:
             SCIP_CALL(SCIPsetBoolParam(scip, ScipParameters::EXAC.c_str(), FALSE));
             break;
+#ifdef SCIP_WITH_EXACTSOLVE
          case 1:
             SCIP_CALL(SCIPsetBoolParam(scip, ScipParameters::EXAC.c_str(), TRUE));
             break;
+#endif
          default:
             SCIPerrorMessage("unknown solver arithmetic\n");
             return SCIP_ERROR;
@@ -339,7 +341,9 @@ namespace bugger
 } // namespace bugger
 
 #include "ScipRealInterface.hpp"
+#ifdef SCIP_WITH_EXACTSOLVE
 #include "ScipRationalInterface.hpp"
+#endif
 
 
 namespace bugger
@@ -358,9 +362,17 @@ namespace bugger
       void
       addParameters(ParameterSet& parameterset) override
       {
+#ifndef SCIP_WITH_EXACTSOLVE
+         parameterset.addParameter("scip.arithmetic", "arithmetic scip type (0: double)", parameters.arithmetic, 0, 0);
+#else
          parameterset.addParameter("scip.arithmetic", "arithmetic scip type (0: double, 1: rational)", parameters.arithmetic, 0, 1);
+#endif
          parameterset.addParameter("scip.mode", "solve scip mode (-1: optimize, 0: count)", parameters.mode, -1, 0);
-         parameterset.addParameter("scip.certificate", "check vipr certificate", parameters.certificate);
+#ifndef SCIP_WITH_EXACTSOLVE
+         parameterset.addParameter("scip.certificate", "check vipr certificate", parameters.certificate, 0, 0);
+#else
+         parameterset.addParameter("scip.certificate", "check vipr certificate", parameters.certificate, 0, 1);
+#endif
          parameterset.addParameter("scip.limitspace", "relative margin when restricting limits or -1 for no restriction", parameters.limitspace, -1.0);
          parameterset.addParameter("scip.setduallimit", "terminate when dual bound is better than reference solution", parameters.set_dual_limit);
          parameterset.addParameter("scip.setprimlimit", "terminate when prim bound is as good as reference solution", parameters.set_prim_limit);
@@ -381,9 +393,11 @@ namespace bugger
          case 0:
             scip = std::unique_ptr<SolverInterface<REAL>>( new ScipRealInterface<REAL>( msg, parameters, limits ) );
             break;
+#ifdef SCIP_WITH_EXACTSOLVE
          case 1:
             scip = std::unique_ptr<SolverInterface<REAL>>( new ScipRationalInterface<REAL>( msg, parameters, limits ) );
             break;
+#endif
          default:
             throw std::runtime_error("unknown solver arithmetic");
          }
