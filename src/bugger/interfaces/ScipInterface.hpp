@@ -317,23 +317,22 @@ namespace bugger
       SCIP_RETCODE
       set_arithmetic( ) const
       {
+#ifdef SCIP_WITH_EXACTSOLVE
          switch( parameters.arithmetic )
          {
          case 0:
             SCIP_CALL(SCIPsetBoolParam(scip, ScipParameters::EXAC.c_str(), FALSE));
             break;
-#ifdef SCIP_WITH_EXACTSOLVE
          case 1:
             SCIP_CALL(SCIPsetBoolParam(scip, ScipParameters::EXAC.c_str(), TRUE));
             break;
-#endif
          default:
             SCIPerrorMessage("unknown solver arithmetic\n");
             return SCIP_ERROR;
          }
 
          SCIP_CALL(SCIPsetStringParam(scip, ScipParameters::CERT.c_str(), parameters.certificate ? "certificate.vipr" : ""));
-
+#endif
          return SCIP_OKAY;
       }
    };
