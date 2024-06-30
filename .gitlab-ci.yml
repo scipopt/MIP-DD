@@ -2,7 +2,8 @@ variables:
   BOOST_VERSION: 1.80.0
   SOPLEX_REVISION: bugfix-71
   VIPR_REVISION: master
-  SCIP_REVISION: exact-rational
+  SCIP_REVISION: v91-bugfix
+  SCIPEXACT_REVISION: exact-rational
   SETUP_DIR: ${CI_PROJECT_DIR}/setups
   INSTALL_DIR: ${CI_PROJECT_DIR}/../installs
   BUILD_DIR: ${CI_PROJECT_DIR}/builds
@@ -69,7 +70,11 @@ boost-soplex-scip:
     - git clone https://github.com/scipopt/scip.git ${SCIP_DIR}
     - cd ${SCIP_DIR}
     - git checkout ${SCIP_REVISION}
-    - cmake . -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DREADLINE=off -DPAPILO=off -DZIMPL=off -DIPOPT=off
+    - cmake . -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}/default -DREADLINE=off -DPAPILO=off -DZIMPL=off -DIPOPT=off
+    - make -j$(nproc) install
+    # scipexact
+    - git checkout ${SCIPEXACT_REVISION}
+    - cmake . -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}/exact -DREADLINE=off -DPAPILO=off -DZIMPL=off -DIPOPT=off
     - make -j$(nproc) install
 
 .test:
@@ -98,29 +103,47 @@ soplex_rational_debug:
   variables:
     CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSOPLEX=on -DSOPLEX_DIR=${INSTALL_DIR}"
 
-
 soplex_rational_optimized:
   extends: .test
   variables:
     CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSOPLEX=on -DSOPLEX_DIR=${INSTALL_DIR}"
 
-
 scip_double_debug:
   extends: .test
   variables:
-    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}"
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}/default"
 
 scip_double_optimized:
   extends: .test
   variables:
-    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}"
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}/default"
 
 scip_rational_debug:
   extends: .test
   variables:
-    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}"
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}/default"
 
 scip_rational_optimized:
   extends: .test
   variables:
-    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}"
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}/default"
+
+scipexact_double_debug:
+  extends: .test
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}/exact"
+
+scipexact_double_optimized:
+  extends: .test
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}/exact"
+
+scipexact_rational_debug:
+  extends: .test
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}/exact"
+
+scipexact_rational_optimized:
+  extends: .test
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}/exact"
