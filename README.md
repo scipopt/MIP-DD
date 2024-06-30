@@ -26,7 +26,7 @@ Here, SOLVER stands for one of the interfaced solvers for which the installation
 Currently supported solvers:
 
 - SOPLEX (https://soplex.zib.de/doc/html/INSTALL.php)
-- SCIP (https://scipopt.org/doc/html/INSTALL.php)
+- SCIP (https://scipopt.org/doc/html/INSTALL.php and https://github.com/scipopt/scip/blob/exact-rational/README.md)
 
 It is necessary to build the solver in optimized mode since the MIP-DD is not designed to handle assertions directly in order to keep the process performant.
 Nevertheless, it is usually possible to handle assertions indirectly by reformulating the solver code to return a suitable error under the negated assertion condition.
