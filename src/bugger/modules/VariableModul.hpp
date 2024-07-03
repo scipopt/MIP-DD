@@ -1,22 +1,24 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    BUGGER                                                                 */
+/*                            MIP-DD                                         */
 /*                                                                           */
 /* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
-/* This program is free software: you can redistribute it and/or modify      */
-/* it under the terms of the GNU Lesser General Public License as published  */
-/* by the Free Software Foundation, either version 3 of the License, or      */
-/* (at your option) any later version.                                       */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/* This program is distributed in the hope that it will be useful,           */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of            */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
-/* GNU Lesser General Public License for more details.                       */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
 /*                                                                           */
-/* You should have received a copy of the GNU Lesser General Public License  */
-/* along with this program.  If not, see <https://www.gnu.org/licenses/>.    */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with MIP-DD; see the file LICENSE. If not visit scipopt.org.       */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -28,12 +30,14 @@
 
 namespace bugger
 {
-   class VariableModul : public BuggerModul
+   template <typename REAL>
+   class VariableModul : public BuggerModul<REAL>
    {
    public:
 
-      explicit VariableModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
-                             std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory)
+      explicit VariableModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+                             std::shared_ptr<SolverFactory<REAL>>& _factory)
+                             : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
       {
          this->setName("variable");
       }
@@ -41,66 +45,65 @@ namespace bugger
    private:
 
       bool
-      isVariableAdmissible(const Problem<double>& problem, const int& col) const
+      isVariableAdmissible(const Problem<REAL>& problem, const int& col) const
       {
          return problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
              || problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
-             || !num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
+             || !this->num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
       }
 
       ModulStatus
-      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override
+      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
          if( solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;
 
-         int batchsize = 1;
+         long long batchsize = 1;
 
-         if( parameters.nbatches > 0 )
+         if( this->parameters.nbatches > 0 )
          {
-            batchsize = parameters.nbatches - 1;
+            batchsize = this->parameters.nbatches - 1;
             for( int i = problem.getNCols() - 1; i >= 0; --i )
                if( isVariableAdmissible(problem, i) )
                   ++batchsize;
-            if( batchsize == parameters.nbatches - 1 )
+            if( batchsize == this->parameters.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
-            batchsize /= parameters.nbatches;
+            batchsize /= this->parameters.nbatches;
          }
 
          bool admissible = false;
-         auto copy = Problem<double>(problem);
-         Vec<std::pair<int, double>> applied_reductions { };
-         Vec<std::pair<int, double>> batches { };
+         auto copy = Problem<REAL>(problem);
+         Vec<std::pair<int, REAL>> applied_reductions { };
+         Vec<std::pair<int, REAL>> batches { };
          batches.reserve(batchsize);
 
          for( int col = copy.getNCols() - 1; col >= 0; --col )
          {
             if( isVariableAdmissible(copy, col) )
             {
-               double fixedval;
+               REAL fixedval { };
                admissible = true;
                if( solution.status == SolutionStatus::kFeasible )
                {
                   fixedval = solution.primal[ col ];
                   if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
-                     fixedval = num.round(fixedval);
+                     fixedval = round(fixedval);
                }
                else
                {
-                  fixedval = 0.0;
                   if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
                   {
                      if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
-                        fixedval = num.min(fixedval, num.epsFloor(copy.getUpperBounds( )[ col ]));
+                        fixedval = min(fixedval, this->num.epsFloor(copy.getUpperBounds( )[ col ]));
                      if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) )
-                        fixedval = num.max(fixedval, num.epsCeil(copy.getLowerBounds( )[ col ]));
+                        fixedval = max(fixedval, this->num.epsCeil(copy.getLowerBounds( )[ col ]));
                   }
                   else
                   {
                      if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
-                        fixedval = num.min(fixedval, copy.getUpperBounds( )[ col ]);
+                        fixedval = min(fixedval, copy.getUpperBounds( )[ col ]);
                      if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) )
-                        fixedval = num.max(fixedval, copy.getLowerBounds( )[ col ]);
+                        fixedval = max(fixedval, copy.getLowerBounds( )[ col ]);
                   }
                }
                copy.getColFlags( )[ col ].unset(ColFlag::kLbInf);
@@ -112,10 +115,10 @@ namespace bugger
 
             if( !batches.empty() && ( batches.size() >= batchsize || col <= 0 ) )
             {
-               if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
+               if( this->call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
-                  copy = Problem<double>(problem);
-                  for( const auto &item: applied_reductions )
+                  copy = Problem<REAL>(problem);
+                  for( const auto& item: applied_reductions )
                   {
                      copy.getColFlags( )[ item.first ].unset(ColFlag::kLbInf);
                      copy.getColFlags( )[ item.first ].unset(ColFlag::kUbInf);
@@ -134,7 +137,7 @@ namespace bugger
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
          problem = copy;
-         nfixedvars += applied_reductions.size();
+         this->nfixedvars += applied_reductions.size();
          return ModulStatus::kSuccessful;
       }
    };

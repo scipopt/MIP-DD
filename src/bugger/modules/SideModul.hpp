@@ -1,22 +1,24 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    BUGGER                                                                 */
+/*                            MIP-DD                                         */
 /*                                                                           */
 /* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
-/* This program is free software: you can redistribute it and/or modify      */
-/* it under the terms of the GNU Lesser General Public License as published  */
-/* by the Free Software Foundation, either version 3 of the License, or      */
-/* (at your option) any later version.                                       */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/* This program is distributed in the hope that it will be useful,           */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of            */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
-/* GNU Lesser General Public License for more details.                       */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
 /*                                                                           */
-/* You should have received a copy of the GNU Lesser General Public License  */
-/* along with this program.  If not, see <https://www.gnu.org/licenses/>.    */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with MIP-DD; see the file LICENSE. If not visit scipopt.org.       */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -28,12 +30,14 @@
 
 namespace bugger
 {
-   class SideModul : public BuggerModul
+   template <typename REAL>
+   class SideModul : public BuggerModul<REAL>
    {
    public:
 
-      explicit SideModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
-                         std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory)
+      explicit SideModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+                         std::shared_ptr<SolverFactory<REAL>>& _factory)
+                         : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
       {
          this->setName("side");
       }
@@ -41,38 +45,38 @@ namespace bugger
    private:
 
       bool
-      isSideAdmissable(const Problem<double>& problem, const int& row) const
+      isSideAdmissable(const Problem<REAL>& problem, const int& row) const
       {
          return !problem.getRowFlags( )[ row ].test(RowFlag::kRedundant)
            && ( problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
              || problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
-             || !num.isZetaEq(problem.getConstraintMatrix( ).getLeftHandSides( )[ row ], problem.getConstraintMatrix( ).getRightHandSides( )[ row ]) );
+             || !this->num.isZetaEq(problem.getConstraintMatrix( ).getLeftHandSides( )[ row ], problem.getConstraintMatrix( ).getRightHandSides( )[ row ]) );
       }
 
       ModulStatus
-      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override
+      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
          if( solution.status == SolutionStatus::kUnbounded )
             return ModulStatus::kNotAdmissible;
 
-         int batchsize = 1;
+         long long batchsize = 1;
 
-         if( parameters.nbatches > 0 )
+         if( this->parameters.nbatches > 0 )
          {
-            batchsize = parameters.nbatches - 1;
+            batchsize = this->parameters.nbatches - 1;
             for( int row = problem.getNRows( ) - 1; row >= 0; --row )
                if( isSideAdmissable(problem, row) )
                   ++batchsize;
-            if( batchsize == parameters.nbatches - 1 )
+            if( batchsize == this->parameters.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
-            batchsize /= parameters.nbatches;
+            batchsize /= this->parameters.nbatches;
          }
 
          bool admissible = false;
-         auto copy = Problem<double>(problem);
-         ConstraintMatrix<double>& matrix = copy.getConstraintMatrix( );
-         Vec<std::pair<int, double>> applied_reductions { };
-         Vec<std::pair<int, double>> batches { };
+         auto copy = Problem<REAL>(problem);
+         auto& matrix = copy.getConstraintMatrix( );
+         Vec<std::pair<int, REAL>> applied_reductions { };
+         Vec<std::pair<int, REAL>> batches { };
          batches.reserve(batchsize);
 
          for( int row = copy.getNRows( ) - 1; row >= 0; --row )
@@ -80,12 +84,12 @@ namespace bugger
             if( isSideAdmissable(copy, row) )
             {
                admissible = true;
-               auto data = matrix.getRowCoefficients(row);
+               const auto& data = matrix.getRowCoefficients(row);
                bool integral = true;
-               double fixedval;
+               REAL fixedval { };
                for( int index = 0; index < data.getLength( ); ++index )
                {
-                  if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral) || !num.isEpsIntegral(data.getValues( )[ index ]) ) )
+                  if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral) || !this->num.isEpsIntegral(data.getValues( )[ index ]) ) )
                   {
                      integral = false;
                      break;
@@ -93,42 +97,41 @@ namespace bugger
                }
                if( solution.status == SolutionStatus::kFeasible )
                {
-                  fixedval = get_linear_activity(data, solution);
+                  fixedval = copy.getPrimalActivity(solution, row);
                   if( integral )
-                     fixedval = num.round(fixedval);
+                     fixedval = round(fixedval);
                }
                else
                {
-                  fixedval = 0.0;
                   if( integral )
                   {
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
-                        fixedval = num.min(fixedval, num.epsFloor(matrix.getRightHandSides( )[ row ]));
+                        fixedval = min(fixedval, this->num.epsFloor(matrix.getRightHandSides( )[ row ]));
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
-                        fixedval = num.max(fixedval, num.epsCeil(matrix.getLeftHandSides( )[ row ]));
+                        fixedval = max(fixedval, this->num.epsCeil(matrix.getLeftHandSides( )[ row ]));
                   }
                   else
                   {
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
-                        fixedval = num.min(fixedval, matrix.getRightHandSides( )[ row ]);
+                        fixedval = min(fixedval, matrix.getRightHandSides( )[ row ]);
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
-                        fixedval = num.max(fixedval, matrix.getLeftHandSides( )[ row ]);
+                        fixedval = max(fixedval, matrix.getLeftHandSides( )[ row ]);
                   }
                }
-               matrix.modifyLeftHandSide( row, num, fixedval );
-               matrix.modifyRightHandSide( row, num, fixedval );
+               matrix.modifyLeftHandSide( row, this->num, fixedval );
+               matrix.modifyRightHandSide( row, this->num, fixedval );
                batches.emplace_back(row, fixedval);
             }
 
             if( !batches.empty() && ( batches.size() >= batchsize || row <= 0 ) )
             {
-               if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
+               if( this->call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
-                  copy = Problem<double>(problem);
-                  for( const auto &item: applied_reductions )
+                  copy = Problem<REAL>(problem);
+                  for( const auto& item: applied_reductions )
                   {
-                     matrix.modifyLeftHandSide( item.first, num, item.second );
-                     matrix.modifyRightHandSide( item.first, num, item.second );
+                     matrix.modifyLeftHandSide( item.first, this->num, item.second );
+                     matrix.modifyRightHandSide( item.first, this->num, item.second );
                   }
                }
                else
@@ -142,7 +145,7 @@ namespace bugger
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
          problem = copy;
-         nchgsides += 2 * applied_reductions.size();
+         this->nchgsides += 2 * applied_reductions.size();
          return ModulStatus::kSuccessful;
       }
    };

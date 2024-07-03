@@ -1,30 +1,32 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    BUGGER                                                                 */
+/*                            MIP-DD                                         */
 /*                                                                           */
 /* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
-/* This program is free software: you can redistribute it and/or modify      */
-/* it under the terms of the GNU Lesser General Public License as published  */
-/* by the Free Software Foundation, either version 3 of the License, or      */
-/* (at your option) any later version.                                       */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/* This program is distributed in the hope that it will be useful,           */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of            */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
-/* GNU Lesser General Public License for more details.                       */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
 /*                                                                           */
-/* You should have received a copy of the GNU Lesser General Public License  */
-/* along with this program.  If not, see <https://www.gnu.org/licenses/>.    */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with MIP-DD; see the file LICENSE. If not visit scipopt.org.       */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #ifndef _BUGGER_CORE_SPARSE_STORAGE_HPP_
 #define _BUGGER_CORE_SPARSE_STORAGE_HPP_
 
-#include "bugger/misc/MultiPrecision.hpp"
 #include "bugger/misc/Vec.hpp"
+#include "bugger/misc/Num.hpp"
 #include "bugger/external/pdqsort/pdqsort.h"
 #include <algorithm>
 #include <cassert>
@@ -410,12 +412,6 @@ class SparseStorage
    int minInterRowSpace = 0;
 };
 
-#ifdef BUGGER_USE_EXTERN_TEMPLATES
-extern template class SparseStorage<double>;
-extern template class SparseStorage<Quad>;
-extern template class SparseStorage<Rational>;
-#endif
-
 template <typename REAL>
 SparseStorage<REAL>::SparseStorage( Vec<Triplet<REAL>> entries, int nRows_in,
                                     int nCols_in, bool sorted,
@@ -703,9 +699,7 @@ SparseStorage<REAL>::compress( const Vec<int>& rowsize, const Vec<int>& colsize,
                rowranges[rowcount].end -= offset;
             }
 
-            offset = std::max(
-                offset + rowalloc - computeRowAlloc( end - start ), 0 );
-
+            offset = max( offset + rowalloc - computeRowAlloc( end - start ), 0 );
             ++rowcount;
          }
 
@@ -779,10 +773,8 @@ SparseStorage<REAL>::shiftRows( const int* rowinds, int ninds,
          {
             if( l > leftbound && r < rightbound )
             {
-               int nspaceleft = std::min(
-                   missingspace, rowranges[l].start - rowranges[l - 1].end );
-               int nspaceright = std::min(
-                   missingspace, rowranges[r + 1].start - rowranges[r].end );
+               int nspaceleft = min( missingspace, rowranges[l].start - rowranges[l - 1].end );
+               int nspaceright = min( missingspace, rowranges[r + 1].start - rowranges[r].end );
                int nshiftleft = rowranges[l].end - rowranges[l].start;
                int nshiftright = rowranges[r].end - rowranges[r].start;
 
@@ -827,8 +819,7 @@ SparseStorage<REAL>::shiftRows( const int* rowinds, int ninds,
                      rowranges[l].end - rowranges[l].start <= maxshift )
             {
                maxshift -= rowranges[l].end - rowranges[l].start;
-               lastshiftleft = std::min(
-                   missingspace, rowranges[l].start - rowranges[l - 1].end );
+               lastshiftleft = min( missingspace, rowranges[l].start - rowranges[l - 1].end );
                missingspace -= lastshiftleft;
                --l;
             }
@@ -836,8 +827,7 @@ SparseStorage<REAL>::shiftRows( const int* rowinds, int ninds,
                      rowranges[r].end - rowranges[r].start <= maxshift )
             {
                maxshift -= rowranges[r].end - rowranges[r].start;
-               lastshiftright = std::min( missingspace, rowranges[r + 1].start -
-                                                            rowranges[r].end );
+               lastshiftright = min( missingspace, rowranges[r + 1].start - rowranges[r].end );
                missingspace -= lastshiftright;
                ++r;
             }

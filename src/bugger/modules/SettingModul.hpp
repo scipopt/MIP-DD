@@ -1,22 +1,24 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    BUGGER                                                                 */
+/*                            MIP-DD                                         */
 /*                                                                           */
 /* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
-/* This program is free software: you can redistribute it and/or modify      */
-/* it under the terms of the GNU Lesser General Public License as published  */
-/* by the Free Software Foundation, either version 3 of the License, or      */
-/* (at your option) any later version.                                       */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/* This program is distributed in the hope that it will be useful,           */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of            */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
-/* GNU Lesser General Public License for more details.                       */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
 /*                                                                           */
-/* You should have received a copy of the GNU Lesser General Public License  */
-/* along with this program.  If not, see <https://www.gnu.org/licenses/>.    */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with MIP-DD; see the file LICENSE. If not visit scipopt.org.       */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -28,14 +30,16 @@
 
 namespace bugger
 {
-   class SettingModul : public BuggerModul
+   template <typename REAL>
+   class SettingModul : public BuggerModul<REAL>
    {
    public:
 
       SolverSettings target_settings;
 
-      explicit SettingModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
-                            std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory)
+      explicit SettingModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+                            std::shared_ptr<SolverFactory<REAL>>& _factory)
+                            : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
       {
          this->setName("setting");
       }
@@ -43,13 +47,13 @@ namespace bugger
    private:
 
       ModulStatus
-      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override
+      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
-         int batchsize = 1;
+         long long batchsize = 1;
 
-         if( parameters.nbatches > 0 )
+         if( this->parameters.nbatches > 0 )
          {
-            batchsize = parameters.nbatches - 1;
+            batchsize = this->parameters.nbatches - 1;
             for( int i = 0; i < target_settings.getBoolSettings().size(); i++)
             {
                assert(target_settings.getBoolSettings()[i].first == settings.getBoolSettings()[i].first);
@@ -86,9 +90,9 @@ namespace bugger
                if( target_settings.getStringSettings()[i].second != settings.getStringSettings()[i].second)
                   ++batchsize;
             }
-            if( batchsize == parameters.nbatches - 1 )
+            if( batchsize == this->parameters.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
-            batchsize /= parameters.nbatches;
+            batchsize /= this->parameters.nbatches;
          }
 
          bool admissible = false;
@@ -131,7 +135,7 @@ namespace bugger
                                                             && target_settings.getCharSettings().empty()
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
-               if( call_solver(copy, problem, solution) == BuggerStatus::kOkay )
+               if( this->call_solver(copy, problem, solution) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -158,7 +162,7 @@ namespace bugger
                                                             && target_settings.getCharSettings().empty()
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
-               if( call_solver(copy, problem, solution) == BuggerStatus::kOkay )
+               if( this->call_solver(copy, problem, solution) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -186,7 +190,7 @@ namespace bugger
                                                             && target_settings.getCharSettings().empty()
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
-               if( call_solver(copy, problem, solution) == BuggerStatus::kOkay )
+               if( this->call_solver(copy, problem, solution) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -215,7 +219,7 @@ namespace bugger
                                                             && target_settings.getCharSettings().empty()
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
-               if( call_solver(copy, problem, solution) == BuggerStatus::kOkay )
+               if( this->call_solver(copy, problem, solution) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -245,7 +249,7 @@ namespace bugger
             if( batches >= 1 && ( batches >= batchsize || ( i + 1 == target_settings.getCharSettings().size()
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
-               if( call_solver(copy, problem, solution) == BuggerStatus::kOkay )
+               if( this->call_solver(copy, problem, solution) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -276,7 +280,7 @@ namespace bugger
 
             if( batches >= 1 && ( batches >= batchsize || i + 1 == target_settings.getStringSettings().size() ) )
             {
-               if( call_solver(copy, problem, solution) == BuggerStatus::kOkay )
+               if( this->call_solver(copy, problem, solution) == BuggerStatus::kOkay )
                   copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
@@ -302,7 +306,7 @@ namespace bugger
          if( applied_bool.empty() && applied_int.empty() && applied_long.empty() && applied_double.empty() && applied_char.empty() && applied_string.empty() )
             return ModulStatus::kUnsuccesful;
          settings = copy;
-         nchgsettings += applied_bool.size() + applied_int.size() + applied_long.size() + applied_double.size() + applied_char.size() + applied_string.size();
+         this->nchgsettings += applied_bool.size() + applied_int.size() + applied_long.size() + applied_double.size() + applied_char.size() + applied_string.size();
          return ModulStatus::kSuccessful;
       }
 
@@ -313,17 +317,17 @@ namespace bugger
             const Vec<std::pair<int, char>>& applied_char, const Vec<std::pair<int, std::string>>& applied_string) const
       {
          auto reset = SolverSettings(settings);
-         for( const auto &item: applied_bool )
+         for( const auto& item: applied_bool )
             reset.setBoolSettings(item.first, item.second);
-         for( const auto &item: applied_int )
+         for( const auto& item: applied_int )
             reset.setIntSettings(item.first, item.second);
-         for( const auto &item: applied_long )
+         for( const auto& item: applied_long )
             reset.setLongSettings(item.first, item.second);
-         for( const auto &item: applied_double )
+         for( const auto& item: applied_double )
             reset.setDoubleSettings(item.first, item.second);
-         for( const auto &item: applied_char )
+         for( const auto& item: applied_char )
             reset.setCharSettings(item.first, item.second);
-         for( const auto &item: applied_string )
+         for( const auto& item: applied_string )
             reset.setStringSettings(item.first, item.second);
          return reset;
       }

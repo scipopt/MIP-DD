@@ -1,22 +1,24 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    BUGGER                                                                 */
+/*                            MIP-DD                                         */
 /*                                                                           */
 /* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
-/* This program is free software: you can redistribute it and/or modify      */
-/* it under the terms of the GNU Lesser General Public License as published  */
-/* by the Free Software Foundation, either version 3 of the License, or      */
-/* (at your option) any later version.                                       */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/* This program is distributed in the hope that it will be useful,           */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of            */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
-/* GNU Lesser General Public License for more details.                       */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
 /*                                                                           */
-/* You should have received a copy of the GNU Lesser General Public License  */
-/* along with this program.  If not, see <https://www.gnu.org/licenses/>.    */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with MIP-DD; see the file LICENSE. If not visit scipopt.org.       */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -28,12 +30,14 @@
 
 namespace bugger
 {
-   class FixingModul : public BuggerModul
+   template <typename REAL>
+   class FixingModul : public BuggerModul<REAL>
    {
    public:
 
-      explicit FixingModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
-                           std::shared_ptr<SolverFactory>& _factory) : BuggerModul(_msg, _num, _parameters, _factory)
+      explicit FixingModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+                           std::shared_ptr<SolverFactory<REAL>>& _factory)
+                           : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
       {
          this->setName("fixing");
       }
@@ -41,40 +45,40 @@ namespace bugger
    private:
 
       bool
-      isFixingAdmissible(const Problem<double>& problem, const int& col) const
+      isFixingAdmissible(const Problem<REAL>& problem, const int& col) const
       {
          return !problem.getColFlags( )[ col ].test(ColFlag::kFixed)
              && !problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
              && !problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
-             && num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
+             && this->num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
       }
 
       ModulStatus
-      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) override
+      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
-         int batchsize = 1;
+         long long batchsize = 1;
 
-         if( parameters.nbatches > 0 )
+         if( this->parameters.nbatches > 0 )
          {
-            batchsize = parameters.nbatches - 1;
+            batchsize = this->parameters.nbatches - 1;
             for( int col = problem.getNCols( ) - 1; col >= 0; --col )
                if( isFixingAdmissible(problem, col) )
                   ++batchsize;
-            if( batchsize == parameters.nbatches - 1 )
+            if( batchsize == this->parameters.nbatches - 1 )
                return ModulStatus::kNotAdmissible;
-            batchsize /= parameters.nbatches;
+            batchsize /= this->parameters.nbatches;
          }
 
          bool admissible = false;
-         auto copy = Problem<double>(problem);
+         auto copy = Problem<REAL>(problem);
          Vec<int> applied_reductions { };
-         Vec<MatrixEntry<double>> applied_entries { };
-         Vec<std::pair<int, double>> applied_lefts { };
-         Vec<std::pair<int, double>> applied_rights { };
+         Vec<MatrixEntry<REAL>> applied_entries { };
+         Vec<std::pair<int, REAL>> applied_lefts { };
+         Vec<std::pair<int, REAL>> applied_rights { };
          Vec<int> batches_vars { };
-         Vec<MatrixEntry<double>> batches_coeff { };
-         Vec<std::pair<int, double>> batches_lhs { };
-         Vec<std::pair<int, double>> batches_rhs { };
+         Vec<MatrixEntry<REAL>> batches_coeff { };
+         Vec<std::pair<int, REAL>> batches_lhs { };
+         Vec<std::pair<int, REAL>> batches_rhs { };
          batches_vars.reserve(batchsize);
 
          for( int col = copy.getNCols( ) - 1; col >= 0; --col )
@@ -82,30 +86,29 @@ namespace bugger
             if( isFixingAdmissible(copy, col) )
             {
                admissible = true;
-               auto col_data = copy.getConstraintMatrix( ).getColumnCoefficients(col);
-               double fixedval;
+               const auto& col_data = copy.getConstraintMatrix( ).getColumnCoefficients(col);
+               REAL fixedval { };
                if( solution.status == SolutionStatus::kFeasible )
                {
                   fixedval = solution.primal[ col ];
                   if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
-                     fixedval = num.round(fixedval);
+                     fixedval = round(fixedval);
                }
                else
                {
-                  fixedval = 0.0;
                   if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
                   {
                      if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
-                        fixedval = num.min(fixedval, num.epsFloor(copy.getUpperBounds( )[ col ]));
+                        fixedval = min(fixedval, this->num.epsFloor(copy.getUpperBounds( )[ col ]));
                      if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) )
-                        fixedval = num.max(fixedval, num.epsCeil(copy.getLowerBounds( )[ col ]));
+                        fixedval = max(fixedval, this->num.epsCeil(copy.getLowerBounds( )[ col ]));
                   }
                   else
                   {
                      if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
-                        fixedval = num.min(fixedval, copy.getUpperBounds( )[ col ]);
+                        fixedval = min(fixedval, copy.getUpperBounds( )[ col ]);
                      if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) )
-                        fixedval = num.max(fixedval, copy.getLowerBounds( )[ col ]);
+                        fixedval = max(fixedval, copy.getLowerBounds( )[ col ]);
                   }
                }
                assert(!copy.getColFlags( )[ col ].test(ColFlag::kFixed));
@@ -114,42 +117,42 @@ namespace bugger
                for( int row_index = col_data.getLength( ) - 1; row_index >= 0; --row_index )
                {
                   int row = col_data.getIndices( )[ row_index ];
-                  double val = col_data.getValues( )[ row_index ];
-                  if( !num.isZetaZero(val) && !copy.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant))
+                  REAL val = col_data.getValues( )[ row_index ];
+                  if( !this->num.isZetaZero(val) && !copy.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant))
                   {
-                     auto row_data = copy.getConstraintMatrix( ).getRowCoefficients(row);
+                     const auto& row_data = copy.getConstraintMatrix( ).getRowCoefficients(row);
                      bool integral = true;
-                     double offset = -val * fixedval;
+                     REAL offset { -val * fixedval };
                      for( int col_index = 0; col_index < row_data.getLength( ); ++col_index )
                      {
                         int index = row_data.getIndices( )[ col_index ];
-                        double value = row_data.getValues( )[ col_index ];
-                        if( !copy.getColFlags( )[ index ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ index ].test(ColFlag::kIntegral) || !num.isEpsIntegral(value) ) )
+                        REAL value = row_data.getValues( )[ col_index ];
+                        if( !copy.getColFlags( )[ index ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ index ].test(ColFlag::kIntegral) || !this->num.isEpsIntegral(value) ) )
                         {
                            integral = false;
                            break;
                         }
                      }
-                     batches_coeff.emplace_back(row, col, 0.0);
+                     batches_coeff.emplace_back(row, col, 0);
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
                      {
-                        double lhs = copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] + offset;
+                        REAL lhs { copy.getConstraintMatrix( ).getLeftHandSides( )[ row ] + offset };
                         if( integral )
-                           lhs = num.round(lhs);
-                        if( !num.isZetaEq(copy.getConstraintMatrix( ).getLeftHandSides( )[ row ], lhs) )
+                           lhs = round(lhs);
+                        if( !this->num.isZetaEq(copy.getConstraintMatrix( ).getLeftHandSides( )[ row ], lhs) )
                         {
-                           copy.getConstraintMatrix( ).modifyLeftHandSide(row, num, lhs);
+                           copy.getConstraintMatrix( ).modifyLeftHandSide(row, this->num, lhs);
                            batches_lhs.emplace_back(row, lhs);
                         }
                      }
                      if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
                      {
-                        double rhs = copy.getConstraintMatrix( ).getRightHandSides( )[ row ] + offset;
+                        REAL rhs { copy.getConstraintMatrix( ).getRightHandSides( )[ row ] + offset };
                         if( integral )
-                           rhs = num.round(rhs);
-                        if( !num.isZetaEq(copy.getConstraintMatrix( ).getRightHandSides( )[ row ], rhs) )
+                           rhs = round(rhs);
+                        if( !this->num.isZetaEq(copy.getConstraintMatrix( ).getRightHandSides( )[ row ], rhs) )
                         {
-                           copy.getConstraintMatrix( ).modifyRightHandSide(row, num, rhs);
+                           copy.getConstraintMatrix( ).modifyRightHandSide(row, this->num, rhs);
                            batches_rhs.emplace_back(row, rhs);
                         }
                      }
@@ -159,20 +162,20 @@ namespace bugger
 
             if( !batches_vars.empty() && ( batches_vars.size() >= batchsize || col <= 0 ) )
             {
-               apply_changes(copy, batches_coeff);
-               if( call_solver(settings, copy, solution) == BuggerStatus::kOkay )
+               this->apply_changes(copy, batches_coeff);
+               if( this->call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
-                  copy = Problem<double>(problem);
-                  for( const auto &item: applied_reductions )
+                  copy = Problem<REAL>(problem);
+                  for( const auto& item: applied_reductions )
                   {
                      assert(!copy.getColFlags( )[ item ].test(ColFlag::kFixed));
                      copy.getColFlags( )[ item ].set(ColFlag::kFixed);
                   }
-                  apply_changes(copy, applied_entries);
-                  for( const auto &item: applied_lefts )
-                     copy.getConstraintMatrix( ).modifyLeftHandSide( item.first, num, item.second );
-                  for( const auto &item: applied_rights )
-                     copy.getConstraintMatrix( ).modifyRightHandSide( item.first, num, item.second );
+                  this->apply_changes(copy, applied_entries);
+                  for( const auto& item: applied_lefts )
+                     copy.getConstraintMatrix( ).modifyLeftHandSide( item.first, this->num, item.second );
+                  for( const auto& item: applied_rights )
+                     copy.getConstraintMatrix( ).modifyRightHandSide( item.first, this->num, item.second );
                }
                else
                {
@@ -193,7 +196,7 @@ namespace bugger
          if( applied_reductions.empty() )
             return ModulStatus::kUnsuccesful;
          problem = copy;
-         naggrvars += applied_reductions.size();
+         this->naggrvars += applied_reductions.size();
          return ModulStatus::kSuccessful;
       }
    };
