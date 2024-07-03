@@ -59,7 +59,7 @@ namespace bugger
 
       int arithmetic = 0;
       int mode = -1;
-      double objectiverim = -1.0;
+      double cutoffrelax = -1.0;
       double limitspace = 1.0;
       bool set_dual_limit = true;
       bool set_prim_limit = true;
@@ -299,16 +299,16 @@ namespace bugger
 
                   if( abs(SCIPgetPrimalbound(scip)) == SCIPinfinity(scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible )
                      bound = SCIPgetSolOrigObj(scip, sols[0]);
-                  else if( parameters.objectiverim >= 0.0 && parameters.objectiverim < SCIPinfinity(scip) )
+                  else if( parameters.cutoffrelax >= 0.0 && parameters.cutoffrelax < SCIPinfinity(scip) )
                   {
                      if( this->model->getObjective( ).sense )
                      {
-                        if( SCIPgetPrimalbound(scip) >= SCIP_Real(this->relax( SCIP_Real(parameters.objectiverim) + SCIP_Real(this->value), false, SCIPepsilon(scip), SCIPinfinity(scip) )) )
+                        if( SCIPgetPrimalbound(scip) >= SCIP_Real(this->relax( SCIP_Real(parameters.cutoffrelax) + SCIP_Real(this->value), false, SCIPepsilon(scip), SCIPinfinity(scip) )) )
                            bound = solution.size() >= 1 ? SCIPgetSolOrigObj(scip, sols[0]) : SCIPinfinity(scip);
                      }
                      else
                      {
-                        if( SCIPgetPrimalbound(scip) <= SCIP_Real(this->relax( SCIP_Real(-parameters.objectiverim) + SCIP_Real(this->value), true, SCIPepsilon(scip), SCIPinfinity(scip) )) )
+                        if( SCIPgetPrimalbound(scip) <= SCIP_Real(this->relax( SCIP_Real(-parameters.cutoffrelax) + SCIP_Real(this->value), true, SCIPepsilon(scip), SCIPinfinity(scip) )) )
                            bound = solution.size() >= 1 ? SCIPgetSolOrigObj(scip, sols[0]) : -SCIPinfinity(scip);
                      }
                   }
@@ -809,8 +809,8 @@ namespace bugger
 
          if( solution_exists )
          {
-            if( parameters.objectiverim >= 0.0 && parameters.objectiverim < SCIPinfinity(scip) )
-               SCIP_CALL(SCIPsetObjlimit(scip, max(min(SCIP_Real(obj.sense ? parameters.objectiverim : -parameters.objectiverim) + SCIP_Real(this->value), SCIPinfinity(scip)), -SCIPinfinity(scip))));
+            if( parameters.cutoffrelax >= 0.0 && parameters.cutoffrelax < SCIPinfinity(scip) )
+               SCIP_CALL(SCIPsetObjlimit(scip, max(min(SCIP_Real(obj.sense ? parameters.cutoffrelax : -parameters.cutoffrelax) + SCIP_Real(this->value), SCIPinfinity(scip)), -SCIPinfinity(scip))));
             if( parameters.set_dual_limit || parameters.set_prim_limit )
             {
                for( const auto& pair : limits )
@@ -886,7 +886,7 @@ namespace bugger
       {
          parameterset.addParameter("scip.arithmetic", "arithmetic scip type (0: double)", parameters.arithmetic, 0, 0);
          parameterset.addParameter("scip.mode", "solve scip mode (-1: optimize, 0: count)", parameters.mode, -1, 0);
-         parameterset.addParameter("scip.objectiverim", "absolute margin for limiting objective or -1 for no limitation", parameters.objectiverim, -1.0);
+         parameterset.addParameter("scip.cutoffrelax", "absolute margin for limiting objective or -1 for no limitation", parameters.cutoffrelax, -1.0);
          parameterset.addParameter("scip.limitspace", "relative margin when restricting limits or -1 for no restriction", parameters.limitspace, -1.0);
          parameterset.addParameter("scip.setduallimit", "terminate when dual bound is better than reference solution", parameters.set_dual_limit);
          parameterset.addParameter("scip.setprimlimit", "terminate when prim bound is as good as reference solution", parameters.set_prim_limit);
