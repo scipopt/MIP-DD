@@ -48,7 +48,124 @@ namespace bugger
       void
       doSetUp(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution) override
       {
-         setup(settings, problem, solution);
+         this->adjustment = &settings;
+         this->model = &problem;
+         this->reference = &solution;
+         bool solution_exists = this->reference->status == SolutionStatus::kFeasible;
+         int ncols = this->model->getNCols( );
+         int nrows = this->model->getNRows( );
+         const auto& varNames = this->model->getVariableNames( );
+         const auto& consNames = this->model->getConstraintNames( );
+         const auto& domains = this->model->getVariableDomains( );
+         const auto& obj = this->model->getObjective( );
+         const auto& consMatrix = this->model->getConstraintMatrix( );
+         const auto& lhs_values = consMatrix.getLeftHandSides( );
+         const auto& rhs_values = consMatrix.getRightHandSides( );
+         const auto& rflags = this->model->getRowFlags( );
+
+         this->set_parameters( );
+         SOPLEX_CALL_ABORT(this->soplex->setRealParam(SoplexParameters::OFFS, soplex::Real(obj.offset)));
+         SOPLEX_CALL_ABORT(this->soplex->setIntParam(SoplexParameters::SENS, obj.sense ? SoPlex::OBJSENSE_MINIMIZE : SoPlex::OBJSENSE_MAXIMIZE));
+         this->colNames.reMax(ncols);
+         this->rowNames.reMax(nrows);
+         this->inds.resize(ncols);
+         if( solution_exists )
+            this->value = this->model->getPrimalObjective(solution);
+         else if( this->reference->status == SolutionStatus::kUnbounded )
+            this->value = obj.sense ? -this->soplex->realParam(SoPlex::INFTY) : this->soplex->realParam(SoPlex::INFTY);
+         else if( this->reference->status == SolutionStatus::kInfeasible )
+            this->value = obj.sense ? this->soplex->realParam(SoPlex::INFTY) : -this->soplex->realParam(SoPlex::INFTY);
+
+         for( int col = 0; col < ncols; ++col )
+         {
+            if( domains.flags[col].test(ColFlag::kFixed) )
+               this->inds[col] = -1;
+            else
+            {
+               LPColRational var { };
+               SOPLEX_Real lb = domains.flags[col].test(ColFlag::kLbInf)
+                                ? -this->soplex->realParam(SoPlex::INFTY)
+                                : SOPLEX_Real(domains.lower_bounds[col]);
+               SOPLEX_Real ub = domains.flags[col].test(ColFlag::kUbInf)
+                                ? this->soplex->realParam(SoPlex::INFTY)
+                                : SOPLEX_Real(domains.upper_bounds[col]);
+               assert(!domains.flags[col].test(ColFlag::kInactive) || lb == ub);
+               var.setLower(lb);
+               var.setUpper(ub);
+               var.setObj(SOPLEX_Real(obj.coefficients[col]));
+               this->inds[col] = this->soplex->numCols();
+               this->soplex->addColRational(var);
+               this->colNames.add(varNames[col].c_str());
+            }
+         }
+
+         for( int row = 0; row < nrows; ++row )
+         {
+            if( rflags[row].test(RowFlag::kRedundant) )
+               continue;
+            assert(!rflags[row].test(RowFlag::kLhsInf) || !rflags[row].test(RowFlag::kRhsInf));
+            const auto& rowvec = consMatrix.getRowCoefficients(row);
+            const auto& rowinds = rowvec.getIndices( );
+            const auto& rowvals = rowvec.getValues( );
+            int nrowcols = rowvec.getLength( );
+            SOPLEX_Real lhs = rflags[row].test(RowFlag::kLhsInf)
+                              ? -this->soplex->realParam(SoPlex::INFTY)
+                              : SOPLEX_Real(lhs_values[row]);
+            SOPLEX_Real rhs = rflags[row].test(RowFlag::kRhsInf)
+                              ? this->soplex->realParam(SoPlex::INFTY)
+                              : SOPLEX_Real(rhs_values[row]);
+            DSVectorRational cons(nrowcols);
+            for( int i = 0; i < nrowcols; ++i )
+            {
+               assert(!this->model->getColFlags( )[rowinds[i]].test(ColFlag::kFixed));
+               assert(rowvals[i] != 0);
+               cons.add(this->inds[rowinds[i]], SOPLEX_Real(rowvals[i]));
+            }
+            this->soplex->addRowRational(LPRowRational(lhs, cons, rhs));
+            this->rowNames.add(consNames[row].c_str());
+         }
+
+         // initialize objective differences
+         if( this->initial )
+         {
+            if( solution_exists )
+            {
+               const auto& doublesettings = this->adjustment->getDoubleSettings( );
+               for( int index = 0; index < doublesettings.size( ); ++index )
+               {
+                  SoPlex::RealParam param = SoPlex::RealParam(doublesettings[index].first.back());
+                  if( ( param == SoPlex::OBJLIMIT_LOWER || param == SoPlex::OBJLIMIT_UPPER ) && abs(this->soplex->realParam(param)) < this->soplex->realParam(SoPlex::INFTY) )
+                  {
+                     SOPLEX_CALL_ABORT(this->soplex->setRealParam(param, max(min(this->soplex->realParam(param) - soplex::Real(this->value), this->soplex->realParam(SoPlex::INFTY)), -this->soplex->realParam(SoPlex::INFTY))));
+                     this->adjustment->setDoubleSettings(index, this->soplex->realParam(param));
+                  }
+               }
+            }
+            this->initial = false;
+         }
+
+         if( solution_exists )
+         {
+            if( abs(this->soplex->realParam(SoPlex::OBJLIMIT_LOWER)) < this->soplex->realParam(SoPlex::INFTY) )
+               SOPLEX_CALL_ABORT(this->soplex->setRealParam(SoPlex::OBJLIMIT_LOWER, max(min(this->soplex->realParam(SoPlex::OBJLIMIT_LOWER) + soplex::Real(this->value), this->soplex->realParam(SoPlex::INFTY)), -this->soplex->realParam(SoPlex::INFTY))));
+            if( abs(this->soplex->realParam(SoPlex::OBJLIMIT_UPPER)) < this->soplex->realParam(SoPlex::INFTY) )
+               SOPLEX_CALL_ABORT(this->soplex->setRealParam(SoPlex::OBJLIMIT_UPPER, max(min(this->soplex->realParam(SoPlex::OBJLIMIT_UPPER) + soplex::Real(this->value), this->soplex->realParam(SoPlex::INFTY)), -this->soplex->realParam(SoPlex::INFTY))));
+            if( this->parameters.set_dual_limit || this->parameters.set_prim_limit )
+            {
+               for( const auto& pair : this->limits )
+               {
+                  switch( pair.second )
+                  {
+                  case DUAL:
+                     SOPLEX_CALL_ABORT(this->soplex->setRealParam(SoPlex::RealParam(pair.first.back()), soplex::Real(this->relax( this->value, obj.sense, 2 * max(this->soplex->realParam(SoPlex::FEASTOL), this->soplex->realParam(SoPlex::OPTTOL)), this->soplex->realParam(SoPlex::INFTY) ))));
+                     break;
+                  case PRIM:
+                     SOPLEX_CALL_ABORT(this->soplex->setRealParam(SoPlex::RealParam(pair.first.back()), soplex::Real(this->value)));
+                     break;
+                  }
+               }
+            }
+         }
       }
 
       std::pair<char, SolverStatus>
@@ -334,129 +451,6 @@ namespace bugger
             solution.ray.resize(problem.getNCols());
             for( int col = 0; col < solution.ray.size(); ++col )
                solution.ray[col] = problem.getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(ray[this->inds[col]]);
-         }
-      }
-
-      void
-      setup(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution)
-      {
-         this->adjustment = &settings;
-         this->model = &problem;
-         this->reference = &solution;
-         bool solution_exists = this->reference->status == SolutionStatus::kFeasible;
-         int ncols = this->model->getNCols( );
-         int nrows = this->model->getNRows( );
-         const auto& varNames = this->model->getVariableNames( );
-         const auto& consNames = this->model->getConstraintNames( );
-         const auto& domains = this->model->getVariableDomains( );
-         const auto& obj = this->model->getObjective( );
-         const auto& consMatrix = this->model->getConstraintMatrix( );
-         const auto& lhs_values = consMatrix.getLeftHandSides( );
-         const auto& rhs_values = consMatrix.getRightHandSides( );
-         const auto& rflags = this->model->getRowFlags( );
-
-         this->set_parameters( );
-         SOPLEX_CALL_ABORT(this->soplex->setRealParam(SoplexParameters::OFFS, soplex::Real(obj.offset)));
-         SOPLEX_CALL_ABORT(this->soplex->setIntParam(SoplexParameters::SENS, obj.sense ? SoPlex::OBJSENSE_MINIMIZE : SoPlex::OBJSENSE_MAXIMIZE));
-         this->colNames.reMax(ncols);
-         this->rowNames.reMax(nrows);
-         this->inds.resize(ncols);
-         if( solution_exists )
-            this->value = this->model->getPrimalObjective(solution);
-         else if( this->reference->status == SolutionStatus::kUnbounded )
-            this->value = obj.sense ? -this->soplex->realParam(SoPlex::INFTY) : this->soplex->realParam(SoPlex::INFTY);
-         else if( this->reference->status == SolutionStatus::kInfeasible )
-            this->value = obj.sense ? this->soplex->realParam(SoPlex::INFTY) : -this->soplex->realParam(SoPlex::INFTY);
-
-         for( int col = 0; col < ncols; ++col )
-         {
-            if( domains.flags[col].test(ColFlag::kFixed) )
-               this->inds[col] = -1;
-            else
-            {
-               LPColRational var { };
-               SOPLEX_Real lb = domains.flags[col].test(ColFlag::kLbInf)
-                                ? -this->soplex->realParam(SoPlex::INFTY)
-                                : SOPLEX_Real(domains.lower_bounds[col]);
-               SOPLEX_Real ub = domains.flags[col].test(ColFlag::kUbInf)
-                                ? this->soplex->realParam(SoPlex::INFTY)
-                                : SOPLEX_Real(domains.upper_bounds[col]);
-               assert(!domains.flags[col].test(ColFlag::kInactive) || lb == ub);
-               var.setLower(lb);
-               var.setUpper(ub);
-               var.setObj(SOPLEX_Real(obj.coefficients[col]));
-               this->inds[col] = this->soplex->numCols();
-               this->soplex->addColRational(var);
-               this->colNames.add(varNames[col].c_str());
-            }
-         }
-
-         for( int row = 0; row < nrows; ++row )
-         {
-            if( rflags[row].test(RowFlag::kRedundant) )
-               continue;
-            assert(!rflags[row].test(RowFlag::kLhsInf) || !rflags[row].test(RowFlag::kRhsInf));
-            const auto& rowvec = consMatrix.getRowCoefficients(row);
-            const auto& rowinds = rowvec.getIndices( );
-            const auto& rowvals = rowvec.getValues( );
-            int nrowcols = rowvec.getLength( );
-            SOPLEX_Real lhs = rflags[row].test(RowFlag::kLhsInf)
-                              ? -this->soplex->realParam(SoPlex::INFTY)
-                              : SOPLEX_Real(lhs_values[row]);
-            SOPLEX_Real rhs = rflags[row].test(RowFlag::kRhsInf)
-                              ? this->soplex->realParam(SoPlex::INFTY)
-                              : SOPLEX_Real(rhs_values[row]);
-            DSVectorRational cons(nrowcols);
-            for( int i = 0; i < nrowcols; ++i )
-            {
-               assert(!this->model->getColFlags( )[rowinds[i]].test(ColFlag::kFixed));
-               assert(rowvals[i] != 0);
-               cons.add(this->inds[rowinds[i]], SOPLEX_Real(rowvals[i]));
-            }
-            this->soplex->addRowRational(LPRowRational(lhs, cons, rhs));
-            this->rowNames.add(consNames[row].c_str());
-         }
-
-         // initialize objective differences
-         if( this->initial )
-         {
-            if( solution_exists )
-            {
-               const auto& doublesettings = this->adjustment->getDoubleSettings( );
-               for( int index = 0; index < doublesettings.size( ); ++index )
-               {
-                  SoPlex::RealParam param = SoPlex::RealParam(doublesettings[index].first.back());
-                  if( ( param == SoPlex::OBJLIMIT_LOWER || param == SoPlex::OBJLIMIT_UPPER ) && abs(this->soplex->realParam(param)) < this->soplex->realParam(SoPlex::INFTY) )
-                  {
-                     SOPLEX_CALL_ABORT(this->soplex->setRealParam(param, max(min(this->soplex->realParam(param) - soplex::Real(this->value), this->soplex->realParam(SoPlex::INFTY)), -this->soplex->realParam(SoPlex::INFTY))));
-                     this->adjustment->setDoubleSettings(index, this->soplex->realParam(param));
-                  }
-               }
-            }
-            this->initial = false;
-         }
-
-         if( solution_exists )
-         {
-            if( abs(this->soplex->realParam(SoPlex::OBJLIMIT_LOWER)) < this->soplex->realParam(SoPlex::INFTY) )
-               SOPLEX_CALL_ABORT(this->soplex->setRealParam(SoPlex::OBJLIMIT_LOWER, max(min(this->soplex->realParam(SoPlex::OBJLIMIT_LOWER) + soplex::Real(this->value), this->soplex->realParam(SoPlex::INFTY)), -this->soplex->realParam(SoPlex::INFTY))));
-            if( abs(this->soplex->realParam(SoPlex::OBJLIMIT_UPPER)) < this->soplex->realParam(SoPlex::INFTY) )
-               SOPLEX_CALL_ABORT(this->soplex->setRealParam(SoPlex::OBJLIMIT_UPPER, max(min(this->soplex->realParam(SoPlex::OBJLIMIT_UPPER) + soplex::Real(this->value), this->soplex->realParam(SoPlex::INFTY)), -this->soplex->realParam(SoPlex::INFTY))));
-            if( this->parameters.set_dual_limit || this->parameters.set_prim_limit )
-            {
-               for( const auto& pair : this->limits )
-               {
-                  switch( pair.second )
-                  {
-                  case DUAL:
-                     SOPLEX_CALL_ABORT(this->soplex->setRealParam(SoPlex::RealParam(pair.first.back()), soplex::Real(this->relax( this->value, obj.sense, 2 * max(this->soplex->realParam(SoPlex::FEASTOL), this->soplex->realParam(SoPlex::OPTTOL)), this->soplex->realParam(SoPlex::INFTY) ))));
-                     break;
-                  case PRIM:
-                     SOPLEX_CALL_ABORT(this->soplex->setRealParam(SoPlex::RealParam(pair.first.back()), soplex::Real(this->value)));
-                     break;
-                  }
-               }
-            }
          }
       }
    };
