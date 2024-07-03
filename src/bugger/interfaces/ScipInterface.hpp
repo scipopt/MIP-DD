@@ -160,8 +160,105 @@ namespace bugger
       void
       doSetUp(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution) override
       {
-         auto retcode = setup(settings, problem, solution);
-         assert(retcode == SCIP_OKAY);
+         model = &problem;
+         reference = &solution;
+         bool solution_exists = reference->status == SolutionStatus::kFeasible;
+         int ncols = model->getNCols( );
+         int nrows = model->getNRows( );
+         const auto& varNames = model->getVariableNames( );
+         const auto& consNames = model->getConstraintNames( );
+         const auto& domains = model->getVariableDomains( );
+         const auto& obj = model->getObjective( );
+         const auto& consMatrix = model->getConstraintMatrix( );
+         const auto& lhs_values = consMatrix.getLeftHandSides( );
+         const auto& rhs_values = consMatrix.getRightHandSides( );
+         const auto& rflags = model->getRowFlags( );
+
+         set_parameters(settings);
+         SCIP_CALL_ABORT(SCIPcreateProbBasic(scip, model->getName( ).c_str( )));
+         SCIP_CALL_ABORT(SCIPaddOrigObjoffset(scip, SCIP_Real(obj.offset)));
+         SCIP_CALL_ABORT(SCIPsetObjsense(scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
+         vars.resize(model->getNCols( ));
+         if( solution_exists )
+            value = get_primal_objective(solution);
+         else if( reference->status == SolutionStatus::kUnbounded )
+            value = obj.sense ? -SCIPinfinity(scip) : SCIPinfinity(scip);
+         else if( reference->status == SolutionStatus::kInfeasible )
+            value = obj.sense ? SCIPinfinity(scip) : -SCIPinfinity(scip);
+
+         for( int col = 0; col < ncols; ++col )
+         {
+            if( domains.flags[ col ].test(ColFlag::kFixed) )
+               vars[ col ] = nullptr;
+            else
+            {
+               SCIP_VAR* var;
+               SCIP_Real lb = domains.flags[ col ].test(ColFlag::kLbInf)
+                              ? -SCIPinfinity(scip)
+                              : SCIP_Real(domains.lower_bounds[ col ]);
+               SCIP_Real ub = domains.flags[ col ].test(ColFlag::kUbInf)
+                              ? SCIPinfinity(scip)
+                              : SCIP_Real(domains.upper_bounds[ col ]);
+               assert(!domains.flags[ col ].test(ColFlag::kInactive) || ( lb == ub ));
+               SCIP_VARTYPE type;
+               if( domains.flags[ col ].test(ColFlag::kIntegral) )
+               {
+                  if( lb == 0 && ub == 1 )
+                     type = SCIP_VARTYPE_BINARY;
+                  else
+                     type = SCIP_VARTYPE_INTEGER;
+               }
+               else if( domains.flags[ col ].test(ColFlag::kImplInt) )
+                  type = SCIP_VARTYPE_IMPLINT;
+               else
+                  type = SCIP_VARTYPE_CONTINUOUS;
+               SCIP_CALL_ABORT(SCIPcreateVarBasic(scip, &var, varNames[ col ].c_str( ), lb, ub,
+                     SCIP_Real(obj.coefficients[ col ]), type));
+               SCIP_CALL_ABORT(SCIPaddVar(scip, var));
+               vars[ col ] = var;
+               SCIP_CALL_ABORT(SCIPreleaseVar(scip, &var));
+            }
+         }
+
+         Vec<SCIP_VAR*> consvars(model->getNCols( ));
+         Vec<SCIP_Real> consvals(model->getNCols( ));
+         for( int row = 0; row < nrows; ++row )
+         {
+            if( rflags[ row ].test(RowFlag::kRedundant) )
+               continue;
+            assert(!rflags[ row ].test(RowFlag::kLhsInf) || !rflags[ row ].test(RowFlag::kRhsInf));
+
+            auto rowvec = consMatrix.getRowCoefficients(row);
+            const double* vals = rowvec.getValues( );
+            const int* inds = rowvec.getIndices( );
+            SCIP_CONS* cons;
+
+            // the first length entries of consvars/-vals are the entries of the current constraint
+            int length = 0;
+            for( int k = 0; k != rowvec.getLength( ); ++k )
+            {
+               assert(!model->getColFlags( )[ inds[ k ] ].test(ColFlag::kFixed));
+               assert(vals[ k ] != 0.0);
+               consvars[ length ] = vars[ inds[ k ] ];
+               consvals[ length ] = SCIP_Real(vals[ k ]);
+               ++length;
+            }
+
+            SCIP_CALL_ABORT(SCIPcreateConsBasicLinear(scip, &cons, consNames[ row ].c_str( ), length, consvars.data( ),
+                  consvals.data( ),
+                  rflags[ row ].test(RowFlag::kLhsInf) ? -SCIPinfinity(scip) : SCIP_Real(lhs_values[ row ]),
+                  rflags[ row ].test(RowFlag::kRhsInf) ? SCIPinfinity(scip) : SCIP_Real(rhs_values[ row ])));
+            SCIP_CALL_ABORT(SCIPaddCons(scip, cons));
+            SCIP_CALL_ABORT(SCIPreleaseCons(scip, &cons));
+         }
+
+         if( solution_exists )
+         {
+            if( parameters.set_dual_limit )
+               SCIP_CALL_ABORT(SCIPsetRealParam(scip, DUAL.c_str(), relax( value, obj.sense, 2.0 * SCIPsumepsilon(scip), SCIPinfinity(scip) )));
+            if( parameters.set_prim_limit )
+               SCIP_CALL_ABORT(SCIPsetRealParam(scip, PRIM.c_str(), value));
+         }
       }
 
       std::pair<char, SolverStatus>
@@ -486,129 +583,21 @@ namespace bugger
 
    private:
 
-      SCIP_RETCODE
-      setup(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution)
-      {
-         model = &problem;
-         reference = &solution;
-         bool solution_exists = reference->status == SolutionStatus::kFeasible;
-         int ncols = model->getNCols( );
-         int nrows = model->getNRows( );
-         const auto& varNames = model->getVariableNames( );
-         const auto& consNames = model->getConstraintNames( );
-         const auto& domains = model->getVariableDomains( );
-         const auto& obj = model->getObjective( );
-         const auto& consMatrix = model->getConstraintMatrix( );
-         const auto& lhs_values = consMatrix.getLeftHandSides( );
-         const auto& rhs_values = consMatrix.getRightHandSides( );
-         const auto& rflags = model->getRowFlags( );
-
-         set_parameters(settings);
-         SCIP_CALL(SCIPcreateProbBasic(scip, model->getName( ).c_str( )));
-         SCIP_CALL(SCIPaddOrigObjoffset(scip, SCIP_Real(obj.offset)));
-         SCIP_CALL(SCIPsetObjsense(scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
-         vars.resize(model->getNCols( ));
-         if( solution_exists )
-            value = get_primal_objective(solution);
-         else if( reference->status == SolutionStatus::kUnbounded )
-            value = obj.sense ? -SCIPinfinity(scip) : SCIPinfinity(scip);
-         else if( reference->status == SolutionStatus::kInfeasible )
-            value = obj.sense ? SCIPinfinity(scip) : -SCIPinfinity(scip);
-
-         for( int col = 0; col < ncols; ++col )
-         {
-            if( domains.flags[ col ].test(ColFlag::kFixed) )
-               vars[ col ] = nullptr;
-            else
-            {
-               SCIP_VAR* var;
-               SCIP_Real lb = domains.flags[ col ].test(ColFlag::kLbInf)
-                              ? -SCIPinfinity(scip)
-                              : SCIP_Real(domains.lower_bounds[ col ]);
-               SCIP_Real ub = domains.flags[ col ].test(ColFlag::kUbInf)
-                              ? SCIPinfinity(scip)
-                              : SCIP_Real(domains.upper_bounds[ col ]);
-               assert(!domains.flags[ col ].test(ColFlag::kInactive) || ( lb == ub ));
-               SCIP_VARTYPE type;
-               if( domains.flags[ col ].test(ColFlag::kIntegral) )
-               {
-                  if( lb == 0 && ub == 1 )
-                     type = SCIP_VARTYPE_BINARY;
-                  else
-                     type = SCIP_VARTYPE_INTEGER;
-               }
-               else if( domains.flags[ col ].test(ColFlag::kImplInt) )
-                  type = SCIP_VARTYPE_IMPLINT;
-               else
-                  type = SCIP_VARTYPE_CONTINUOUS;
-               SCIP_CALL(SCIPcreateVarBasic(
-                     scip, &var, varNames[ col ].c_str( ), lb, ub,
-                     SCIP_Real(obj.coefficients[ col ]), type));
-               SCIP_CALL(SCIPaddVar(scip, var));
-               vars[ col ] = var;
-               SCIP_CALL(SCIPreleaseVar(scip, &var));
-            }
-         }
-
-         Vec<SCIP_VAR*> consvars(model->getNCols( ));
-         Vec<SCIP_Real> consvals(model->getNCols( ));
-         for( int row = 0; row < nrows; ++row )
-         {
-            if( rflags[ row ].test(RowFlag::kRedundant) )
-               continue;
-            assert(!rflags[ row ].test(RowFlag::kLhsInf) || !rflags[ row ].test(RowFlag::kRhsInf));
-
-            auto rowvec = consMatrix.getRowCoefficients(row);
-            const double* vals = rowvec.getValues( );
-            const int* inds = rowvec.getIndices( );
-            SCIP_CONS* cons;
-
-            // the first length entries of consvars/-vals are the entries of the current constraint
-            int length = 0;
-            for( int k = 0; k != rowvec.getLength( ); ++k )
-            {
-               assert(!model->getColFlags( )[ inds[ k ] ].test(ColFlag::kFixed));
-               assert(vals[ k ] != 0.0);
-               consvars[ length ] = vars[ inds[ k ] ];
-               consvals[ length ] = SCIP_Real(vals[ k ]);
-               ++length;
-            }
-
-            SCIP_CALL(SCIPcreateConsBasicLinear(
-                  scip, &cons, consNames[ row ].c_str( ), length,
-                  consvars.data( ), consvals.data( ),
-                  rflags[ row ].test(RowFlag::kLhsInf) ? -SCIPinfinity(scip) : SCIP_Real(lhs_values[ row ]),
-                  rflags[ row ].test(RowFlag::kRhsInf) ? SCIPinfinity(scip) : SCIP_Real(rhs_values[ row ])));
-            SCIP_CALL(SCIPaddCons(scip, cons));
-            SCIP_CALL(SCIPreleaseCons(scip, &cons));
-         }
-
-         if( solution_exists )
-         {
-            if( parameters.set_dual_limit )
-               SCIP_CALL(SCIPsetRealParam(scip, DUAL.c_str(), relax( value, obj.sense, 2.0 * SCIPsumepsilon(scip), SCIPinfinity(scip) )));
-            if( parameters.set_prim_limit )
-               SCIP_CALL(SCIPsetRealParam(scip, PRIM.c_str(), value));
-         }
-
-         return SCIP_OKAY;
-      }
-
       void
       set_parameters(const SolverSettings &settings) const
       {
          for( const auto& pair : settings.getBoolSettings( ) )
-            SCIPsetBoolParam(scip, pair.first.c_str(), pair.second);
+            SCIP_CALL_ABORT(SCIPsetBoolParam(scip, pair.first.c_str(), pair.second));
          for( const auto& pair : settings.getIntSettings( ) )
-            SCIPsetIntParam(scip, pair.first.c_str(), pair.second);
+            SCIP_CALL_ABORT(SCIPsetIntParam(scip, pair.first.c_str(), pair.second));
          for( const auto& pair : settings.getLongSettings( ) )
-            SCIPsetLongintParam(scip, pair.first.c_str(), pair.second);
+            SCIP_CALL_ABORT(SCIPsetLongintParam(scip, pair.first.c_str(), pair.second));
          for( const auto& pair : settings.getDoubleSettings( ) )
-            SCIPsetRealParam(scip, pair.first.c_str(), pair.second);
+            SCIP_CALL_ABORT(SCIPsetRealParam(scip, pair.first.c_str(), pair.second));
          for( const auto& pair : settings.getCharSettings( ) )
-            SCIPsetCharParam(scip, pair.first.c_str(), pair.second);
+            SCIP_CALL_ABORT(SCIPsetCharParam(scip, pair.first.c_str(), pair.second));
          for( const auto& pair : settings.getStringSettings( ) )
-            SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str());
+            SCIP_CALL_ABORT(SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str()));
       }
    };
 

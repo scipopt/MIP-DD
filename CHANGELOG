@@ -14,6 +14,7 @@ Fixed bugs
 - write setting files for automatically handled limits instead of for detailed verbosity level in order to ensure reproducibility of limit triggered issues
 - use stable sum implementation for activity evaluations consistently
 - only cancel scip pointer when ending up in an internal stage in order to avoid freeing aborts
+- avoid partial setups in release mode if solver interface functions fail
 
 Build system
 ------------
