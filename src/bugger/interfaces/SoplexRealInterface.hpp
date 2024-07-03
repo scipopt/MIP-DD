@@ -43,7 +43,7 @@ namespace bugger
 
       explicit SoplexRealInterface(const Message& _msg, SoplexParameters& _parameters,
                                    HashMap<String, char>& _limits) : SoplexInterface<REAL>(_msg, _parameters, _limits)
-                                   { }
+      { }
 
       void
       doSetUp(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution) override

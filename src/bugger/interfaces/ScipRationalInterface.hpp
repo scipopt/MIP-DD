@@ -97,7 +97,7 @@ namespace bugger
                else
                   type = SCIP_VARTYPE_CONTINUOUS;
                SCIP_CALL_ABORT(SCIPcreateVarBasic(this->scip, &var, varNames[col].c_str(), lb, ub,
-                                                  SCIP_Real(obj.coefficients[col]), type));
+                     SCIP_Real(obj.coefficients[col]), type));
                SCIP_CALL_ABORT(SCIPaddVarExactData(this->scip, var, NULL, NULL, NULL));
                this->vars[col] = var;
                SCIP_CALL_ABORT(SCIPaddVar(this->scip, var));
@@ -133,7 +133,7 @@ namespace bugger
                RatSetReal(consvals[i], SCIP_Real(rowvals[i]));
             }
             SCIP_CALL_ABORT(SCIPcreateConsBasicExactLinear(this->scip, &cons, consNames[row].c_str(), nrowcols,
-                                                           consvars.data( ), consvals.data( ), lhs, rhs));
+                  consvars.data( ), consvals.data( ), lhs, rhs));
             SCIP_CALL_ABORT(SCIPaddCons(this->scip, cons));
             SCIP_CALL_ABORT(SCIPreleaseCons(this->scip, &cons));
          }
