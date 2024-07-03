@@ -25,8 +25,6 @@
 #ifndef __BUGGER_INTERFACES_SOPLEXINTERFACE_HPP__
 #define __BUGGER_INTERFACES_SOPLEXINTERFACE_HPP__
 
-#define UNUSED(expr) do { (void)(expr); } while (0)
-
 #include "soplex.h"
 #include "bugger/data/Problem.hpp"
 #include "bugger/data/ProblemBuilder.hpp"
@@ -34,6 +32,8 @@
 #include "bugger/interfaces/BuggerStatus.hpp"
 #include "bugger/interfaces/SolverStatus.hpp"
 #include "bugger/interfaces/SolverInterface.hpp"
+
+#define SOPLEX_CALL_ABORT(x) do { if( !(x) ) { SPX_MSG_ERROR(this->soplex->spxout << "Error in function call\n"); assert(false); } } while( false )
 
 
 namespace bugger
@@ -310,31 +310,34 @@ namespace bugger
       set_parameters( ) const
       {
          for( const auto& pair : this->adjustment->getBoolSettings( ) )
-            soplex->setBoolParam(SoPlex::BoolParam(pair.first.back()), pair.second);
+            SOPLEX_CALL_ABORT(soplex->setBoolParam(SoPlex::BoolParam(pair.first.back()), pair.second));
          for( const auto& pair : this->adjustment->getIntSettings( ) )
-            soplex->setIntParam(SoPlex::IntParam(pair.first.back()), pair.second);
+            SOPLEX_CALL_ABORT(soplex->setIntParam(SoPlex::IntParam(pair.first.back()), pair.second));
          // set random seed
          for( const auto& pair : this->adjustment->getLongSettings( ) )
             soplex->setRandomSeed(pair.second);
          for( const auto& pair : this->adjustment->getDoubleSettings( ) )
-            soplex->setRealParam(SoPlex::RealParam(pair.first.back()), pair.second);
+            SOPLEX_CALL_ABORT(soplex->setRealParam(SoPlex::RealParam(pair.first.back()), pair.second));
+
          for( const auto& pair : this->adjustment->getLimitSettings( ) )
          {
             switch( limits.find(pair.first)->second )
             {
             case REFI:
             case ITER:
-               soplex->setIntParam(SoPlex::IntParam(pair.first.back()), pair.second);
+               SOPLEX_CALL_ABORT(soplex->setIntParam(SoPlex::IntParam(pair.first.back()), pair.second));
                break;
             case TIME:
-               soplex->setRealParam(SoPlex::RealParam(pair.first.back()), pair.second);
+               SOPLEX_CALL_ABORT(soplex->setRealParam(SoPlex::RealParam(pair.first.back()), pair.second));
                break;
             case DUAL:
             case PRIM:
             default:
                SPX_MSG_ERROR(soplex->spxout << "unknown limit type\n");
+               assert(false);
             }
          }
+
          set_arithmetic( );
       }
 
@@ -346,19 +349,20 @@ namespace bugger
          switch( parameters.arithmetic )
          {
          case 0:
-            soplex->setIntParam(SoplexParameters::READ, SoPlex::READMODE_REAL);
-            soplex->setIntParam(SoplexParameters::SOLV, SoPlex::SOLVEMODE_REAL);
-            soplex->setIntParam(SoplexParameters::CHEC, SoPlex::CHECKMODE_REAL);
-            soplex->setIntParam(SoplexParameters::SYNC, SoPlex::SYNCMODE_ONLYREAL);
+            SOPLEX_CALL_ABORT(soplex->setIntParam(SoplexParameters::READ, SoPlex::READMODE_REAL));
+            SOPLEX_CALL_ABORT(soplex->setIntParam(SoplexParameters::SOLV, SoPlex::SOLVEMODE_REAL));
+            SOPLEX_CALL_ABORT(soplex->setIntParam(SoplexParameters::CHEC, SoPlex::CHECKMODE_REAL));
+            SOPLEX_CALL_ABORT(soplex->setIntParam(SoplexParameters::SYNC, SoPlex::SYNCMODE_ONLYREAL));
             break;
          case 1:
-            soplex->setIntParam(SoplexParameters::READ, SoPlex::READMODE_RATIONAL);
-            soplex->setIntParam(SoplexParameters::SOLV, SoPlex::SOLVEMODE_RATIONAL);
-            soplex->setIntParam(SoplexParameters::CHEC, SoPlex::CHECKMODE_RATIONAL);
-            soplex->setIntParam(SoplexParameters::SYNC, SoPlex::SYNCMODE_AUTO);
+            SOPLEX_CALL_ABORT(soplex->setIntParam(SoplexParameters::READ, SoPlex::READMODE_RATIONAL));
+            SOPLEX_CALL_ABORT(soplex->setIntParam(SoplexParameters::SOLV, SoPlex::SOLVEMODE_RATIONAL));
+            SOPLEX_CALL_ABORT(soplex->setIntParam(SoplexParameters::CHEC, SoPlex::CHECKMODE_RATIONAL));
+            SOPLEX_CALL_ABORT(soplex->setIntParam(SoplexParameters::SYNC, SoPlex::SYNCMODE_AUTO));
             break;
          default:
             SPX_MSG_ERROR(soplex->spxout << "unknown solver arithmetic\n");
+            assert(false);
          }
       }
    };

@@ -812,6 +812,7 @@ namespace bugger
             SCIP_CALL_ABORT(SCIPsetCharParam(scip, pair.first.c_str(), pair.second));
          for( const auto& pair : this->adjustment->getStringSettings( ) )
             SCIP_CALL_ABORT(SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str()));
+
          for( const auto& pair : this->adjustment->getLimitSettings( ) )
          {
             switch( limits.find(pair.first)->second )
