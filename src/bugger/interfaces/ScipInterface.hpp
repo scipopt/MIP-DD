@@ -117,7 +117,9 @@ namespace bugger
       {
          bool success = filename.empty() || SCIPreadParams(scip, filename.c_str()) == SCIP_OKAY;
 
-         if( set_arithmetic( ) != SCIP_OKAY || !success )
+         set_arithmetic( );
+
+         if( !success )
             return boost::none;
 
          Vec<std::pair<String, bool>> bool_settings;
@@ -268,21 +270,21 @@ namespace bugger
 
    protected:
 
-      SCIP_RETCODE
+      void
       set_parameters( ) const
       {
          for( const auto& pair : this->adjustment->getBoolSettings( ) )
-            SCIP_CALL(SCIPsetBoolParam(scip, pair.first.c_str(), pair.second));
+            SCIP_CALL_ABORT(SCIPsetBoolParam(scip, pair.first.c_str(), pair.second));
          for( const auto& pair : this->adjustment->getIntSettings( ) )
-            SCIP_CALL(SCIPsetIntParam(scip, pair.first.c_str(), pair.second));
+            SCIP_CALL_ABORT(SCIPsetIntParam(scip, pair.first.c_str(), pair.second));
          for( const auto& pair : this->adjustment->getLongSettings( ) )
-            SCIP_CALL(SCIPsetLongintParam(scip, pair.first.c_str(), pair.second));
+            SCIP_CALL_ABORT(SCIPsetLongintParam(scip, pair.first.c_str(), pair.second));
          for( const auto& pair : this->adjustment->getDoubleSettings( ) )
-            SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), pair.second));
+            SCIP_CALL_ABORT(SCIPsetRealParam(scip, pair.first.c_str(), pair.second));
          for( const auto& pair : this->adjustment->getCharSettings( ) )
-            SCIP_CALL(SCIPsetCharParam(scip, pair.first.c_str(), pair.second));
+            SCIP_CALL_ABORT(SCIPsetCharParam(scip, pair.first.c_str(), pair.second));
          for( const auto& pair : this->adjustment->getStringSettings( ) )
-            SCIP_CALL(SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str()));
+            SCIP_CALL_ABORT(SCIPsetStringParam(scip, pair.first.c_str(), pair.second.c_str()));
 
          for( const auto& pair : this->adjustment->getLimitSettings( ) )
          {
@@ -291,49 +293,46 @@ namespace bugger
             case BEST:
             case SOLU:
             case REST:
-               SCIP_CALL(SCIPsetIntParam(scip, pair.first.c_str(), pair.second));
+               SCIP_CALL_ABORT(SCIPsetIntParam(scip, pair.first.c_str(), pair.second));
                break;
             case TOTA:
-               SCIP_CALL(SCIPsetLongintParam(scip, pair.first.c_str(), pair.second));
+               SCIP_CALL_ABORT(SCIPsetLongintParam(scip, pair.first.c_str(), pair.second));
                break;
             case TIME:
-               SCIP_CALL(SCIPsetRealParam(scip, pair.first.c_str(), pair.second));
+               SCIP_CALL_ABORT(SCIPsetRealParam(scip, pair.first.c_str(), pair.second));
                break;
             case DUAL:
             case PRIM:
             default:
                SCIPerrorMessage("unknown limit type\n");
-               return SCIP_ERROR;
+               assert(false);
             }
          }
 
-         SCIP_CALL(set_arithmetic( ));
-
-         return SCIP_OKAY;
+         set_arithmetic( );
       }
 
    private:
 
-      SCIP_RETCODE
+      void
       set_arithmetic( ) const
       {
 #ifdef SCIP_WITH_EXACTSOLVE
          switch( parameters.arithmetic )
          {
          case 0:
-            SCIP_CALL(SCIPsetBoolParam(scip, ScipParameters::EXAC.c_str(), FALSE));
+            SCIP_CALL_ABORT(SCIPsetBoolParam(scip, ScipParameters::EXAC.c_str(), FALSE));
             break;
          case 1:
-            SCIP_CALL(SCIPsetBoolParam(scip, ScipParameters::EXAC.c_str(), TRUE));
+            SCIP_CALL_ABORT(SCIPsetBoolParam(scip, ScipParameters::EXAC.c_str(), TRUE));
             break;
          default:
             SCIPerrorMessage("unknown solver arithmetic\n");
-            return SCIP_ERROR;
+            assert(false);
          }
 
-         SCIP_CALL(SCIPsetStringParam(scip, ScipParameters::CERT.c_str(), parameters.certificate ? "certificate.vipr" : ""));
+         SCIP_CALL_ABORT(SCIPsetStringParam(scip, ScipParameters::CERT.c_str(), parameters.certificate ? "certificate.vipr" : ""));
 #endif
-         return SCIP_OKAY;
       }
    };
 

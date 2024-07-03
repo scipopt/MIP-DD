@@ -43,9 +43,7 @@ namespace bugger
       void
       doSetUp(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution) override
       {
-         auto retcode = setup(settings, problem, solution);
-         assert(retcode == SCIP_OKAY);
-         (void)retcode;
+         setup(settings, problem, solution);
       }
 
       std::pair<char, SolverStatus>
@@ -487,7 +485,7 @@ namespace bugger
          }
       }
 
-      SCIP_RETCODE
+      void
       setup(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution)
       {
          this->adjustment = &settings;
@@ -505,10 +503,10 @@ namespace bugger
          const auto& rhs_values = consMatrix.getRightHandSides( );
          const auto& rflags = this->model->getRowFlags( );
 
-         SCIP_CALL(this->set_parameters( ));
-         SCIP_CALL(SCIPcreateProbBasic(this->scip, this->model->getName( ).c_str()));
-         SCIP_CALL(SCIPaddOrigObjoffset(this->scip, SCIP_Real(obj.offset)));
-         SCIP_CALL(SCIPsetObjsense(this->scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
+         this->set_parameters( );
+         SCIP_CALL_ABORT(SCIPcreateProbBasic(this->scip, this->model->getName( ).c_str()));
+         SCIP_CALL_ABORT(SCIPaddOrigObjoffset(this->scip, SCIP_Real(obj.offset)));
+         SCIP_CALL_ABORT(SCIPsetObjsense(this->scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
          this->vars.resize(ncols);
          if( solution_exists )
             this->value = this->model->getPrimalObjective(solution);
@@ -543,12 +541,12 @@ namespace bugger
                   type = SCIP_VARTYPE_IMPLINT;
                else
                   type = SCIP_VARTYPE_CONTINUOUS;
-               SCIP_CALL(SCIPcreateVarBasic(this->scip, &var, varNames[col].c_str(), lb, ub,
+               SCIP_CALL_ABORT(SCIPcreateVarBasic(this->scip, &var, varNames[col].c_str(), lb, ub,
                                             SCIP_Real(obj.coefficients[col]), type));
-               SCIP_CALL(SCIPaddVarExactData(this->scip, var, NULL, NULL, NULL));
+               SCIP_CALL_ABORT(SCIPaddVarExactData(this->scip, var, NULL, NULL, NULL));
                this->vars[col] = var;
-               SCIP_CALL(SCIPaddVar(this->scip, var));
-               SCIP_CALL(SCIPreleaseVar(this->scip, &var));
+               SCIP_CALL_ABORT(SCIPaddVar(this->scip, var));
+               SCIP_CALL_ABORT(SCIPreleaseVar(this->scip, &var));
             }
          }
 
@@ -579,10 +577,10 @@ namespace bugger
                consvars[i] = this->vars[rowinds[i]];
                RatSetReal(consvals[i], SCIP_Real(rowvals[i]));
             }
-            SCIP_CALL(SCIPcreateConsBasicExactLinear(this->scip, &cons, consNames[row].c_str(), nrowcols,
+            SCIP_CALL_ABORT(SCIPcreateConsBasicExactLinear(this->scip, &cons, consNames[row].c_str(), nrowcols,
                                                      consvars.data( ), consvals.data( ), lhs, rhs));
-            SCIP_CALL(SCIPaddCons(this->scip, cons));
-            SCIP_CALL(SCIPreleaseCons(this->scip, &cons));
+            SCIP_CALL_ABORT(SCIPaddCons(this->scip, cons));
+            SCIP_CALL_ABORT(SCIPreleaseCons(this->scip, &cons));
          }
          RatFree(&rhs);
          RatFree(&lhs);
@@ -596,16 +594,14 @@ namespace bugger
                switch( pair.second )
                {
                case DUAL:
-                  SCIP_CALL(SCIPsetRealParam(this->scip, pair.first.c_str(), SCIP_Real(this->relax( this->value, obj.sense, 2 * SCIPsumepsilon(this->scip), SCIPinfinity(this->scip) ))));
+                  SCIP_CALL_ABORT(SCIPsetRealParam(this->scip, pair.first.c_str(), SCIP_Real(this->relax( this->value, obj.sense, 2 * SCIPsumepsilon(this->scip), SCIPinfinity(this->scip) ))));
                   break;
                case PRIM:
-                  SCIP_CALL(SCIPsetRealParam(this->scip, pair.first.c_str(), SCIP_Real(this->value)));
+                  SCIP_CALL_ABORT(SCIPsetRealParam(this->scip, pair.first.c_str(), SCIP_Real(this->value)));
                   break;
                }
             }
          }
-
-         return SCIP_OKAY;
       }
    };
 
