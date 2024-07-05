@@ -150,6 +150,11 @@ namespace bugger
       else
          return integer;
    }
+
+   bool isinf(const Rational& number)
+   {
+      return false;
+   }
 }
 
 #endif

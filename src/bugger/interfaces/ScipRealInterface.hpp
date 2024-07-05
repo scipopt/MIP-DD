@@ -38,7 +38,7 @@ namespace bugger
       explicit ScipRealInterface(const Message& _msg, const ScipParameters& _parameters,
                                  const HashMap<String, char>& _limits) :
                                  ScipInterface<REAL>(_msg, _parameters, _limits)
-                                 { }
+      { }
 
       void
       doSetUp(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution) override
@@ -77,6 +77,7 @@ namespace bugger
             else
             {
                SCIP_VAR* var;
+               SCIP_VARTYPE type;
                SCIP_Real lb = domains.flags[col].test(ColFlag::kLbInf)
                               ? -SCIPinfinity(this->scip)
                               : SCIP_Real(domains.lower_bounds[col]);
@@ -84,7 +85,6 @@ namespace bugger
                               ? SCIPinfinity(this->scip)
                               : SCIP_Real(domains.upper_bounds[col]);
                assert(!domains.flags[col].test(ColFlag::kInactive) || lb == ub);
-               SCIP_VARTYPE type;
                if( domains.flags[col].test(ColFlag::kIntegral) )
                {
                   if( lb >= 0 && ub <= 1 )
@@ -115,13 +115,13 @@ namespace bugger
             const auto& rowinds = rowvec.getIndices( );
             const auto& rowvals = rowvec.getValues( );
             int nrowcols = rowvec.getLength( );
+            SCIP_CONS* cons;
             SCIP_Real lhs = rflags[row].test(RowFlag::kLhsInf)
                             ? -SCIPinfinity(this->scip)
                             : SCIP_Real(lhs_values[row]);
             SCIP_Real rhs = rflags[row].test(RowFlag::kRhsInf)
                             ? SCIPinfinity(this->scip)
                             : SCIP_Real(rhs_values[row]);
-            SCIP_CONS* cons;
             for( int i = 0; i < nrowcols; ++i )
             {
                assert(!this->model->getColFlags( )[rowinds[i]].test(ColFlag::kFixed));

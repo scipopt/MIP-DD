@@ -26,10 +26,28 @@
 #define __BUGGER_INTERFACES_SCIPRATIONALINTERFACE_HPP__
 
 #include "ScipInterface.hpp"
+#include "scip/struct_rational.h"
 
 
 namespace bugger
 {
+   /** set a scip rational to the value of another type */
+   template <typename REAL>
+   SCIP_RETCODE
+   SCIPratSetReal(
+      SCIP_Rational*        res,                /**< the result */
+      REAL                  real                /**< real to set from */
+      )
+   {
+      assert(res != NULL);
+
+      res->val = Rational(real);
+      res->isinf = isinf(real);
+      res->isfprepresentable = num_traits<REAL>::is_floating_point ? SCIP_ISFPREPRESENTABLE_TRUE : SCIP_ISFPREPRESENTABLE_UNKNOWN;
+
+      return SCIP_OKAY;
+   }
+
    template <typename REAL>
    class ScipRationalInterface : public ScipInterface<REAL>
    {
@@ -38,7 +56,7 @@ namespace bugger
       explicit ScipRationalInterface(const Message& _msg, const ScipParameters& _parameters,
                                      const HashMap<String, char>& _limits) :
                                      ScipInterface<REAL>(_msg, _parameters, _limits)
-                                     { }
+      { }
 
       void
       doSetUp(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution) override
@@ -70,6 +88,12 @@ namespace bugger
          else if( this->reference->status == SolutionStatus::kInfeasible )
             this->value = obj.sense ? SCIPinfinity(this->scip) : -SCIPinfinity(this->scip);
 
+         SCIP_Rational* lower;
+         SCIP_Rational* upper;
+         SCIP_Rational* objval;
+         RatCreate(&lower);
+         RatCreate(&upper);
+         RatCreate(&objval);
          for( int col = 0; col < ncols; ++col )
          {
             if( domains.flags[col].test(ColFlag::kFixed) )
@@ -77,17 +101,18 @@ namespace bugger
             else
             {
                SCIP_VAR* var;
-               SCIP_Real lb = domains.flags[col].test(ColFlag::kLbInf)
-                              ? -SCIPinfinity(this->scip)
-                              : SCIP_Real(domains.lower_bounds[col]);
-               SCIP_Real ub = domains.flags[col].test(ColFlag::kUbInf)
-                              ? SCIPinfinity(this->scip)
-                              : SCIP_Real(domains.upper_bounds[col]);
-               assert(!domains.flags[col].test(ColFlag::kInactive) || lb == ub);
                SCIP_VARTYPE type;
+               SCIP_CALL_ABORT(SCIPratSetReal(lower, domains.flags[col].test(ColFlag::kLbInf)
+                                                     ? REAL(-SCIPinfinity(this->scip))
+                                                     : domains.lower_bounds[col]));
+               SCIP_CALL_ABORT(SCIPratSetReal(upper, domains.flags[col].test(ColFlag::kUbInf)
+                                                     ? REAL(SCIPinfinity(this->scip))
+                                                     : domains.upper_bounds[col]));
+               SCIP_CALL_ABORT(SCIPratSetReal(objval, obj.coefficients[col]));
+               assert(!domains.flags[col].test(ColFlag::kInactive) || *lower == *upper);
                if( domains.flags[col].test(ColFlag::kIntegral) )
                {
-                  if( lb >= 0 && ub <= 1 )
+                  if( lower->val >= 0 && upper->val <= 1 )
                      type = SCIP_VARTYPE_BINARY;
                   else
                      type = SCIP_VARTYPE_INTEGER;
@@ -96,9 +121,8 @@ namespace bugger
                   type = SCIP_VARTYPE_IMPLINT;
                else
                   type = SCIP_VARTYPE_CONTINUOUS;
-               SCIP_CALL_ABORT(SCIPcreateVarBasic(this->scip, &var, varNames[col].c_str(), lb, ub,
-                     SCIP_Real(obj.coefficients[col]), type));
-               SCIP_CALL_ABORT(SCIPaddVarExactData(this->scip, var, NULL, NULL, NULL));
+               SCIP_CALL_ABORT(SCIPcreateVarBasic(this->scip, &var, varNames[col].c_str(), 0.0, 0.0, 0.0, type));
+               SCIP_CALL_ABORT(SCIPaddVarExactData(this->scip, var, lower, upper, objval));
                this->vars[col] = var;
                SCIP_CALL_ABORT(SCIPaddVar(this->scip, var));
                SCIP_CALL_ABORT(SCIPreleaseVar(this->scip, &var));
@@ -107,12 +131,8 @@ namespace bugger
 
          Vec<SCIP_VAR*> consvars(ncols);
          Vec<SCIP_Rational*> consvals(ncols);
-         SCIP_Rational* lhs;
-         SCIP_Rational* rhs;
          for( int col = 0; col < ncols; ++col )
             RatCreate(&consvals[col]);
-         RatCreate(&lhs);
-         RatCreate(&rhs);
          for( int row = 0; row < nrows; ++row )
          {
             if( rflags[row].test(RowFlag::kRedundant) )
@@ -123,24 +143,29 @@ namespace bugger
             const auto& rowvals = rowvec.getValues( );
             int nrowcols = rowvec.getLength( );
             SCIP_CONS* cons;
-            RatSetReal(lhs, rflags[row].test(RowFlag::kLhsInf) ? -SCIPinfinity(this->scip) : SCIP_Real(lhs_values[row]));
-            RatSetReal(rhs, rflags[row].test(RowFlag::kRhsInf) ? SCIPinfinity(this->scip) : SCIP_Real(rhs_values[row]));
+            SCIP_CALL_ABORT(SCIPratSetReal(lower, rflags[row].test(RowFlag::kLhsInf)
+                                                  ? REAL(-SCIPinfinity(this->scip))
+                                                  : lhs_values[row]));
+            SCIP_CALL_ABORT(SCIPratSetReal(upper, rflags[row].test(RowFlag::kRhsInf)
+                                                  ? REAL(SCIPinfinity(this->scip))
+                                                  : rhs_values[row]));
             for( int i = 0; i < nrowcols; ++i )
             {
                assert(!this->model->getColFlags( )[rowinds[i]].test(ColFlag::kFixed));
                assert(rowvals[i] != 0);
                consvars[i] = this->vars[rowinds[i]];
-               RatSetReal(consvals[i], SCIP_Real(rowvals[i]));
+               SCIP_CALL_ABORT(SCIPratSetReal(consvals[i], rowvals[i]));
             }
             SCIP_CALL_ABORT(SCIPcreateConsBasicExactLinear(this->scip, &cons, consNames[row].c_str(), nrowcols,
-                  consvars.data( ), consvals.data( ), lhs, rhs));
+                  consvars.data( ), consvals.data( ), lower, upper));
             SCIP_CALL_ABORT(SCIPaddCons(this->scip, cons));
             SCIP_CALL_ABORT(SCIPreleaseCons(this->scip, &cons));
          }
-         RatFree(&rhs);
-         RatFree(&lhs);
          for( int col = ncols - 1; col >= 0; --col )
             RatFree(&consvals[col]);
+         RatFree(&objval);
+         RatFree(&upper);
+         RatFree(&lower);
 
          if( solution_exists && ( this->parameters.set_dual_limit || this->parameters.set_prim_limit ) )
          {
