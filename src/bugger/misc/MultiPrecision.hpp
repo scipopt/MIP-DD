@@ -1,22 +1,24 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    BUGGER                                                                 */
+/*                            MIP-DD                                         */
 /*                                                                           */
 /* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
-/* This program is free software: you can redistribute it and/or modify      */
-/* it under the terms of the GNU Lesser General Public License as published  */
-/* by the Free Software Foundation, either version 3 of the License, or      */
-/* (at your option) any later version.                                       */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/* This program is distributed in the hope that it will be useful,           */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of            */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
-/* GNU Lesser General Public License for more details.                       */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
 /*                                                                           */
-/* You should have received a copy of the GNU Lesser General Public License  */
-/* along with this program.  If not, see <https://www.gnu.org/licenses/>.    */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with MIP-DD; see the file LICENSE. If not visit scipopt.org.       */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -25,55 +27,36 @@
 
 #include "bugger/Config.hpp"
 
-// work around build failure with boost on Fedora 37
-#include <memory>
 #include <boost/serialization/split_free.hpp>
 
 #ifdef BUGGER_HAVE_FLOAT128
 #include <boost/multiprecision/float128.hpp>
-namespace bugger
-{
 using Quad = boost::multiprecision::float128;
-} // namespace bugger
 #elif defined( BUGGER_HAVE_GMP )
 #include <boost/multiprecision/gmp.hpp>
-
-namespace bugger
-{
-using Quad =
-    boost::multiprecision::number<boost::multiprecision::gmp_float<35>>;
-} // namespace bugger
+using Quad = boost::multiprecision::number<boost::multiprecision::gmp_float<35>>;
 BOOST_SERIALIZATION_SPLIT_FREE( papilo::Quad )
-
 #else
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <boost/serialization/nvp.hpp>
-namespace bugger
-{
 using Quad = boost::multiprecision::cpp_bin_float_quad;
-} // namespace bugger
 #endif
 
 #ifdef BUGGER_HAVE_GMP
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <boost/multiprecision/gmp.hpp>
 #include <boost/serialization/nvp.hpp>
-
 // unfortunately the multiprecision gmp types do not provide an overload for
 // serialization
-namespace bugger
-{
+using Integral = boost::multiprecision::mpq_int;
 using Rational = boost::multiprecision::mpq_rational;
 using Float100 = boost::multiprecision::mpf_float_100;
 using Float500 = boost::multiprecision::mpf_float_500;
 using Float1000 = boost::multiprecision::mpf_float_1000;
-} // namespace bugger
-
 BOOST_SERIALIZATION_SPLIT_FREE( papilo::Rational )
 BOOST_SERIALIZATION_SPLIT_FREE( papilo::Float100 )
 BOOST_SERIALIZATION_SPLIT_FREE( papilo::Float500 )
 BOOST_SERIALIZATION_SPLIT_FREE( papilo::Float1000 )
-
 namespace boost
 {
 namespace serialization
@@ -122,22 +105,51 @@ load( Archive& ar,
 
 } // namespace serialization
 } // namespace boost
-
 #else
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/serialization/nvp.hpp>
+using Integral = boost::multiprecision::cpp_int;
+using Rational = boost::multiprecision::cpp_rational;
+using Float100 = boost::multiprecision::number<boost::multiprecision::cpp_bin_float<100>>;
+using Float500 = boost::multiprecision::number<boost::multiprecision::cpp_bin_float<500>>;
+using Float1000 = boost::multiprecision::number<boost::multiprecision::cpp_bin_float<1000>>;
+#endif
 
 namespace bugger
 {
-using Rational = boost::multiprecision::cpp_rational;
-using Float100 =
-    boost::multiprecision::number<boost::multiprecision::cpp_bin_float<100>>;
-using Float500 =
-    boost::multiprecision::number<boost::multiprecision::cpp_bin_float<500>>;
-using Float1000 =
-    boost::multiprecision::number<boost::multiprecision::cpp_bin_float<1000>>;
-} // namespace bugger
-#endif
+   Rational round(const Rational& number)
+   {
+      Integral integer { number };
+      Rational fraction { 2 * (number - integer) };
+
+      if( fraction >= 1 )
+         return integer + 1;
+      else if( fraction <= -1 )
+         return integer - 1;
+      else
+         return integer;
+   }
+
+   Rational floor(const Rational& number)
+   {
+      Integral integer { number };
+
+      if( integer > number )
+         return integer - 1;
+      else
+         return integer;
+   }
+
+   Rational ceil(const Rational& number)
+   {
+      Integral integer { number };
+
+      if( integer < number )
+         return integer + 1;
+      else
+         return integer;
+   }
+}
 
 #endif

@@ -1,33 +1,34 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    BUGGER                                                                 */
+/*                            MIP-DD                                         */
 /*                                                                           */
 /* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
-/* This program is free software: you can redistribute it and/or modify      */
-/* it under the terms of the GNU Lesser General Public License as published  */
-/* by the Free Software Foundation, either version 3 of the License, or      */
-/* (at your option) any later version.                                       */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/* This program is distributed in the hope that it will be useful,           */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of            */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
-/* GNU Lesser General Public License for more details.                       */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
 /*                                                                           */
-/* You should have received a copy of the GNU Lesser General Public License  */
-/* along with this program.  If not, see <https://www.gnu.org/licenses/>.    */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with MIP-DD; see the file LICENSE. If not visit scipopt.org.       */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #ifndef _BUGGER_MISC_NUM_HPP_
 #define _BUGGER_MISC_NUM_HPP_
 
-#include "bugger/misc/ParameterSet.hpp"
-#include <cmath>
-#include <cstdint>
-#include <limits>
-#include <utility>
+#include "bugger/misc/fmt.hpp"
+#include "bugger/misc/String.hpp"
+#include "bugger/misc/MultiPrecision.hpp"
+
 
 namespace bugger
 {
@@ -92,45 +93,14 @@ class provides_numerator_and_denominator_overloads
        num_traits<decltype( test_denominator<T>( 0 ) )>::is_integer;
 };
 
-template <typename Rational,
-          typename std::enable_if<
-              num_traits<Rational>::is_rational &&
-                  provides_numerator_and_denominator_overloads<Rational>::value,
-              int>::type = 0>
-Rational
-floor( const Rational& x, ... )
-{
-   if( x >= 0 )
-      return numerator( x ) / denominator( x );
-
-   if( numerator( x ) < 0 )
-      return -1 + ( numerator( x ) + 1 ) / denominator( x );
-
-   return -1 + ( numerator( x ) - 1 ) / denominator( x );
-}
-
-template <typename Rational,
-          typename std::enable_if<
-              num_traits<Rational>::is_rational &&
-                  provides_numerator_and_denominator_overloads<Rational>::value,
-              int>::type = 0>
-Rational
-ceil( const Rational& x, ... )
-{
-   if( x <= 0 )
-      return numerator( x ) / denominator( x );
-
-   if( numerator( x ) < 0 )
-      return 1 + ( numerator( x ) + 1 ) / denominator( x );
-
-   return 1 + ( numerator( x ) - 1 ) / denominator( x );
-}
-
+using std::min;
+using std::max;
 using std::abs;
+using std::floor;
 using std::ceil;
+using std::round;
 using std::copysign;
 using std::exp;
-using std::floor;
 using std::frexp;
 using std::ldexp;
 using std::log;
@@ -143,17 +113,8 @@ class Num
 {
  public:
    Num()
-       : zeta( REAL{ 0 } ), epsilon( REAL{ 1e-9}), feastol( REAL{ 1e-6 } ),
-         hugeval( REAL{ 1e8 } )
-   {
-   }
-
-   template <typename R>
-   static constexpr REAL
-   round( const R& x )
-   {
-      return floor( REAL( x + REAL( 0.5 ) ) );
-   }
+       : zeta( REAL{ 0 } ), epsilon( REAL{ 1e-9 }), feastol( REAL{ 1e-6 } ),
+         hugeval( REAL{ 1e8 } ) { }
 
    template <typename R1, typename R2>
    bool
@@ -247,21 +208,6 @@ class Num
    {
       return a - b < -feastol;
    }
-
-   template <typename R1, typename R2>
-   static REAL
-   max( const R1& a, const R2& b )
-   {
-      return a > b ? REAL( a ) : REAL( b );
-   }
-
-   template <typename R1, typename R2>
-   static REAL
-   min( const R1& a, const R2& b )
-   {
-      return a < b ? REAL( a ) : REAL( b );
-   }
-
 
    template <typename R>
    REAL
@@ -415,6 +361,142 @@ class Num
    REAL zeta;
    REAL hugeval;
 };
+
+template <typename REAL>
+REAL
+parse_number( const String& s )
+{
+   bool success = true;
+   REAL number;
+   std::stringstream ss;
+   ss << s;
+   // catch boost exception
+   try
+   {
+      ss >> number;
+   }
+   catch( boost::wrapexcept<std::runtime_error> const& )
+   {
+      success = false;
+   }
+   if( !success || ss.fail() || !ss.eof() )
+   {
+      Integral numerator = 0;
+      Integral denominator = 1;
+      unsigned exponent = 0;
+      unsigned phase = 0;
+      bool num_negated = false;
+      bool exp_negated = false;
+      success = true;
+      for( char c : s )
+      {
+         int digit = '0' <= c && c <= '9' ? c - '0' : -1;
+         switch( phase )
+         {
+         // number sign
+         case 0:
+            ++phase;
+            if( c == '+' )
+               break;
+            else if( c == '-' )
+            {
+               num_negated = true;
+               break;
+            }
+         // before delimiter
+         case 1:
+            if( digit >= 0 )
+            {
+               numerator *= 10;
+               numerator += digit;
+               break;
+            }
+            else
+            {
+               ++phase;
+               if( num_traits<REAL>::is_rational )
+               {
+                  if( c == '.' )
+                     break;
+               }
+               else
+               {
+                  if( c == '/' )
+                  {
+                     denominator = 0;
+                     break;
+                  }
+               }
+            }
+         // after delimiter
+         case 2:
+            if( digit >= 0 )
+            {
+               if( num_traits<REAL>::is_rational )
+               {
+                  numerator *= 10;
+                  numerator += digit;
+                  denominator *= 10;
+               }
+               else
+               {
+                  denominator *= 10;
+                  denominator += digit;
+               }
+            }
+            else if( ( c == 'e' || c == 'E' ) && num_traits<REAL>::is_rational )
+               ++phase;
+            else
+               success = false;
+            break;
+         // exponent sign
+         case 3:
+            ++phase;
+            if( c == '+' )
+               break;
+            else if( c == '-' )
+            {
+               exp_negated = true;
+               break;
+            }
+         // exponent value
+         case 4:
+            if( digit >= 0 )
+            {
+               exponent *= 10;
+               exponent += digit;
+               break;
+            }
+            else
+               ++phase;
+         default:
+            success = false;
+            break;
+         }
+         if( !success )
+            break;
+      }
+      if( success && denominator != 0 )
+      {
+         if( num_negated )
+            numerator *= -1;
+         if( exp_negated )
+            denominator *= boost::multiprecision::pow( Integral(10), exponent );
+         else
+            numerator *= boost::multiprecision::pow( Integral(10), exponent );
+         // compute precise number
+         number = REAL( Rational( numerator, denominator ) );
+      }
+      else
+      {
+         fmt::print( stderr,
+                     "WARNING: {} is not representable in arithmetic {}!\n",
+                     s, typeid(REAL).name() );
+         number = 0;
+      }
+   }
+   return number;
+}
 
 } // namespace bugger
 
