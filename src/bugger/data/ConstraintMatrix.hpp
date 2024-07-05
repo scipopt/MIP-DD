@@ -34,11 +34,9 @@
 #include "bugger/data/SingleRow.hpp"
 #include "bugger/data/SparseStorage.hpp"
 #include "bugger/data/VariableDomains.hpp"
-#include "bugger/misc/MultiPrecision.hpp"
-#include "bugger/misc/Num.hpp"
 #include "bugger/misc/Vec.hpp"
 #include "bugger/misc/compress_vector.hpp"
-#include "bugger/misc/fmt.hpp"
+#include "bugger/misc/Num.hpp"
 #ifdef BUGGER_TBB
 #include "bugger/misc/tbb.hpp"
 #endif
