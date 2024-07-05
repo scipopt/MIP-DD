@@ -23,21 +23,20 @@
 #ifndef _BUGGER_CORE_SOLUTION_HPP_
 #define _BUGGER_CORE_SOLUTION_HPP_
 
-#include "bugger/misc/Vec.hpp"
 
-namespace bugger {
-
-   enum class SolutionStatus {
-
-      kInfeasible,
-      kUnbounded,
-      kFeasible,
+namespace bugger
+{
+   enum class SolutionStatus
+   {
       kUnknown,
+      kInfeasible,
+      kFeasible,
+      kUnbounded
    };
 
    template <typename REAL>
-   class Solution {
-
+   class Solution
+   {
    public:
 
       SolutionStatus status;
