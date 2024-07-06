@@ -25,7 +25,6 @@
 #include <fstream>
 #include <algorithm>
 #include <boost/program_options.hpp>
-
 #include "bugger/data/BuggerRun.hpp"
 #include "bugger/misc/VersionLogger.hpp"
 #include "bugger/modules/ConstraintModul.hpp"
