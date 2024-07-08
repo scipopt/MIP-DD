@@ -135,18 +135,23 @@ namespace bugger
             SCIP_CALL_ABORT(SCIPreleaseCons(this->scip, &cons));
          }
 
-         if( solution_exists && ( this->parameters.set_dual_limit || this->parameters.set_prim_limit ) )
+         if( solution_exists )
          {
-            for( const auto& pair : this->limits )
+            if( this->parameters.cutoffrelax >= 0.0 && this->parameters.cutoffrelax < SCIPinfinity(this->scip) )
+               SCIP_CALL_ABORT(SCIPsetObjlimit(this->scip, max(min(SCIP_Real(obj.sense ? this->parameters.cutoffrelax : -this->parameters.cutoffrelax) + SCIP_Real(this->value), SCIPinfinity(this->scip)), -SCIPinfinity(this->scip))));
+            if( this->parameters.set_dual_limit || this->parameters.set_prim_limit )
             {
-               switch( pair.second )
+               for( const auto& pair : this->limits )
                {
-               case DUAL:
-                  SCIP_CALL_ABORT(SCIPsetRealParam(this->scip, pair.first.c_str(), SCIP_Real(this->relax( this->value, obj.sense, 2 * SCIPsumepsilon(this->scip), SCIPinfinity(this->scip) ))));
-                  break;
-               case PRIM:
-                  SCIP_CALL_ABORT(SCIPsetRealParam(this->scip, pair.first.c_str(), SCIP_Real(this->value)));
-                  break;
+                  switch( pair.second )
+                  {
+                  case DUAL:
+                     SCIP_CALL_ABORT(SCIPsetRealParam(this->scip, pair.first.c_str(), SCIP_Real(this->relax( this->value, obj.sense, 2 * SCIPsumepsilon(this->scip), SCIPinfinity(this->scip) ))));
+                     break;
+                  case PRIM:
+                     SCIP_CALL_ABORT(SCIPsetRealParam(this->scip, pair.first.c_str(), SCIP_Real(this->value)));
+                     break;
+                  }
                }
             }
          }
@@ -231,8 +236,24 @@ namespace bugger
                // check objective by best solution evaluation
                if( retcode == SolverRetcode::OKAY && objective )
                {
-                  // check solution objective instead of primal bound if no ray is provided
-                  REAL bound = abs(SCIPgetPrimalbound(this->scip)) == SCIPinfinity(this->scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible ? SCIPgetSolOrigObj(this->scip, sols[0]) : SCIPgetPrimalbound(this->scip);
+                  // instead of primal bound use solution objective if no ray or infinity value if objective limit
+                  REAL bound { SCIPgetPrimalbound(this->scip) };
+
+                  if( abs(SCIPgetPrimalbound(this->scip)) == SCIPinfinity(this->scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible )
+                     bound = SCIPgetSolOrigObj(this->scip, sols[0]);
+                  else if( this->parameters.cutoffrelax >= 0.0 && this->parameters.cutoffrelax < SCIPinfinity(this->scip) )
+                  {
+                     if( this->model->getObjective( ).sense )
+                     {
+                        if( SCIPgetPrimalbound(this->scip) >= SCIP_Real(this->relax( SCIP_Real(this->parameters.cutoffrelax) + SCIP_Real(this->value), false, SCIPepsilon(this->scip), SCIPinfinity(this->scip) )) )
+                           bound = solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : SCIPinfinity(this->scip);
+                     }
+                     else
+                     {
+                        if( SCIPgetPrimalbound(this->scip) <= SCIP_Real(this->relax( SCIP_Real(-this->parameters.cutoffrelax) + SCIP_Real(this->value), true, SCIPepsilon(this->scip), SCIPinfinity(this->scip) )) )
+                           bound = solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : -SCIPinfinity(this->scip);
+                     }
+                  }
 
                   if( solution.size() == 0 )
                      solution.emplace_back(SolutionStatus::kInfeasible);

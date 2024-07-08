@@ -23,12 +23,12 @@ cmake .. -DSOLVER=on -DSOLVER_DIR=PATH_TO_SOLVER
 make
 ```
 Here, SOLVER stands for one of the interfaced solvers for which the installation subdirectory PATH_TO_SOLVER contains the file solver-targets.cmake required to link its shared library.
-Currently supported solvers:
+Currently, interfaces for the following solvers are already built in:
 
 - SOPLEX (https://soplex.zib.de/doc/html/INSTALL.php)
 - SCIP (https://scipopt.org/doc/html/INSTALL.php and https://github.com/scipopt/scip/blob/exact-rational/README.md)
 
-It is necessary to build the solver in optimized mode since the MIP-DD is not designed to handle assertions directly in order to keep the process performant.
+It is necessary to build the underlying solver in release mode since MIP-DD is not designed to handle assertions directly in order to keep the process performant.
 Nevertheless, it is usually possible to handle assertions indirectly by reformulating the solver code to return a suitable error under the negated assertion condition.
 The MIP-DD will then identify the formerly failing assertion as a solver error.
 Optionally, the arithmetic type used for reductions, problems, and solutions can be selected by the cmake parameter BUGGER_ARITHMETIC, which is double by default.
@@ -51,7 +51,7 @@ Please refer to parameters.txt for the list of default parameters.
 
 # Integrating a MIP Solver to MIP-DD
 
-To integrate a solver into the MIP-DD's API, a new class has to be created that inherits from SolverInterface.
+To integrate another solver into the MIP-DD's API, a new class has to be created that inherits from SolverInterface.
 Methods that are not required but enable additional functionality are marked with **optional**.
 The specific SolverInterface interacts with the solver by
 * parsing the settings, problem, and solution files as well as loading the data into the internal data structures (`parseSettings`, `readInstance`)

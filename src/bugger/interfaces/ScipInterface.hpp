@@ -60,6 +60,7 @@ namespace bugger
       int arithmetic = 0;
       int mode = -1;
       int certificate = 0;
+      double cutoffrelax = -1.0;
       double limitspace = 1.0;
       bool set_dual_limit = true;
       bool set_prim_limit = true;
@@ -371,6 +372,7 @@ namespace bugger
 #else
          parameterset.addParameter("scip.certificate", "check vipr certificate", parameters.certificate, 0, 1);
 #endif
+         parameterset.addParameter("scip.cutoffrelax", "absolute margin for limiting objective or -1 for no limitation", parameters.cutoffrelax, -1.0);
          parameterset.addParameter("scip.limitspace", "relative margin when restricting limits or -1 for no restriction", parameters.limitspace, -1.0);
          parameterset.addParameter("scip.setduallimit", "terminate when dual bound is better than reference solution", parameters.set_dual_limit);
          parameterset.addParameter("scip.setprimlimit", "terminate when prim bound is as good as reference solution", parameters.set_prim_limit);
