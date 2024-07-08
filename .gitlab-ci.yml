@@ -22,7 +22,7 @@ stages:
     name: gcc:10
   before_script:
     - apt-get update
-    - apt-get install -y cmake libtbb-dev
+    - apt-get install -y cmake libtbb-dev libmpfr-dev
     - export CFLAGS="-Werror"
     - export CXXFLAGS="-Werror"
     - export LD_LIBRARY_PATH=${INSTALL_DIR}/lib:${LD_LIBRARY_PATH}
@@ -60,7 +60,7 @@ boost-soplex-scip:
     - git clone https://github.com/scipopt/scip.git ${SCIP_DIR}
     - cd ${SCIP_DIR}
     - git checkout ${SCIP_REVISION}
-    - cmake . -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DZIMPL=off -DREADLINE=off -DGMP=off -DPAPILO=off -DIPOPT=off
+    - cmake . -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DREADLINE=off -DZIMPL=off -DPAPILO=off -DIPOPT=off
     - make -j$(nproc) install
 
 .test:
@@ -89,12 +89,10 @@ soplex_rational_debug:
   variables:
     CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSOPLEX=on -DSOPLEX_DIR=${INSTALL_DIR}"
 
-
 soplex_rational_optimized:
   extends: .test
   variables:
     CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSOPLEX=on -DSOPLEX_DIR=${INSTALL_DIR}"
-
 
 scip_double_debug:
   extends: .test
