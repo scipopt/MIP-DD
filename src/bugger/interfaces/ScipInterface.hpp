@@ -57,6 +57,7 @@ namespace bugger
 
       int arithmetic = 0;
       int mode = -1;
+      double cutoffrelax = -1.0;
       double limitspace = 1.0;
       bool set_dual_limit = true;
       bool set_prim_limit = true;
@@ -335,6 +336,7 @@ namespace bugger
       {
          parameterset.addParameter("scip.arithmetic", "arithmetic scip type (0: double)", parameters.arithmetic, 0, 0);
          parameterset.addParameter("scip.mode", "solve scip mode (-1: optimize, 0: count)", parameters.mode, -1, 0);
+         parameterset.addParameter("scip.cutoffrelax", "absolute margin for limiting objective or -1 for no limitation", parameters.cutoffrelax, -1.0);
          parameterset.addParameter("scip.limitspace", "relative margin when restricting limits or -1 for no restriction", parameters.limitspace, -1.0);
          parameterset.addParameter("scip.setduallimit", "terminate when dual bound is better than reference solution", parameters.set_dual_limit);
          parameterset.addParameter("scip.setprimlimit", "terminate when prim bound is as good as reference solution", parameters.set_prim_limit);
