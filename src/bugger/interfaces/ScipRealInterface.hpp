@@ -254,6 +254,11 @@ namespace bugger
                            bound = solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : -SCIPinfinity(this->scip);
                      }
                   }
+
+                  if( solution.size() == 0 )
+                     solution.emplace_back(SolutionStatus::kInfeasible);
+
+                  retcode = this->check_objective_value( bound, solution[0], REAL(SCIPsumepsilon(this->scip)), REAL(SCIPinfinity(this->scip)) );
                }
             }
             else
