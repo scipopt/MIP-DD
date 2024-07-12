@@ -41,7 +41,7 @@ namespace bugger
    {
       assert(res != NULL);
 
-      res->val = Rational(real);
+      res->val = scip_rational::Rational(real);
       res->isinf = isinf(real);
       res->isfprepresentable = num_traits<REAL>::is_floating_point ? SCIP_ISFPREPRESENTABLE_TRUE : SCIP_ISFPREPRESENTABLE_UNKNOWN;
 
