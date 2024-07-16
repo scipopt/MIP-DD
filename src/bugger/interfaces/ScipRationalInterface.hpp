@@ -109,7 +109,7 @@ namespace bugger
                                                      ? REAL(SCIPinfinity(this->scip))
                                                      : domains.upper_bounds[col]));
                SCIP_CALL_ABORT(SCIPratSetReal(objval, obj.coefficients[col]));
-               assert(!domains.flags[col].test(ColFlag::kInactive) || *lower == *upper);
+               assert(!domains.flags[col].test(ColFlag::kInactive) || lower->val == upper->val);
                if( domains.flags[col].test(ColFlag::kIntegral) )
                {
                   if( lower->val >= 0 && upper->val <= 1 )
