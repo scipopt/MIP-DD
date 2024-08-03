@@ -31,7 +31,7 @@
 
 namespace bugger
 {
-   /** set a scip rational to the value of another type */
+   /* set a scip rational to the value of another type */
    template <typename REAL>
    SCIP_RETCODE
    SCIPratSetReal(
@@ -48,6 +48,7 @@ namespace bugger
       return SCIP_OKAY;
    }
 
+   /* EXPERIMENTAL: like exact SCIP, this is not ready yet, and must be used carefully */
    template <typename REAL>
    class ScipRationalInterface : public ScipInterface<REAL>
    {
@@ -78,6 +79,7 @@ namespace bugger
 
          this->set_parameters( );
          SCIP_CALL_ABORT(SCIPcreateProbBasic(this->scip, this->model->getName( ).c_str()));
+         //TODO: Set rational offset
          SCIP_CALL_ABORT(SCIPaddOrigObjoffset(this->scip, SCIP_Real(obj.offset)));
          SCIP_CALL_ABORT(SCIPsetObjsense(this->scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
          this->vars.resize(ncols);
@@ -170,6 +172,7 @@ namespace bugger
          if( solution_exists )
          {
             if( this->parameters.cutoffrelax >= 0.0 && this->parameters.cutoffrelax < SCIPinfinity(this->scip) )
+               //TODO: Set rational limit
                SCIP_CALL_ABORT(SCIPsetObjlimit(this->scip, max(min(SCIP_Real(obj.sense ? this->parameters.cutoffrelax : -this->parameters.cutoffrelax) + SCIP_Real(this->value), SCIPinfinity(this->scip)), -SCIPinfinity(this->scip))));
             if( this->parameters.set_dual_limit || this->parameters.set_prim_limit )
             {
@@ -246,6 +249,7 @@ namespace bugger
 
                // check dual by reference solution objective
                if( retcode == SolverRetcode::OKAY && dual )
+                  //TODO: Get rational dual
                   retcode = this->check_dual_bound( REAL(SCIPgetDualbound(this->scip)), REAL(SCIPsumepsilon(this->scip)), REAL(SCIPinfinity(this->scip)) );
 
                // check primal by generated solution values
@@ -269,20 +273,27 @@ namespace bugger
                if( retcode == SolverRetcode::OKAY && objective )
                {
                   // instead of primal bound use solution objective if no ray or infinity value if objective limit
+                  //TODO: Get rational primal
                   REAL bound { SCIPgetPrimalbound(this->scip) };
 
+                  //TODO: Get rational primal
                   if( abs(SCIPgetPrimalbound(this->scip)) == SCIPinfinity(this->scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible )
+                     //TODO: Get rational objective
                      bound = SCIPgetSolOrigObj(this->scip, sols[0]);
                   else if( this->parameters.cutoffrelax >= 0.0 && this->parameters.cutoffrelax < SCIPinfinity(this->scip) )
                   {
                      if( this->model->getObjective( ).sense )
                      {
+                        //TODO: Get rational primal
                         if( SCIPgetPrimalbound(this->scip) >= SCIP_Real(this->relax( SCIP_Real(this->parameters.cutoffrelax) + SCIP_Real(this->value), false, SCIPepsilon(this->scip), SCIPinfinity(this->scip) )) )
+                           //TODO: Get rational objective
                            bound = solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : SCIPinfinity(this->scip);
                      }
                      else
                      {
+                        //TODO: Get rational primal
                         if( SCIPgetPrimalbound(this->scip) <= SCIP_Real(this->relax( SCIP_Real(-this->parameters.cutoffrelax) + SCIP_Real(this->value), true, SCIPepsilon(this->scip), SCIPinfinity(this->scip) )) )
+                           //TODO: Get rational objective
                            bound = solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : -SCIPinfinity(this->scip);
                      }
                   }
@@ -301,6 +312,7 @@ namespace bugger
                   SCIP_Bool valid;
                   long long count = SCIPgetNCountedSols(this->scip, &valid);
 
+                  //TODO: Get rational bounds
                   retcode = this->check_count_number( REAL(SCIPgetDualbound(this->scip)), REAL(SCIPgetPrimalbound(this->scip)), valid ? count : -1, REAL(SCIPinfinity(this->scip)) );
                }
             }
@@ -489,6 +501,7 @@ namespace bugger
          // set problem name
          builder.setProblemName(SCIPgetProbName(this->scip));
          // set objective offset
+         //TODO: Get rational offset
          builder.setObjOffset(SCIPgetOrigObjoffset(this->scip));
          // set objective sense
          builder.setObjSense(SCIPgetObjsense(this->scip) == SCIP_OBJSENSE_MINIMIZE);
@@ -516,7 +529,9 @@ namespace bugger
          for( int col = 0; col < ncols; ++col )
          {
             SCIP_VAR* var = this->vars[col];
+            //TODO: Get rational lower
             SCIP_Real lb = SCIPvarGetLbGlobal(var);
+            //TODO: Get rational upper
             SCIP_Real ub = SCIPvarGetUbGlobal(var);
             SCIP_VARTYPE vartype = SCIPvarGetType(var);
             builder.setColLb(col, REAL(lb));
@@ -525,6 +540,7 @@ namespace bugger
             builder.setColUbInf(col, SCIPisInfinity(this->scip, ub));
             builder.setColIntegral(col, vartype == SCIP_VARTYPE_BINARY || vartype == SCIP_VARTYPE_INTEGER);
             builder.setColImplInt(col, vartype != SCIP_VARTYPE_CONTINUOUS);
+            //TODO: Get rational weight
             builder.setObj(col, REAL(SCIPvarGetObj(var)));
             builder.setColName(col, SCIPvarGetName(var));
          }
@@ -539,9 +555,11 @@ namespace bugger
          {
             SCIP_CONS* cons = conss[row];
             SCIP_Bool success = FALSE;
+            //TODO: Get rational left
             SCIP_Real lhs = SCIPconsGetLhs(this->scip, cons, &success);
             if( !success )
                return { settings, boost::none, boost::none };
+            //TODO: Get rational right
             SCIP_Real rhs = SCIPconsGetRhs(this->scip, cons, &success);
             if( !success )
                return { settings, boost::none, boost::none };
@@ -552,6 +570,7 @@ namespace bugger
             SCIPgetConsVars(this->scip, cons, consvars.data(), ncols, &success);
             if( !success )
                return { settings, boost::none, boost::none };
+            //TODO: Get rational coefficients
             SCIPgetConsVals(this->scip, cons, consvals.data(), ncols, &success);
             if( !success )
                return { settings, boost::none, boost::none };
@@ -611,6 +630,7 @@ namespace bugger
             }
             for( int col = 0; successsolution && col < this->reference->primal.size(); ++col )
             {
+               //TODO: Set rational value
                if( !this->model->getColFlags()[col].test( ColFlag::kFixed ) && SCIPsetSolVal(this->scip, sol, this->vars[col], SCIP_Real(this->reference->primal[col])) != SCIP_OKAY )
                   successsolution = false;
             }
@@ -635,11 +655,13 @@ namespace bugger
          solution.status = ray ? SolutionStatus::kUnbounded : SolutionStatus::kFeasible;
          solution.primal.resize(problem.getNCols());
          for( int col = 0; col < solution.primal.size(); ++col )
+            //TODO: Get rational value
             solution.primal[col] = problem.getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(SCIPgetSolVal(this->scip, sol, this->vars[col]));
          if( ray )
          {
             solution.ray.resize(problem.getNCols());
             for( int col = 0; col < solution.ray.size(); ++col )
+               //TODO: Get rational ray
                solution.ray[col] = problem.getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(SCIPgetPrimalRayVal(this->scip, this->vars[col]));
          }
       }
