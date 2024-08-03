@@ -107,6 +107,7 @@ using std::log;
 using std::log2;
 using std::pow;
 using std::sqrt;
+using std::isinf;
 
 template <typename REAL>
 class Num

@@ -54,9 +54,12 @@ namespace bugger
    public:
 
       static const String VERB;
+      static const String EXAC;
+      static const String CERT;
 
       int arithmetic = 0;
       int mode = -1;
+      int certificate = 0;
       double cutoffrelax = -1.0;
       double limitspace = 1.0;
       bool set_dual_limit = true;
@@ -69,6 +72,8 @@ namespace bugger
    };
 
    const String ScipParameters::VERB { "display/verblevel" };
+   const String ScipParameters::EXAC { "exact/enabled" };
+   const String ScipParameters::CERT { "certificate/filename" };
 
    template <typename REAL>
    class ScipInterface : public SolverInterface<REAL>
@@ -132,7 +137,9 @@ namespace bugger
          {
             SCIP_PARAM* param = params[ i ];
             String name { param->name };
-            if( name == ScipParameters::VERB )
+            if( name == ScipParameters::VERB
+             || name == ScipParameters::EXAC
+             || name == ScipParameters::CERT )
                continue;
             auto limit = limits.find(name);
             if( limit != limits.end() )
@@ -310,12 +317,32 @@ namespace bugger
 
       void
       set_arithmetic( ) const
-      { }
+      {
+#ifdef SCIP_WITH_EXACTSOLVE
+         switch( parameters.arithmetic )
+         {
+         case 0:
+            SCIP_CALL_ABORT(SCIPsetBoolParam(scip, ScipParameters::EXAC.c_str(), FALSE));
+            break;
+         case 1:
+            SCIP_CALL_ABORT(SCIPsetBoolParam(scip, ScipParameters::EXAC.c_str(), TRUE));
+            break;
+         default:
+            SCIPerrorMessage("unknown solver arithmetic\n");
+            assert(false);
+         }
+
+         SCIP_CALL_ABORT(SCIPsetStringParam(scip, ScipParameters::CERT.c_str(), parameters.certificate ? "certificate.vipr" : ""));
+#endif
+      }
    };
 
 } // namespace bugger
 
 #include "ScipRealInterface.hpp"
+#ifdef SCIP_WITH_EXACTSOLVE
+#include "ScipRationalInterface.hpp"
+#endif
 
 
 namespace bugger
@@ -334,8 +361,17 @@ namespace bugger
       void
       addParameters(ParameterSet& parameterset) override
       {
+#ifndef SCIP_WITH_EXACTSOLVE
          parameterset.addParameter("scip.arithmetic", "arithmetic scip type (0: double)", parameters.arithmetic, 0, 0);
+#else
+         parameterset.addParameter("scip.arithmetic", "arithmetic scip type (0: double, 1: rational)", parameters.arithmetic, 0, 1);
+#endif
          parameterset.addParameter("scip.mode", "solve scip mode (-1: optimize, 0: count)", parameters.mode, -1, 0);
+#ifndef SCIP_WITH_EXACTSOLVE
+         parameterset.addParameter("scip.certificate", "check vipr certificate", parameters.certificate, 0, 0);
+#else
+         parameterset.addParameter("scip.certificate", "check vipr certificate", parameters.certificate, 0, 1);
+#endif
          parameterset.addParameter("scip.cutoffrelax", "absolute margin for limiting objective or -1 for no limitation", parameters.cutoffrelax, -1.0);
          parameterset.addParameter("scip.limitspace", "relative margin when restricting limits or -1 for no restriction", parameters.limitspace, -1.0);
          parameterset.addParameter("scip.setduallimit", "terminate when dual bound is better than reference solution", parameters.set_dual_limit);
@@ -357,6 +393,11 @@ namespace bugger
          case 0:
             scip = std::unique_ptr<SolverInterface<REAL>>( new ScipRealInterface<REAL>( msg, parameters, limits ) );
             break;
+#ifdef SCIP_WITH_EXACTSOLVE
+         case 1:
+            scip = std::unique_ptr<SolverInterface<REAL>>( new ScipRationalInterface<REAL>( msg, parameters, limits ) );
+            break;
+#endif
          default:
             throw std::runtime_error("unknown solver arithmetic");
          }

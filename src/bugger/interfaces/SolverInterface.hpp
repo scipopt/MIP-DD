@@ -36,10 +36,12 @@ namespace bugger
 {
    enum SolverRetcode : char
    {
-      OKAY          = 0,
-      DUALFAIL      = 1,
-      PRIMALFAIL    = 2,
-      OBJECTIVEFAIL = 3
+      OKAY              = 0,
+      DUALFAIL          = 1,
+      PRIMALFAIL        = 2,
+      OBJECTIVEFAIL     = 3,
+      COMPLETIONFAIL    = 4,
+      CERTIFICATIONFAIL = 5
    };
 
    /**

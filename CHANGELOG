@@ -6,8 +6,8 @@ Features
 
 - enable SCIP interface to restrict limits automatically with respect to a variability margin defined by parameter scip.limitspace
 - read and write files of problems and solutions in arbitrary arithmetics if the solver library does not provide the functionality
-- prepare SCIP interface to handle further solver arithmetics
 - add objective limit option to the SCIP interface
+- experimentally support exact-SCIP with VIPR as underlying certified solver
 - support SoPlex as underlying solver
 
 Performance improvements
@@ -18,6 +18,11 @@ Performance improvements
 
 Interface changes
 ----------
+
+## SolverRetcode:
+
+- add code COMPLETIONFAIL to signal a verification preparation error
+- add code CERTIFICATIONFAIL to signal a verification check error
 
 ## SolverInterface:
 
