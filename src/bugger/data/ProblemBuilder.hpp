@@ -64,6 +64,7 @@ class ProblemBuilder
       rhs.resize( nrows );
       rflags.resize( nrows );
       rownames.resize( nrows );
+      rowtypes.resize( nrows, 'l' );
    }
 
    /// Returns the current number of rows
@@ -91,6 +92,7 @@ class ProblemBuilder
       rhs.reserve( nrows );
       rflags.reserve( nrows );
       rownames.reserve( nrows );
+      rowtypes.reserve( nrows );
 
       // reserve space for column information
       obj.coefficients.reserve( ncols );
@@ -321,6 +323,20 @@ class ProblemBuilder
       }
    }
 
+   void
+   setRowType( int row, char type )
+   {
+      rowtypes[row] = type;
+   }
+
+   void
+   setRowTypeAll( const Vec<char>& types )
+   {
+      assert( rowtypes.size() == types.size() );
+      for( int r = 0; r < (int) types.size(); ++r )
+         rowtypes[r] = types[r];
+   }
+
    template <typename Str>
    void
    setProblemName( Str&& name )
@@ -381,6 +397,7 @@ class ProblemBuilder
       problem.setVariableDomains( std::move( domains ) );
       problem.setVariableNames( std::move( colnames ) );
       problem.setConstraintNames( std::move( rownames ) );
+      problem.setConstraintTypes( std::move( rowtypes ) );
       ConstraintMatrix<REAL>& matrix = problem.getConstraintMatrix();
       for(int i=0; i< problem.getNRows(); i++){
          RowFlags rowFlag = matrix.getRowFlags()[i];
@@ -400,6 +417,7 @@ class ProblemBuilder
    Vec<REAL> lhs;
    Vec<REAL> rhs;
    Vec<RowFlags> rflags;
+   Vec<char> rowtypes;
    String probname;
    Vec<String> colnames;
    Vec<String> rownames;

@@ -148,6 +148,13 @@ class Problem
       }
    }
 
+   /// set constraint types
+   void
+   setConstraintTypes( Vec<char> cons_types )
+   {
+      constraintTypes = std::move( cons_types );
+   }
+
    /// set problem name
    void
    setName( String name_ )
@@ -353,6 +360,13 @@ class Problem
    getLocks()
    {
       return locks;
+   }
+
+   /// get the constraint types
+   const Vec<char>&
+   getConstraintTypes() const
+   {
+      return constraintTypes;
    }
 
    /// get the problem name
@@ -765,6 +779,7 @@ class Problem
 
       ar& rowActivities;
       ar& locks;
+      ar& constraintTypes;
 
       ar& name;
       ar& variableNames;
@@ -784,6 +799,9 @@ class Problem
 
    /// up and down locks for each column
    Vec<Locks> locks;
+
+   /// constraint type specifiers
+   Vec<char> constraintTypes;
 
    String name;
    Vec<String> variableNames;

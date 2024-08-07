@@ -47,10 +47,18 @@ namespace bugger
       bool
       isFixingAdmissible(const Problem<REAL>& problem, const int& col) const
       {
-         return !problem.getColFlags( )[ col ].test(ColFlag::kFixed)
-             && !problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
-             && !problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
-             && this->num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
+         if( problem.getColFlags( )[ col ].test(ColFlag::kFixed)
+          || problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
+          || problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
+          || !this->num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) )
+            return false;
+         const auto& data = problem.getConstraintMatrix( ).getColumnCoefficients(col);
+         for( int index = 0; index < data.getLength( ); ++index )
+            if( !this->num.isZetaZero(data.getValues( )[ index ])
+             && !problem.getConstraintMatrix( ).getRowFlags( )[ data.getIndices( )[ index ] ].test(RowFlag::kRedundant)
+             && problem.getConstraintTypes( )[ data.getIndices( )[ index ] ] != 'l' )
+               return false;
+         return true;
       }
 
       ModifierStatus
