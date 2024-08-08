@@ -425,10 +425,45 @@ class Problem
       assert( solution.status == SolutionStatus::kFeasible || solution.status == SolutionStatus::kUnbounded );
       assert( solution.primal.size() == getNCols() );
       const auto& data = getConstraintMatrix().getRowCoefficients(row);
-      StableSum<REAL> sum;
-      for( int i = 0; i < data.getLength( ); ++i )
-         sum.add((roundrow ? round(data.getValues( )[i]) : data.getValues( )[i]) * solution.primal[data.getIndices( )[i]]);
-      return sum.get( );
+      if( getConstraintTypes( )[ row ] == 'a' )
+      {
+         StableSum<REAL> sum;
+         REAL minvalue { 1 };
+         REAL resvalue { -1 };
+         int resindex = -1;
+         for( int i = 0; i < data.getLength( ); ++i )
+         {
+            REAL value { solution.primal[data.getIndices( )[i]] };
+            if( data.getValues( )[i] < 0 )
+               value = 1 - value;
+            if( resindex < 0 && abs(data.getValues( )[i]) > 1 )
+            {
+               resvalue = value;
+               resindex = i;
+               sum.add(1 - value);
+            }
+            else
+            {
+               if( minvalue > value )
+                  minvalue = value;
+               sum.add(value);
+            }
+         }
+         assert( resindex >= 0 );
+         resvalue = resvalue - minvalue;
+         minvalue = sum.get() - (data.getLength( ) - 1);
+         if( minvalue > resvalue )
+            return minvalue > 0 ? -minvalue : 0;
+         else
+            return resvalue > 0 ? resvalue : 0;
+      }
+      else
+      {
+         StableSum<REAL> sum;
+         for( int i = 0; i < data.getLength( ); ++i )
+            sum.add((roundrow ? round(data.getValues( )[i]) : data.getValues( )[i]) * solution.primal[data.getIndices( )[i]]);
+         return sum.get( );
+      }
    }
 
    /// get ray activity value for given solution and index of optionally rounded row
@@ -438,10 +473,45 @@ class Problem
       assert( solution.status == SolutionStatus::kUnbounded );
       assert( solution.ray.size() == getNCols() );
       const auto& data = getConstraintMatrix().getRowCoefficients(row);
-      StableSum<REAL> sum;
-      for( int i = 0; i < data.getLength( ); ++i )
-         sum.add((roundrow ? round(data.getValues( )[i]) : data.getValues( )[i]) * solution.ray[data.getIndices( )[i]]);
-      return sum.get( );
+      if( getConstraintTypes( )[ row ] == 'a' )
+      {
+         StableSum<REAL> sum;
+         REAL minvalue { std::numeric_limits<REAL>::max() };
+         REAL resvalue { std::numeric_limits<REAL>::min() };
+         int resindex = -1;
+         for( int i = 0; i < data.getLength( ); ++i )
+         {
+            REAL value { solution.ray[data.getIndices( )[i]] };
+            if( data.getValues( )[i] < 0 )
+               value *= -1;
+            if( resindex < 0 && abs(data.getValues( )[i]) > 1 )
+            {
+               resvalue = value;
+               resindex = i;
+               sum.add(-value);
+            }
+            else
+            {
+               if( minvalue > value )
+                  minvalue = value;
+               sum.add(value);
+            }
+         }
+         assert( resindex >= 0 );
+         resvalue = resvalue - minvalue;
+         minvalue = sum.get();
+         if( minvalue > resvalue )
+            return minvalue > 0 ? -minvalue : 0;
+         else
+            return resvalue > 0 ? resvalue : 0;
+      }
+      else
+      {
+         StableSum<REAL> sum;
+         for( int i = 0; i < data.getLength( ); ++i )
+            sum.add((roundrow ? round(data.getValues( )[i]) : data.getValues( )[i]) * solution.ray[data.getIndices( )[i]]);
+         return sum.get( );
+      }
    }
 
    /// print feasibility for given solution and return whether it is tolerable
