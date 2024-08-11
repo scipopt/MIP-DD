@@ -135,7 +135,7 @@ namespace bugger
 
          for( int i = 0; i < nparams; ++i )
          {
-            SCIP_PARAM* param = params[ i ];
+            SCIP_PARAM* param = params[i];
             String name { param->name };
             if( name == ScipParameters::VERB
              || name == ScipParameters::EXAC

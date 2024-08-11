@@ -565,8 +565,6 @@ namespace bugger
                return { settings, boost::none, boost::none };
             int nrowcols = 0;
             SCIPgetConsNVars(this->scip, cons, &nrowcols, &success);
-            if( !success )
-               return { settings, boost::none, boost::none };
             SCIPgetConsVars(this->scip, cons, consvars.data(), ncols, &success);
             if( !success )
                return { settings, boost::none, boost::none };
@@ -576,6 +574,15 @@ namespace bugger
                return { settings, boost::none, boost::none };
             for( int i = 0; i < nrowcols; ++i )
             {
+               if( SCIPvarIsNegated(consvars[i]) )
+               {
+                  SCIPgetNegatedVar(this->scip, consvars[i], &consvars[i]);
+                  consvals[i] *= -1.0;
+                  if( !SCIPisInfinity(this->scip, -lhs) )
+                     lhs += consvals[i];
+                  if( !SCIPisInfinity(this->scip, rhs) )
+                     rhs += consvals[i];
+               }
                rowinds[i] = SCIPvarGetProbindex(consvars[i]);
                rowvals[i] = REAL(consvals[i]);
             }
