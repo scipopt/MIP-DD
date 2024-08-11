@@ -4,8 +4,39 @@
 Features
 --------
 
+- enable SCIP interface to restrict limits automatically with respect to a variability margin defined by parameter scip.limitspace
+- read and write files of problems and solutions in arbitrary arithmetics if the solver library does not provide the functionality
+- add objective limit option to the SCIP interface
+- experimentally support exact-SCIP with VIPR as underlying certified solver
+- support SoPlex as underlying solver
+
 Performance improvements
 ------------------------
+
+- restrict solver limit settings automatically in order to accelerate the process by default
+- adjust number of batches every round automatically in order to maintain expenditure by default
+
+Interface changes
+----------
+
+## SolverRetcode:
+
+- add code COMPLETIONFAIL to signal a verification preparation error
+- add code CERTIFICATIONFAIL to signal a verification check error
+
+## SolverInterface:
+
+- templatize arithmetic type to allow instance precision to be independent from solver precision
+- add solution information to signature and return of readInstance() and writeInstance() to enable parsing and providing the reference solution
+- move out Retcode and rename to SolverRetcode in order to simplify handling return codes
+- make settings argument of doSetup() variable to restrict limit settings
+- add method getSolvingEffort() to adapt batch number
+
+New parameters
+----------
+
+- expenditure = -1 : calculate the number of batches by ceiled division of the solving effort defined in the solver interface (-1: use original, 0: keep batches)
+- default value nbatches = 2 in order to try bisection initially
 
 Fixed bugs
 ----------
@@ -23,6 +54,7 @@ Build system
 - backdate fmt from 8 to 7 to conform c++ standard 14
 - add compile option -ffp-contract=off or /fp:precise to enhance reproducibility across different systems
 - provide symlink to scip library in bugger build directory for a reliable unique link at runtime
+- introduce cmake parameter BUGGER_ARITHMETIC to select reduction arithmetic throughout templated bugger modules among float, double, longdouble, quad, and rational
 
 
 @section Release Notes MIP-DD 1.0.0

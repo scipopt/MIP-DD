@@ -1,58 +1,52 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    BUGGER                                                                 */
+/*                            MIP-DD                                         */
 /*                                                                           */
 /* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
-/* This program is free software: you can redistribute it and/or modify      */
-/* it under the terms of the GNU Lesser General Public License as published  */
-/* by the Free Software Foundation, either version 3 of the License, or      */
-/* (at your option) any later version.                                       */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/* This program is distributed in the hope that it will be useful,           */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of            */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
-/* GNU Lesser General Public License for more details.                       */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
 /*                                                                           */
-/* You should have received a copy of the GNU Lesser General Public License  */
-/* along with this program.  If not, see <https://www.gnu.org/licenses/>.    */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with MIP-DD; see the file LICENSE. If not visit scipopt.org.       */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef _BUGGER_IO_MPS_WRITER_
-#define _BUGGER_IO_MPS_WRITER_
+#ifndef _BUGGER_IO_MPS_WRITER_HPP_
+#define _BUGGER_IO_MPS_WRITER_HPP_
 
-#include "bugger/Config.hpp"
 #include "bugger/data/Problem.hpp"
-#include "bugger/misc/Vec.hpp"
-#include "bugger/misc/fmt.hpp"
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
-#include <cmath>
-#include <fstream>
-#include <iostream>
 
-#ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2
-#include <boost/iostreams/filter/bzip2.hpp>
-#endif
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
 #include <boost/iostreams/filter/gzip.hpp>
 #endif
+#ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2
+#include <boost/iostreams/filter/bzip2.hpp>
+#endif
+
 
 namespace bugger
 {
-
 /// Writer to write problem structures into an mps file
 template <typename REAL>
 struct MpsWriter
 {
    static void
-   writeProb( const std::string& filename, const Problem<REAL>& prob )
+   writeProb( const String& filename, const Problem<REAL>& prob )
    {
       const ConstraintMatrix<REAL>& consmatrix = prob.getConstraintMatrix();
-      const Vec<std::string>& consnames = prob.getConstraintNames();
-      const Vec<std::string>& varnames = prob.getVariableNames();
+      const Vec<String>& consnames = prob.getConstraintNames();
+      const Vec<String>& varnames = prob.getVariableNames();
       const Vec<REAL>& lhs = consmatrix.getLeftHandSides();
       const Vec<REAL>& rhs = consmatrix.getRightHandSides();
       const Objective<REAL>& obj = prob.getObjective();
@@ -61,17 +55,14 @@ struct MpsWriter
 
       std::ofstream file( filename, std::ofstream::out );
       boost::iostreams::filtering_ostream out;
-
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
       if( boost::algorithm::ends_with( filename, ".gz" ) )
          out.push( boost::iostreams::gzip_compressor() );
 #endif
-
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2
       if( boost::algorithm::ends_with( filename, ".bz2" ) )
          out.push( boost::iostreams::bzip2_compressor() );
 #endif
-
       out.push( file );
 
       int nrows = 0;
@@ -86,7 +77,7 @@ struct MpsWriter
             auto data = consmatrix.getRowCoefficients(i);
             for( int j = 0; j < data.getLength(); ++j )
             {
-               if( data.getValues()[j] != 0.0 )
+               if( data.getValues()[j] != 0 )
                {
                   assert(!col_flags[data.getIndices()[j]].test(ColFlag::kFixed));
                   ++nnnz;
@@ -164,12 +155,8 @@ struct MpsWriter
             assert(
                 !col_flags[i].test( ColFlag::kFixed, ColFlag::kSubstituted ) );
 
-            if( obj.coefficients[i] != 0.0 )
-            {
-               fmt::print( out, "    {: <9} OBJ       {:.15}\n",
-                           varnames[i],
-                           double( obj.coefficients[i] ) );
-            }
+            if( obj.coefficients[i] != 0 )
+               fmt::print( out, "    {:<9} OBJ       {:}\n", varnames[i], obj.coefficients[i] );
 
             SparseVectorView<REAL> column =
                 consmatrix.getColumnCoefficients( i );
@@ -187,9 +174,7 @@ struct MpsWriter
                   continue;
 
                // normal row
-               fmt::print( out, "    {: <9} {: <9} {:.15}\n",
-                           varnames[i], consnames[r],
-                           double( colvals[j] ) );
+               fmt::print( out, "    {:<9} {:<9} {:}\n", varnames[i], consnames[r], colvals[j] );
             }
          }
 
@@ -205,9 +190,8 @@ struct MpsWriter
 
       if( obj.offset != 0 )
       {
-         if( obj.offset != REAL{ 0.0 } )
-            fmt::print( out, "    B         {: <9} {:.15}\n", "OBJ",
-                        double( REAL( -obj.offset ) ) );
+         if( obj.offset != 0 )
+            fmt::print( out, "    B         {:<9} {:}\n", "OBJ", -obj.offset );
       }
 
       for( int i = 0; i < consmatrix.getNRows(); ++i )
@@ -222,15 +206,13 @@ struct MpsWriter
 
          if( row_flags[i].test( RowFlag::kLhsInf ) )
          {
-            if( rhs[i] != REAL{ 0.0 } )
-               fmt::print( out, "    B         {: <9} {:.15}\n",
-                           consnames[i], double( rhs[i] ) );
+            if( rhs[i] != 0 )
+               fmt::print( out, "    B         {:<9} {:}\n", consnames[i], rhs[i] );
          }
          else
          {
-            if( lhs[i] != REAL{ 0.0 } )
-               fmt::print( out, "    B         {: <9} {:.15}\n",
-                           consnames[i], double( lhs[i] ) );
+            if( lhs[i] != 0 )
+               fmt::print( out, "    B         {:<9} {:}\n", consnames[i], lhs[i] );
          }
       }
 
@@ -243,13 +225,10 @@ struct MpsWriter
                                    RowFlag::kEquation, RowFlag::kRedundant ) )
                continue;
 
-            double rangeval = double( REAL( rhs[i] - lhs[i] ) );
+            REAL rangeval = rhs[i] - lhs[i];
 
             if( rangeval != 0 )
-            {
-               fmt::print( out, "    B         {: <9} {:.15}\n",
-                           consnames[i], rangeval );
-            }
+               fmt::print( out, "    B         {:<9} {:}\n", consnames[i], rangeval );
          }
       }
 
@@ -263,30 +242,21 @@ struct MpsWriter
          if( !col_flags[i].test( ColFlag::kLbInf ) &&
              !col_flags[i].test( ColFlag::kUbInf ) &&
              lower_bounds[i] == upper_bounds[i] )
-         {
-            fmt::print( out, " FX BND       {: <9} {:.15}\n",
-                        varnames[i], double( lower_bounds[i] ) );
-         }
+            fmt::print( out, " FX BND       {:<9} {:}\n", varnames[i], lower_bounds[i] );
          else
          {
-            if( col_flags[i].test( ColFlag::kLbInf ) || lower_bounds[i] != 0.0 )
+            if( col_flags[i].test( ColFlag::kLbInf ) || lower_bounds[i] != 0 )
             {
                if( col_flags[i].test( ColFlag::kLbInf ) )
-                  fmt::print( out, " MI BND       {}\n",
-                              varnames[i] );
+                  fmt::print( out, " MI BND       {:}\n", varnames[i] );
                else
-                  fmt::print( out, " LO BND       {: <9} {:.15}\n",
-                              varnames[i],
-                              double( lower_bounds[i] ) );
+                  fmt::print( out, " LO BND       {:<9} {:}\n", varnames[i], lower_bounds[i] );
             }
 
             if( !col_flags[i].test( ColFlag::kUbInf ) )
-               fmt::print( out, " UP BND       {: <9} {:.15}\n",
-                           varnames[i],
-                           double( upper_bounds[i] ) );
+               fmt::print( out, " UP BND       {:<9} {:}\n", varnames[i], upper_bounds[i] );
             else
-               fmt::print( out, " PL BND       {: <9}\n",
-                           varnames[i] );
+               fmt::print( out, " PL BND       {:}\n", varnames[i] );
          }
       }
       fmt::print( out, "ENDATA\n" );

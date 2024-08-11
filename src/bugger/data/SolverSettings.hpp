@@ -1,22 +1,24 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    BUGGER                                                                 */
+/*                            MIP-DD                                         */
 /*                                                                           */
 /* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
-/* This program is free software: you can redistribute it and/or modify      */
-/* it under the terms of the GNU Lesser General Public License as published  */
-/* by the Free Software Foundation, either version 3 of the License, or      */
-/* (at your option) any later version.                                       */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/* This program is distributed in the hope that it will be useful,           */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of            */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
-/* GNU Lesser General Public License for more details.                       */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
 /*                                                                           */
-/* You should have received a copy of the GNU Lesser General Public License  */
-/* along with this program.  If not, see <https://www.gnu.org/licenses/>.    */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with MIP-DD; see the file LICENSE. If not visit scipopt.org.       */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -37,6 +39,7 @@ namespace bugger {
       Vec<std::pair<String, double>> double_settings;
       Vec<std::pair<String, char>> char_settings;
       Vec<std::pair<String, String>> string_settings;
+      Vec<std::pair<String, long long>> limit_settings;
 
    public:
 
@@ -46,7 +49,8 @@ namespace bugger {
          long_settings( ),
          double_settings( ),
          char_settings( ),
-         string_settings( )
+         string_settings( ),
+         limit_settings( )
       { };
 
       SolverSettings(Vec<std::pair<String, bool>>& _bool_settings,
@@ -54,14 +58,16 @@ namespace bugger {
                      Vec<std::pair<String, long>>& _long_settings,
                      Vec<std::pair<String, double>>& _double_settings,
                      Vec<std::pair<String, char>>& _char_settings,
-                     Vec<std::pair<String, String>>& _string_settings
+                     Vec<std::pair<String, String>>& _string_settings,
+                     Vec<std::pair<String, long long>>& _limit_settings
       ) :
          bool_settings(_bool_settings),
          int_settings(_int_settings),
          long_settings(_long_settings),
          double_settings(_double_settings),
          char_settings(_char_settings),
-         string_settings(_string_settings)
+         string_settings(_string_settings),
+         limit_settings(_limit_settings)
       { };
 
       const Vec<std::pair<String, bool>>& getBoolSettings( ) const {
@@ -88,6 +94,10 @@ namespace bugger {
          return string_settings;
       }
 
+      const Vec<std::pair<String, long long>>& getLimitSettings( ) const {
+         return limit_settings;
+      }
+
       void setBoolSettings(int index, bool value) {
          bool_settings[ index ].second = value;
       }
@@ -110,6 +120,10 @@ namespace bugger {
 
       void setStringSettings(int index, String value) {
          string_settings[ index ].second = value;
+      }
+
+      void setLimitSettings(int index, long long value) {
+         limit_settings[ index ].second = value;
       }
    };
 

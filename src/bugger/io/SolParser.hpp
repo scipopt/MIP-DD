@@ -1,68 +1,66 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    BUGGER                                                                 */
+/*                            MIP-DD                                         */
 /*                                                                           */
 /* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
-/* This program is free software: you can redistribute it and/or modify      */
-/* it under the terms of the GNU Lesser General Public License as published  */
-/* by the Free Software Foundation, either version 3 of the License, or      */
-/* (at your option) any later version.                                       */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/* This program is distributed in the hope that it will be useful,           */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of            */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
-/* GNU Lesser General Public License for more details.                       */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
 /*                                                                           */
-/* You should have received a copy of the GNU Lesser General Public License  */
-/* along with this program.  If not, see <https://www.gnu.org/licenses/>.    */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with MIP-DD; see the file LICENSE. If not visit scipopt.org.       */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #ifndef _BUGGER_IO_SOL_PARSER_HPP_
 #define _BUGGER_IO_SOL_PARSER_HPP_
 
-#include "bugger/misc/Hash.hpp"
-#include "bugger/misc/String.hpp"
-#include "bugger/misc/Vec.hpp"
 #include "bugger/data/Solution.hpp"
-#include <algorithm>
-#include <boost/algorithm/string.hpp>
-#include <fstream>
-#include <iostream>
-#include <iterator>
-#include <map>
-#include <sstream>
+#include "bugger/misc/Hash.hpp"
+#include "bugger/misc/Num.hpp"
+
+#ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
+#include <boost/iostreams/filter/gzip.hpp>
+#endif
+#ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2
+#include <boost/iostreams/filter/bzip2.hpp>
+#endif
+
 
 namespace bugger
 {
-
+/// Parser for sol files storing solution information
 template <typename REAL>
 struct SolParser
 {
-
-   static bool
-   read( const std::string& filename,
-         const Vec<String>& colnames, Solution<REAL>& sol)
+   static boost::optional<Solution<REAL>>
+   readSol( const String& filename, const Vec<String>& colnames )
    {
       std::ifstream file( filename, std::ifstream::in );
       boost::iostreams::filtering_istream in;
 
       if( !file )
-         return false;
-      sol = Solution<REAL>(SolutionStatus::kFeasible);
+         return boost::none;
 
+      Solution<REAL> sol { };
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_ZLIB
       if( boost::algorithm::ends_with( filename, ".gz" ) )
          in.push( boost::iostreams::gzip_decompressor() );
 #endif
-
 #ifdef BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2
       if( boost::algorithm::ends_with( filename, ".bz2" ) )
       in.push( boost::iostreams::bzip2_decompressor() );
 #endif
-
       in.push( file );
 
       HashMap<String, int> nameToCol;
@@ -72,40 +70,41 @@ struct SolParser
          nameToCol.emplace( colnames[i], i );
       }
 
-      sol.primal.resize( colnames.size(), REAL{ 0 } );
+      sol.primal.resize( colnames.size() );
       String strline;
 
       skip_header( colnames, in, strline );
 
       do
       {
+         if( strline.empty() )
+            continue;
+
          auto tokens = split( strline.c_str() );
          assert( !tokens.empty() );
-
          auto it = nameToCol.find( tokens[0] );
+
          if( it != nameToCol.end() )
          {
             assert( tokens.size() > 1 );
-            sol.primal[it->second] = std::stod( tokens[1] );
+            sol.primal[it->second] = parse_number<REAL>( tokens[1] );
          }
-         else if(strline.empty()){}
          else
          {
             fmt::print( stderr,
-                        "WARNING: skipping unknown column {} in solution\n",
+                        "WARNING: Skipping unknown column {} in reference solution.\n",
                         tokens[0] );
          }
-      } while( getline( in, strline ) );
+      }
+      while( getline( in, strline ) );
 
-      return true;
+      return sol;
    }
 
- private:
+private:
 
    static void
-   skip_header( const Vec<String>& colnames,
-                boost::iostreams::filtering_istream& filteringIstream,
-                String& strline )
+   skip_header( const Vec<String>& colnames, boost::iostreams::filtering_istream& filteringIstream, String& strline )
    {
       while(getline( filteringIstream, strline ))
       {
@@ -117,7 +116,8 @@ struct SolParser
       }
    }
 
-   Vec<String> static split( const char* str )
+   static Vec<String>
+   split( const char* str )
    {
       Vec<String> tokens;
       char c1 = ' ';

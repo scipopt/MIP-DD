@@ -1,22 +1,24 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
 /*               This file is part of the program and library                */
-/*    BUGGER                                                                 */
+/*                            MIP-DD                                         */
 /*                                                                           */
 /* Copyright (C) 2024             Zuse Institute Berlin                      */
 /*                                                                           */
-/* This program is free software: you can redistribute it and/or modify      */
-/* it under the terms of the GNU Lesser General Public License as published  */
-/* by the Free Software Foundation, either version 3 of the License, or      */
-/* (at your option) any later version.                                       */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/* This program is distributed in the hope that it will be useful,           */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of            */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
-/* GNU Lesser General Public License for more details.                       */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
 /*                                                                           */
-/* You should have received a copy of the GNU Lesser General Public License  */
-/* along with this program.  If not, see <https://www.gnu.org/licenses/>.    */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with MIP-DD; see the file LICENSE. If not visit scipopt.org.       */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -49,6 +51,7 @@ namespace bugger
 
    };
 
+   template <typename REAL>
    class BuggerModul
    {
    private:
@@ -62,9 +65,9 @@ namespace bugger
    protected:
 
       const Message& msg;
-      const Num<double>& num;
+      const Num<REAL>& num;
       const BuggerParameters& parameters;
-      std::shared_ptr<SolverFactory> factory;
+      std::shared_ptr<SolverFactory<REAL>> factory;
       int nchgcoefs = 0;
       int nfixedvars = 0;
       int nchgsides = 0;
@@ -72,12 +75,13 @@ namespace bugger
       int nchgsettings = 0;
       int ndeletedrows = 0;
       int nsolves = 0;
-      std::pair<char, SolverStatus> final_result { SolverInterface::OKAY, SolverStatus::kUnknown };
+      std::pair<char, SolverStatus> last_result { SolverRetcode::OKAY, SolverStatus::kUnknown };
+      long long last_effort = -1;
 
    public:
 
-      BuggerModul(const Message& _msg, const Num<double>& _num, const BuggerParameters& _parameters,
-                  std::shared_ptr<SolverFactory>& _factory) : msg(_msg), num(_num), parameters(_parameters),
+      BuggerModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+                  std::shared_ptr<SolverFactory<REAL>>& _factory) : msg(_msg), num(_num), parameters(_parameters),
                   factory(_factory) { }
 
       virtual ~BuggerModul( ) = default;
@@ -109,9 +113,10 @@ namespace bugger
       }
 
       ModulStatus
-      run(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution, const Timer& timer)
+      run(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution, const Timer& timer)
       {
-         final_result = { SolverInterface::OKAY, SolverStatus::kUnknown };
+         last_result = { SolverRetcode::OKAY, SolverStatus::kUnknown };
+         last_effort = -1;
          if( !enabled )
             return ModulStatus::kDidNotRun;
 
@@ -159,9 +164,15 @@ namespace bugger
       }
 
       std::pair<char, SolverStatus>
-      getFinalResult( ) const
+      getLastResult( ) const
       {
-         return final_result;
+         return last_result;
+      }
+
+      long long
+      getLastSolvingEffort( ) const
+      {
+         return last_effort;
       }
 
       void
@@ -172,17 +183,8 @@ namespace bugger
 
    protected:
 
-      double
-      get_linear_activity(const SparseVectorView<double>& data, const Solution<double>& solution) const
-      {
-         StableSum<double> sum;
-         for( int i = 0; i < data.getLength( ); ++i )
-            sum.add(data.getValues( )[ i ] * solution.primal[ data.getIndices( )[ i ] ]);
-         return sum.get( );
-      }
-
       virtual ModulStatus
-      execute(SolverSettings& settings, Problem<double>& problem, Solution<double>& solution) = 0;
+      execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) = 0;
 
       void
       setName(const String& value)
@@ -197,13 +199,13 @@ namespace bugger
       }
 
       BuggerStatus
-      call_solver(const SolverSettings& settings, const Problem<double>& problem, const Solution<double>& solution)
+      call_solver(SolverSettings& settings, const Problem<REAL>& problem, const Solution<REAL>& solution)
       {
          ++nsolves;
          auto solver = factory->create_solver(msg);
          solver->doSetUp(settings, problem, solution);
          if( !parameters.debug_filename.empty( ) )
-            solver->writeInstance(parameters.debug_filename, true);
+            solver->writeInstance(parameters.debug_filename, true, true);
          std::pair<char, SolverStatus> result = solver->solve(parameters.passcodes);
          if( !SolverStatusCheck::is_value(result.second) )
          {
@@ -211,30 +213,33 @@ namespace bugger
             result.second = SolverStatus::kUndefinedError;
             return BuggerStatus::kError;
          }
-         if( result.first == SolverInterface::OKAY )
+         long long effort = solver->getSolvingEffort( );
+         if( result.first == SolverRetcode::OKAY )
          {
-            msg.info("\tOkay    - Status {}\n", result.second);
+            msg.info("\tOkay    - Status {:<23} - Effort{:>20}\n", result.second, effort);
             return BuggerStatus::kOkay;
          }
          else
          {
-            final_result = result;
-            if( result.first > SolverInterface::OKAY )
+            if( effort >= 0 )
+               last_effort = effort;
+            last_result = result;
+            if( result.first > SolverRetcode::OKAY )
             {
-               msg.info("\tBug{:>4} - Status {}\n", (int)result.first, result.second);
+               msg.info("\tBug{:>4} - Status {:<23} - Effort{:>20}\n", (int)result.first, result.second, effort);
                return BuggerStatus::kBug;
             }
             else
             {
-               msg.info("\tErr{:>4} - Status {}\n", (int)result.first, result.second);
+               msg.info("\tErr{:>4} - Status {:<23} - Effort{:>20}\n", (int)result.first, result.second, effort);
                return BuggerStatus::kError;
             }
          }
       }
 
-      void apply_changes(Problem<double>& copy, const Vec<MatrixEntry<double>>& entries) const
+      void apply_changes(Problem<REAL>& copy, const Vec<MatrixEntry<REAL>>& entries) const
       {
-         MatrixBuffer<double> matrixBuffer{ };
+         MatrixBuffer<REAL> matrixBuffer { };
          for( const auto &entry: entries )
             matrixBuffer.addEntry(entry.row, entry.col, entry.val);
          copy.getConstraintMatrix( ).changeCoefficients(matrixBuffer);

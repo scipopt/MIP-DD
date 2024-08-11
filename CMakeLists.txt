@@ -1,8 +1,8 @@
 cmake_minimum_required (VERSION 3.11.0)
 
-set(BUGGER_VERSION_MAJOR 1)
+set(BUGGER_VERSION_MAJOR 2)
 set(BUGGER_VERSION_MINOR 0)
-set(BUGGER_VERSION_PATCH 1)
+set(BUGGER_VERSION_PATCH 0)
 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
@@ -78,6 +78,7 @@ target_include_directories(bugger INTERFACE
 option(TBB "should TBB be linked if found" OFF)
 
 set(BUGGER_TBB off)
+
 # on windows we don't want to build tbb
 if(WIN32)
    find_package(TBB 2018 COMPONENTS tbb tbbmalloc REQUIRED)
@@ -149,24 +150,22 @@ else()
    set(BUGGER_USE_STANDARD_HASHMAP 1)
 endif()
 
-add_library(bugger-core STATIC
-        src/bugger/data/VariableDomains.cpp
-        src/bugger/data/SparseStorage.cpp
-        src/bugger/data/ConstraintMatrix.cpp
-  )
+add_library(bugger-core INTERFACE)
 
-#
-# interface function for setting common library properties
-#
-function(setLibProperties targetname outputname)
-    set_target_properties(${targetname} PROPERTIES
-        OUTPUT_NAME ${outputname}
-        MACOSX_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
-endfunction(setLibProperties)
-if(MSVC)
-    setLibProperties(bugger-core "libbugger-core")
+# define bugger arithmetic
+set(BUGGER_ARITHMETIC d CACHE STRING "arithmetic for reductions, problems, and solutions (f: float, d: double, l: long double, q: quad, r: rational)")
+if    ("float"      MATCHES ^${BUGGER_ARITHMETIC})
+    target_compile_definitions(bugger-core INTERFACE BUGGER_FLOAT)
+elseif("double"     MATCHES ^${BUGGER_ARITHMETIC})
+    target_compile_definitions(bugger-core INTERFACE BUGGER_DOUBLE)
+elseif("longdouble" MATCHES ^${BUGGER_ARITHMETIC})
+    target_compile_definitions(bugger-core INTERFACE BUGGER_LONGDOUBLE)
+elseif("quad"       MATCHES ^${BUGGER_ARITHMETIC})
+    target_compile_definitions(bugger-core INTERFACE BUGGER_QUAD)
+elseif("rational"   MATCHES ^${BUGGER_ARITHMETIC})
+    target_compile_definitions(bugger-core INTERFACE BUGGER_RATIONAL)
 else()
-   setLibProperties(bugger-core "bugger-core")
+    message(FATAL_ERROR "Arithmetic not supported!")
 endif()
 
 find_package(Boost REQUIRED iostreams serialization program_options)
@@ -181,8 +180,7 @@ check_cxx_source_compiles(
     int main() { auto decomp = boost::iostreams::bzip2_decompressor(); (void)decomp; return 0; }"
    BUGGER_USE_BOOST_IOSTREAMS_WITH_BZIP2 )
 
-target_link_libraries(bugger-core bugger ${Boost_LIBRARIES})
-target_compile_definitions(bugger-core PRIVATE BUGGER_USE_EXTERN_TEMPLATES)
+target_link_libraries(bugger-core INTERFACE bugger ${Boost_LIBRARIES})
 
 add_subdirectory(binaries)
 

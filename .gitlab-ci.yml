@@ -1,62 +1,150 @@
 variables:
-  SOPLEX_REVISION: bugfix-70
-  SCIP_REVISION: v90-bugfix
+  BOOST_VERSION: 1.80.0
+  SOPLEX_REVISION: bugfix-71
+  VIPR_REVISION: master
+  SCIP_REVISION: v91-bugfix
+  SCIPEXACT_REVISION: exact-rational
+  SETUP_DIR: ${CI_PROJECT_DIR}/setups
+  INSTALL_DIR: ${CI_PROJECT_DIR}/../installs
+  BUILD_DIR: ${CI_PROJECT_DIR}/builds
+  BOOST_DIR: ${SETUP_DIR}/boost
+  SOPLEX_DIR: ${SETUP_DIR}/soplex
+  VIPR_DIR: ${SETUP_DIR}/vipr
+  SCIP_DIR: ${SETUP_DIR}/scip
 
 stages:
-  - test
+  - setup
+  - build
 
-.ctest:
-  stage: test
-  image:
-    name: gcc:10
-  tags:
-    - compile
-  before_script:
-    - apt-get update
-    - apt-get install -y cmake libtbb-dev
-  script:
-    # download, build and install boost
-    - wget https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_$(echo ${BOOST_VERSION} | tr . _).tar.gz
-    - tar -xzf boost_$(echo ${BOOST_VERSION} | tr . _).tar.gz
-    - cd boost_$(echo ${BOOST_VERSION} | tr . _)
-    - ./bootstrap.sh --with-libraries=program_options,serialization,iostreams,regex
-    - ./b2 -j6 install
-
-    # clone, build and install soplex
-    - git clone https://github.com/scipopt/soplex.git ${CI_PROJECT_DIR}/soplex
-    - cd ${CI_PROJECT_DIR}/soplex && git checkout ${SOPLEX_REVISION}
-    - mkdir -p ${CI_PROJECT_DIR}/soplex/build
-    - cd ${CI_PROJECT_DIR}/soplex/build
-    - cmake .. -DCMAKE_BUILD_TYPE=Release
-    - make -j && make install
-
-    # clone, build and install scip
-    - git clone https://github.com/scipopt/scip.git ${CI_PROJECT_DIR}/scip
-    - cd ${CI_PROJECT_DIR}/scip && git checkout ${SCIP_REVISION}
-    - mkdir -p ${CI_PROJECT_DIR}/scip/build
-    - cd ${CI_PROJECT_DIR}/scip/build
-    - cmake .. -DCMAKE_BUILD_TYPE=Release -DZIMPL=off -DREADLINE=off -DGMP=off -DPAPILO=off -DIPOPT=off
-    - make -j && make install
-
-    - mkdir -p ${CI_PROJECT_DIR}/builds/MIP-DD
-    - cd ${CI_PROJECT_DIR}/builds/MIP-DD
-    - export CFLAGS="-Werror"
-    - export CXXFLAGS="-Werror"
-    - export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
-    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_DEBUG} -DSCIP_DIR=/usr/local/lib/cmake/scip
-    - make -j6
-    - bin/bugger --help
-    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS_RELEASE} -DSCIP_DIR=/usr/local/lib/cmake/scip
-    - make -j6
-    - bin/bugger --help
-
-"build":
-  extends: .ctest
+.common:
   rules:
     - if: $CI_MERGE_REQUEST_TITLE =~ /^Draft:/
       when: manual
     - if: $CI_MERGE_REQUEST_ID
+  image:
+    name: gcc:10
+  before_script:
+    - apt-get update
+    - apt-get install -y cmake libtbb-dev libmpfr-dev
+    - export CFLAGS="-Werror"
+    - export CXXFLAGS="-Werror"
+    - export LD_LIBRARY_PATH=${INSTALL_DIR}/lib:${LD_LIBRARY_PATH}
+    - export BOOST_ROOT=${INSTALL_DIR}
+    - mkdir -p ${CI_PROJECT_DIR}/installs
+    - mv ${CI_PROJECT_DIR}/installs ${INSTALL_DIR}
+  after_script:
+    - mv ${INSTALL_DIR} ${CI_PROJECT_DIR}/installs
+
+boost-soplex-scip:
+  extends: .common
+  stage: setup
+  artifacts:
+    paths:
+      - ${CI_PROJECT_DIR}/installs
+    expire_in: 1 minute
+  script:
+    - mkdir -p ${SETUP_DIR}
+    - export CFLAGS=""
+    - export CXXFLAGS=""
+    # boost
+    - wget https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_$(echo ${BOOST_VERSION} | tr . _).tar.gz -O ${BOOST_DIR}.tar.gz
+    - mkdir -p ${BOOST_DIR}
+    - tar -xzf ${BOOST_DIR}.tar.gz -C ${BOOST_DIR} --strip-components=1
+    - cd ${BOOST_DIR}
+    - ./bootstrap.sh --prefix=${INSTALL_DIR} --with-libraries=program_options,serialization,iostreams,regex
+    - ./b2 --prefix=${INSTALL_DIR} -j$(nproc) install
+    # soplex
+    - git clone https://github.com/scipopt/soplex.git ${SOPLEX_DIR}
+    - cd ${SOPLEX_DIR}
+    - git checkout ${SOPLEX_REVISION}
+    - cmake . -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
+    - make -j$(nproc) install
+    # vipr
+    - git clone https://github.com/ambros-gleixner/VIPR.git ${VIPR_DIR}
+    - cd ${VIPR_DIR}/code
+    - git checkout ${VIPR_REVISION}
+    - cmake .
+    - make -j$(nproc)
+    - export PATH=${VIPR_DIR}/code:${PATH}
+    # scip
+    - git clone https://github.com/scipopt/scip.git ${SCIP_DIR}
+    - mkdir ${SCIP_DIR}/build
+    - cd ${SCIP_DIR}/build
+    - git checkout ${SCIP_REVISION}
+    - cmake .. -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}/default -DCRITERION=off -DREADLINE=off -DZIMPL=off -DPAPILO=off -DIPOPT=off
+    - make -j$(nproc) install
+    # scipexact
+    - git checkout ${SCIPEXACT_REVISION}
+    - cmake .. -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}/exact -DCRITERION=off -DREADLINE=off -DZIMPL=off -DPAPILO=off -DIPOPT=off
+    - make -j$(nproc) install
+
+.test:
+  extends: .common
+  stage: build
+  dependencies: [boost-soplex-scip]
+  script:
+    - mkdir -p ${BUILD_DIR}/${CI_JOB_NAME}
+    - cd ${BUILD_DIR}/${CI_JOB_NAME}
+    - cmake ${CI_PROJECT_DIR} ${CMAKE_FLAGS}
+    - make -j$(nproc)
+    - bin/bugger --help
+
+soplex_double_debug:
+  extends: .test
   variables:
-    CMAKE_FLAGS_DEBUG: "-DCMAKE_BUILD_TYPE=Debug"
-    CMAKE_FLAGS_RELEASE: "-DCMAKE_BUILD_TYPE=Release"
-    BOOST_VERSION: 1.80.0
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSOPLEX=on -DSOPLEX_DIR=${INSTALL_DIR}"
+
+soplex_double_optimized:
+  extends: .test
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSOPLEX=on -DSOPLEX_DIR=${INSTALL_DIR}"
+
+soplex_rational_debug:
+  extends: .test
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSOPLEX=on -DSOPLEX_DIR=${INSTALL_DIR}"
+
+soplex_rational_optimized:
+  extends: .test
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSOPLEX=on -DSOPLEX_DIR=${INSTALL_DIR}"
+
+scip_double_debug:
+  extends: .test
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}/default"
+
+scip_double_optimized:
+  extends: .test
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}/default"
+
+scip_rational_debug:
+  extends: .test
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}/default"
+
+scip_rational_optimized:
+  extends: .test
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}/default"
+
+scipexact_double_debug:
+  extends: .test
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=d -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}/exact"
+
+scipexact_double_optimized:
+  extends: .test
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=d -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}/exact"
+
+scipexact_rational_debug:
+  extends: .test
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Debug -DBUGGER_ARITHMETIC=r -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}/exact"
+
+scipexact_rational_optimized:
+  extends: .test
+  variables:
+    CMAKE_FLAGS: "-DCMAKE_BUILD_TYPE=Release -DBUGGER_ARITHMETIC=r -DSCIP=on -DSCIP_DIR=${INSTALL_DIR}/exact"
