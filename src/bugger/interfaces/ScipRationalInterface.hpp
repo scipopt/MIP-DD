@@ -277,7 +277,7 @@ namespace bugger
 
                   if( abs(bound) == REAL(SCIPinfinity(this->scip)) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible )
                      //TODO: Get rational objective
-                     bound = SCIPgetSolOrigObj(this->scip, sols[0]);
+                     bound = REAL(SCIPgetSolOrigObj(this->scip, sols[0]));
                   else if( this->parameters.cutoffrelax >= 0.0 && this->parameters.cutoffrelax < SCIPinfinity(this->scip) )
                   {
                      if( this->model->getObjective( ).sense )
@@ -285,14 +285,14 @@ namespace bugger
                         //TODO: Get rational limit
                         if( SCIP_Real(upper.val) >= SCIP_Real(this->relax( SCIP_Real(this->parameters.cutoffrelax) + SCIP_Real(this->value), false, SCIPepsilon(this->scip), SCIPinfinity(this->scip) )) )
                            //TODO: Get rational objective
-                           bound = solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : SCIPinfinity(this->scip);
+                           bound = REAL(solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : SCIPinfinity(this->scip));
                      }
                      else
                      {
                         //TODO: Get rational limit
                         if( SCIP_Real(upper.val) <= SCIP_Real(this->relax( SCIP_Real(-this->parameters.cutoffrelax) + SCIP_Real(this->value), true, SCIPepsilon(this->scip), SCIPinfinity(this->scip) )) )
                            //TODO: Get rational objective
-                           bound = solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : -SCIPinfinity(this->scip);
+                           bound = REAL(solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : -SCIPinfinity(this->scip));
                      }
                   }
 
