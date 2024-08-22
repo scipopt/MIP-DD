@@ -514,7 +514,7 @@ namespace bugger
             {
                if( SCIPvarIsNegated(consvars[i]) )
                {
-                  SCIPgetNegatedVar(this->scip, consvars[i], &consvars[i]);
+                  consvars[i] = SCIPvarGetNegatedVar(consvars[i]);
                   consvals[i] *= -1.0;
                   if( !SCIPisInfinity(this->scip, -lhs) )
                      lhs += consvals[i];
