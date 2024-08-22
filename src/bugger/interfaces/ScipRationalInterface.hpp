@@ -208,12 +208,13 @@ namespace bugger
 
          if( retcode == SCIP_OKAY )
          {
-            // reset return code
-            retcode = SolverRetcode::OKAY;
             SCIP_Rational lower;
             SCIP_Rational upper;
             //TODO: Initialize rational objective
             //SCIP_Rational objval;
+
+            // reset return code
+            retcode = SolverRetcode::OKAY;
 
             if( this->parameters.mode == -1 )
             {
