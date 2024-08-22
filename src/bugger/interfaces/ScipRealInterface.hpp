@@ -73,7 +73,7 @@ namespace bugger
          for( int col = 0; col < ncols; ++col )
          {
             if( domains.flags[col].test(ColFlag::kFixed) )
-               this->vars[col] = nullptr;
+               this->vars[col] = NULL;
             else
             {
                SCIP_VAR* var;
@@ -239,19 +239,19 @@ namespace bugger
                   // instead of primal bound use solution objective if no ray or infinity value if objective limit
                   REAL bound { SCIPgetPrimalbound(this->scip) };
 
-                  if( abs(SCIPgetPrimalbound(this->scip)) == SCIPinfinity(this->scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible )
-                     bound = SCIPgetSolOrigObj(this->scip, sols[0]);
+                  if( abs(bound) == REAL(SCIPinfinity(this->scip)) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible )
+                     bound = REAL(SCIPgetSolOrigObj(this->scip, sols[0]));
                   else if( this->parameters.cutoffrelax >= 0.0 && this->parameters.cutoffrelax < SCIPinfinity(this->scip) )
                   {
                      if( this->model->getObjective( ).sense )
                      {
                         if( SCIPgetPrimalbound(this->scip) >= SCIP_Real(this->relax( SCIP_Real(this->parameters.cutoffrelax) + SCIP_Real(this->value), false, SCIPepsilon(this->scip), SCIPinfinity(this->scip) )) )
-                           bound = solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : SCIPinfinity(this->scip);
+                           bound = REAL(solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : SCIPinfinity(this->scip));
                      }
                      else
                      {
                         if( SCIPgetPrimalbound(this->scip) <= SCIP_Real(this->relax( SCIP_Real(-this->parameters.cutoffrelax) + SCIP_Real(this->value), true, SCIPepsilon(this->scip), SCIPinfinity(this->scip) )) )
-                           bound = solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : -SCIPinfinity(this->scip);
+                           bound = REAL(solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : -SCIPinfinity(this->scip));
                      }
                   }
 
@@ -439,14 +439,15 @@ namespace bugger
          if( !parsed_settings )
             return { boost::none, boost::none, boost::none };
          SolverSettings settings { parsed_settings.get() };
-         if( SCIPreadProb(this->scip, problem_filename.c_str(), nullptr) != SCIP_OKAY )
+         if( SCIPreadProb(this->scip, problem_filename.c_str(), NULL) != SCIP_OKAY )
             return { settings, boost::none, boost::none };
          ProblemBuilder<REAL> builder;
+         SCIP_Bool success = TRUE;
 
          // set problem name
          builder.setProblemName(SCIPgetProbName(this->scip));
          // set objective offset
-         builder.setObjOffset(SCIPgetOrigObjoffset(this->scip));
+         builder.setObjOffset(REAL(SCIPgetOrigObjoffset(this->scip)));
          // set objective sense
          builder.setObjSense(SCIPgetObjsense(this->scip) == SCIP_OBJSENSE_MINIMIZE);
 
@@ -460,7 +461,6 @@ namespace bugger
          for( int row = 0; row < nrows; ++row )
          {
             int nrowcols = 0;
-            SCIP_Bool success = FALSE;
             SCIPgetConsNVars(this->scip, conss[row], &nrowcols, &success);
             if( !success )
                return { settings, boost::none, boost::none };
@@ -495,7 +495,6 @@ namespace bugger
          for( int row = 0; row < nrows; ++row )
          {
             SCIP_CONS* cons = conss[row];
-            SCIP_Bool success = FALSE;
             SCIP_Real lhs = SCIPconsGetLhs(this->scip, cons, &success);
             if( !success )
                return { settings, boost::none, boost::none };
@@ -536,19 +535,18 @@ namespace bugger
          Solution<REAL> solution { };
          if( !solution_filename.empty() )
          {
-            SCIP_SOL* sol = nullptr;
+            SCIP_SOL* sol = NULL;
             SCIP_Bool error = TRUE;
-            bool success = true;
-            if( success && SCIPcreateSol(this->scip, &sol, nullptr) != SCIP_OKAY )
+            if( success && SCIPcreateSol(this->scip, &sol, NULL) != SCIP_OKAY )
             {
-               sol = nullptr;
-               success = false;
+               sol = NULL;
+               success = FALSE;
             }
             if( success && ( SCIPreadSolFile(this->scip, solution_filename.c_str(), sol, FALSE, NULL, &error) != SCIP_OKAY || error ) )
-               success = false;
+               success = FALSE;
             if( success )
                translateSolution(sol, FALSE, problem, solution);
-            if( sol != nullptr )
+            if( sol != NULL )
                SCIPfreeSol(this->scip, &sol);
             if( !success )
                return { settings, problem, boost::none };
@@ -561,16 +559,16 @@ namespace bugger
       writeInstance(const String& filename, const bool& writesettings, const bool& writesolution) const override
       {
          bool successsettings = ( !writesettings && this->limits.size() == 0 ) || SCIPwriteParams(this->scip, (filename + ".set").c_str(), FALSE, TRUE) == SCIP_OKAY;
-         bool successproblem = SCIPwriteOrigProblem(this->scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
+         bool successproblem = SCIPwriteOrigProblem(this->scip, (filename + ".cip").c_str(), NULL, FALSE) == SCIP_OKAY;
          bool successsolution = true;
 
          if( writesolution && this->reference->status == SolutionStatus::kFeasible )
          {
-            SCIP_SOL* sol = nullptr;
-            FILE* file = nullptr;
-            if( successsolution && SCIPcreateSol(this->scip, &sol, nullptr) != SCIP_OKAY )
+            SCIP_SOL* sol = NULL;
+            FILE* file = NULL;
+            if( successsolution && SCIPcreateSol(this->scip, &sol, NULL) != SCIP_OKAY )
             {
-               sol = nullptr;
+               sol = NULL;
                successsolution = false;
             }
             for( int col = 0; successsolution && col < this->reference->primal.size(); ++col )
@@ -578,11 +576,11 @@ namespace bugger
                if( !this->model->getColFlags()[col].test( ColFlag::kFixed ) && SCIPsetSolVal(this->scip, sol, this->vars[col], SCIP_Real(this->reference->primal[col])) != SCIP_OKAY )
                   successsolution = false;
             }
-            if( successsolution && ( (file = fopen((filename + ".sol").c_str(), "w")) == nullptr || SCIPprintSol(this->scip, sol, file, FALSE) != SCIP_OKAY ) )
+            if( successsolution && ( (file = fopen((filename + ".sol").c_str(), "w")) == NULL || SCIPprintSol(this->scip, sol, file, FALSE) != SCIP_OKAY ) )
                successsolution = false;
-            if( file != nullptr )
+            if( file != NULL )
                fclose(file);
-            if( sol != nullptr )
+            if( sol != NULL )
                SCIPfreeSol(this->scip, &sol);
          }
 

@@ -76,11 +76,14 @@ namespace bugger
          const auto& lhs_values = consMatrix.getLeftHandSides( );
          const auto& rhs_values = consMatrix.getRightHandSides( );
          const auto& rflags = this->model->getRowFlags( );
+         SCIP_Rational lower;
+         SCIP_Rational upper;
+         SCIP_Rational objval;
 
          this->set_parameters( );
          SCIP_CALL_ABORT(SCIPcreateProbBasic(this->scip, this->model->getName( ).c_str()));
-         //TODO: Set rational offset
-         SCIP_CALL_ABORT(SCIPaddOrigObjoffset(this->scip, SCIP_Real(obj.offset)));
+         SCIP_CALL_ABORT(SCIPratSetReal(&objval, obj.offset));
+         SCIP_CALL_ABORT(SCIPaddOrigObjoffsetExact(this->scip, &objval));
          SCIP_CALL_ABORT(SCIPsetObjsense(this->scip, obj.sense ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
          this->vars.resize(ncols);
          if( solution_exists )
@@ -90,31 +93,25 @@ namespace bugger
          else if( this->reference->status == SolutionStatus::kInfeasible )
             this->value = obj.sense ? SCIPinfinity(this->scip) : -SCIPinfinity(this->scip);
 
-         SCIP_Rational* lower;
-         SCIP_Rational* upper;
-         SCIP_Rational* objval;
-         RatCreate(&lower);
-         RatCreate(&upper);
-         RatCreate(&objval);
          for( int col = 0; col < ncols; ++col )
          {
             if( domains.flags[col].test(ColFlag::kFixed) )
-               this->vars[col] = nullptr;
+               this->vars[col] = NULL;
             else
             {
                SCIP_VAR* var;
                SCIP_VARTYPE type;
-               SCIP_CALL_ABORT(SCIPratSetReal(lower, domains.flags[col].test(ColFlag::kLbInf)
-                                                     ? REAL(-SCIPinfinity(this->scip))
-                                                     : domains.lower_bounds[col]));
-               SCIP_CALL_ABORT(SCIPratSetReal(upper, domains.flags[col].test(ColFlag::kUbInf)
-                                                     ? REAL(SCIPinfinity(this->scip))
-                                                     : domains.upper_bounds[col]));
-               SCIP_CALL_ABORT(SCIPratSetReal(objval, obj.coefficients[col]));
-               assert(!domains.flags[col].test(ColFlag::kInactive) || lower->val == upper->val);
+               SCIP_CALL_ABORT(SCIPratSetReal(&lower, domains.flags[col].test(ColFlag::kLbInf)
+                                                      ? REAL(-SCIPinfinity(this->scip))
+                                                      : domains.lower_bounds[col]));
+               SCIP_CALL_ABORT(SCIPratSetReal(&upper, domains.flags[col].test(ColFlag::kUbInf)
+                                                      ? REAL(SCIPinfinity(this->scip))
+                                                      : domains.upper_bounds[col]));
+               SCIP_CALL_ABORT(SCIPratSetReal(&objval, obj.coefficients[col]));
+               assert(!domains.flags[col].test(ColFlag::kInactive) || lower.val == upper.val);
                if( domains.flags[col].test(ColFlag::kIntegral) )
                {
-                  if( lower->val >= 0 && upper->val <= 1 )
+                  if( lower.val >= 0 && upper.val <= 1 )
                      type = SCIP_VARTYPE_BINARY;
                   else
                      type = SCIP_VARTYPE_INTEGER;
@@ -124,7 +121,7 @@ namespace bugger
                else
                   type = SCIP_VARTYPE_CONTINUOUS;
                SCIP_CALL_ABORT(SCIPcreateVarBasic(this->scip, &var, varNames[col].c_str(), 0.0, 0.0, 0.0, type));
-               SCIP_CALL_ABORT(SCIPaddVarExactData(this->scip, var, lower, upper, objval));
+               SCIP_CALL_ABORT(SCIPaddVarExactData(this->scip, var, &lower, &upper, &objval));
                this->vars[col] = var;
                SCIP_CALL_ABORT(SCIPaddVar(this->scip, var));
                SCIP_CALL_ABORT(SCIPreleaseVar(this->scip, &var));
@@ -132,9 +129,8 @@ namespace bugger
          }
 
          Vec<SCIP_VAR*> consvars(ncols);
-         Vec<SCIP_Rational*> consvals(ncols);
-         for( int col = 0; col < ncols; ++col )
-            RatCreate(&consvals[col]);
+         Vec<SCIP_Rational> consvals(ncols);
+         Vec<SCIP_Rational*> consvalsptrs(ncols);
          for( int row = 0; row < nrows; ++row )
          {
             if( rflags[row].test(RowFlag::kRedundant) )
@@ -145,29 +141,25 @@ namespace bugger
             const auto& rowvals = rowvec.getValues( );
             int nrowcols = rowvec.getLength( );
             SCIP_CONS* cons;
-            SCIP_CALL_ABORT(SCIPratSetReal(lower, rflags[row].test(RowFlag::kLhsInf)
-                                                  ? REAL(-SCIPinfinity(this->scip))
-                                                  : lhs_values[row]));
-            SCIP_CALL_ABORT(SCIPratSetReal(upper, rflags[row].test(RowFlag::kRhsInf)
-                                                  ? REAL(SCIPinfinity(this->scip))
-                                                  : rhs_values[row]));
+            SCIP_CALL_ABORT(SCIPratSetReal(&lower, rflags[row].test(RowFlag::kLhsInf)
+                                                   ? REAL(-SCIPinfinity(this->scip))
+                                                   : lhs_values[row]));
+            SCIP_CALL_ABORT(SCIPratSetReal(&upper, rflags[row].test(RowFlag::kRhsInf)
+                                                   ? REAL(SCIPinfinity(this->scip))
+                                                   : rhs_values[row]));
             for( int i = 0; i < nrowcols; ++i )
             {
                assert(!this->model->getColFlags( )[rowinds[i]].test(ColFlag::kFixed));
                assert(rowvals[i] != 0);
                consvars[i] = this->vars[rowinds[i]];
-               SCIP_CALL_ABORT(SCIPratSetReal(consvals[i], rowvals[i]));
+               SCIP_CALL_ABORT(SCIPratSetReal(&consvals[i], rowvals[i]));
+               consvalsptrs[i] = &consvals[i];
             }
             SCIP_CALL_ABORT(SCIPcreateConsBasicExactLinear(this->scip, &cons, consNames[row].c_str(), nrowcols,
-                  consvars.data( ), consvals.data( ), lower, upper));
+                  consvars.data( ), consvalsptrs.data( ), &lower, &upper));
             SCIP_CALL_ABORT(SCIPaddCons(this->scip, cons));
             SCIP_CALL_ABORT(SCIPreleaseCons(this->scip, &cons));
          }
-         for( int col = ncols - 1; col >= 0; --col )
-            RatFree(&consvals[col]);
-         RatFree(&objval);
-         RatFree(&upper);
-         RatFree(&lower);
 
          if( solution_exists )
          {
@@ -216,6 +208,11 @@ namespace bugger
 
          if( retcode == SCIP_OKAY )
          {
+            SCIP_Rational lower;
+            SCIP_Rational upper;
+            //TODO: Initialize rational objective
+            //SCIP_Rational objval;
+
             // reset return code
             retcode = SolverRetcode::OKAY;
 
@@ -249,8 +246,10 @@ namespace bugger
 
                // check dual by reference solution objective
                if( retcode == SolverRetcode::OKAY && dual )
-                  //TODO: Get rational dual
-                  retcode = this->check_dual_bound( REAL(SCIPgetDualbound(this->scip)), REAL(SCIPsumepsilon(this->scip)), REAL(SCIPinfinity(this->scip)) );
+               {
+                  SCIPgetDualboundExact(this->scip, &lower);
+                  retcode = this->check_dual_bound( REAL(lower.val), REAL(SCIPsumepsilon(this->scip)), REAL(SCIPinfinity(this->scip)) );
+               }
 
                // check primal by generated solution values
                if( retcode == SolverRetcode::OKAY )
@@ -273,28 +272,27 @@ namespace bugger
                if( retcode == SolverRetcode::OKAY && objective )
                {
                   // instead of primal bound use solution objective if no ray or infinity value if objective limit
-                  //TODO: Get rational primal
-                  REAL bound { SCIPgetPrimalbound(this->scip) };
+                  SCIPgetPrimalboundExact(this->scip, &upper);
+                  REAL bound { upper.val };
 
-                  //TODO: Get rational primal
-                  if( abs(SCIPgetPrimalbound(this->scip)) == SCIPinfinity(this->scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible )
+                  if( abs(bound) == REAL(SCIPinfinity(this->scip)) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible )
                      //TODO: Get rational objective
-                     bound = SCIPgetSolOrigObj(this->scip, sols[0]);
+                     bound = REAL(SCIPgetSolOrigObj(this->scip, sols[0]));
                   else if( this->parameters.cutoffrelax >= 0.0 && this->parameters.cutoffrelax < SCIPinfinity(this->scip) )
                   {
                      if( this->model->getObjective( ).sense )
                      {
-                        //TODO: Get rational primal
-                        if( SCIPgetPrimalbound(this->scip) >= SCIP_Real(this->relax( SCIP_Real(this->parameters.cutoffrelax) + SCIP_Real(this->value), false, SCIPepsilon(this->scip), SCIPinfinity(this->scip) )) )
+                        //TODO: Get rational limit
+                        if( SCIP_Real(upper.val) >= SCIP_Real(this->relax( SCIP_Real(this->parameters.cutoffrelax) + SCIP_Real(this->value), false, SCIPepsilon(this->scip), SCIPinfinity(this->scip) )) )
                            //TODO: Get rational objective
-                           bound = solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : SCIPinfinity(this->scip);
+                           bound = REAL(solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : SCIPinfinity(this->scip));
                      }
                      else
                      {
-                        //TODO: Get rational primal
-                        if( SCIPgetPrimalbound(this->scip) <= SCIP_Real(this->relax( SCIP_Real(-this->parameters.cutoffrelax) + SCIP_Real(this->value), true, SCIPepsilon(this->scip), SCIPinfinity(this->scip) )) )
+                        //TODO: Get rational limit
+                        if( SCIP_Real(upper.val) <= SCIP_Real(this->relax( SCIP_Real(-this->parameters.cutoffrelax) + SCIP_Real(this->value), true, SCIPepsilon(this->scip), SCIPinfinity(this->scip) )) )
                            //TODO: Get rational objective
-                           bound = solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : -SCIPinfinity(this->scip);
+                           bound = REAL(solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : -SCIPinfinity(this->scip));
                      }
                   }
 
@@ -312,8 +310,9 @@ namespace bugger
                   SCIP_Bool valid;
                   long long count = SCIPgetNCountedSols(this->scip, &valid);
 
-                  //TODO: Get rational bounds
-                  retcode = this->check_count_number( REAL(SCIPgetDualbound(this->scip)), REAL(SCIPgetPrimalbound(this->scip)), valid ? count : -1, REAL(SCIPinfinity(this->scip)) );
+                  SCIPgetDualboundExact(this->scip, &lower);
+                  SCIPgetPrimalboundExact(this->scip, &upper);
+                  retcode = this->check_count_number( REAL(lower.val), REAL(upper.val), valid ? count : -1, REAL(SCIPinfinity(this->scip)) );
                }
             }
 
@@ -494,15 +493,20 @@ namespace bugger
          if( !parsed_settings )
             return { boost::none, boost::none, boost::none };
          SolverSettings settings { parsed_settings.get() };
-         if( SCIPreadProb(this->scip, problem_filename.c_str(), nullptr) != SCIP_OKAY )
+         if( SCIPreadProb(this->scip, problem_filename.c_str(), NULL) != SCIP_OKAY )
             return { settings, boost::none, boost::none };
          ProblemBuilder<REAL> builder;
+         SCIP_Bool success = TRUE;
+         //TODO: Initialize rational data
+         //SCIP_Rational lower;
+         //SCIP_Rational upper;
+         //SCIP_Rational objval;
 
          // set problem name
          builder.setProblemName(SCIPgetProbName(this->scip));
          // set objective offset
          //TODO: Get rational offset
-         builder.setObjOffset(SCIPgetOrigObjoffset(this->scip));
+         builder.setObjOffset(REAL(SCIPgetOrigObjoffset(this->scip)));
          // set objective sense
          builder.setObjSense(SCIPgetObjsense(this->scip) == SCIP_OBJSENSE_MINIMIZE);
 
@@ -516,7 +520,6 @@ namespace bugger
          for( int row = 0; row < nrows; ++row )
          {
             int nrowcols = 0;
-            SCIP_Bool success = FALSE;
             SCIPgetConsNVars(this->scip, conss[row], &nrowcols, &success);
             if( !success )
                return { settings, boost::none, boost::none };
@@ -554,7 +557,6 @@ namespace bugger
          for( int row = 0; row < nrows; ++row )
          {
             SCIP_CONS* cons = conss[row];
-            SCIP_Bool success = FALSE;
             //TODO: Get rational left
             SCIP_Real lhs = SCIPconsGetLhs(this->scip, cons, &success);
             if( !success )
@@ -598,19 +600,18 @@ namespace bugger
          Solution<REAL> solution { };
          if( !solution_filename.empty() )
          {
-            SCIP_SOL* sol = nullptr;
+            SCIP_SOL* sol = NULL;
             SCIP_Bool error = TRUE;
-            bool success = true;
-            if( success && SCIPcreateSol(this->scip, &sol, nullptr) != SCIP_OKAY )
+            if( success && SCIPcreateSol(this->scip, &sol, NULL) != SCIP_OKAY )
             {
-               sol = nullptr;
-               success = false;
+               sol = NULL;
+               success = FALSE;
             }
             if( success && ( SCIPreadSolFile(this->scip, solution_filename.c_str(), sol, FALSE, NULL, &error) != SCIP_OKAY || error ) )
-               success = false;
+               success = FALSE;
             if( success )
                translateSolution(sol, FALSE, problem, solution);
-            if( sol != nullptr )
+            if( sol != NULL )
                SCIPfreeSol(this->scip, &sol);
             if( !success )
                return { settings, problem, boost::none };
@@ -623,16 +624,18 @@ namespace bugger
       writeInstance(const String& filename, const bool& writesettings, const bool& writesolution) const override
       {
          bool successsettings = ( !writesettings && this->limits.size() == 0 ) || SCIPwriteParams(this->scip, (filename + ".set").c_str(), FALSE, TRUE) == SCIP_OKAY;
-         bool successproblem = SCIPwriteOrigProblem(this->scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
+         bool successproblem = SCIPwriteOrigProblem(this->scip, (filename + ".cip").c_str(), NULL, FALSE) == SCIP_OKAY;
          bool successsolution = true;
 
          if( writesolution && this->reference->status == SolutionStatus::kFeasible )
          {
-            SCIP_SOL* sol = nullptr;
-            FILE* file = nullptr;
-            if( successsolution && SCIPcreateSol(this->scip, &sol, nullptr) != SCIP_OKAY )
+            SCIP_SOL* sol = NULL;
+            FILE* file = NULL;
+            //TODO: Initialize rational solution
+            //SCIP_Rational solval;
+            if( successsolution && SCIPcreateSol(this->scip, &sol, NULL) != SCIP_OKAY )
             {
-               sol = nullptr;
+               sol = NULL;
                successsolution = false;
             }
             for( int col = 0; successsolution && col < this->reference->primal.size(); ++col )
@@ -641,11 +644,11 @@ namespace bugger
                if( !this->model->getColFlags()[col].test( ColFlag::kFixed ) && SCIPsetSolVal(this->scip, sol, this->vars[col], SCIP_Real(this->reference->primal[col])) != SCIP_OKAY )
                   successsolution = false;
             }
-            if( successsolution && ( (file = fopen((filename + ".sol").c_str(), "w")) == nullptr || SCIPprintSol(this->scip, sol, file, FALSE) != SCIP_OKAY ) )
+            if( successsolution && ( (file = fopen((filename + ".sol").c_str(), "w")) == NULL || SCIPprintSol(this->scip, sol, file, FALSE) != SCIP_OKAY ) )
                successsolution = false;
-            if( file != nullptr )
+            if( file != NULL )
                fclose(file);
-            if( sol != nullptr )
+            if( sol != NULL )
                SCIPfreeSol(this->scip, &sol);
          }
 
@@ -659,6 +662,8 @@ namespace bugger
       void
       translateSolution(SCIP_SOL* const sol, SCIP_Bool ray, const Problem<REAL>& problem, Solution<REAL>& solution) const
       {
+         //TODO: Initialize rational solution
+         //SCIP_Rational solval;
          solution.status = ray ? SolutionStatus::kUnbounded : SolutionStatus::kFeasible;
          solution.primal.resize(problem.getNCols());
          for( int col = 0; col < solution.primal.size(); ++col )
