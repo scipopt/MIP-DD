@@ -631,7 +631,8 @@ namespace bugger
          {
             SCIP_SOL* sol = NULL;
             FILE* file = NULL;
-            SCIP_Rational solval;
+            //TODO: Initialize rational solution
+            //SCIP_Rational solval;
             if( successsolution && SCIPcreateSol(this->scip, &sol, NULL) != SCIP_OKAY )
             {
                sol = NULL;
@@ -639,7 +640,8 @@ namespace bugger
             }
             for( int col = 0; successsolution && col < this->reference->primal.size(); ++col )
             {
-               if( !this->model->getColFlags()[col].test( ColFlag::kFixed ) && ( SCIPratSetReal(&solval, this->reference->primal[col]) != SCIP_OKAY || SCIPsetSolValExact(this->scip, sol, this->vars[col], &solval) != SCIP_OKAY ) )
+               //TODO: Set rational value
+               if( !this->model->getColFlags()[col].test( ColFlag::kFixed ) && SCIPsetSolVal(this->scip, sol, this->vars[col], SCIP_Real(this->reference->primal[col])) != SCIP_OKAY )
                   successsolution = false;
             }
             if( successsolution && ( (file = fopen((filename + ".sol").c_str(), "w")) == NULL || SCIPprintSol(this->scip, sol, file, FALSE) != SCIP_OKAY ) )
