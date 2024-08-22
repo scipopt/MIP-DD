@@ -239,7 +239,7 @@ namespace bugger
                   // instead of primal bound use solution objective if no ray or infinity value if objective limit
                   REAL bound { SCIPgetPrimalbound(this->scip) };
 
-                  if( abs(SCIPgetPrimalbound(this->scip)) == SCIPinfinity(this->scip) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible )
+                  if( abs(bound) == REAL(SCIPinfinity(this->scip)) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible )
                      bound = SCIPgetSolOrigObj(this->scip, sols[0]);
                   else if( this->parameters.cutoffrelax >= 0.0 && this->parameters.cutoffrelax < SCIPinfinity(this->scip) )
                   {
@@ -442,11 +442,12 @@ namespace bugger
          if( SCIPreadProb(this->scip, problem_filename.c_str(), nullptr) != SCIP_OKAY )
             return { settings, boost::none, boost::none };
          ProblemBuilder<REAL> builder;
+         SCIP_Bool success = TRUE;
 
          // set problem name
          builder.setProblemName(SCIPgetProbName(this->scip));
          // set objective offset
-         builder.setObjOffset(SCIPgetOrigObjoffset(this->scip));
+         builder.setObjOffset(REAL(SCIPgetOrigObjoffset(this->scip)));
          // set objective sense
          builder.setObjSense(SCIPgetObjsense(this->scip) == SCIP_OBJSENSE_MINIMIZE);
 
@@ -460,7 +461,6 @@ namespace bugger
          for( int row = 0; row < nrows; ++row )
          {
             int nrowcols = 0;
-            SCIP_Bool success = FALSE;
             SCIPgetConsNVars(this->scip, conss[row], &nrowcols, &success);
             if( !success )
                return { settings, boost::none, boost::none };
@@ -495,7 +495,6 @@ namespace bugger
          for( int row = 0; row < nrows; ++row )
          {
             SCIP_CONS* cons = conss[row];
-            SCIP_Bool success = FALSE;
             SCIP_Real lhs = SCIPconsGetLhs(this->scip, cons, &success);
             if( !success )
                return { settings, boost::none, boost::none };
@@ -538,14 +537,13 @@ namespace bugger
          {
             SCIP_SOL* sol = nullptr;
             SCIP_Bool error = TRUE;
-            bool success = true;
             if( success && SCIPcreateSol(this->scip, &sol, nullptr) != SCIP_OKAY )
             {
                sol = nullptr;
-               success = false;
+               success = FALSE;
             }
             if( success && ( SCIPreadSolFile(this->scip, solution_filename.c_str(), sol, FALSE, NULL, &error) != SCIP_OKAY || error ) )
-               success = false;
+               success = FALSE;
             if( success )
                translateSolution(sol, FALSE, problem, solution);
             if( sol != nullptr )
