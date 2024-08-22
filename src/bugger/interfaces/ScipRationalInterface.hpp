@@ -96,7 +96,7 @@ namespace bugger
          for( int col = 0; col < ncols; ++col )
          {
             if( domains.flags[col].test(ColFlag::kFixed) )
-               this->vars[col] = nullptr;
+               this->vars[col] = NULL;
             else
             {
                SCIP_VAR* var;
@@ -493,7 +493,7 @@ namespace bugger
          if( !parsed_settings )
             return { boost::none, boost::none, boost::none };
          SolverSettings settings { parsed_settings.get() };
-         if( SCIPreadProb(this->scip, problem_filename.c_str(), nullptr) != SCIP_OKAY )
+         if( SCIPreadProb(this->scip, problem_filename.c_str(), NULL) != SCIP_OKAY )
             return { settings, boost::none, boost::none };
          ProblemBuilder<REAL> builder;
          SCIP_Bool success = TRUE;
@@ -600,18 +600,18 @@ namespace bugger
          Solution<REAL> solution { };
          if( !solution_filename.empty() )
          {
-            SCIP_SOL* sol = nullptr;
+            SCIP_SOL* sol = NULL;
             SCIP_Bool error = TRUE;
-            if( success && SCIPcreateSol(this->scip, &sol, nullptr) != SCIP_OKAY )
+            if( success && SCIPcreateSol(this->scip, &sol, NULL) != SCIP_OKAY )
             {
-               sol = nullptr;
+               sol = NULL;
                success = FALSE;
             }
             if( success && ( SCIPreadSolFile(this->scip, solution_filename.c_str(), sol, FALSE, NULL, &error) != SCIP_OKAY || error ) )
                success = FALSE;
             if( success )
                translateSolution(sol, FALSE, problem, solution);
-            if( sol != nullptr )
+            if( sol != NULL )
                SCIPfreeSol(this->scip, &sol);
             if( !success )
                return { settings, problem, boost::none };
@@ -624,17 +624,17 @@ namespace bugger
       writeInstance(const String& filename, const bool& writesettings, const bool& writesolution) const override
       {
          bool successsettings = ( !writesettings && this->limits.size() == 0 ) || SCIPwriteParams(this->scip, (filename + ".set").c_str(), FALSE, TRUE) == SCIP_OKAY;
-         bool successproblem = SCIPwriteOrigProblem(this->scip, (filename + ".cip").c_str(), nullptr, FALSE) == SCIP_OKAY;
+         bool successproblem = SCIPwriteOrigProblem(this->scip, (filename + ".cip").c_str(), NULL, FALSE) == SCIP_OKAY;
          bool successsolution = true;
 
          if( writesolution && this->reference->status == SolutionStatus::kFeasible )
          {
-            SCIP_SOL* sol = nullptr;
-            FILE* file = nullptr;
+            SCIP_SOL* sol = NULL;
+            FILE* file = NULL;
             SCIP_Rational solval;
-            if( successsolution && SCIPcreateSol(this->scip, &sol, nullptr) != SCIP_OKAY )
+            if( successsolution && SCIPcreateSol(this->scip, &sol, NULL) != SCIP_OKAY )
             {
-               sol = nullptr;
+               sol = NULL;
                successsolution = false;
             }
             for( int col = 0; successsolution && col < this->reference->primal.size(); ++col )
@@ -642,11 +642,11 @@ namespace bugger
                if( !this->model->getColFlags()[col].test( ColFlag::kFixed ) && ( SCIPratSetReal(&solval, this->reference->primal[col]) != SCIP_OKAY || SCIPsetSolValExact(this->scip, sol, this->vars[col], &solval) != SCIP_OKAY ) )
                   successsolution = false;
             }
-            if( successsolution && ( (file = fopen((filename + ".sol").c_str(), "w")) == nullptr || SCIPprintSol(this->scip, sol, file, FALSE) != SCIP_OKAY ) )
+            if( successsolution && ( (file = fopen((filename + ".sol").c_str(), "w")) == NULL || SCIPprintSol(this->scip, sol, file, FALSE) != SCIP_OKAY ) )
                successsolution = false;
-            if( file != nullptr )
+            if( file != NULL )
                fclose(file);
-            if( sol != nullptr )
+            if( sol != NULL )
                SCIPfreeSol(this->scip, &sol);
          }
 
