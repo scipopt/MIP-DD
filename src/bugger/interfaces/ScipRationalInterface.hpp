@@ -210,8 +210,7 @@ namespace bugger
          {
             SCIP_Rational lower;
             SCIP_Rational upper;
-            //TODO: Initialize rational objective
-            //SCIP_Rational objval;
+            SCIP_Rational objval;
 
             // reset return code
             retcode = SolverRetcode::OKAY;
@@ -276,23 +275,39 @@ namespace bugger
                   REAL bound { upper.val };
 
                   if( abs(bound) == REAL(SCIPinfinity(this->scip)) && solution.size() >= 1 && solution[0].status == SolutionStatus::kFeasible )
-                     //TODO: Get rational objective
-                     bound = REAL(SCIPgetSolOrigObj(this->scip, sols[0]));
+                  {
+                     SCIPgetSolOrigObjExact(this->scip, sols[0], &objval);
+                     bound = REAL(objval.val);
+                  }
                   else if( this->parameters.cutoffrelax >= 0.0 && this->parameters.cutoffrelax < SCIPinfinity(this->scip) )
                   {
                      if( this->model->getObjective( ).sense )
                      {
                         //TODO: Get rational limit
                         if( SCIP_Real(upper.val) >= SCIP_Real(this->relax( SCIP_Real(this->parameters.cutoffrelax) + SCIP_Real(this->value), false, SCIPepsilon(this->scip), SCIPinfinity(this->scip) )) )
-                           //TODO: Get rational objective
-                           bound = REAL(solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : SCIPinfinity(this->scip));
+                        {
+                           if( solution.size() >= 1 )
+                           {
+                              SCIPgetSolOrigObjExact(this->scip, sols[0], &objval);
+                              bound = REAL(objval.val);
+                           }
+                           else
+                              bound = REAL(SCIPinfinity(this->scip));
+                        }
                      }
                      else
                      {
                         //TODO: Get rational limit
                         if( SCIP_Real(upper.val) <= SCIP_Real(this->relax( SCIP_Real(-this->parameters.cutoffrelax) + SCIP_Real(this->value), true, SCIPepsilon(this->scip), SCIPinfinity(this->scip) )) )
-                           //TODO: Get rational objective
-                           bound = REAL(solution.size() >= 1 ? SCIPgetSolOrigObj(this->scip, sols[0]) : -SCIPinfinity(this->scip));
+                        {
+                           if( solution.size() >= 1 )
+                           {
+                              SCIPgetSolOrigObjExact(this->scip, sols[0], &objval);
+                              bound = REAL(objval.val);
+                           }
+                           else
+                              bound = REAL(-SCIPinfinity(this->scip));
+                        }
                      }
                   }
 
@@ -602,7 +617,7 @@ namespace bugger
          {
             SCIP_SOL* sol = NULL;
             SCIP_Bool error = TRUE;
-            if( success && SCIPcreateSol(this->scip, &sol, NULL) != SCIP_OKAY )
+            if( success && SCIPcreateSolExact(this->scip, &sol, NULL) != SCIP_OKAY )
             {
                sol = NULL;
                success = FALSE;
@@ -631,17 +646,15 @@ namespace bugger
          {
             SCIP_SOL* sol = NULL;
             FILE* file = NULL;
-            //TODO: Initialize rational solution
-            //SCIP_Rational solval;
-            if( successsolution && SCIPcreateSol(this->scip, &sol, NULL) != SCIP_OKAY )
+            SCIP_Rational solval;
+            if( successsolution && SCIPcreateSolExact(this->scip, &sol, NULL) != SCIP_OKAY )
             {
                sol = NULL;
                successsolution = false;
             }
             for( int col = 0; successsolution && col < this->reference->primal.size(); ++col )
             {
-               //TODO: Set rational value
-               if( !this->model->getColFlags()[col].test( ColFlag::kFixed ) && SCIPsetSolVal(this->scip, sol, this->vars[col], SCIP_Real(this->reference->primal[col])) != SCIP_OKAY )
+               if( !this->model->getColFlags()[col].test( ColFlag::kFixed ) && ( SCIPratSetReal(&solval, this->reference->primal[col]) != SCIP_OKAY || SCIPsetSolValExact(this->scip, sol, this->vars[col], &solval) != SCIP_OKAY ) )
                   successsolution = false;
             }
             if( successsolution && ( (file = fopen((filename + ".sol").c_str(), "w")) == NULL || SCIPprintSol(this->scip, sol, file, FALSE) != SCIP_OKAY ) )
@@ -662,13 +675,19 @@ namespace bugger
       void
       translateSolution(SCIP_SOL* const sol, SCIP_Bool ray, const Problem<REAL>& problem, Solution<REAL>& solution) const
       {
-         //TODO: Initialize rational solution
-         //SCIP_Rational solval;
+         SCIP_Rational solval;
          solution.status = ray ? SolutionStatus::kUnbounded : SolutionStatus::kFeasible;
          solution.primal.resize(problem.getNCols());
          for( int col = 0; col < solution.primal.size(); ++col )
-            //TODO: Get rational value
-            solution.primal[col] = problem.getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(SCIPgetSolVal(this->scip, sol, this->vars[col]));
+         {
+            if( problem.getColFlags()[col].test( ColFlag::kFixed ) )
+               solution.primal[col] = std::numeric_limits<REAL>::signaling_NaN();
+            else
+            {
+               SCIPgetSolValExact(this->scip, sol, this->vars[col], &solval);
+               solution.primal[col] = REAL(solval.val);
+            }
+         }
          if( ray )
          {
             solution.ray.resize(problem.getNCols());
