@@ -4,10 +4,10 @@ MIP-DD - Delta-Debugging of MIP-Solvers
 MIP-DD, a C++14-based software package, applies Delta Debugging, an automated approach to isolate the cause of a software failure driven by a hypothesis-trial-result loop, to mixed-integer linear programming.
 The goal is to systematically reduce the size of input problems and the complexity of the solving process that exposes incorrect behavior.
 
-The bugging process is guided by a fixed reference solution and consists of several modules that modify the input problem and settings while preserving the feasibility
-(but not necessarily the optimality) of the reference solution. The modules apply reductions such as deleting constraints, fixing variables to their value in the
-reference solution, deleting coefficients, changing settings to given target values, modifying the sides of constraints, deleting objective components, and rounding fractional numbers.
-The modules are called in an iterative process similar to presolving.
+The bugging process is guided by a fixed reference solution and consists of several modifiers that change the input problem and settings while preserving the feasibility
+(but not necessarily the optimality) of the reference solution. The modifiers apply reductions such as deleting constraints, fixing variables to their value in the
+reference solution, deleting coefficients, changing settings to given target values, shifting the sides of constraints, deleting objective components, and rounding fractional numbers.
+The modifiers are called in an iterative process similar to presolving.
 
 # Dependencies
 
@@ -41,7 +41,7 @@ bin/bugger -p PARAMETERS -f PROBLEM -o SOLUTION -s SOLVER_SETTINGS -t TARGET_SET
 Before running the MIP-DD we recommend to regard the following hints to obtain a reasonable workflow:
 * Determine a reference solution that is as feasible as possible. To detect a suboptimality issue, the dual bound claimed by the solver must cut off this solution. For other issues, a reference solution is not required but helps to guide the process.
 * Define initial limits for the solver, for example on the total number of nodes in the branching tree, so that the bug of interest is still reproducible. This way, reductions for which the bug would be reproduced beyond these limits, will be discarded. The solver interface may restrict limits automatically with respect to some variability margin in order to accelerate the process and favor easy instances.
-* The initial number of batches is defined by parameter nbatches to bound the solve invocations per module. Each module determines the number of elementary modifications and then calculates the batch size to invoke the solver at most as many times as specified. Hence, the more batches, the smaller the changes in each test run. By default, it is set to 2, which initially leads to a bisection like approach suitable to quickly trying for lucky punches but might need to be increased for sensitive issues to achieve any reductions. After every bugger round, nbatches is redefined automatically in order to keep the anticipated expenditure based on the solving effort of the last failing run provided by the solver interface constant over all rounds.
+* The initial number of batches is defined by parameter nbatches to bound the solve invocations per modifier. Each modifier determines the number of elementary modifications and then calculates the batch size to invoke the solver at most as many times as specified. Hence, the more batches, the smaller the changes in each test run. By default, it is set to 2, which initially leads to a bisection like approach suitable to quickly trying for lucky punches but might need to be increased for sensitive issues to achieve any reductions. After every bugger round, nbatches is redefined automatically in order to keep the anticipated expenditure based on the solving effort of the last failing run provided by the solver interface constant over all rounds.
 
 For further details please refer to the PAPER (to be published).
 

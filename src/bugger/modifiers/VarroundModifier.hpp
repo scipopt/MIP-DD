@@ -22,22 +22,22 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BUGGER_MODULE_VARROUND_HPP__
-#define __BUGGER_MODULE_VARROUND_HPP__
+#ifndef __BUGGER_MODIFIERS_VARROUNDMODIFIER_HPP__
+#define __BUGGER_MODIFIERS_VARROUNDMODIFIER_HPP__
 
-#include "bugger/modules/BuggerModul.hpp"
+#include "bugger/modifiers/BuggerModifier.hpp"
 
 
 namespace bugger
 {
    template <typename REAL>
-   class VarroundModul : public BuggerModul<REAL>
+   class VarroundModifier : public BuggerModifier<REAL>
    {
    public:
 
-      explicit VarroundModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+      explicit VarroundModifier(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
                     std::shared_ptr<SolverFactory<REAL>>& _factory)
-                    : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
+                    : BuggerModifier<REAL>(_msg, _num, _parameters, _factory)
       {
          this->setName("varround");
       }
@@ -58,11 +58,11 @@ namespace bugger
          return ( lbinf || ubinf || !this->num.isZetaEq(lb, ub) ) && ( ( !lbinf && !this->num.isZetaIntegral(lb) ) || ( !ubinf && !this->num.isZetaIntegral(ub) ) );
       }
 
-      ModulStatus
+      ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
          if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded )
-            return ModulStatus::kNotAdmissible;
+            return ModifierStatus::kNotAdmissible;
 
          long long batchsize = 1;
 
@@ -73,7 +73,7 @@ namespace bugger
                if( isVarroundAdmissible(problem, i) )
                   ++batchsize;
             if( batchsize == this->parameters.nbatches - 1 )
-               return ModulStatus::kNotAdmissible;
+               return ModifierStatus::kNotAdmissible;
             batchsize /= this->parameters.nbatches;
          }
 
@@ -148,12 +148,12 @@ namespace bugger
          }
 
          if( !admissible )
-            return ModulStatus::kNotAdmissible;
+            return ModifierStatus::kNotAdmissible;
          if( applied_objectives.empty() && applied_lowers.empty() && applied_uppers.empty() )
-            return ModulStatus::kUnsuccesful;
+            return ModifierStatus::kUnsuccesful;
          problem = copy;
          this->nchgcoefs += applied_objectives.size() + applied_lowers.size() + applied_uppers.size();
-         return ModulStatus::kSuccessful;
+         return ModifierStatus::kSuccessful;
       }
    };
 

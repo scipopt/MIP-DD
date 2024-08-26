@@ -22,31 +22,31 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BUGGER_MODULE_SETTING_HPP__
-#define __BUGGER_MODULE_SETTING_HPP__
+#ifndef __BUGGER_MODIFIERS_SETTINGMODIFIER_HPP__
+#define __BUGGER_MODIFIERS_SETTINGMODIFIER_HPP__
 
-#include "bugger/modules/BuggerModul.hpp"
+#include "bugger/modifiers/BuggerModifier.hpp"
 
 
 namespace bugger
 {
    template <typename REAL>
-   class SettingModul : public BuggerModul<REAL>
+   class SettingModifier : public BuggerModifier<REAL>
    {
    public:
 
       SolverSettings target_settings;
 
-      explicit SettingModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+      explicit SettingModifier(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
                             std::shared_ptr<SolverFactory<REAL>>& _factory)
-                            : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
+                            : BuggerModifier<REAL>(_msg, _num, _parameters, _factory)
       {
          this->setName("setting");
       }
 
    private:
 
-      ModulStatus
+      ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
          long long batchsize = 1;
@@ -91,7 +91,7 @@ namespace bugger
                   ++batchsize;
             }
             if( batchsize == this->parameters.nbatches - 1 )
-               return ModulStatus::kNotAdmissible;
+               return ModifierStatus::kNotAdmissible;
             batchsize /= this->parameters.nbatches;
          }
 
@@ -302,12 +302,12 @@ namespace bugger
          }
 
          if( !admissible )
-            return ModulStatus::kNotAdmissible;
+            return ModifierStatus::kNotAdmissible;
          if( applied_bool.empty() && applied_int.empty() && applied_long.empty() && applied_double.empty() && applied_char.empty() && applied_string.empty() )
-            return ModulStatus::kUnsuccesful;
+            return ModifierStatus::kUnsuccesful;
          settings = copy;
          this->nchgsettings += applied_bool.size() + applied_int.size() + applied_long.size() + applied_double.size() + applied_char.size() + applied_string.size();
-         return ModulStatus::kSuccessful;
+         return ModifierStatus::kSuccessful;
       }
 
       SolverSettings

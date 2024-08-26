@@ -22,22 +22,22 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BUGGER_MODULE_COEFFICIENT_HPP__
-#define __BUGGER_MODULE_COEFFICIENT_HPP__
+#ifndef __BUGGER_MODIFIERS_COEFFICIENTMODIFIER_HPP__
+#define __BUGGER_MODIFIERS_COEFFICIENTMODIFIER_HPP__
 
-#include "bugger/modules/BuggerModul.hpp"
+#include "bugger/modifiers/BuggerModifier.hpp"
 
 
 namespace bugger
 {
    template <typename REAL>
-   class CoefficientModul : public BuggerModul<REAL>
+   class CoefficientModifier : public BuggerModifier<REAL>
    {
    public:
 
-      explicit CoefficientModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+      explicit CoefficientModifier(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
                                 std::shared_ptr<SolverFactory<REAL>>& _factory)
-                                : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
+                                : BuggerModifier<REAL>(_msg, _num, _parameters, _factory)
       {
          this->setName("coefficient");
       }
@@ -65,7 +65,7 @@ namespace bugger
          return false;
       }
 
-      ModulStatus
+      ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
          long long batchsize = 1;
@@ -77,7 +77,7 @@ namespace bugger
                if( isCoefficientAdmissible(problem, i) )
                   ++batchsize;
             if( batchsize == this->parameters.nbatches - 1 )
-               return ModulStatus::kNotAdmissible;
+               return ModifierStatus::kNotAdmissible;
             batchsize /= this->parameters.nbatches;
          }
 
@@ -189,13 +189,13 @@ namespace bugger
          }
 
          if( !admissible )
-            return ModulStatus::kNotAdmissible;
+            return ModifierStatus::kNotAdmissible;
          if( applied_entries.empty() )
-            return ModulStatus::kUnsuccesful;
+            return ModifierStatus::kUnsuccesful;
          problem = copy;
          this->nchgcoefs += applied_entries.size();
          this->nchgsides += applied_lefts.size() + applied_rights.size();
-         return ModulStatus::kSuccessful;
+         return ModifierStatus::kSuccessful;
       }
    };
 

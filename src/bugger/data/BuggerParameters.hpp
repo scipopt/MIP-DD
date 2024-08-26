@@ -57,7 +57,7 @@ namespace bugger {
          paramSet.addParameter( "initround", "initial bugger round or -1 for last round", initround, -1 );
          paramSet.addParameter( "initstage", "initial bugger stage or -1 for last stage", initstage, -1 );
          paramSet.addParameter( "maxrounds", "maximum number of bugger rounds or -1 for no limit", maxrounds, -1 );
-         paramSet.addParameter( "maxstages", "maximum number of bugger stages or -1 for number of modules", maxstages, -1 );
+         paramSet.addParameter( "maxstages", "maximum number of bugger stages or -1 for number of modifiers", maxstages, -1 );
          paramSet.addParameter( "tlim", "bugger time limit", tlim, 0.0 );
          paramSet.addParameter( "numerics.feastol", "feasibility tolerance to consider constraints satisfied", feastol, 0.0, 1e-1 );
          paramSet.addParameter( "numerics.epsilon", "epsilon tolerance to consider two values numerically equal", epsilon, 0.0, 1e-1 );

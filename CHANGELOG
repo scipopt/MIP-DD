@@ -54,7 +54,7 @@ Build system
 - backdate fmt from 8 to 7 to conform c++ standard 14
 - add compile option -ffp-contract=off or /fp:precise to enhance reproducibility across different systems
 - provide symlink to scip library in bugger build directory for a reliable unique link at runtime
-- introduce cmake parameter BUGGER_ARITHMETIC to select reduction arithmetic throughout templated bugger modules among float, double, longdouble, quad, and rational
+- introduce cmake parameter BUGGER_ARITHMETIC to select reduction arithmetic throughout templated bugger modifiers among float, double, longdouble, quad, and rational
 
 
 @section Release Notes MIP-DD 1.0.0

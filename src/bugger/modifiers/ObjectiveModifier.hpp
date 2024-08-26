@@ -22,22 +22,22 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BUGGER_MODULE_OBJECTIVE_HPP__
-#define __BUGGER_MODULE_OBJECTIVE_HPP__
+#ifndef __BUGGER_MODIFIERS_OBJECTIVEMODIFIER_HPP__
+#define __BUGGER_MODIFIERS_OBJECTIVEMODIFIER_HPP__
 
-#include "bugger/modules/BuggerModul.hpp"
+#include "bugger/modifiers/BuggerModifier.hpp"
 
 
 namespace bugger
 {
    template <typename REAL>
-   class ObjectiveModul : public BuggerModul<REAL>
+   class ObjectiveModifier : public BuggerModifier<REAL>
    {
    public:
 
-      explicit ObjectiveModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+      explicit ObjectiveModifier(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
                               std::shared_ptr<SolverFactory<REAL>>& _factory)
-                              : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
+                              : BuggerModifier<REAL>(_msg, _num, _parameters, _factory)
       {
          this->setName("objective");
       }
@@ -53,11 +53,11 @@ namespace bugger
              || !this->num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) );
       }
 
-      ModulStatus
+      ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
          if( solution.status == SolutionStatus::kUnbounded )
-            return ModulStatus::kNotAdmissible;
+            return ModifierStatus::kNotAdmissible;
 
          long long batchsize = 1;
 
@@ -68,7 +68,7 @@ namespace bugger
                if( isObjectiveAdmissible(problem, i) )
                   ++batchsize;
             if( batchsize == this->parameters.nbatches - 1 )
-               return ModulStatus::kNotAdmissible;
+               return ModifierStatus::kNotAdmissible;
             batchsize /= this->parameters.nbatches;
          }
 
@@ -102,12 +102,12 @@ namespace bugger
          }
 
          if( !admissible )
-            return ModulStatus::kNotAdmissible;
+            return ModifierStatus::kNotAdmissible;
          if( applied_reductions.empty() )
-            return ModulStatus::kUnsuccesful;
+            return ModifierStatus::kUnsuccesful;
          problem = copy;
          this->nchgcoefs += applied_reductions.size();
-         return ModulStatus::kSuccessful;
+         return ModifierStatus::kSuccessful;
       }
    };
 
