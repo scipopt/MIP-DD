@@ -22,8 +22,8 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BUGGER_MODULES_BUGGERMODUL_HPP__
-#define __BUGGER_MODULES_BUGGERMODUL_HPP__
+#ifndef __BUGGER_MODIFIERS_BUGGERMODIFIER_HPP__
+#define __BUGGER_MODIFIERS_BUGGERMODIFIER_HPP__
 
 #include "bugger/data/BuggerParameters.hpp"
 #include "bugger/interfaces/BuggerStatus.hpp"
@@ -38,7 +38,7 @@
 
 namespace bugger
 {
-   enum class ModulStatus : int
+   enum class ModifierStatus : int
    {
 
       kDidNotRun = 0,
@@ -52,7 +52,7 @@ namespace bugger
    };
 
    template <typename REAL>
-   class BuggerModul
+   class BuggerModifier
    {
    private:
 
@@ -80,11 +80,11 @@ namespace bugger
 
    public:
 
-      BuggerModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+      BuggerModifier(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
                   std::shared_ptr<SolverFactory<REAL>>& _factory) : msg(_msg), num(_num), parameters(_parameters),
                   factory(_factory) { }
 
-      virtual ~BuggerModul( ) = default;
+      virtual ~BuggerModifier( ) = default;
 
       virtual bool
       initialize( )
@@ -99,37 +99,37 @@ namespace bugger
       }
 
       virtual void
-      addModuleParameters(ParameterSet& paramSet) { };
+      addModifierParameters(ParameterSet& paramSet) { };
 
       void
       addParameters(ParameterSet& paramSet)
       {
          paramSet.addParameter(
                fmt::format("{}.enabled", this->name).c_str( ),
-               fmt::format("enable module {}", this->name).c_str( ),
+               fmt::format("enable modifier {}", this->name).c_str( ),
                this->enabled);
 
-         addModuleParameters(paramSet);
+         addModifierParameters(paramSet);
       }
 
-      ModulStatus
+      ModifierStatus
       run(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution, const Timer& timer)
       {
          last_result = { SolverRetcode::OKAY, SolverStatus::kUnknown };
          last_effort = -1;
          if( !enabled )
-            return ModulStatus::kDidNotRun;
+            return ModifierStatus::kDidNotRun;
 
-         msg.info("module {} running\n", name);
+         msg.info("modifier {} running\n", name);
 #ifdef BUGGER_TBB
          auto start = tbb::tick_count::now( );
 #else
          auto start = std::chrono::steady_clock::now();
 #endif
-         ModulStatus result = execute(settings, problem, solution);
-         if( result == ModulStatus::kSuccessful )
+         ModifierStatus result = execute(settings, problem, solution);
+         if( result == ModifierStatus::kSuccessful )
             nsuccessCall++;
-         if ( result != ModulStatus::kDidNotRun && result != ModulStatus::kNotAdmissible )
+         if ( result != ModifierStatus::kDidNotRun && result != ModifierStatus::kNotAdmissible )
             ncalls++;
 #ifdef BUGGER_TBB
          auto end = tbb::tick_count::now( );
@@ -139,7 +139,7 @@ namespace bugger
          auto end = std::chrono::steady_clock::now( );
          execTime = execTime + std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count( ) / 1000.0;
 #endif
-         msg.info("module {} finished\n", name);
+         msg.info("modifier {} finished\n", name);
          return result;
       }
 
@@ -183,7 +183,7 @@ namespace bugger
 
    protected:
 
-      virtual ModulStatus
+      virtual ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) = 0;
 
       void

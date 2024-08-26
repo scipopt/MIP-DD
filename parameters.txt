@@ -16,7 +16,7 @@ initstage = 0
 # maximum number of bugger rounds or -1 for no limit [Integer: [-1,2147483647]]
 maxrounds = -1
 
-# maximum number of bugger stages or -1 for number of modules [Integer: [-1,2147483647]]
+# maximum number of bugger stages or -1 for number of modifiers [Integer: [-1,2147483647]]
 maxstages = -1
 
 # bugger time limit [Numerical: [0.0,1.7976931348623157e+308]]
@@ -34,31 +34,31 @@ numerics.zeta = 0.0
 # ignored return codes separated by blanks (example: 2 3) [List]
 passcodes = 
 
-# enable module constraint [Boolean: {0,1}]
+# enable modifier constraint [Boolean: {0,1}]
 constraint.enabled = 1
 
-# enable module variable [Boolean: {0,1}]
+# enable modifier variable [Boolean: {0,1}]
 variable.enabled = 1
 
-# enable module coefficient [Boolean: {0,1}]
+# enable modifier coefficient [Boolean: {0,1}]
 coefficient.enabled = 1
 
-# enable module fixing [Boolean: {0,1}]
+# enable modifier fixing [Boolean: {0,1}]
 fixing.enabled = 1
 
-# enable module setting [Boolean: {0,1}]
+# enable modifier setting [Boolean: {0,1}]
 setting.enabled = 1
 
-# enable module side [Boolean: {0,1}]
+# enable modifier side [Boolean: {0,1}]
 side.enabled = 1
 
-# enable module objective [Boolean: {0,1}]
+# enable modifier objective [Boolean: {0,1}]
 objective.enabled = 1
 
-# enable module varround [Boolean: {0,1}]
+# enable modifier varround [Boolean: {0,1}]
 varround.enabled = 1
 
-# enable module consround [Boolean: {0,1}]
+# enable modifier consround [Boolean: {0,1}]
 consround.enabled = 1
 
 # verbosity to be used: 0 - quiet, 1 - errors, 2 - warnings, 3 - normal, 4 - detailed [Integer: [0,4]]

@@ -30,7 +30,7 @@
 #include "bugger/io/SolParser.hpp"
 #include "bugger/io/SolWriter.hpp"
 #include "bugger/misc/OptionsParser.hpp"
-#include "bugger/modules/SettingModul.hpp"
+#include "bugger/modifiers/SettingModifier.hpp"
 
 
 namespace bugger
@@ -44,13 +44,13 @@ namespace bugger
       const Num<REAL>& num;
       BuggerParameters& parameters;
       const std::shared_ptr<SolverFactory<REAL>>& factory;
-      const Vec<std::unique_ptr<BuggerModul<REAL>>>& modules;
-      Vec<ModulStatus> results;
+      const Vec<std::unique_ptr<BuggerModifier<REAL>>>& modifiers;
+      Vec<ModifierStatus> results;
 
    public:
 
-      explicit BuggerRun(const Message& _msg, const Num<REAL>& _num, BuggerParameters& _parameters, const std::shared_ptr<SolverFactory<REAL>>& _factory, const Vec<std::unique_ptr<BuggerModul<REAL>>>& _modules)
-            : msg(_msg), num(_num), parameters(_parameters), factory(_factory), modules(_modules), results(_modules.size()) { }
+      explicit BuggerRun(const Message& _msg, const Num<REAL>& _num, BuggerParameters& _parameters, const std::shared_ptr<SolverFactory<REAL>>& _factory, const Vec<std::unique_ptr<BuggerModifier<REAL>>>& _modifiers)
+            : msg(_msg), num(_num), parameters(_parameters), factory(_factory), modifiers(_modifiers), results(_modifiers.size()) { }
 
       bool
       is_time_exceeded(const Timer& timer) const
@@ -59,7 +59,7 @@ namespace bugger
       }
 
       void
-      apply(const OptionsInfo& optionsInfo, SettingModul<REAL>* const setting)
+      apply(const OptionsInfo& optionsInfo, SettingModifier<REAL>* const setting)
       {
          msg.info("\nMIP Solver:\n");
          factory->create_solver(msg)->print_header();
@@ -121,7 +121,7 @@ namespace bugger
          long long last_effort = -1;
          std::pair<char, SolverStatus> last_result = { SolverRetcode::OKAY, SolverStatus::kUnknown };
          int last_round = -1;
-         int last_module = -1;
+         int last_modifier = -1;
          auto solver = factory->create_solver(msg);
          solver->doSetUp(settings, problem, solution);
          if( parameters.mode == 1 )
@@ -145,9 +145,9 @@ namespace bugger
          }
          bool writesetting = setting->isEnabled();
          bool writesolution = false;
-         for( const auto& module: modules )
+         for( const auto& modifier: modifiers )
          {
-            if( module->isEnabled() && ( module->getName() == "fixing" || module->getName() == "objective" ) )
+            if( modifier->isEnabled() && ( modifier->getName() == "fixing" || modifier->getName() == "objective" ) )
             {
                writesolution = true;
                break;
@@ -187,73 +187,73 @@ namespace bugger
 
                msg.info("Round {} Stage {} Batch {}\n", round+1, stage+1, parameters.nbatches);
 
-               for( int module = 0; module <= stage && stage < parameters.maxstages; ++module )
+               for( int modifier = 0; modifier <= stage && stage < parameters.maxstages; ++modifier )
                {
-                  results[ module ] = modules[ module ]->run(settings, problem, solution, timer);
+                  results[ modifier ] = modifiers[ modifier ]->run(settings, problem, solution, timer);
 
-                  if( results[ module ] == bugger::ModulStatus::kSuccessful )
+                  if( results[ modifier ] == bugger::ModifierStatus::kSuccessful )
                   {
-                     long long effort = modules[ module ]->getLastSolvingEffort( );
+                     long long effort = modifiers[ modifier ]->getLastSolvingEffort( );
                      if( effort >= 0 )
                         last_effort = effort;
-                     last_result = modules[ module ]->getLastResult( );
+                     last_result = modifiers[ modifier ]->getLastResult( );
                      last_round = round;
-                     last_module = module;
-                     success = module;
+                     last_modifier = modifier;
+                     success = modifier;
                   }
-                  else if( success == module )
+                  else if( success == modifier )
                   {
-                     module = stage;
+                     modifier = stage;
                      ++stage;
                      success = stage;
                   }
                }
             }
 
-            assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModulStatus::kSuccessful );
+            assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModifierStatus::kSuccessful );
          }
-         printStats(time, last_result, last_round, last_module, last_effort);
+         printStats(time, last_result, last_round, last_modifier, last_effort);
       }
 
    private:
 
-      bugger::ModulStatus
+      bugger::ModifierStatus
       evaluateResults( )
       {
-         int largestValue = static_cast<int>( bugger::ModulStatus::kDidNotRun );
+         int largestValue = static_cast<int>( bugger::ModifierStatus::kDidNotRun );
 
-         for( int module = 0; module < parameters.maxstages; ++module )
-            largestValue = max(largestValue, static_cast<int>( results[ module ] ));
+         for( int modifier = 0; modifier < parameters.maxstages; ++modifier )
+            largestValue = max(largestValue, static_cast<int>( results[ modifier ] ));
 
-         return static_cast<bugger::ModulStatus>( largestValue );
+         return static_cast<bugger::ModifierStatus>( largestValue );
       }
 
       void
-      printStats(const double& time, const std::pair<char, SolverStatus>& last_result, int last_round, int last_module, long long last_effort)
+      printStats(const double& time, const std::pair<char, SolverStatus>& last_result, int last_round, int last_modifier, long long last_effort)
       {
          msg.info("\n {:>18} {:>12} {:>12} {:>18} {:>12} {:>18} \n",
-                  "modules", "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
+                  "modifiers", "nb calls", "changes", "success calls(%)", "solves", "execution time(s)");
          int nsolves = 0;
-         for( const auto& module: modules )
+         for( const auto& modifier: modifiers )
          {
-            module->printStats(msg);
-            nsolves += module->getNSolves();
+            modifier->printStats(msg);
+            nsolves += modifier->getNSolves();
          }
          if( last_round == -1 )
          {
-            assert(last_module == -1);
+            assert(last_modifier == -1);
             if( parameters.mode == 1 )
             {
                assert(last_result.first == SolverRetcode::OKAY);
                assert(last_result.second == SolverStatus::kUnknown);
                assert(last_effort == -1);
             }
-            msg.info("\nNo reductions found by the bugger!");
+            msg.info("\nNo modifications applied by the bugger!");
          }
          else
          {
-            assert(last_module != -1);
-            msg.info("\nFinal solve returned code {} with status {} and effort {} in round {} by module {}.", (int)last_result.first, last_result.second, last_effort, last_round + 1, modules[ last_module ]->getName( ));
+            assert(last_modifier != -1);
+            msg.info("\nFinal solve returned code {} with status {} and effort {} in round {} by modifier {}.", (int)last_result.first, last_result.second, last_effort, last_round + 1, modifiers[ last_modifier ]->getName( ));
          }
          msg.info( "\nbugging took {:.3f} seconds with {} solver invocations", time, nsolves );
          if( parameters.mode != 1 )

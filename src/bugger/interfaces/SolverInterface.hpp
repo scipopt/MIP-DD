@@ -87,7 +87,7 @@ namespace bugger
 
       /** **optional**
        * parse Settings
-       * _if returned boost::none, then module Setting will be deactivated_
+       * _if returned boost::none, then modifier Setting will be deactivated_
        * @param filename
        */
       virtual
@@ -130,7 +130,7 @@ namespace bugger
 
       /** **optional**
        * read setting-problem-solution tuple from files
-       * _if returned boost::none for setting, module Setting will be deactivated_
+       * _if returned boost::none for setting, modifier Setting will be deactivated_
        * _if returned boost::none for problem or solution, then internal parsers give a try_
        * @param settings_filename
        * @param problem_filename

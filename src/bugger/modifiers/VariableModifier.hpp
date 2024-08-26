@@ -22,116 +22,108 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BUGGER_MODULE_SIDE_HPP__
-#define __BUGGER_MODULE_SIDE_HPP__
+#ifndef __BUGGER_MODIFIERS_VARIABLEMODIFIER_HPP__
+#define __BUGGER_MODIFIERS_VARIABLEMODIFIER_HPP__
 
-#include "bugger/modules/BuggerModul.hpp"
+#include "bugger/modifiers/BuggerModifier.hpp"
 
 
 namespace bugger
 {
    template <typename REAL>
-   class SideModul : public BuggerModul<REAL>
+   class VariableModifier : public BuggerModifier<REAL>
    {
    public:
 
-      explicit SideModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
-                         std::shared_ptr<SolverFactory<REAL>>& _factory)
-                         : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
+      explicit VariableModifier(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+                             std::shared_ptr<SolverFactory<REAL>>& _factory)
+                             : BuggerModifier<REAL>(_msg, _num, _parameters, _factory)
       {
-         this->setName("side");
+         this->setName("variable");
       }
 
    private:
 
       bool
-      isSideAdmissable(const Problem<REAL>& problem, const int& row) const
+      isVariableAdmissible(const Problem<REAL>& problem, const int& col) const
       {
-         return !problem.getRowFlags( )[ row ].test(RowFlag::kRedundant)
-           && ( problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
-             || problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
-             || !this->num.isZetaEq(problem.getConstraintMatrix( ).getLeftHandSides( )[ row ], problem.getConstraintMatrix( ).getRightHandSides( )[ row ]) );
+         return problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
+             || problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
+             || !this->num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
       }
 
-      ModulStatus
+      ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
          if( solution.status == SolutionStatus::kUnbounded )
-            return ModulStatus::kNotAdmissible;
+            return ModifierStatus::kNotAdmissible;
 
          long long batchsize = 1;
 
          if( this->parameters.nbatches > 0 )
          {
             batchsize = this->parameters.nbatches - 1;
-            for( int row = problem.getNRows( ) - 1; row >= 0; --row )
-               if( isSideAdmissable(problem, row) )
+            for( int i = problem.getNCols() - 1; i >= 0; --i )
+               if( isVariableAdmissible(problem, i) )
                   ++batchsize;
             if( batchsize == this->parameters.nbatches - 1 )
-               return ModulStatus::kNotAdmissible;
+               return ModifierStatus::kNotAdmissible;
             batchsize /= this->parameters.nbatches;
          }
 
          bool admissible = false;
          auto copy = Problem<REAL>(problem);
-         auto& matrix = copy.getConstraintMatrix( );
          Vec<std::pair<int, REAL>> applied_reductions { };
          Vec<std::pair<int, REAL>> batches { };
          batches.reserve(batchsize);
 
-         for( int row = copy.getNRows( ) - 1; row >= 0; --row )
+         for( int col = copy.getNCols() - 1; col >= 0; --col )
          {
-            if( isSideAdmissable(copy, row) )
+            if( isVariableAdmissible(copy, col) )
             {
-               admissible = true;
-               const auto& data = matrix.getRowCoefficients(row);
-               bool integral = true;
                REAL fixedval { };
-               for( int index = 0; index < data.getLength( ); ++index )
-               {
-                  if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral) || !this->num.isEpsIntegral(data.getValues( )[ index ]) ) )
-                  {
-                     integral = false;
-                     break;
-                  }
-               }
+               admissible = true;
                if( solution.status == SolutionStatus::kFeasible )
                {
-                  fixedval = copy.getPrimalActivity(solution, row);
-                  if( integral )
+                  fixedval = solution.primal[ col ];
+                  if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
                      fixedval = round(fixedval);
                }
                else
                {
-                  if( integral )
+                  if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
                   {
-                     if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
-                        fixedval = min(fixedval, this->num.epsFloor(matrix.getRightHandSides( )[ row ]));
-                     if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
-                        fixedval = max(fixedval, this->num.epsCeil(matrix.getLeftHandSides( )[ row ]));
+                     if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
+                        fixedval = min(fixedval, this->num.epsFloor(copy.getUpperBounds( )[ col ]));
+                     if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) )
+                        fixedval = max(fixedval, this->num.epsCeil(copy.getLowerBounds( )[ col ]));
                   }
                   else
                   {
-                     if( !copy.getRowFlags( )[ row ].test(RowFlag::kRhsInf) )
-                        fixedval = min(fixedval, matrix.getRightHandSides( )[ row ]);
-                     if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
-                        fixedval = max(fixedval, matrix.getLeftHandSides( )[ row ]);
+                     if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
+                        fixedval = min(fixedval, copy.getUpperBounds( )[ col ]);
+                     if( !copy.getColFlags( )[ col ].test(ColFlag::kLbInf) )
+                        fixedval = max(fixedval, copy.getLowerBounds( )[ col ]);
                   }
                }
-               matrix.modifyLeftHandSide( row, this->num, fixedval );
-               matrix.modifyRightHandSide( row, this->num, fixedval );
-               batches.emplace_back(row, fixedval);
+               copy.getColFlags( )[ col ].unset(ColFlag::kLbInf);
+               copy.getColFlags( )[ col ].unset(ColFlag::kUbInf);
+               copy.getLowerBounds( )[ col ] = fixedval;
+               copy.getUpperBounds( )[ col ] = fixedval;
+               batches.emplace_back(col, fixedval);
             }
 
-            if( !batches.empty() && ( batches.size() >= batchsize || row <= 0 ) )
+            if( !batches.empty() && ( batches.size() >= batchsize || col <= 0 ) )
             {
                if( this->call_solver(settings, copy, solution) == BuggerStatus::kOkay )
                {
                   copy = Problem<REAL>(problem);
                   for( const auto& item: applied_reductions )
                   {
-                     matrix.modifyLeftHandSide( item.first, this->num, item.second );
-                     matrix.modifyRightHandSide( item.first, this->num, item.second );
+                     copy.getColFlags( )[ item.first ].unset(ColFlag::kLbInf);
+                     copy.getColFlags( )[ item.first ].unset(ColFlag::kUbInf);
+                     copy.getLowerBounds( )[ item.first ] = item.second;
+                     copy.getUpperBounds( )[ item.first ] = item.second;
                   }
                }
                else
@@ -141,12 +133,12 @@ namespace bugger
          }
 
          if( !admissible )
-            return ModulStatus::kNotAdmissible;
+            return ModifierStatus::kNotAdmissible;
          if( applied_reductions.empty() )
-            return ModulStatus::kUnsuccesful;
+            return ModifierStatus::kUnsuccesful;
          problem = copy;
-         this->nchgsides += 2 * applied_reductions.size();
-         return ModulStatus::kSuccessful;
+         this->nfixedvars += applied_reductions.size();
+         return ModifierStatus::kSuccessful;
       }
    };
 

@@ -22,22 +22,22 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BUGGER_MODULE_FIXING_HPP__
-#define __BUGGER_MODULE_FIXING_HPP__
+#ifndef __BUGGER_MODIFIERS_FIXINGMODIFIER_HPP__
+#define __BUGGER_MODIFIERS_FIXINGMODIFIER_HPP__
 
-#include "bugger/modules/BuggerModul.hpp"
+#include "bugger/modifiers/BuggerModifier.hpp"
 
 
 namespace bugger
 {
    template <typename REAL>
-   class FixingModul : public BuggerModul<REAL>
+   class FixingModifier : public BuggerModifier<REAL>
    {
    public:
 
-      explicit FixingModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+      explicit FixingModifier(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
                            std::shared_ptr<SolverFactory<REAL>>& _factory)
-                           : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
+                           : BuggerModifier<REAL>(_msg, _num, _parameters, _factory)
       {
          this->setName("fixing");
       }
@@ -53,7 +53,7 @@ namespace bugger
              && this->num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
       }
 
-      ModulStatus
+      ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
          long long batchsize = 1;
@@ -65,7 +65,7 @@ namespace bugger
                if( isFixingAdmissible(problem, col) )
                   ++batchsize;
             if( batchsize == this->parameters.nbatches - 1 )
-               return ModulStatus::kNotAdmissible;
+               return ModifierStatus::kNotAdmissible;
             batchsize /= this->parameters.nbatches;
          }
 
@@ -192,12 +192,12 @@ namespace bugger
          }
 
          if( !admissible )
-            return ModulStatus::kNotAdmissible;
+            return ModifierStatus::kNotAdmissible;
          if( applied_reductions.empty() )
-            return ModulStatus::kUnsuccesful;
+            return ModifierStatus::kUnsuccesful;
          problem = copy;
          this->naggrvars += applied_reductions.size();
-         return ModulStatus::kSuccessful;
+         return ModifierStatus::kSuccessful;
       }
    };
 

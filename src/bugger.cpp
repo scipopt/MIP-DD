@@ -27,15 +27,15 @@
 #include <boost/program_options.hpp>
 #include "bugger/data/BuggerRun.hpp"
 #include "bugger/misc/VersionLogger.hpp"
-#include "bugger/modules/ConstraintModul.hpp"
-#include "bugger/modules/VariableModul.hpp"
-#include "bugger/modules/CoefficientModul.hpp"
-#include "bugger/modules/FixingModul.hpp"
-#include "bugger/modules/SettingModul.hpp"
-#include "bugger/modules/SideModul.hpp"
-#include "bugger/modules/ObjectiveModul.hpp"
-#include "bugger/modules/VarroundModul.hpp"
-#include "bugger/modules/ConsroundModul.hpp"
+#include "bugger/modifiers/ConstraintModifier.hpp"
+#include "bugger/modifiers/VariableModifier.hpp"
+#include "bugger/modifiers/CoefficientModifier.hpp"
+#include "bugger/modifiers/FixingModifier.hpp"
+#include "bugger/modifiers/SettingModifier.hpp"
+#include "bugger/modifiers/SideModifier.hpp"
+#include "bugger/modifiers/ObjectiveModifier.hpp"
+#include "bugger/modifiers/VarroundModifier.hpp"
+#include "bugger/modifiers/ConsroundModifier.hpp"
 #if   defined(BUGGER_WITH_SCIP)
 #include "bugger/interfaces/ScipInterface.hpp"
 #elif defined(BUGGER_WITH_SOPLEX)
@@ -85,26 +85,26 @@ main(int argc, char *argv[])
    Num<REAL> num { };
    BuggerParameters parameters { };
    std::shared_ptr<SolverFactory<REAL>> factory { load_solver_factory<REAL>() };
-   Vec<std::unique_ptr<BuggerModul<REAL>>> modules { };
+   Vec<std::unique_ptr<BuggerModifier<REAL>>> modifiers { };
 
-   modules.emplace_back(new ConstraintModul<REAL>(msg, num, parameters, factory));
-   modules.emplace_back(new VariableModul<REAL>(msg, num, parameters, factory));
-   modules.emplace_back(new CoefficientModul<REAL>(msg, num, parameters, factory));
-   modules.emplace_back(new FixingModul<REAL>(msg, num, parameters, factory));
-   SettingModul<REAL>* setting = new SettingModul<REAL>(msg, num, parameters, factory);
-   modules.emplace_back(setting);
-   modules.emplace_back(new SideModul<REAL>(msg, num, parameters, factory));
-   modules.emplace_back(new ObjectiveModul<REAL>(msg, num, parameters, factory));
-   modules.emplace_back(new VarroundModul<REAL>(msg, num, parameters, factory));
-   modules.emplace_back(new ConsRoundModul<REAL>(msg, num, parameters, factory));
+   modifiers.emplace_back(new ConstraintModifier<REAL>(msg, num, parameters, factory));
+   modifiers.emplace_back(new VariableModifier<REAL>(msg, num, parameters, factory));
+   modifiers.emplace_back(new CoefficientModifier<REAL>(msg, num, parameters, factory));
+   modifiers.emplace_back(new FixingModifier<REAL>(msg, num, parameters, factory));
+   SettingModifier<REAL>* setting = new SettingModifier<REAL>(msg, num, parameters, factory);
+   modifiers.emplace_back(setting);
+   modifiers.emplace_back(new SideModifier<REAL>(msg, num, parameters, factory));
+   modifiers.emplace_back(new ObjectiveModifier<REAL>(msg, num, parameters, factory));
+   modifiers.emplace_back(new VarroundModifier<REAL>(msg, num, parameters, factory));
+   modifiers.emplace_back(new ConsRoundModifier<REAL>(msg, num, parameters, factory));
 
    if( !optionsInfo.param_settings_file.empty( ) || !optionsInfo.unparsed_options.empty( ) )
    {
       ParameterSet paramSet { };
       msg.addParameters(paramSet);
       parameters.addParameters(paramSet);
-      for( const auto &module: modules )
-         module->addParameters(paramSet);
+      for( const auto &modifier: modifiers )
+         modifier->addParameters(paramSet);
       factory->addParameters(paramSet);
 
       if( !optionsInfo.param_settings_file.empty( ) )
@@ -190,14 +190,14 @@ main(int argc, char *argv[])
       parameters.maxrounds = INT_MAX;
    if( parameters.initround < 0 || parameters.initround >= parameters.maxrounds )
       parameters.initround = parameters.maxrounds-1;
-   if( parameters.maxstages < 0 || parameters.maxstages > modules.size( ) )
-      parameters.maxstages = modules.size( );
+   if( parameters.maxstages < 0 || parameters.maxstages > modifiers.size( ) )
+      parameters.maxstages = modifiers.size( );
    if( parameters.initstage < 0 || parameters.initstage >= parameters.maxstages )
       parameters.initstage = parameters.maxstages-1;
    if( optionsInfo.target_settings_file.empty( ) )
       setting->setEnabled(false);
 
-   BuggerRun<REAL>( msg, num, parameters, factory, modules ).apply( optionsInfo, setting );
+   BuggerRun<REAL>( msg, num, parameters, factory, modifiers ).apply( optionsInfo, setting );
 
    return 0;
 }

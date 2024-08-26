@@ -22,22 +22,22 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BUGGER_MODULE_CONSTRAINT_HPP__
-#define __BUGGER_MODULE_CONSTRAINT_HPP__
+#ifndef __BUGGER_MODIFIERS_CONSTRAINTMODIFIER_HPP__
+#define __BUGGER_MODIFIERS_CONSTRAINTMODIFIER_HPP__
 
-#include "bugger/modules/BuggerModul.hpp"
+#include "bugger/modifiers/BuggerModifier.hpp"
 
 
 namespace bugger
 {
    template <typename REAL>
-   class ConstraintModul : public BuggerModul<REAL>
+   class ConstraintModifier : public BuggerModifier<REAL>
    {
    public:
 
-      explicit ConstraintModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+      explicit ConstraintModifier(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
                                std::shared_ptr<SolverFactory<REAL>>& _factory)
-                               : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
+                               : BuggerModifier<REAL>(_msg, _num, _parameters, _factory)
       {
          this->setName("constraint");
       }
@@ -52,11 +52,11 @@ namespace bugger
          return true;
       }
 
-      ModulStatus
+      ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
          if( solution.status == SolutionStatus::kInfeasible )
-            return ModulStatus::kNotAdmissible;
+            return ModifierStatus::kNotAdmissible;
 
          long long batchsize = 1;
 
@@ -67,7 +67,7 @@ namespace bugger
                if( isConstraintAdmissible(problem, i) )
                   ++batchsize;
             if( batchsize == this->parameters.nbatches - 1 )
-               return ModulStatus::kNotAdmissible;
+               return ModifierStatus::kNotAdmissible;
             batchsize /= this->parameters.nbatches;
          }
 
@@ -105,12 +105,12 @@ namespace bugger
          }
 
          if( !admissible )
-            return ModulStatus::kNotAdmissible;
+            return ModifierStatus::kNotAdmissible;
          if( applied_reductions.empty() )
-            return ModulStatus::kUnsuccesful;
+            return ModifierStatus::kUnsuccesful;
          problem = copy;
          this->ndeletedrows += applied_reductions.size();
-         return ModulStatus::kSuccessful;
+         return ModifierStatus::kSuccessful;
       }
    };
 

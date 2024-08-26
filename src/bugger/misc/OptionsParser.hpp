@@ -96,23 +96,25 @@ namespace bugger {
 
          options_description desc(fmt::format(""));
 
-         desc.add_options( )("file,f", value(&problem_file), "instance file");
+         desc.add_options( )("file,f",
+                             value(&problem_file),
+                             "filename for instance");
 
-         desc.add_options( )("parameter-settings,p",
+         desc.add_options( )("parameters,p",
                              value(&param_settings_file),
-                             "filename for bugger parameter settings");
+                             "filename for bugger parameters");
 
-         desc.add_options( )("scip-parameter-settings,s",
+         desc.add_options( )("settings,s",
                              value(&settings_file),
-                             "filename for SCIP parameter settings");
+                             "filename for solver settings");
 
-         desc.add_options( )("target-scip-parameter-settings,t",
+         desc.add_options( )("targets,t",
                              value(&target_settings_file),
-                             "filename for SCIP parameter settings");
+                             "filename for solver targets");
 
-         desc.add_options( )("solution-file,o",
+         desc.add_options( )("solution,o",
                              value(&solution_file),
-                             "filename for solution settings or unknown/infeasible/unbounded");
+                             "filename for reference solution or unknown/infeasible/unbounded");
 
 
          if( opts.empty( ))
@@ -151,9 +153,8 @@ namespace bugger {
       // global description.
       // will capture the command and arguments as unrecognised
       options_description global { };
-      global.add_options( )("help,h", "produce help message");
-      global.add_options( )("args", value<std::vector<std::string>>( ),
-                            "arguments for the command");
+      global.add_options( )("help,h", "  produce help message");
+      global.add_options( )("args", value<std::vector<std::string>>( ), "  arguments for the command");
 
       positional_options_description pos;
       pos.add("args", -1);

@@ -22,22 +22,22 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __BUGGER_MODULE_CONSROUND_HPP__
-#define __BUGGER_MODULE_CONSROUND_HPP__
+#ifndef __BUGGER_MODIFIERS_CONSROUNDMODIFIER_HPP__
+#define __BUGGER_MODIFIERS_CONSROUNDMODIFIER_HPP__
 
-#include "bugger/modules/BuggerModul.hpp"
+#include "bugger/modifiers/BuggerModifier.hpp"
 
 
 namespace bugger
 {
    template <typename REAL>
-   class ConsRoundModul : public BuggerModul<REAL>
+   class ConsRoundModifier : public BuggerModifier<REAL>
    {
    public:
 
-      explicit ConsRoundModul(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
+      explicit ConsRoundModifier(const Message& _msg, const Num<REAL>& _num, const BuggerParameters& _parameters,
                               std::shared_ptr<SolverFactory<REAL>>& _factory)
-                              : BuggerModul<REAL>(_msg, _num, _parameters, _factory)
+                              : BuggerModifier<REAL>(_msg, _num, _parameters, _factory)
       {
          this->setName("consround");
       }
@@ -62,11 +62,11 @@ namespace bugger
          return false;
       }
 
-      ModulStatus
+      ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
          if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded )
-            return ModulStatus::kNotAdmissible;
+            return ModifierStatus::kNotAdmissible;
 
          long long batchsize = 1;
 
@@ -77,7 +77,7 @@ namespace bugger
                if( isConsroundAdmissible(problem, i) )
                   ++batchsize;
             if( batchsize == this->parameters.nbatches - 1 )
-               return ModulStatus::kNotAdmissible;
+               return ModifierStatus::kNotAdmissible;
             batchsize /= this->parameters.nbatches;
          }
 
@@ -152,13 +152,13 @@ namespace bugger
          }
 
          if( !admissible )
-            return ModulStatus::kNotAdmissible;
+            return ModifierStatus::kNotAdmissible;
          if( applied_entries.empty() && applied_lefts.empty() && applied_rights.empty() )
-            return ModulStatus::kUnsuccesful;
+            return ModifierStatus::kUnsuccesful;
          problem = copy;
          this->nchgcoefs += applied_entries.size();
          this->nchgsides += applied_lefts.size() + applied_rights.size();
-         return ModulStatus::kSuccessful;
+         return ModifierStatus::kSuccessful;
       }
    };
 
