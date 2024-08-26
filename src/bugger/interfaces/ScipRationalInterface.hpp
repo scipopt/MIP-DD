@@ -512,10 +512,9 @@ namespace bugger
             return { settings, boost::none, boost::none };
          ProblemBuilder<REAL> builder;
          SCIP_Bool success = TRUE;
-         //TODO: Initialize rational data
-         //SCIP_Rational lower;
-         //SCIP_Rational upper;
-         //SCIP_Rational objval;
+         SCIP_Rational* lower;
+         SCIP_Rational* upper;
+         SCIP_Rational* objval;
 
          // set problem name
          builder.setProblemName(SCIPgetProbName(this->scip));
@@ -547,37 +546,33 @@ namespace bugger
          for( int col = 0; col < ncols; ++col )
          {
             SCIP_VAR* var = this->vars[col];
-            //TODO: Get rational lower
-            SCIP_Real lb = SCIPvarGetLbGlobal(var);
-            //TODO: Get rational upper
-            SCIP_Real ub = SCIPvarGetUbGlobal(var);
             SCIP_VARTYPE vartype = SCIPvarGetType(var);
-            builder.setColLb(col, REAL(lb));
-            builder.setColUb(col, REAL(ub));
-            builder.setColLbInf(col, SCIPisInfinity(this->scip, -lb));
-            builder.setColUbInf(col, SCIPisInfinity(this->scip, ub));
+            lower = SCIPvarGetLbGlobalExact(var);
+            upper = SCIPvarGetUbGlobalExact(var);
+            objval = SCIPvarGetObjExact(var);
+            builder.setColLb(col, REAL(lower->val));
+            builder.setColUb(col, REAL(upper->val));
+            builder.setColLbInf(col, SCIPisInfinity(this->scip, SCIP_Real(-lower->val)));
+            builder.setColUbInf(col, SCIPisInfinity(this->scip, SCIP_Real(upper->val)));
             builder.setColIntegral(col, vartype == SCIP_VARTYPE_BINARY || vartype == SCIP_VARTYPE_INTEGER);
             builder.setColImplInt(col, vartype != SCIP_VARTYPE_CONTINUOUS);
-            //TODO: Get rational weight
-            builder.setObj(col, REAL(SCIPvarGetObj(var)));
+            builder.setObj(col, REAL(objval->val));
             builder.setColName(col, SCIPvarGetName(var));
          }
 
          // set up rows
          builder.setNumRows(nrows);
          Vec<SCIP_VAR*> consvars(ncols);
-         Vec<SCIP_Real> consvals(ncols);
+         Vec<SCIP_Rational*> consvals(ncols);
          Vec<int> rowinds(ncols);
          Vec<REAL> rowvals(ncols);
          for( int row = 0; row < nrows; ++row )
          {
             SCIP_CONS* cons = conss[row];
-            //TODO: Get rational left
-            SCIP_Real lhs = SCIPconsGetLhs(this->scip, cons, &success);
+            REAL lhs { SCIPconsGetLhsExact(this->scip, cons, &success)->val };
             if( !success )
                return { settings, boost::none, boost::none };
-            //TODO: Get rational right
-            SCIP_Real rhs = SCIPconsGetRhs(this->scip, cons, &success);
+            REAL rhs { SCIPconsGetRhsExact(this->scip, cons, &success)->val };
             if( !success )
                return { settings, boost::none, boost::none };
             int nrowcols = 0;
@@ -585,28 +580,27 @@ namespace bugger
             SCIPgetConsVars(this->scip, cons, consvars.data(), ncols, &success);
             if( !success )
                return { settings, boost::none, boost::none };
-            //TODO: Get rational coefficients
-            SCIPgetConsVals(this->scip, cons, consvals.data(), ncols, &success);
+            SCIPgetConsValsExact(this->scip, cons, consvals.data(), ncols, &success);
             if( !success )
                return { settings, boost::none, boost::none };
             for( int i = 0; i < nrowcols; ++i )
             {
+               rowvals[i] = REAL(consvals[i]->val);
                if( SCIPvarIsNegated(consvars[i]) )
                {
                   consvars[i] = SCIPvarGetNegatedVar(consvars[i]);
-                  consvals[i] *= -1.0;
-                  if( !SCIPisInfinity(this->scip, -lhs) )
-                     lhs += consvals[i];
-                  if( !SCIPisInfinity(this->scip, rhs) )
-                     rhs += consvals[i];
+                  rowvals[i] *= -1;
+                  if( !SCIPisInfinity(this->scip, SCIP_Real(-lhs)) )
+                     lhs += rowvals[i];
+                  if( !SCIPisInfinity(this->scip, SCIP_Real(rhs)) )
+                     rhs += rowvals[i];
                }
                rowinds[i] = SCIPvarGetProbindex(consvars[i]);
-               rowvals[i] = REAL(consvals[i]);
             }
-            builder.setRowLhs(row, REAL(lhs));
-            builder.setRowRhs(row, REAL(rhs));
-            builder.setRowLhsInf(row, SCIPisInfinity(this->scip, -lhs));
-            builder.setRowRhsInf(row, SCIPisInfinity(this->scip, rhs));
+            builder.setRowLhs(row, lhs);
+            builder.setRowRhs(row, rhs);
+            builder.setRowLhsInf(row, SCIPisInfinity(this->scip, SCIP_Real(-lhs)));
+            builder.setRowRhsInf(row, SCIPisInfinity(this->scip, SCIP_Real(rhs)));
             builder.addRowEntries(row, nrowcols, rowinds.data(), rowvals.data());
             builder.setRowName(row, SCIPconsGetName(cons));
          }
