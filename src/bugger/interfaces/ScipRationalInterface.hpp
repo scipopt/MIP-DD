@@ -519,8 +519,8 @@ namespace bugger
          // set problem name
          builder.setProblemName(SCIPgetProbName(this->scip));
          // set objective offset
-         //TODO: Get rational offset
-         builder.setObjOffset(REAL(SCIPgetOrigObjoffset(this->scip)));
+         objval = SCIPgetOrigObjoffsetExact(this->scip);
+         builder.setObjOffset(REAL(objval->val));
          // set objective sense
          builder.setObjSense(SCIPgetObjsense(this->scip) == SCIP_OBJSENSE_MINIMIZE);
 
