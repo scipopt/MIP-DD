@@ -4,6 +4,39 @@
 Features
 --------
 
+
+Performance improvements
+------------------------
+
+
+Interface changes
+----------
+
+## SolverRetcode:
+
+
+## SolverInterface:
+
+
+New parameters
+----------
+
+
+Fixed bugs
+----------
+
+
+Build system
+------------
+
+
+
+@section Release Notes MIP-DD 2.0.0
+***************************
+
+Features
+--------
+
 - enable SCIP interface to restrict limits automatically with respect to a variability margin defined by parameter scip.limitspace
 - read and write files of problems and solutions in arbitrary arithmetics if the solver library does not provide the functionality
 - add objective limit option to the SCIP interface
