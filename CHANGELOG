@@ -1,6 +1,41 @@
 @section Release Notes MIP-DD NEXT
 ***************************
 
+
+Features
+--------
+
+
+Performance improvements
+------------------------
+
+
+Interface changes
+----------
+
+## SolverRetcode:
+
+
+## SolverInterface:
+
+
+New parameters
+----------
+
+
+Fixed bugs
+----------
+
+
+Build system
+------------
+
+
+
+@section Release Notes MIP-DD 2.0.0
+***************************
+
+
 Features
 --------
 
