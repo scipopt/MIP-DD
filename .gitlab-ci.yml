@@ -58,7 +58,8 @@ boost-soplex-scip:
     - cd ${SOPLEX_DIR}
     - git checkout ${SOPLEX_REVISION}
     - cmake . -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
-    - make -j4 install
+    - make -j4
+    - make install
     # vipr
     - git clone https://github.com/ambros-gleixner/VIPR.git ${VIPR_DIR}
     - cd ${VIPR_DIR}/code
@@ -72,11 +73,13 @@ boost-soplex-scip:
     - cd ${SCIP_DIR}/build
     - git checkout ${SCIP_REVISION}
     - cmake .. -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}/default -DCRITERION=off -DREADLINE=off -DZIMPL=off -DPAPILO=off -DIPOPT=off
-    - make -j4 install
+    - make -j4
+    - make install
     # scipexact
     - git checkout ${SCIPEXACT_REVISION}
     - cmake .. -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}/exact -DCRITERION=off -DREADLINE=off -DZIMPL=off -DPAPILO=off -DIPOPT=off
-    - make -j4 install
+    - make -j4
+    - make install
 
 .test:
   extends: .common
