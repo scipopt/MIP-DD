@@ -81,7 +81,6 @@ namespace bugger
             batchsize /= this->parameters.nbatches;
          }
 
-         bool admissible = false;
          auto copy = Problem<REAL>(problem);
          auto& matrix = copy.getConstraintMatrix( );
          Vec<MatrixEntry<REAL>> applied_entries { };
@@ -98,7 +97,7 @@ namespace bugger
          {
             if( isCoefficientAdmissible(copy, row) )
             {
-               admissible = true;
+               ++this->last_admissible;
                const auto& data = matrix.getRowCoefficients(row);
                bool integral = true;
                REAL offset { };
@@ -188,7 +187,7 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
          if( applied_entries.empty() )
             return ModifierStatus::kUnsuccesful;

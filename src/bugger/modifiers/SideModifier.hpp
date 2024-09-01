@@ -72,7 +72,6 @@ namespace bugger
             batchsize /= this->parameters.nbatches;
          }
 
-         bool admissible = false;
          auto copy = Problem<REAL>(problem);
          auto& matrix = copy.getConstraintMatrix( );
          Vec<std::pair<int, REAL>> applied_reductions { };
@@ -83,7 +82,7 @@ namespace bugger
          {
             if( isSideAdmissible(copy, row) )
             {
-               admissible = true;
+               ++this->last_admissible;
                const auto& data = matrix.getRowCoefficients(row);
                bool integral = true;
                REAL fixedval { };
@@ -140,7 +139,7 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
          if( applied_reductions.empty() )
             return ModifierStatus::kUnsuccesful;
