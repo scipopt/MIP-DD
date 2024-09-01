@@ -162,6 +162,8 @@ namespace bugger
          double time = 0.0;
          {
             Timer timer(time);
+            long long minadmissible = -1;
+            long long maxadmissible = -1;
 
             for( int round = parameters.initround, stage = parameters.initstage, success = parameters.initstage; round < parameters.maxrounds && stage < parameters.maxstages; ++round )
             {
@@ -189,7 +191,8 @@ namespace bugger
 
                for( int modifier = 0; modifier <= stage && stage < parameters.maxstages; ++modifier )
                {
-                  results[ modifier ] = modifiers[ modifier ]->run(settings, problem, solution, timer);
+                  if( modifiers[ modifier ]->getLastAdmissible( ) > minadmissible )
+                     results[ modifier ] = modifiers[ modifier ]->run(settings, problem, solution, timer);
 
                   if( results[ modifier ] == ModifierStatus::kSuccessful )
                   {
@@ -200,12 +203,46 @@ namespace bugger
                      last_round = round;
                      last_modifier = modifier;
                      success = modifier;
+                     minadmissible = -1;
+                     maxadmissible = -1;
                   }
-                  else if( success == modifier )
+                  else
                   {
-                     modifier = stage;
-                     ++stage;
-                     success = stage;
+                     long long admissible = modifiers[ modifier ]->getLastAdmissible( );
+                     if( maxadmissible < admissible )
+                        maxadmissible = admissible;
+                     if( success == modifier )
+                     {
+                        modifier = stage;
+                        ++stage;
+                        success = stage;
+
+                        // refine batch adaption
+                        if( stage >= parameters.maxstages && parameters.nbatches > 0 && maxadmissible > parameters.nbatches )
+                        {
+                           minadmissible = parameters.nbatches;
+                           if( parameters.expenditure > 0 )
+                           {
+                              if( (parameters.expenditure * 2) / 2 == parameters.expenditure )
+                                 parameters.expenditure *= 2;
+                              else
+                              {
+                                 msg.info("Batch adaption disabled.\n");
+                                 parameters.expenditure = 0;
+                              }
+                           }
+                           if( parameters.expenditure > 0 && last_effort > 0 )
+                              parameters.nbatches = (parameters.expenditure - 1) / last_effort + 1;
+                           else if( (parameters.nbatches * 2) / 2 == parameters.nbatches )
+                              parameters.nbatches *= 2;
+                           else
+                              parameters.nbatches = 0;
+                           msg.info("Refined Batch {}\n", parameters.nbatches);
+                           modifier = -1;
+                           stage = parameters.initstage;
+                           success = parameters.initstage;
+                        }
+                     }
                   }
                }
             }
