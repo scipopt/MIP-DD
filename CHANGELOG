@@ -20,6 +20,7 @@ Interface changes
 New parameters
 ----------
 
+- default value nbatches = 1 in order to try all initially
 
 Fixed bugs
 ----------
