@@ -13,6 +13,9 @@ Performance improvements
 Interface changes
 ----------
 
+## BuggerModifier:
+
+- add member last_admissible and method getLastAdmissible() to store and access last number of admissible elements for automatic batch refinement
 
 New parameters
 ----------
