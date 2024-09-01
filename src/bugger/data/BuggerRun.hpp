@@ -183,15 +183,15 @@ namespace bugger
 
                // adapt batch number
                if( parameters.expenditure > 0 && last_effort >= 0 )
-                  parameters.nbatches = last_effort >= 1 ? ( parameters.expenditure - 1) / last_effort + 1 : 0;
+                  parameters.nbatches = last_effort >= 1 ? (parameters.expenditure - 1) / last_effort + 1 : 0;
 
-               msg.info("Round {} Stage {} Batch {}\n", round+1, stage+1, parameters.nbatches);
+               msg.info("Round {} Stage {} Batch {}\n", round + 1, stage + 1, parameters.nbatches);
 
                for( int modifier = 0; modifier <= stage && stage < parameters.maxstages; ++modifier )
                {
                   results[ modifier ] = modifiers[ modifier ]->run(settings, problem, solution, timer);
 
-                  if( results[ modifier ] == bugger::ModifierStatus::kSuccessful )
+                  if( results[ modifier ] == ModifierStatus::kSuccessful )
                   {
                      long long effort = modifiers[ modifier ]->getLastSolvingEffort( );
                      if( effort >= 0 )
@@ -210,22 +210,22 @@ namespace bugger
                }
             }
 
-            assert( is_time_exceeded(timer) || evaluateResults( ) != bugger::ModifierStatus::kSuccessful );
+            assert( is_time_exceeded(timer) || evaluateResults( ) != ModifierStatus::kSuccessful );
          }
          printStats(time, last_result, last_round, last_modifier, last_effort);
       }
 
    private:
 
-      bugger::ModifierStatus
+      ModifierStatus
       evaluateResults( )
       {
-         int largestValue = static_cast<int>( bugger::ModifierStatus::kDidNotRun );
+         int largestValue = static_cast<int>( ModifierStatus::kDidNotRun );
 
          for( int modifier = 0; modifier < parameters.maxstages; ++modifier )
             largestValue = max(largestValue, static_cast<int>( results[ modifier ] ));
 
-         return static_cast<bugger::ModifierStatus>( largestValue );
+         return static_cast<ModifierStatus>( largestValue );
       }
 
       void
