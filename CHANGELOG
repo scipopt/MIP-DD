@@ -4,6 +4,7 @@
 Features
 --------
 
+- restart process with refined batches of double expenditure until singleton batches are reached
 
 Performance improvements
 ------------------------
