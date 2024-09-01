@@ -45,7 +45,7 @@ namespace bugger
    private:
 
       bool
-      isSideAdmissable(const Problem<REAL>& problem, const int& row) const
+      isSideAdmissible(const Problem<REAL>& problem, const int& row) const
       {
          return !problem.getRowFlags( )[ row ].test(RowFlag::kRedundant)
            && ( problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
@@ -65,7 +65,7 @@ namespace bugger
          {
             batchsize = this->parameters.nbatches - 1;
             for( int row = problem.getNRows( ) - 1; row >= 0; --row )
-               if( isSideAdmissable(problem, row) )
+               if( isSideAdmissible(problem, row) )
                   ++batchsize;
             if( batchsize == this->parameters.nbatches - 1 )
                return ModifierStatus::kNotAdmissible;
@@ -81,7 +81,7 @@ namespace bugger
 
          for( int row = copy.getNRows( ) - 1; row >= 0; --row )
          {
-            if( isSideAdmissable(copy, row) )
+            if( isSideAdmissible(copy, row) )
             {
                admissible = true;
                const auto& data = matrix.getRowCoefficients(row);
