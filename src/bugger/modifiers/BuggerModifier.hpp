@@ -151,16 +151,28 @@ namespace bugger
          message.info(" {:>18} {:>12} {:>12} {:>18.1f} {:>12} {:>18.3f}\n", name, ncalls, changes, success, nsolves, execTime);
       }
 
-      bool
-      isEnabled( ) const
+      void
+      setName(const String& value)
       {
-         return this->enabled;
+         this->name = value;
       }
 
       const String&
       getName( ) const
       {
          return this->name;
+      }
+
+      void
+      setEnabled(bool value)
+      {
+         this->enabled = value;
+      }
+
+      bool
+      isEnabled( ) const
+      {
+         return this->enabled;
       }
 
       std::pair<char, SolverStatus>
@@ -175,22 +187,10 @@ namespace bugger
          return last_effort;
       }
 
-      void
-      setEnabled(bool value)
-      {
-         this->enabled = value;
-      }
-
    protected:
 
       virtual ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) = 0;
-
-      void
-      setName(const String& value)
-      {
-         this->name = value;
-      }
 
       static bool
       is_time_exceeded(const Timer& timer, double tlim)
