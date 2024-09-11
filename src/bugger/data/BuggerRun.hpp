@@ -225,17 +225,21 @@ namespace bugger
                         if( stage >= parameters.maxstages && parameters.nbatches > 0 && maxadmissible > parameters.nbatches )
                         {
                            minadmissible = parameters.nbatches;
-                           if( parameters.expenditure > 0 )
+                           while( parameters.expenditure > 0 )
                            {
                               if( (parameters.expenditure * 2) / 2 == parameters.expenditure )
+                              {
                                  parameters.expenditure *= 2;
+                                 if( parameters.expenditure > last_effort )
+                                    break;
+                              }
                               else
                               {
                                  msg.info("Batch adaption disabled.\n");
                                  parameters.expenditure = 0;
                               }
                            }
-                           if( parameters.expenditure > 0 && last_effort > 0 )
+                           if( parameters.expenditure > 0 && last_effort >= 1 )
                               parameters.nbatches = (parameters.expenditure - 1) / last_effort + 1;
                            else if( (parameters.nbatches * 2) / 2 == parameters.nbatches )
                               parameters.nbatches *= 2;
