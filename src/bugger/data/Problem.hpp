@@ -43,11 +43,12 @@
 
 namespace bugger
 {
-   enum class ConstraintType : char
-   {
-      kLinear = 0,
-      kAnd = 1,
-   };
+/// enumeration to list constraint types
+enum class ConstraintType : char
+{
+   kLinear = 0,
+   kAnd = 1,
+};
 
 /// struct to hold counters for up an downlocks of a column
 struct Locks
