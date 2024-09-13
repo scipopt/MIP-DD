@@ -64,7 +64,7 @@ class ProblemBuilder
       rhs.resize( nrows );
       rflags.resize( nrows );
       rownames.resize( nrows );
-      rowtypes.resize( nrows, 'l' );
+      rowtypes.resize( nrows );
    }
 
    /// Returns the current number of rows
@@ -324,13 +324,13 @@ class ProblemBuilder
    }
 
    void
-   setRowType( int row, char type )
+   setRowType( int row, ConstraintType type )
    {
       rowtypes[row] = type;
    }
 
    void
-   setRowTypeAll( const Vec<char>& types )
+   setRowTypeAll( const Vec<ConstraintType>& types )
    {
       assert( rowtypes.size() == types.size() );
       for( int r = 0; r < (int) types.size(); ++r )
@@ -417,7 +417,7 @@ class ProblemBuilder
    Vec<REAL> lhs;
    Vec<REAL> rhs;
    Vec<RowFlags> rflags;
-   Vec<char> rowtypes;
+   Vec<ConstraintType> rowtypes;
    String probname;
    Vec<String> colnames;
    Vec<String> rownames;

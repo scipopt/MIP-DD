@@ -121,7 +121,21 @@ namespace bugger
             SCIP_Real rhs = rflags[row].test(RowFlag::kRhsInf)
                             ? SCIPinfinity(this->scip)
                             : SCIP_Real(rhs_values[row]);
-            if( this->model->getConstraintTypes( )[row] == 'a' )
+            switch( this->model->getConstraintTypes()[row] )
+            {
+            case ConstraintType::kLinear:
+            {
+               for( int i = 0; i < nrowcols; ++i )
+               {
+                  assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
+                  assert(rowvals[i] != 0);
+                  consvars[i] = this->vars[rowinds[i]];
+                  consvals[i] = SCIP_Real(rowvals[i]);
+               }
+               SCIP_CALL_ABORT(SCIPcreateConsBasicLinear(this->scip, &cons, consNames[row].c_str(), nrowcols,
+                     consvars.data( ), consvals.data( ), lhs, rhs));
+            }
+            case ConstraintType::kAnd:
             {
                SCIP_VAR* resvar = NULL;
                int resindex = -1;
@@ -145,17 +159,10 @@ namespace bugger
                SCIP_CALL_ABORT(SCIPcreateConsBasicAnd(this->scip, &cons, consNames[row].c_str(), consvars[0],
                      nrowcols - 1, consvars.data() + 1));
             }
-            else
-            {
-               for( int i = 0; i < nrowcols; ++i )
-               {
-                  assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
-                  assert(rowvals[i] != 0);
-                  consvars[i] = this->vars[rowinds[i]];
-                  consvals[i] = SCIP_Real(rowvals[i]);
-               }
-               SCIP_CALL_ABORT(SCIPcreateConsBasicLinear(this->scip, &cons, consNames[row].c_str(), nrowcols,
-                     consvars.data( ), consvals.data( ), lhs, rhs));
+            default:
+               SCIPerrorMessage("unknown constraint type\n");
+               assert(false);
+               continue;
             }
             SCIP_CALL_ABORT(SCIPaddCons(this->scip, cons));
             SCIP_CALL_ABORT(SCIPreleaseCons(this->scip, &cons));
@@ -548,7 +555,7 @@ namespace bugger
                   rowinds[i] = SCIPvarGetProbindex(consvars[i]);
                }
                rowvals[0] *= 2;
-               builder.setRowType(row, 'a');
+               builder.setRowType(row, ConstraintType::kAnd);
             }
             else
             {

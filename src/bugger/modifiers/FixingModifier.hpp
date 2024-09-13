@@ -54,9 +54,9 @@ namespace bugger
             return false;
          const auto& data = problem.getConstraintMatrix( ).getColumnCoefficients(col);
          for( int index = 0; index < data.getLength( ); ++index )
-            if( !this->num.isZetaZero(data.getValues( )[ index ])
-             && !problem.getConstraintMatrix( ).getRowFlags( )[ data.getIndices( )[ index ] ].test(RowFlag::kRedundant)
-             && problem.getConstraintTypes( )[ data.getIndices( )[ index ] ] != 'l' )
+            if( !problem.getConstraintMatrix( ).getRowFlags( )[ data.getIndices( )[ index ] ].test(RowFlag::kRedundant)
+             && problem.getConstraintTypes( )[ data.getIndices( )[ index ] ] != ConstraintType::kLinear
+             && !this->num.isZetaZero(data.getValues( )[ index ]) )
                return false;
          return true;
       }

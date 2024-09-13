@@ -43,6 +43,12 @@
 
 namespace bugger
 {
+   enum class ConstraintType : char
+   {
+      kLinear = 0,
+      kAnd = 1,
+   };
+
 /// struct to hold counters for up an downlocks of a column
 struct Locks
 {
@@ -150,7 +156,7 @@ class Problem
 
    /// set constraint types
    void
-   setConstraintTypes( Vec<char> cons_types )
+   setConstraintTypes( Vec<ConstraintType> cons_types )
    {
       constraintTypes = std::move( cons_types );
    }
@@ -363,7 +369,7 @@ class Problem
    }
 
    /// get the constraint types
-   const Vec<char>&
+   const Vec<ConstraintType>&
    getConstraintTypes() const
    {
       return constraintTypes;
@@ -425,7 +431,16 @@ class Problem
       assert( solution.status == SolutionStatus::kFeasible || solution.status == SolutionStatus::kUnbounded );
       assert( solution.primal.size() == getNCols() );
       const auto& data = getConstraintMatrix().getRowCoefficients(row);
-      if( getConstraintTypes( )[ row ] == 'a' )
+      switch( getConstraintTypes()[row] )
+      {
+      case ConstraintType::kLinear:
+      {
+         StableSum<REAL> sum;
+         for( int i = 0; i < data.getLength( ); ++i )
+            sum.add((roundrow ? round(data.getValues( )[i]) : data.getValues( )[i]) * solution.primal[data.getIndices( )[i]]);
+         return sum.get( );
+      }
+      case ConstraintType::kAnd:
       {
          StableSum<REAL> sum;
          REAL minvalue { 1 };
@@ -457,12 +472,8 @@ class Problem
          else
             return max<REAL>(resvalue, 0);
       }
-      else
-      {
-         StableSum<REAL> sum;
-         for( int i = 0; i < data.getLength( ); ++i )
-            sum.add((roundrow ? round(data.getValues( )[i]) : data.getValues( )[i]) * solution.primal[data.getIndices( )[i]]);
-         return sum.get( );
+      default:
+         throw std::runtime_error("unknown constraint type");
       }
    }
 
@@ -473,7 +484,16 @@ class Problem
       assert( solution.status == SolutionStatus::kUnbounded );
       assert( solution.ray.size() == getNCols() );
       const auto& data = getConstraintMatrix().getRowCoefficients(row);
-      if( getConstraintTypes( )[ row ] == 'a' )
+      switch( getConstraintTypes()[row] )
+      {
+      case ConstraintType::kLinear:
+      {
+         StableSum<REAL> sum;
+         for( int i = 0; i < data.getLength( ); ++i )
+            sum.add((roundrow ? round(data.getValues( )[i]) : data.getValues( )[i]) * solution.ray[data.getIndices( )[i]]);
+         return sum.get( );
+      }
+      case ConstraintType::kAnd:
       {
          StableSum<REAL> sum;
          REAL minvalue { std::numeric_limits<REAL>::max() };
@@ -505,12 +525,8 @@ class Problem
          else
             return max<REAL>(resvalue, 0);
       }
-      else
-      {
-         StableSum<REAL> sum;
-         for( int i = 0; i < data.getLength( ); ++i )
-            sum.add((roundrow ? round(data.getValues( )[i]) : data.getValues( )[i]) * solution.ray[data.getIndices( )[i]]);
-         return sum.get( );
+      default:
+         throw std::runtime_error("unknown constraint type");
       }
    }
 
@@ -871,7 +887,7 @@ class Problem
    Vec<Locks> locks;
 
    /// constraint type specifiers
-   Vec<char> constraintTypes;
+   Vec<ConstraintType> constraintTypes;
 
    String name;
    Vec<String> variableNames;
