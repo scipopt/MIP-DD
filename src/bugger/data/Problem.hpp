@@ -453,9 +453,9 @@ class Problem
          resvalue = resvalue - minvalue;
          minvalue = sum.get() - (data.getLength( ) - 1);
          if( minvalue > resvalue )
-            return minvalue > 0 ? -minvalue : 0;
+            return min<REAL>(-minvalue, 0);
          else
-            return resvalue > 0 ? resvalue : 0;
+            return max<REAL>(resvalue, 0);
       }
       else
       {
@@ -501,9 +501,9 @@ class Problem
          resvalue = resvalue - minvalue;
          minvalue = sum.get();
          if( minvalue > resvalue )
-            return minvalue > 0 ? -minvalue : 0;
+            return min<REAL>(-minvalue, 0);
          else
-            return resvalue > 0 ? resvalue : 0;
+            return max<REAL>(resvalue, 0);
       }
       else
       {
