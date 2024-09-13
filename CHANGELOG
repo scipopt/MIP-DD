@@ -4,6 +4,7 @@
 Features
 --------
 
+- restart process with refined batches of double expenditure until singleton batches are reached
 
 Performance improvements
 ------------------------
@@ -12,15 +13,14 @@ Performance improvements
 Interface changes
 ----------
 
-## SolverRetcode:
+## BuggerModifier:
 
-
-## SolverInterface:
-
+- add member last_admissible and method getLastAdmissible() to store and access last number of admissible elements for automatic batch refinement
 
 New parameters
 ----------
 
+- default value nbatches = 1 in order to try all initially
 
 Fixed bugs
 ----------

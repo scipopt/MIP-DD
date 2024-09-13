@@ -77,7 +77,6 @@ namespace bugger
             batchsize /= this->parameters.nbatches;
          }
 
-         bool admissible = false;
          auto copy = Problem<REAL>(problem);
          Vec<std::pair<int, REAL>> applied_objectives { };
          Vec<std::pair<int, REAL>> applied_lowers { };
@@ -94,7 +93,7 @@ namespace bugger
          {
             if( isVarroundAdmissible(copy, col) )
             {
-               admissible = true;
+               ++this->last_admissible;
                REAL lb { round(copy.getLowerBounds( )[ col ]) };
                REAL ub { round(copy.getUpperBounds( )[ col ]) };
                if( solution.status == SolutionStatus::kFeasible )
@@ -147,7 +146,7 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
          if( applied_objectives.empty() && applied_lowers.empty() && applied_uppers.empty() )
             return ModifierStatus::kUnsuccesful;

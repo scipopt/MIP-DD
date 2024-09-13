@@ -77,6 +77,7 @@ namespace bugger
       int nsolves = 0;
       std::pair<char, SolverStatus> last_result { SolverRetcode::OKAY, SolverStatus::kUnknown };
       long long last_effort = -1;
+      long long last_admissible = 0;
 
    public:
 
@@ -117,6 +118,7 @@ namespace bugger
       {
          last_result = { SolverRetcode::OKAY, SolverStatus::kUnknown };
          last_effort = -1;
+         last_admissible = 0;
          if( !enabled )
             return ModifierStatus::kDidNotRun;
 
@@ -185,6 +187,12 @@ namespace bugger
       getLastSolvingEffort( ) const
       {
          return last_effort;
+      }
+
+      long long
+      getLastAdmissible( ) const
+      {
+         return last_admissible;
       }
 
    protected:

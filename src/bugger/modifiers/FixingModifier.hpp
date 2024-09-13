@@ -69,7 +69,6 @@ namespace bugger
             batchsize /= this->parameters.nbatches;
          }
 
-         bool admissible = false;
          auto copy = Problem<REAL>(problem);
          Vec<int> applied_reductions { };
          Vec<MatrixEntry<REAL>> applied_entries { };
@@ -85,7 +84,7 @@ namespace bugger
          {
             if( isFixingAdmissible(copy, col) )
             {
-               admissible = true;
+               ++this->last_admissible;
                const auto& col_data = copy.getConstraintMatrix( ).getColumnCoefficients(col);
                REAL fixedval { };
                if( solution.status == SolutionStatus::kFeasible )
@@ -191,7 +190,7 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
          if( applied_reductions.empty() )
             return ModifierStatus::kUnsuccesful;
