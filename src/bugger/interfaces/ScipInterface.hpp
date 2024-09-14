@@ -46,7 +46,7 @@ namespace bugger
       SOLU = 4,
       REST = 5,
       TOTA = 6,
-      TIME = 7
+      TIME = 7,
    };
 
    class ScipParameters
@@ -168,6 +168,7 @@ namespace bugger
                   break;
                default:
                   SCIPerrorMessage("unknown limit type\n");
+                  assert(false);
                }
             }
             else
@@ -206,6 +207,7 @@ namespace bugger
                   break;
                default:
                   SCIPerrorMessage("unknown setting type\n");
+                  assert(false);
                }
             }
          }
