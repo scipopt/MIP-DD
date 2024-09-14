@@ -30,7 +30,12 @@ Currently, interfaces for the following solvers are already built in:
 
 It is necessary to build the underlying solver in release mode since MIP-DD is not designed to handle assertions directly in order to keep the process performant.
 Nevertheless, it is usually possible to handle assertions indirectly by reformulating the solver code to return a suitable error under the negated assertion condition.
-The MIP-DD will then identify the formerly failing assertion as a solver error.
+The formerly failing assertion will then be identified as a solver error.
+Currently, handling the following constraint types is possible:
+
+- Linear
+- And
+
 Optionally, the arithmetic type used for reductions, problems, and solutions can be selected by the cmake parameter BUGGER_ARITHMETIC, which is double by default.
 
 To run the bugger with parameters on a settings-problem-solution instance with respect to target settings, it can be invoked by
