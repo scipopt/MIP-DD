@@ -17,6 +17,18 @@ Interface changes
 
 - add member last_admissible and method getLastAdmissible() to store and access last number of admissible elements for automatic batch refinement
 
+## ConstraintType:
+
+- create enumeration of supported types for special constraint handling
+
+## Problem:
+
+- add methods setConstraintTypes() and getConstraintTypes() to set and get vector of constraint types for rows
+
+## ProblemBuilder:
+
+- add methods setRowType() and setRowTypeAll() to set individual constraint type and vector of all constraint types
+
 New parameters
 ----------
 
