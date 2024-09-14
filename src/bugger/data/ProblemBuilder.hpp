@@ -297,6 +297,18 @@ class ProblemBuilder
          addEntry( std::get<0>( trp ), std::get<1>( trp ), std::get<2>( trp ) );
    }
 
+   /// add the nonzero entries for the given column
+   template <typename R>
+   void
+   addColEntries( int col, int len, const int* rows, const R* vals )
+   {
+      for( int i = 0; i != len; ++i )
+      {
+         assert( vals[i] != 0 );
+         matrix_buffer.addEntry( rows[i], col, vals[i] );
+      }
+   }
+
    /// add the nonzero entries for the given row
    template <typename R>
    void
@@ -311,18 +323,9 @@ class ProblemBuilder
 
    template <typename Str>
    void
-   setRowName( int row, Str&& name )
+   setProblemName( Str&& name )
    {
-      rownames[row] = String( name );
-   }
-
-   template <typename Str>
-   void
-   setRowNameAll( Vec<Str> names )
-   {
-      assert( rownames.size() == names.size() );
-      for( int r = 0; r < (int) names.size(); ++r )
-         rownames[r] = String( names[r] );
+      probname = String( name );
    }
 
    template <typename Str>
@@ -343,21 +346,18 @@ class ProblemBuilder
 
    template <typename Str>
    void
-   setProblemName( Str&& name )
+   setRowName( int row, Str&& name )
    {
-      probname = String( name );
+      rownames[row] = String( name );
    }
 
-   /// add the nonzero entries for the given column
-   template <typename R>
+   template <typename Str>
    void
-   addColEntries( int col, int len, const int* rows, const R* vals )
+   setRowNameAll( Vec<Str> names )
    {
-      for( int i = 0; i != len; ++i )
-      {
-         assert( vals[i] != 0 );
-         matrix_buffer.addEntry( rows[i], col, vals[i] );
-      }
+      assert( rownames.size() == names.size() );
+      for( int r = 0; r < (int) names.size(); ++r )
+         rownames[r] = String( names[r] );
    }
 
    Problem<REAL>
@@ -400,9 +400,9 @@ class ProblemBuilder
    Vec<REAL> lhs;
    Vec<REAL> rhs;
    Vec<RowFlags> rflags;
-   Vec<String> rownames;
-   Vec<String> colnames;
    String probname;
+   Vec<String> colnames;
+   Vec<String> rownames;
 };
 
 } // namespace bugger

@@ -481,6 +481,8 @@ namespace bugger
                      case PRIM:
                      default:
                         SCIPerrorMessage("unknown limit type\n");
+                        assert(false);
+                        continue;
                      }
                      if( limitsettings[index].second < 0 || bound < limitsettings[index].second )
                      {

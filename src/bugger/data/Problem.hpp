@@ -277,27 +277,6 @@ class Problem
       return constraintMatrix.getRowFlags();
    }
 
-   /// get the variable names
-   const Vec<String>&
-   getVariableNames() const
-   {
-      return variableNames;
-   }
-
-   /// get the constraint names
-   const Vec<String>&
-   getConstraintNames() const
-   {
-      return constraintNames;
-   }
-
-   /// get the problem name
-   const String&
-   getName() const
-   {
-      return name;
-   }
-
    /// get the (dense) vector of variable lower bounds
    const Vec<REAL>&
    getLowerBounds() const
@@ -352,6 +331,49 @@ class Problem
    getRowSizes()
    {
       return constraintMatrix.getRowSizes();
+   }
+
+   /// return const reference to vector of row activities
+   const Vec<RowActivity<REAL>>&
+   getRowActivities() const
+   {
+      return rowActivities;
+   }
+
+   /// return reference to vector of row activities
+   Vec<RowActivity<REAL>>&
+   getRowActivities()
+   {
+      return rowActivities;
+   }
+
+   /// returns a reference to the vector of locks of each column, the locks
+   /// include the objective cutoff constraint
+   Vec<Locks>&
+   getLocks()
+   {
+      return locks;
+   }
+
+   /// get the problem name
+   const String&
+   getName() const
+   {
+      return name;
+   }
+
+   /// get the variable names
+   const Vec<String>&
+   getVariableNames() const
+   {
+      return variableNames;
+   }
+
+   /// get the constraint names
+   const Vec<String>&
+   getConstraintNames() const
+   {
+      return constraintNames;
    }
 
    /// get primal objective value for given solution
@@ -524,28 +546,6 @@ class Problem
          msg.info("No violations detected.\n");
       msg.info("\n");
       return !infeasible;
-   }
-
-   /// return const reference to vector of row activities
-   const Vec<RowActivity<REAL>>&
-   getRowActivities() const
-   {
-      return rowActivities;
-   }
-
-   /// return reference to vector of row activities
-   Vec<RowActivity<REAL>>&
-   getRowActivities()
-   {
-      return rowActivities;
-   }
-
-   /// returns a reference to the vector of locks of each column, the locks
-   /// include the objective cutoff constraint
-   Vec<Locks>&
-   getLocks()
-   {
-      return locks;
    }
 
    std::pair<Vec<int>, Vec<int>>
@@ -756,24 +756,22 @@ class Problem
    void
    serialize( Archive& ar, const unsigned int version )
    {
-      ar& name;
       ar& inputTolerance;
       ar& objective;
-
       ar& constraintMatrix;
       ar& variableDomains;
       ar& ncontinuous;
       ar& nintegers;
 
+      ar& rowActivities;
+      ar& locks;
+
+      ar& name;
       ar& variableNames;
       ar& constraintNames;
-      ar& rowActivities;
-
-      ar& locks;
    }
 
  private:
-   String name;
    REAL inputTolerance{ 0 };
    Objective<REAL> objective;
    ConstraintMatrix<REAL> constraintMatrix;
@@ -781,14 +779,15 @@ class Problem
    int ncontinuous;
    int nintegers;
 
-   Vec<String> variableNames;
-   Vec<String> constraintNames;
-
    /// minimal and maximal row activities
    Vec<RowActivity<REAL>> rowActivities;
 
    /// up and down locks for each column
    Vec<Locks> locks;
+
+   String name;
+   Vec<String> variableNames;
+   Vec<String> constraintNames;
 };
 
 } // namespace bugger

@@ -60,7 +60,8 @@ namespace bugger
             return false;
          const auto& data = problem.getConstraintMatrix( ).getRowCoefficients(row);
          for( int index = 0; index < data.getLength( ); ++index )
-            if( !this->num.isZetaZero(data.getValues( )[ index ]) && isFixingAdmissible(problem, data.getIndices( )[ index ]) )
+            if( !this->num.isZetaZero(data.getValues( )[ index ])
+             && isFixingAdmissible(problem, data.getIndices( )[ index ]) )
                return true;
          return false;
       }

@@ -337,6 +337,8 @@ namespace bugger
                   case PRIM:
                   default:
                      SPX_MSG_ERROR(this->soplex->spxout << "unknown limit type\n");
+                     assert(false);
+                     continue;
                   }
                   if( limitsettings[index].second < 0 || bound < limitsettings[index].second )
                   {
