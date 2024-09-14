@@ -148,6 +148,27 @@ class Problem
       }
    }
 
+   /// set problem name
+   void
+   setName( String name_ )
+   {
+      this->name = std::move( name_ );
+   }
+
+   /// set variable names
+   void
+   setVariableNames( Vec<String> var_names )
+   {
+      variableNames = std::move( var_names );
+   }
+
+   /// set constraint names
+   void
+   setConstraintNames( Vec<String> cons_names )
+   {
+      constraintNames = std::move( cons_names );
+   }
+
    /// returns number of active integral columns
    int
    getNumIntegralCols() const
@@ -174,27 +195,6 @@ class Problem
    getNumContinuousCols()
    {
       return ncontinuous;
-   }
-
-   /// set variable names
-   void
-   setVariableNames( Vec<String> var_names )
-   {
-      variableNames = std::move( var_names );
-   }
-
-   /// set constraint names
-   void
-   setConstraintNames( Vec<String> cons_names )
-   {
-      constraintNames = std::move( cons_names );
-   }
-
-   /// set problem name
-   void
-   setName( String name_ )
-   {
-      this->name = std::move( name_ );
    }
 
    /// get the problem matrix
