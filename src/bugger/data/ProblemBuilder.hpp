@@ -63,8 +63,8 @@ class ProblemBuilder
       lhs.resize( nrows );
       rhs.resize( nrows );
       rflags.resize( nrows );
-      rownames.resize( nrows );
       rowtypes.resize( nrows );
+      rownames.resize( nrows );
    }
 
    /// Returns the current number of rows
@@ -91,8 +91,8 @@ class ProblemBuilder
       lhs.reserve( nrows );
       rhs.reserve( nrows );
       rflags.reserve( nrows );
-      rownames.reserve( nrows );
       rowtypes.reserve( nrows );
+      rownames.reserve( nrows );
 
       // reserve space for column information
       obj.coefficients.reserve( ncols );
@@ -395,9 +395,9 @@ class ProblemBuilder
 
       problem.setObjective( std::move( obj ) );
       problem.setVariableDomains( std::move( domains ) );
+      problem.setConstraintTypes( std::move( rowtypes ) );
       problem.setVariableNames( std::move( colnames ) );
       problem.setConstraintNames( std::move( rownames ) );
-      problem.setConstraintTypes( std::move( rowtypes ) );
       ConstraintMatrix<REAL>& matrix = problem.getConstraintMatrix();
       for(int i=0; i< problem.getNRows(); i++){
          RowFlags rowFlag = matrix.getRowFlags()[i];
