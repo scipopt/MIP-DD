@@ -104,6 +104,7 @@ namespace bugger
             if( rflags[row].test(RowFlag::kRedundant) )
                continue;
             assert(!rflags[row].test(RowFlag::kLhsInf) || !rflags[row].test(RowFlag::kRhsInf));
+            assert(this->model->getConstraintTypes()[row] == ConstraintType::kLinear);
             const auto& rowvec = consMatrix.getRowCoefficients(row);
             const auto& rowinds = rowvec.getIndices( );
             const auto& rowvals = rowvec.getValues( );

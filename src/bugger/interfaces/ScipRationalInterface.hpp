@@ -135,6 +135,8 @@ namespace bugger
             if( rflags[row].test(RowFlag::kRedundant) )
                continue;
             assert(!rflags[row].test(RowFlag::kLhsInf) || !rflags[row].test(RowFlag::kRhsInf));
+            //TODO: Setup special constraints
+            assert(this->model->getConstraintTypes()[row] == ConstraintType::kLinear);
             const auto& rowvec = consMatrix.getRowCoefficients(row);
             const auto& rowinds = rowvec.getIndices( );
             const auto& rowvals = rowvec.getValues( );
@@ -569,6 +571,7 @@ namespace bugger
          Vec<REAL> rowvals(ncols);
          for( int row = 0; row < nrows; ++row )
          {
+            //TODO: Store special constraints
             SCIP_CONS* cons = conss[row];
             REAL lhs { SCIPconsGetLhsExact(this->scip, cons, &success)->val };
             if( !success )
