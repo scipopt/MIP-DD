@@ -46,7 +46,7 @@ namespace bugger
       PRIM = 2,
       REFI = 3,
       ITER = 4,
-      TIME = 5
+      TIME = 5,
    };
 
    class SoplexParameters
@@ -196,6 +196,7 @@ namespace bugger
                case TIME:
                default:
                   SPX_MSG_ERROR(soplex->spxout << "unknown limit type\n");
+                  assert(false);
                }
             }
             else
@@ -229,6 +230,7 @@ namespace bugger
                case TIME:
                default:
                   SPX_MSG_ERROR(soplex->spxout << "unknown limit type\n");
+                  assert(false);
                }
             }
             else
@@ -251,6 +253,7 @@ namespace bugger
                case TIME:
                default:
                   SPX_MSG_ERROR(soplex->spxout << "unknown limit type\n");
+                  assert(false);
                }
             }
             else
@@ -280,6 +283,7 @@ namespace bugger
                case ITER:
                default:
                   SPX_MSG_ERROR(soplex->spxout << "unknown limit type\n");
+                  assert(false);
                }
             }
             else
