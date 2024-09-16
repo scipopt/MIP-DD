@@ -145,10 +145,10 @@ namespace bugger
                {
                   assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
                   assert(rowvals[i] != 0);
-                  assert(domains.flags[rowinds[i]].test(ColFlag::kIntegral, ColFlag::kImplInt));
-                  assert(!domains.flags[rowinds[i]].test(ColFlag::kLbInf));
+                  assert(cflags[rowinds[i]].test(ColFlag::kIntegral, ColFlag::kImplInt));
+                  assert(!cflags[rowinds[i]].test(ColFlag::kLbInf));
                   assert(domains.lower_bounds[rowinds[i]] >= 0);
-                  assert(!domains.flags[rowinds[i]].test(ColFlag::kUbInf));
+                  assert(!cflags[rowinds[i]].test(ColFlag::kUbInf));
                   assert(domains.upper_bounds[rowinds[i]] <= 1);
                   if( rowvals[i] < 0 )
                      SCIPgetNegatedVar(this->scip, this->vars[rowinds[i]], &consvars[i]);
