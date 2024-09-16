@@ -75,6 +75,7 @@ namespace bugger
          const auto& consMatrix = this->model->getConstraintMatrix( );
          const auto& lhs_values = consMatrix.getLeftHandSides( );
          const auto& rhs_values = consMatrix.getRightHandSides( );
+         const auto& cflags = this->model->getColFlags( );
          const auto& rflags = this->model->getRowFlags( );
          SCIP_Rational lower;
          SCIP_Rational upper;
@@ -95,37 +96,35 @@ namespace bugger
 
          for( int col = 0; col < ncols; ++col )
          {
-            if( domains.flags[col].test(ColFlag::kFixed) )
-               this->vars[col] = NULL;
-            else
+            this->vars[col] = NULL;
+            if( cflags[col].test(ColFlag::kFixed) )
+               continue;
+            SCIP_VAR* var;
+            SCIP_VARTYPE type;
+            SCIP_CALL_ABORT(SCIPratSetReal(&lower, cflags[col].test(ColFlag::kLbInf)
+                                                   ? REAL(-SCIPinfinity(this->scip))
+                                                   : domains.lower_bounds[col]));
+            SCIP_CALL_ABORT(SCIPratSetReal(&upper, cflags[col].test(ColFlag::kUbInf)
+                                                   ? REAL(SCIPinfinity(this->scip))
+                                                   : domains.upper_bounds[col]));
+            SCIP_CALL_ABORT(SCIPratSetReal(&objval, obj.coefficients[col]));
+            assert(!cflags[col].test(ColFlag::kInactive) || lower.val == upper.val);
+            if( cflags[col].test(ColFlag::kIntegral) )
             {
-               SCIP_VAR* var;
-               SCIP_VARTYPE type;
-               SCIP_CALL_ABORT(SCIPratSetReal(&lower, domains.flags[col].test(ColFlag::kLbInf)
-                                                      ? REAL(-SCIPinfinity(this->scip))
-                                                      : domains.lower_bounds[col]));
-               SCIP_CALL_ABORT(SCIPratSetReal(&upper, domains.flags[col].test(ColFlag::kUbInf)
-                                                      ? REAL(SCIPinfinity(this->scip))
-                                                      : domains.upper_bounds[col]));
-               SCIP_CALL_ABORT(SCIPratSetReal(&objval, obj.coefficients[col]));
-               assert(!domains.flags[col].test(ColFlag::kInactive) || lower.val == upper.val);
-               if( domains.flags[col].test(ColFlag::kIntegral) )
-               {
-                  if( lower.val >= 0 && upper.val <= 1 )
-                     type = SCIP_VARTYPE_BINARY;
-                  else
-                     type = SCIP_VARTYPE_INTEGER;
-               }
-               else if( domains.flags[col].test(ColFlag::kImplInt) )
-                  type = SCIP_VARTYPE_IMPLINT;
+               if( lower.val >= 0 && upper.val <= 1 )
+                  type = SCIP_VARTYPE_BINARY;
                else
-                  type = SCIP_VARTYPE_CONTINUOUS;
-               SCIP_CALL_ABORT(SCIPcreateVarBasic(this->scip, &var, varNames[col].c_str(), 0.0, 0.0, 0.0, type));
-               SCIP_CALL_ABORT(SCIPaddVarExactData(this->scip, var, &lower, &upper, &objval));
-               this->vars[col] = var;
-               SCIP_CALL_ABORT(SCIPaddVar(this->scip, var));
-               SCIP_CALL_ABORT(SCIPreleaseVar(this->scip, &var));
+                  type = SCIP_VARTYPE_INTEGER;
             }
+            else if( cflags[col].test(ColFlag::kImplInt) )
+               type = SCIP_VARTYPE_IMPLINT;
+            else
+               type = SCIP_VARTYPE_CONTINUOUS;
+            SCIP_CALL_ABORT(SCIPcreateVarBasic(this->scip, &var, varNames[col].c_str(), 0.0, 0.0, 0.0, type));
+            SCIP_CALL_ABORT(SCIPaddVarExactData(this->scip, var, &lower, &upper, &objval));
+            this->vars[col] = var;
+            SCIP_CALL_ABORT(SCIPaddVar(this->scip, var));
+            SCIP_CALL_ABORT(SCIPreleaseVar(this->scip, &var));
          }
 
          Vec<SCIP_VAR*> consvars(ncols);
@@ -149,7 +148,7 @@ namespace bugger
                                                    : rhs_values[row]));
             for( int i = 0; i < nrowcols; ++i )
             {
-               assert(!this->model->getColFlags( )[rowinds[i]].test(ColFlag::kFixed));
+               assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
                assert(rowvals[i] != 0);
                consvars[i] = this->vars[rowinds[i]];
                SCIP_CALL_ABORT(SCIPratSetReal(&consvals[i], rowvals[i]));
@@ -650,7 +649,7 @@ namespace bugger
             }
             for( int col = 0; successsolution && col < this->reference->primal.size(); ++col )
             {
-               if( !this->model->getColFlags()[col].test( ColFlag::kFixed ) && ( SCIPratSetReal(&solval, this->reference->primal[col]) != SCIP_OKAY || SCIPsetSolValExact(this->scip, sol, this->vars[col], &solval) != SCIP_OKAY ) )
+               if( !this->model->getColFlags()[col].test(ColFlag::kFixed) && ( SCIPratSetReal(&solval, this->reference->primal[col]) != SCIP_OKAY || SCIPsetSolValExact(this->scip, sol, this->vars[col], &solval) != SCIP_OKAY ) )
                   successsolution = false;
             }
             if( successsolution && ( (file = fopen((filename + ".sol").c_str(), "w")) == NULL || SCIPprintSol(this->scip, sol, file, FALSE) != SCIP_OKAY ) )
@@ -676,7 +675,7 @@ namespace bugger
          solution.primal.resize(problem.getNCols());
          for( int col = 0; col < solution.primal.size(); ++col )
          {
-            if( problem.getColFlags()[col].test( ColFlag::kFixed ) )
+            if( problem.getColFlags()[col].test(ColFlag::kFixed) )
                solution.primal[col] = std::numeric_limits<REAL>::signaling_NaN();
             else
             {
@@ -689,7 +688,7 @@ namespace bugger
             solution.ray.resize(problem.getNCols());
             for( int col = 0; col < solution.ray.size(); ++col )
                //TODO: Get rational ray
-               solution.ray[col] = problem.getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(SCIPgetPrimalRayVal(this->scip, this->vars[col]));
+               solution.ray[col] = problem.getColFlags()[col].test(ColFlag::kFixed) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(SCIPgetPrimalRayVal(this->scip, this->vars[col]));
          }
       }
    };
