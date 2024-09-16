@@ -77,6 +77,7 @@ namespace bugger
          const auto& rhs_values = consMatrix.getRightHandSides( );
          const auto& cflags = this->model->getColFlags( );
          const auto& rflags = this->model->getRowFlags( );
+         const auto& rtypes = this->model->getConstraintTypes( );
          SCIP_Rational lower;
          SCIP_Rational upper;
          SCIP_Rational objval;
@@ -136,7 +137,7 @@ namespace bugger
                continue;
             assert(!rflags[row].test(RowFlag::kLhsInf) || !rflags[row].test(RowFlag::kRhsInf));
             //TODO: Setup special constraints
-            assert(this->model->getConstraintTypes()[row] == ConstraintType::kLinear);
+            assert(rtypes[row] == ConstraintType::kLinear);
             const auto& rowvec = consMatrix.getRowCoefficients(row);
             const auto& rowinds = rowvec.getIndices( );
             const auto& rowvals = rowvec.getValues( );

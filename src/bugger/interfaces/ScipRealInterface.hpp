@@ -58,6 +58,7 @@ namespace bugger
          const auto& rhs_values = consMatrix.getRightHandSides( );
          const auto& cflags = this->model->getColFlags( );
          const auto& rflags = this->model->getRowFlags( );
+         const auto& rtypes = this->model->getConstraintTypes( );
 
          this->set_parameters( );
          SCIP_CALL_ABORT(SCIPcreateProbBasic(this->scip, this->model->getName( ).c_str()));
@@ -121,7 +122,7 @@ namespace bugger
             SCIP_Real rhs = rflags[row].test(RowFlag::kRhsInf)
                             ? SCIPinfinity(this->scip)
                             : SCIP_Real(rhs_values[row]);
-            switch( this->model->getConstraintTypes()[row] )
+            switch( rtypes[row] )
             {
             case ConstraintType::kLinear:
             {

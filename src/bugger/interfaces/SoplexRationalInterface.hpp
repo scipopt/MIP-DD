@@ -64,6 +64,7 @@ namespace bugger
          const auto& rhs_values = consMatrix.getRightHandSides( );
          const auto& cflags = this->model->getColFlags( );
          const auto& rflags = this->model->getRowFlags( );
+         const auto& rtypes = this->model->getConstraintTypes( );
 
          this->set_parameters( );
          SOPLEX_CALL_ABORT(this->soplex->setRealParam(SoplexParameters::OFFS, soplex::Real(obj.offset)));
@@ -104,7 +105,7 @@ namespace bugger
             if( rflags[row].test(RowFlag::kRedundant) )
                continue;
             assert(!rflags[row].test(RowFlag::kLhsInf) || !rflags[row].test(RowFlag::kRhsInf));
-            assert(this->model->getConstraintTypes()[row] == ConstraintType::kLinear);
+            assert(rtypes[row] == ConstraintType::kLinear);
             const auto& rowvec = consMatrix.getRowCoefficients(row);
             const auto& rowinds = rowvec.getIndices( );
             const auto& rowvals = rowvec.getValues( );
