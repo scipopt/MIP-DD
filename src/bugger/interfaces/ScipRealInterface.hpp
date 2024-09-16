@@ -144,7 +144,9 @@ namespace bugger
                for( int i = 0; i < nrowcols; ++i )
                {
                   assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
+                  assert(rowvals[i] == round(rowvals[i]));
                   assert(rowvals[i] != 0);
+                  assert(abs(rowvals[i]) <= 2);
                   assert(cflags[rowinds[i]].test(ColFlag::kIntegral, ColFlag::kImplInt));
                   assert(!cflags[rowinds[i]].test(ColFlag::kLbInf));
                   assert(domains.lower_bounds[rowinds[i]] >= 0);
