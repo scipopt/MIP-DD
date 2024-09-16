@@ -46,7 +46,9 @@ namespace bugger
 /// enumeration to list constraint types
 enum class ConstraintType : char
 {
+   // real coefficients, real sides
    kLinear = 0,
+   // integral coefficients (+-1: operator, +-2: resultant, <0: negated), zero sides
    kAnd = 1,
 };
 
