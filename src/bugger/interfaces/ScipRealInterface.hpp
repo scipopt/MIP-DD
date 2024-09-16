@@ -134,6 +134,7 @@ namespace bugger
                }
                SCIP_CALL_ABORT(SCIPcreateConsBasicLinear(this->scip, &cons, consNames[row].c_str(), nrowcols,
                      consvars.data( ), consvals.data( ), lhs, rhs));
+               break;
             }
             case ConstraintType::kAnd:
             {
@@ -163,6 +164,7 @@ namespace bugger
                   std::swap(resvar, consvars[i]);
                SCIP_CALL_ABORT(SCIPcreateConsBasicAnd(this->scip, &cons, consNames[row].c_str(), consvars[0],
                      nrowcols - 1, consvars.data() + 1));
+               break;
             }
             default:
                SCIPerrorMessage("unknown constraint type\n");
