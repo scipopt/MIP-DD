@@ -61,6 +61,7 @@ namespace bugger
          const auto& consMatrix = this->model->getConstraintMatrix( );
          const auto& lhs_values = consMatrix.getLeftHandSides( );
          const auto& rhs_values = consMatrix.getRightHandSides( );
+         const auto& cflags = this->model->getColFlags( );
          const auto& rflags = this->model->getRowFlags( );
 
          this->set_parameters( );
@@ -78,25 +79,23 @@ namespace bugger
 
          for( int col = 0; col < ncols; ++col )
          {
-            if( domains.flags[col].test(ColFlag::kFixed) )
-               this->inds[col] = -1;
-            else
-            {
-               LPColReal var { };
-               SOPLEX_Real lb = domains.flags[col].test(ColFlag::kLbInf)
-                                ? -this->soplex->realParam(SoPlex::INFTY)
-                                : SOPLEX_Real(domains.lower_bounds[col]);
-               SOPLEX_Real ub = domains.flags[col].test(ColFlag::kUbInf)
-                                ? this->soplex->realParam(SoPlex::INFTY)
-                                : SOPLEX_Real(domains.upper_bounds[col]);
-               assert(!domains.flags[col].test(ColFlag::kInactive) || lb == ub);
-               var.setLower(lb);
-               var.setUpper(ub);
-               var.setObj(SOPLEX_Real(obj.coefficients[col]));
-               this->inds[col] = this->soplex->numCols();
-               this->soplex->addColReal(var);
-               this->colNames.add(varNames[col].c_str());
-            }
+            this->inds[col] = -1;
+            if( cflags[col].test(ColFlag::kFixed) )
+               continue;
+            LPColReal var { };
+            SOPLEX_Real lb = cflags[col].test(ColFlag::kLbInf)
+                             ? -this->soplex->realParam(SoPlex::INFTY)
+                             : SOPLEX_Real(domains.lower_bounds[col]);
+            SOPLEX_Real ub = cflags[col].test(ColFlag::kUbInf)
+                             ? this->soplex->realParam(SoPlex::INFTY)
+                             : SOPLEX_Real(domains.upper_bounds[col]);
+            assert(!cflags[col].test(ColFlag::kInactive) || lb == ub);
+            var.setLower(lb);
+            var.setUpper(ub);
+            var.setObj(SOPLEX_Real(obj.coefficients[col]));
+            this->inds[col] = this->soplex->numCols();
+            this->soplex->addColReal(var);
+            this->colNames.add(varNames[col].c_str());
          }
 
          for( int row = 0; row < nrows; ++row )
@@ -117,7 +116,7 @@ namespace bugger
             DSVectorReal cons(nrowcols);
             for( int i = 0; i < nrowcols; ++i )
             {
-               assert(!this->model->getColFlags( )[rowinds[i]].test(ColFlag::kFixed));
+               assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
                assert(rowvals[i] != 0);
                cons.add(this->inds[rowinds[i]], SOPLEX_Real(rowvals[i]));
             }
@@ -448,12 +447,12 @@ namespace bugger
          solution.status = ray.dim() >= 1 ? SolutionStatus::kUnbounded : SolutionStatus::kFeasible;
          solution.primal.resize(problem.getNCols());
          for( int col = 0; col < solution.primal.size(); ++col )
-            solution.primal[col] = problem.getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(sol[this->inds[col]]);
+            solution.primal[col] = problem.getColFlags()[col].test(ColFlag::kFixed) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(sol[this->inds[col]]);
          if( ray.dim() >= 1 )
          {
             solution.ray.resize(problem.getNCols());
             for( int col = 0; col < solution.ray.size(); ++col )
-               solution.ray[col] = problem.getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(ray[this->inds[col]]);
+               solution.ray[col] = problem.getColFlags()[col].test(ColFlag::kFixed) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(ray[this->inds[col]]);
          }
       }
    };

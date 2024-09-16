@@ -56,6 +56,7 @@ namespace bugger
          const auto& consMatrix = this->model->getConstraintMatrix( );
          const auto& lhs_values = consMatrix.getLeftHandSides( );
          const auto& rhs_values = consMatrix.getRightHandSides( );
+         const auto& cflags = this->model->getColFlags( );
          const auto& rflags = this->model->getRowFlags( );
 
          this->set_parameters( );
@@ -72,36 +73,34 @@ namespace bugger
 
          for( int col = 0; col < ncols; ++col )
          {
-            if( domains.flags[col].test(ColFlag::kFixed) )
-               this->vars[col] = NULL;
-            else
+            this->vars[col] = NULL;
+            if( cflags[col].test(ColFlag::kFixed) )
+               continue;
+            SCIP_VAR* var;
+            SCIP_VARTYPE type;
+            SCIP_Real lb = cflags[col].test(ColFlag::kLbInf)
+                           ? -SCIPinfinity(this->scip)
+                           : SCIP_Real(domains.lower_bounds[col]);
+            SCIP_Real ub = cflags[col].test(ColFlag::kUbInf)
+                           ? SCIPinfinity(this->scip)
+                           : SCIP_Real(domains.upper_bounds[col]);
+            assert(!cflags[col].test(ColFlag::kInactive) || lb == ub);
+            if( cflags[col].test(ColFlag::kIntegral) )
             {
-               SCIP_VAR* var;
-               SCIP_VARTYPE type;
-               SCIP_Real lb = domains.flags[col].test(ColFlag::kLbInf)
-                              ? -SCIPinfinity(this->scip)
-                              : SCIP_Real(domains.lower_bounds[col]);
-               SCIP_Real ub = domains.flags[col].test(ColFlag::kUbInf)
-                              ? SCIPinfinity(this->scip)
-                              : SCIP_Real(domains.upper_bounds[col]);
-               assert(!domains.flags[col].test(ColFlag::kInactive) || lb == ub);
-               if( domains.flags[col].test(ColFlag::kIntegral) )
-               {
-                  if( lb >= 0 && ub <= 1 )
-                     type = SCIP_VARTYPE_BINARY;
-                  else
-                     type = SCIP_VARTYPE_INTEGER;
-               }
-               else if( domains.flags[col].test(ColFlag::kImplInt) )
-                  type = SCIP_VARTYPE_IMPLINT;
+               if( lb >= 0 && ub <= 1 )
+                  type = SCIP_VARTYPE_BINARY;
                else
-                  type = SCIP_VARTYPE_CONTINUOUS;
-               SCIP_CALL_ABORT(SCIPcreateVarBasic(this->scip, &var, varNames[col].c_str(), lb, ub,
-                     SCIP_Real(obj.coefficients[col]), type));
-               this->vars[col] = var;
-               SCIP_CALL_ABORT(SCIPaddVar(this->scip, var));
-               SCIP_CALL_ABORT(SCIPreleaseVar(this->scip, &var));
+                  type = SCIP_VARTYPE_INTEGER;
             }
+            else if( cflags[col].test(ColFlag::kImplInt) )
+               type = SCIP_VARTYPE_IMPLINT;
+            else
+               type = SCIP_VARTYPE_CONTINUOUS;
+            SCIP_CALL_ABORT(SCIPcreateVarBasic(this->scip, &var, varNames[col].c_str(), lb, ub,
+                  SCIP_Real(obj.coefficients[col]), type));
+            this->vars[col] = var;
+            SCIP_CALL_ABORT(SCIPaddVar(this->scip, var));
+            SCIP_CALL_ABORT(SCIPreleaseVar(this->scip, &var));
          }
 
          Vec<SCIP_VAR*> consvars(ncols);
@@ -124,7 +123,7 @@ namespace bugger
                             : SCIP_Real(rhs_values[row]);
             for( int i = 0; i < nrowcols; ++i )
             {
-               assert(!this->model->getColFlags( )[rowinds[i]].test(ColFlag::kFixed));
+               assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
                assert(rowvals[i] != 0);
                consvars[i] = this->vars[rowinds[i]];
                consvals[i] = SCIP_Real(rowvals[i]);
@@ -575,7 +574,7 @@ namespace bugger
             }
             for( int col = 0; successsolution && col < this->reference->primal.size(); ++col )
             {
-               if( !this->model->getColFlags()[col].test( ColFlag::kFixed ) && SCIPsetSolVal(this->scip, sol, this->vars[col], SCIP_Real(this->reference->primal[col])) != SCIP_OKAY )
+               if( !this->model->getColFlags()[col].test(ColFlag::kFixed) && SCIPsetSolVal(this->scip, sol, this->vars[col], SCIP_Real(this->reference->primal[col])) != SCIP_OKAY )
                   successsolution = false;
             }
             if( successsolution && ( (file = fopen((filename + ".sol").c_str(), "w")) == NULL || SCIPprintSol(this->scip, sol, file, FALSE) != SCIP_OKAY ) )
@@ -599,12 +598,12 @@ namespace bugger
          solution.status = ray ? SolutionStatus::kUnbounded : SolutionStatus::kFeasible;
          solution.primal.resize(problem.getNCols());
          for( int col = 0; col < solution.primal.size(); ++col )
-            solution.primal[col] = problem.getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(SCIPgetSolVal(this->scip, sol, this->vars[col]));
+            solution.primal[col] = problem.getColFlags()[col].test(ColFlag::kFixed) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(SCIPgetSolVal(this->scip, sol, this->vars[col]));
          if( ray )
          {
             solution.ray.resize(problem.getNCols());
             for( int col = 0; col < solution.ray.size(); ++col )
-               solution.ray[col] = problem.getColFlags()[col].test( ColFlag::kFixed ) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(SCIPgetPrimalRayVal(this->scip, this->vars[col]));
+               solution.ray[col] = problem.getColFlags()[col].test(ColFlag::kFixed) ? std::numeric_limits<REAL>::signaling_NaN() : REAL(SCIPgetPrimalRayVal(this->scip, this->vars[col]));
          }
       }
    };
