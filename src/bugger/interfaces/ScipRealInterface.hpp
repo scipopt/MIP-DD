@@ -142,7 +142,12 @@ namespace bugger
                for( int i = 0; i < nrowcols; ++i )
                {
                   assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
-                  assert(rowvals[i] != 0);
+                  assert(abs(rowvals[i]) == 1);
+                  assert(cflags[rowinds[i]].test(ColFlag::kIntegral, ColFlag::kImplInt));
+                  assert(!cflags[rowinds[i]].test(ColFlag::kLbInf));
+                  assert(domains.lower_bounds[rowinds[i]] >= 0);
+                  assert(!cflags[rowinds[i]].test(ColFlag::kUbInf));
+                  assert(domains.upper_bounds[rowinds[i]] <= 1);
                   if( rowvals[i] < 0 )
                   {
                      SCIPgetNegatedVar(this->scip, this->vars[rowinds[i]], &consvars[i]);
@@ -160,16 +165,20 @@ namespace bugger
                }
                if( !SCIPisInfinity(this->scip, -lhs) && SCIPisInfinity(this->scip, rhs) )
                {
+                  assert(lhs == 1);
                   SCIP_CALL_ABORT(SCIPcreateConsBasicSetcover(this->scip, &cons, consNames[row].c_str(), nrowcols,
                         consvars.data( )));
                }
                else if( SCIPisInfinity(this->scip, -lhs) && !SCIPisInfinity(this->scip, rhs) )
                {
+                  assert(rhs == 1);
                   SCIP_CALL_ABORT(SCIPcreateConsBasicSetpack(this->scip, &cons, consNames[row].c_str(), nrowcols,
                         consvars.data( )));
                }
                else
                {
+                  assert(lhs == 1);
+                  assert(rhs == 1);
                   SCIP_CALL_ABORT(SCIPcreateConsBasicSetpart(this->scip, &cons, consNames[row].c_str(), nrowcols,
                         consvars.data( )));
                }
