@@ -137,6 +137,44 @@ namespace bugger
                      consvars.data( ), consvals.data( ), lhs, rhs));
                break;
             }
+            case ConstraintType::kSetPPC:
+            {
+               for( int i = 0; i < nrowcols; ++i )
+               {
+                  assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
+                  assert(rowvals[i] != 0);
+                  if( rowvals[i] < 0 )
+                  {
+                     SCIPgetNegatedVar(this->scip, this->vars[rowinds[i]], &consvars[i]);
+                     consvals[i] = SCIP_Real(-rowvals[i]);
+                     if( !SCIPisInfinity(this->scip, -lhs) )
+                        lhs += consvals[i];
+                     if( !SCIPisInfinity(this->scip, rhs) )
+                        rhs += consvals[i];
+                  }
+                  else
+                  {
+                     consvars[i] = this->vars[rowinds[i]];
+                     consvals[i] = SCIP_Real(rowvals[i]);
+                  }
+               }
+               if( !SCIPisInfinity(this->scip, -lhs) && SCIPisInfinity(this->scip, rhs) )
+               {
+                  SCIP_CALL_ABORT(SCIPcreateConsBasicSetcover(this->scip, &cons, consNames[row].c_str(), nrowcols,
+                        consvars.data( )));
+               }
+               else if( SCIPisInfinity(this->scip, -lhs) && !SCIPisInfinity(this->scip, rhs) )
+               {
+                  SCIP_CALL_ABORT(SCIPcreateConsBasicSetpack(this->scip, &cons, consNames[row].c_str(), nrowcols,
+                        consvars.data( )));
+               }
+               else
+               {
+                  SCIP_CALL_ABORT(SCIPcreateConsBasicSetpart(this->scip, &cons, consNames[row].c_str(), nrowcols,
+                        consvars.data( )));
+               }
+               break;
+            }
             case ConstraintType::kAnd:
             {
                SCIP_VAR* resvar = NULL;
@@ -632,6 +670,17 @@ namespace bugger
                   }
                   rowinds[i] = SCIPvarGetProbindex(consvars[i]);
                   rowvals[i] = REAL(consvals[i]);
+               }
+               switch( this->parameters.linearization )
+               {
+               case ConstraintType::kLinear:
+                  if( conshdlrname == "setppc" )
+                  {
+                     builder.setRowType(row, ConstraintType::kSetPPC);
+                     break;
+                  }
+               case ConstraintType::kSetPPC:
+                  break;
                }
             }
             builder.setRowLhs(row, REAL(lhs));

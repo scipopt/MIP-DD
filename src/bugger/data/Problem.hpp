@@ -44,14 +44,16 @@
 namespace bugger
 {
 /// enumeration to list constraint types
-enum class ConstraintType : char
+enum ConstraintType : char
 {
    // real coefficients, real sides
    kLinear = 0,
+   // unified coefficients, integral sides, linear description
+   kSetPPC = 1,
    // integral coefficients (+-1: operator, +-2: resultant, <0: negated), zero sides
-   kAnd = 1,
+   kAnd = 2,
    // scaling coefficients (<0: negated), zero sides
-   kSOS1 = 2,
+   kSOS1 = 3,
 };
 
 /// struct to hold counters for up an downlocks of a column
@@ -439,6 +441,7 @@ class Problem
       switch( getConstraintTypes()[row] )
       {
       case ConstraintType::kLinear:
+      case ConstraintType::kSetPPC:
       {
          StableSum<REAL> sum;
          for( int i = 0; i < data.getLength( ); ++i )
@@ -514,6 +517,7 @@ class Problem
       switch( getConstraintTypes()[row] )
       {
       case ConstraintType::kLinear:
+      case ConstraintType::kSetPPC:
       {
          StableSum<REAL> sum;
          for( int i = 0; i < data.getLength( ); ++i )

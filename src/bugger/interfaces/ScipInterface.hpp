@@ -59,6 +59,7 @@ namespace bugger
 
       int arithmetic = 0;
       int mode = -1;
+      int linearization = -1;
       int certificate = 0;
       double cutoffrelax = -1.0;
       double limitspace = 1.0;
@@ -369,6 +370,7 @@ namespace bugger
          parameterset.addParameter("scip.arithmetic", "arithmetic scip type (0: double, 1: rational)", parameters.arithmetic, 0, 1);
 #endif
          parameterset.addParameter("scip.mode", "solve scip mode (-1: optimize, 0: count)", parameters.mode, -1, 0);
+         parameterset.addParameter("scip.linearization", "identifier of last special type to treat as linear constraint (-1: all)", parameters.linearization, -1);
 #ifndef SCIP_WITH_EXACTSOLVE
          parameterset.addParameter("scip.certificate", "check vipr certificate", parameters.certificate, 0, 0);
 #else
