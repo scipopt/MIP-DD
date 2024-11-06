@@ -63,6 +63,7 @@ class ProblemBuilder
       lhs.resize( nrows );
       rhs.resize( nrows );
       rflags.resize( nrows );
+      rowtypes.resize( nrows );
       rownames.resize( nrows );
    }
 
@@ -90,6 +91,7 @@ class ProblemBuilder
       lhs.reserve( nrows );
       rhs.reserve( nrows );
       rflags.reserve( nrows );
+      rowtypes.reserve( nrows );
       rownames.reserve( nrows );
 
       // reserve space for column information
@@ -321,6 +323,20 @@ class ProblemBuilder
       }
    }
 
+   void
+   setRowType( int row, ConstraintType type )
+   {
+      rowtypes[row] = type;
+   }
+
+   void
+   setRowTypeAll( const Vec<ConstraintType>& types )
+   {
+      assert( rowtypes.size() == types.size() );
+      for( int r = 0; r < (int) types.size(); ++r )
+         rowtypes[r] = types[r];
+   }
+
    template <typename Str>
    void
    setProblemName( Str&& name )
@@ -379,6 +395,7 @@ class ProblemBuilder
 
       problem.setObjective( std::move( obj ) );
       problem.setVariableDomains( std::move( domains ) );
+      problem.setConstraintTypes( std::move( rowtypes ) );
       problem.setVariableNames( std::move( colnames ) );
       problem.setConstraintNames( std::move( rownames ) );
       ConstraintMatrix<REAL>& matrix = problem.getConstraintMatrix();
@@ -400,6 +417,7 @@ class ProblemBuilder
    Vec<REAL> lhs;
    Vec<REAL> rhs;
    Vec<RowFlags> rflags;
+   Vec<ConstraintType> rowtypes;
    String probname;
    Vec<String> colnames;
    Vec<String> rownames;

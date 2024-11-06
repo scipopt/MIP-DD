@@ -56,7 +56,8 @@ namespace bugger
       bool
       isCoefficientAdmissible(const Problem<REAL>& problem, const int& row) const
       {
-         if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant) )
+         if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant)
+          || problem.getConstraintTypes( )[ row ] != ConstraintType::kLinear )
             return false;
          const auto& data = problem.getConstraintMatrix( ).getRowCoefficients(row);
          for( int index = 0; index < data.getLength( ); ++index )

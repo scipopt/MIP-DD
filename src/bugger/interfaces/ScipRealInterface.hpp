@@ -58,6 +58,7 @@ namespace bugger
          const auto& rhs_values = consMatrix.getRightHandSides( );
          const auto& cflags = this->model->getColFlags( );
          const auto& rflags = this->model->getRowFlags( );
+         const auto& rtypes = this->model->getConstraintTypes( );
 
          this->set_parameters( );
          SCIP_CALL_ABORT(SCIPcreateProbBasic(this->scip, this->model->getName( ).c_str()));
@@ -121,15 +122,58 @@ namespace bugger
             SCIP_Real rhs = rflags[row].test(RowFlag::kRhsInf)
                             ? SCIPinfinity(this->scip)
                             : SCIP_Real(rhs_values[row]);
-            for( int i = 0; i < nrowcols; ++i )
+            switch( rtypes[row] )
             {
-               assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
-               assert(rowvals[i] != 0);
-               consvars[i] = this->vars[rowinds[i]];
-               consvals[i] = SCIP_Real(rowvals[i]);
+            case ConstraintType::kLinear:
+            {
+               for( int i = 0; i < nrowcols; ++i )
+               {
+                  assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
+                  assert(rowvals[i] != 0);
+                  consvars[i] = this->vars[rowinds[i]];
+                  consvals[i] = SCIP_Real(rowvals[i]);
+               }
+               SCIP_CALL_ABORT(SCIPcreateConsBasicLinear(this->scip, &cons, consNames[row].c_str(), nrowcols,
+                     consvars.data( ), consvals.data( ), lhs, rhs));
+               break;
             }
-            SCIP_CALL_ABORT(SCIPcreateConsBasicLinear(this->scip, &cons, consNames[row].c_str(), nrowcols,
-                  consvars.data( ), consvals.data( ), lhs, rhs));
+            case ConstraintType::kAnd:
+            {
+               SCIP_VAR* resvar = NULL;
+               int resindex = -1;
+               for( int i = 0; i < nrowcols; ++i )
+               {
+                  assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
+                  assert(rowvals[i] == round(rowvals[i]));
+                  assert(rowvals[i] != 0);
+                  assert(abs(rowvals[i]) <= 2);
+                  assert(cflags[rowinds[i]].test(ColFlag::kIntegral, ColFlag::kImplInt));
+                  assert(!cflags[rowinds[i]].test(ColFlag::kLbInf));
+                  assert(domains.lower_bounds[rowinds[i]] >= 0);
+                  assert(!cflags[rowinds[i]].test(ColFlag::kUbInf));
+                  assert(domains.upper_bounds[rowinds[i]] <= 1);
+                  if( rowvals[i] < 0 )
+                     SCIPgetNegatedVar(this->scip, this->vars[rowinds[i]], &consvars[i]);
+                  else
+                     consvars[i] = this->vars[rowinds[i]];
+                  if( resvar == NULL && abs(rowvals[i]) > 1 )
+                  {
+                     resvar = consvars[i];
+                     resindex = i;
+                  }
+               }
+               assert(resvar != NULL);
+               for( int i = 0; i <= resindex; ++i )
+                  std::swap(resvar, consvars[i]);
+               SCIP_CALL_ABORT(SCIPcreateConsBasicAnd(this->scip, &cons, consNames[row].c_str(), consvars[0],
+                     nrowcols - 1, consvars.data() + 1));
+               break;
+            }
+            default:
+               SCIPerrorMessage("unknown constraint type\n");
+               assert(false);
+               continue;
+            }
             SCIP_CALL_ABORT(SCIPaddCons(this->scip, cons));
             SCIP_CALL_ABORT(SCIPreleaseCons(this->scip, &cons));
          }
@@ -496,33 +540,63 @@ namespace bugger
          for( int row = 0; row < nrows; ++row )
          {
             SCIP_CONS* cons = conss[row];
-            SCIP_Real lhs = SCIPconsGetLhs(this->scip, cons, &success);
-            if( !success )
-               return { settings, boost::none, boost::none };
-            SCIP_Real rhs = SCIPconsGetRhs(this->scip, cons, &success);
-            if( !success )
-               return { settings, boost::none, boost::none };
-            int nrowcols = 0;
-            SCIPgetConsNVars(this->scip, cons, &nrowcols, &success);
-            SCIPgetConsVars(this->scip, cons, consvars.data(), ncols, &success);
-            if( !success )
-               return { settings, boost::none, boost::none };
-            SCIPgetConsVals(this->scip, cons, consvals.data(), ncols, &success);
-            if( !success )
-               return { settings, boost::none, boost::none };
-            for( int i = 0; i < nrowcols; ++i )
+            String conshdlrname { SCIPconshdlrGetName(SCIPconsGetHdlr(cons)) };
+            SCIP_Real lhs;
+            SCIP_Real rhs;
+            int nrowcols;
+            if( conshdlrname == "and" )
             {
-               if( SCIPvarIsNegated(consvars[i]) )
+               SCIP_VAR** andvars;
+               lhs = 0.0;
+               rhs = 0.0;
+               nrowcols = SCIPgetNVarsAnd(this->scip, cons) + 1;
+               andvars = SCIPgetVarsAnd(this->scip, cons);
+               consvars[0] = SCIPgetResultantAnd(this->scip, cons);
+               std::copy(andvars, andvars + (nrowcols - 1), consvars.data() + 1);
+               for( int i = 0; i < nrowcols; ++i )
                {
-                  consvars[i] = SCIPvarGetNegatedVar(consvars[i]);
-                  consvals[i] *= -1.0;
-                  if( !SCIPisInfinity(this->scip, -lhs) )
-                     lhs += consvals[i];
-                  if( !SCIPisInfinity(this->scip, rhs) )
-                     rhs += consvals[i];
+                  if( SCIPvarIsNegated(consvars[i]) )
+                  {
+                     consvars[i] = SCIPvarGetNegatedVar(consvars[i]);
+                     rowvals[i] = -1;
+                  }
+                  else
+                     rowvals[i] = 1;
+                  rowinds[i] = SCIPvarGetProbindex(consvars[i]);
                }
-               rowinds[i] = SCIPvarGetProbindex(consvars[i]);
-               rowvals[i] = REAL(consvals[i]);
+               rowvals[0] *= 2;
+               builder.setRowType(row, ConstraintType::kAnd);
+            }
+            else
+            {
+               lhs = SCIPconsGetLhs(this->scip, cons, &success);
+               if( !success )
+                  return { settings, boost::none, boost::none };
+               rhs = SCIPconsGetRhs(this->scip, cons, &success);
+               if( !success )
+                  return { settings, boost::none, boost::none };
+               nrowcols = 0;
+               SCIPgetConsNVars(this->scip, cons, &nrowcols, &success);
+               SCIPgetConsVars(this->scip, cons, consvars.data(), ncols, &success);
+               if( !success )
+                  return { settings, boost::none, boost::none };
+               SCIPgetConsVals(this->scip, cons, consvals.data(), ncols, &success);
+               if( !success )
+                  return { settings, boost::none, boost::none };
+               for( int i = 0; i < nrowcols; ++i )
+               {
+                  if( SCIPvarIsNegated(consvars[i]) )
+                  {
+                     consvars[i] = SCIPvarGetNegatedVar(consvars[i]);
+                     consvals[i] *= -1.0;
+                     if( !SCIPisInfinity(this->scip, -lhs) )
+                        lhs += consvals[i];
+                     if( !SCIPisInfinity(this->scip, rhs) )
+                        rhs += consvals[i];
+                  }
+                  rowinds[i] = SCIPvarGetProbindex(consvars[i]);
+                  rowvals[i] = REAL(consvals[i]);
+               }
             }
             builder.setRowLhs(row, REAL(lhs));
             builder.setRowRhs(row, REAL(rhs));
