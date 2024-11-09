@@ -173,8 +173,8 @@ namespace bugger
             {
                for( int i = 0; i < nrowcols; ++i )
                {
-                  assert(!this->model->getColFlags( )[rowinds[i]].test(ColFlag::kFixed));
-                  assert(rowvals[i] != 0);
+                  assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
+                  assert(abs(rowvals[i]) == 1);
                   if( rowvals[i] < 0 )
                      SCIPgetNegatedVar(this->scip, this->vars[rowinds[i]], &consvars[i]);
                   else
