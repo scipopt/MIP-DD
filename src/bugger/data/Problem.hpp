@@ -50,7 +50,7 @@ enum class ConstraintType : char
    kLinear = 0,
    // integral coefficients (+-1: operator, +-2: resultant, <0: negated), zero sides
    kAnd = 1,
-   // unified coefficients (-1: negated), zero sides
+   // scaling coefficients (<0: negated), zero sides
    kSOS1 = 2,
 };
 
@@ -485,7 +485,8 @@ class Problem
          {
             REAL value { solution.primal[data.getIndices( )[i]] };
             if( data.getValues( )[i] < 0 )
-               value = 1 - value;
+               value -= 1;
+            value *= data.getValues( )[i];
             if( value < 0 )
                value *= -1;
             if( maxvalue < value )
@@ -564,10 +565,9 @@ class Problem
             if( climb == 0 )
                continue;
             if( data.getValues( )[i] < 0 )
-            {
-               value = 1 - value;
-               climb *= -1;
-            }
+               value -= 1;
+            value *= data.getValues( )[i];
+            climb *= data.getValues( )[i];
             value /= -climb;
             if( maxshift < value )
                maxshift = value;
@@ -577,10 +577,9 @@ class Problem
             REAL value { solution.primal[data.getIndices( )[i]] };
             REAL climb { solution.ray[data.getIndices( )[i]] };
             if( data.getValues( )[i] < 0 )
-            {
-               value = 1 - value;
-               climb *= -1;
-            }
+               value -= 1;
+            value *= data.getValues( )[i];
+            climb *= data.getValues( )[i];
             value += maxshift * climb;
             if( climb < 0 || ( climb == 0 && value < 0 ) )
             {
