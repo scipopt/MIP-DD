@@ -35,6 +35,7 @@ Currently, handling the following constraint types is possible:
 
 - Linear
 - And
+- SOS1
 
 Optionally, the arithmetic type used for reductions, problems, and solutions can be selected by the cmake parameter BUGGER_ARITHMETIC, which is double by default.
 
