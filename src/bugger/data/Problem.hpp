@@ -50,6 +50,7 @@ enum class ConstraintType : char
    kLinear = 0,
    // integral coefficients (+-1: operator, +-2: resultant, <0: negated), zero sides
    kAnd = 1,
+   // unified coefficients (-1: negated), zero sides
    kSOS1 = 2,
 };
 
