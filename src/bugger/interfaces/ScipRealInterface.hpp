@@ -169,6 +169,21 @@ namespace bugger
                      nrowcols - 1, consvars.data() + 1));
                break;
             }
+            case ConstraintType::kSOS1:
+            {
+               for( int i = 0; i < nrowcols; ++i )
+               {
+                  assert(!this->model->getColFlags( )[rowinds[i]].test(ColFlag::kFixed));
+                  assert(rowvals[i] != 0);
+                  if( rowvals[i] < 0 )
+                     SCIPgetNegatedVar(this->scip, this->vars[rowinds[i]], &consvars[i]);
+                  else
+                     consvars[i] = this->vars[rowinds[i]];
+               }
+               SCIP_CALL_ABORT(SCIPcreateConsBasicSOS1(this->scip, &cons, consNames[row].c_str(), nrowcols,
+                     consvars.data(), NULL));
+               break;
+            }
             default:
                SCIPerrorMessage("unknown constraint type\n");
                assert(false);
@@ -544,7 +559,28 @@ namespace bugger
             SCIP_Real lhs;
             SCIP_Real rhs;
             int nrowcols;
-            if( conshdlrname == "and" )
+            if( conshdlrname == "SOS1" )
+            {
+               SCIP_VAR** sosvars;
+               lhs = 0.0;
+               rhs = 0.0;
+               nrowcols = SCIPgetNVarsSOS1(this->scip, cons);
+               sosvars = SCIPgetVarsSOS1(this->scip, cons);
+               std::copy(sosvars, sosvars + nrowcols, consvars.data());
+               for( int i = 0; i < nrowcols; ++i )
+               {
+                  if( SCIPvarIsNegated(consvars[i]) )
+                  {
+                     consvars[i] = SCIPvarGetNegatedVar(consvars[i]);
+                     rowvals[i] = -1;
+                  }
+                  else
+                     rowvals[i] = 1;
+                  rowinds[i] = SCIPvarGetProbindex(consvars[i]);
+               }
+               builder.setRowType(row, ConstraintType::kSOS1);
+            }
+            else if( conshdlrname == "and" )
             {
                SCIP_VAR** andvars;
                lhs = 0.0;
