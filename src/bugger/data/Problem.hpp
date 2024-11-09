@@ -566,8 +566,6 @@ class Problem
                continue;
             if( data.getValues( )[i] < 0 )
                value -= 1;
-            value *= data.getValues( )[i];
-            climb *= data.getValues( )[i];
             value /= -climb;
             if( maxshift < value )
                maxshift = value;
