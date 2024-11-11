@@ -370,7 +370,7 @@ namespace bugger
          parameterset.addParameter("scip.arithmetic", "arithmetic scip type (0: double, 1: rational)", parameters.arithmetic, 0, 1);
 #endif
          parameterset.addParameter("scip.mode", "solve scip mode (-1: optimize, 0: count)", parameters.mode, -1, 0);
-         parameterset.addParameter("scip.linearization", "identifier of last special type to treat as linear constraint (-1: all)", parameters.linearization, -1);
+         parameterset.addParameter("scip.linearization", "identifier of last special type to treat as linear constraint (-1: all)", parameters.linearization, -1, BUGGER_NSPECIALLINEARTYPES);
 #ifndef SCIP_WITH_EXACTSOLVE
          parameterset.addParameter("scip.certificate", "check vipr certificate", parameters.certificate, 0, 0);
 #else
@@ -408,6 +408,8 @@ namespace bugger
          if( initial )
          {
             String name;
+            if( parameters.linearization == -1 )
+               parameters.linearization = BUGGER_NSPECIALLINEARTYPES;
             if( parameters.mode != -1 )
             {
                parameters.set_dual_limit = false;

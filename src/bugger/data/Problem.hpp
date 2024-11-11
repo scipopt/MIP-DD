@@ -43,12 +43,15 @@
 
 namespace bugger
 {
+/// number of special linear types listed at front
+#define BUGGER_NSPECIALLINEARTYPES 1
+
 /// enumeration to list constraint types
-enum ConstraintType : char
+enum class ConstraintType : char
 {
    // real coefficients, real sides
    kLinear = 0,
-   // unified coefficients, integral sides, linear description
+   // unified coefficients, integral sides
    kSetPPC = 1,
    // integral coefficients (+-1: operator, +-2: resultant, <0: negated), zero sides
    kAnd = 2,
