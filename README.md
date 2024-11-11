@@ -34,6 +34,7 @@ The formerly failing assertion will then be identified as a solver error.
 Currently, handling the following constraint types is possible:
 
 - Linear
+- SetPPC
 - And
 - SOS1
 
