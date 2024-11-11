@@ -5,6 +5,7 @@ Features
 --------
 
 - enable and-constraint handling
+- enable SOS1-constraint handling
 
 Performance improvements
 ------------------------

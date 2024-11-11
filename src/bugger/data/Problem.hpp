@@ -50,6 +50,8 @@ enum class ConstraintType : char
    kLinear = 0,
    // integral coefficients (+-1: operator, +-2: resultant, <0: negated), zero sides
    kAnd = 1,
+   // scaling coefficients (<0: negated), zero sides
+   kSOS1 = 2,
 };
 
 /// struct to hold counters for up an downlocks of a column
@@ -475,6 +477,28 @@ class Problem
          else
             return max<REAL>(resvalue, 0);
       }
+      case ConstraintType::kSOS1:
+      {
+         StableSum<REAL> sum;
+         REAL maxvalue { 0 };
+         for( int i = 0; i < data.getLength( ); ++i )
+         {
+            REAL value { solution.primal[data.getIndices( )[i]] };
+            if( data.getValues( )[i] < 0 )
+               value -= 1;
+            value *= data.getValues( )[i];
+            if( value < 0 )
+               value *= -1;
+            if( maxvalue < value )
+            {
+               sum.add(maxvalue);
+               maxvalue = value;
+            }
+            else
+               sum.add(value);
+         }
+         return sum.get();
+      }
       default:
          throw std::runtime_error("unknown constraint type");
       }
@@ -527,6 +551,49 @@ class Problem
             return min<REAL>(-minvalue, 0);
          else
             return max<REAL>(resvalue, 0);
+      }
+      case ConstraintType::kSOS1:
+      {
+         StableSum<REAL> sum;
+         REAL maxshift { 0 };
+         REAL maxvalue { std::numeric_limits<REAL>::min() };
+         REAL maxclimb { 0 };
+         for( int i = 0; i < data.getLength( ); ++i )
+         {
+            REAL value { solution.primal[data.getIndices( )[i]] };
+            REAL climb { solution.ray[data.getIndices( )[i]] };
+            if( climb == 0 )
+               continue;
+            if( data.getValues( )[i] < 0 )
+               value -= 1;
+            value /= -climb;
+            if( maxshift < value )
+               maxshift = value;
+         }
+         for( int i = 0; i < data.getLength( ); ++i )
+         {
+            REAL value { solution.primal[data.getIndices( )[i]] };
+            REAL climb { solution.ray[data.getIndices( )[i]] };
+            if( data.getValues( )[i] < 0 )
+               value -= 1;
+            value *= data.getValues( )[i];
+            climb *= data.getValues( )[i];
+            value += maxshift * climb;
+            if( climb < 0 || ( climb == 0 && value < 0 ) )
+            {
+               value *= -1;
+               climb *= -1;
+            }
+            if( maxvalue < value || ( maxvalue == value && maxclimb < climb ) )
+            {
+               sum.add(maxclimb);
+               maxvalue = value;
+               maxclimb = climb;
+            }
+            else
+               sum.add(climb);
+         }
+         return sum.get();
       }
       default:
          throw std::runtime_error("unknown constraint type");
