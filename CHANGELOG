@@ -4,6 +4,7 @@
 Features
 --------
 
+- enable setPPC-constraint handling
 - enable and-constraint handling
 - enable SOS1-constraint handling
 
