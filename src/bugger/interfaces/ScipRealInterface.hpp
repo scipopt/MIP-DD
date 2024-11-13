@@ -137,6 +137,59 @@ namespace bugger
                      consvars.data( ), consvals.data( ), lhs, rhs));
                break;
             }
+            case ConstraintType::kSetPPC:
+            {
+               bool general = false;
+               for( int i = 0; i < nrowcols; ++i )
+               {
+                  assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
+                  assert(rowvals[i] != 0);
+                  assert(cflags[rowinds[i]].test(ColFlag::kIntegral, ColFlag::kImplInt));
+                  assert(!cflags[rowinds[i]].test(ColFlag::kLbInf));
+                  assert(domains.lower_bounds[rowinds[i]] >= 0);
+                  assert(!cflags[rowinds[i]].test(ColFlag::kUbInf));
+                  assert(domains.upper_bounds[rowinds[i]] <= 1);
+                  if( rowvals[i] < 0 )
+                  {
+                     SCIPgetNegatedVar(this->scip, this->vars[rowinds[i]], &consvars[i]);
+                     consvals[i] = SCIP_Real(-rowvals[i]);
+                     if( !SCIPisInfinity(this->scip, -lhs) )
+                        lhs += consvals[i];
+                     if( !SCIPisInfinity(this->scip, rhs) )
+                        rhs += consvals[i];
+                  }
+                  else
+                  {
+                     consvars[i] = this->vars[rowinds[i]];
+                     consvals[i] = SCIP_Real(rowvals[i]);
+                  }
+                  if( consvals[i] != 1.0 )
+                     general = true;
+               }
+               if( general || ( !SCIPisInfinity(this->scip, -lhs) && lhs != 1.0 ) || ( !SCIPisInfinity(this->scip, rhs) && rhs != 1.0 ) )
+               {
+                  SCIP_CALL_ABORT(SCIPcreateConsBasicLinear(this->scip, &cons, consNames[row].c_str(), nrowcols,
+                        consvars.data( ), consvals.data( ), lhs, rhs));
+               }
+               else if( lhs == 1.0 && rhs != 1.0 )
+               {
+                  SCIP_CALL_ABORT(SCIPcreateConsBasicSetcover(this->scip, &cons, consNames[row].c_str(), nrowcols,
+                        consvars.data( )));
+               }
+               else if( lhs != 1.0 && rhs == 1.0 )
+               {
+                  SCIP_CALL_ABORT(SCIPcreateConsBasicSetpack(this->scip, &cons, consNames[row].c_str(), nrowcols,
+                        consvars.data( )));
+               }
+               else
+               {
+                  assert(lhs == 1.0);
+                  assert(rhs == 1.0);
+                  SCIP_CALL_ABORT(SCIPcreateConsBasicSetpart(this->scip, &cons, consNames[row].c_str(), nrowcols,
+                        consvars.data( )));
+               }
+               break;
+            }
             case ConstraintType::kAnd:
             {
                SCIP_VAR* resvar = NULL;
@@ -632,6 +685,23 @@ namespace bugger
                   }
                   rowinds[i] = SCIPvarGetProbindex(consvars[i]);
                   rowvals[i] = REAL(consvals[i]);
+               }
+               switch( ConstraintType(this->parameters.linearization) )
+               {
+               case ConstraintType::kLinear:
+                  if( conshdlrname == "setppc" )
+                  {
+                     builder.setRowType(row, ConstraintType::kSetPPC);
+                     break;
+                  }
+               case ConstraintType::kSetPPC:
+                  break;
+               case ConstraintType::kAnd:
+               case ConstraintType::kSOS1:
+               default:
+                  SCIPerrorMessage("unknown constraint type\n");
+                  assert(false);
+                  break;
                }
             }
             builder.setRowLhs(row, REAL(lhs));

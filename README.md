@@ -34,9 +34,13 @@ The formerly failing assertion will then be identified as a solver error.
 Currently, handling the following constraint types is possible:
 
 - Linear
+- SetPPC
 - And
 - SOS1
 
+By default, the SCIP interface downgrades special linear constraints to aim at conventional MIP formulations.
+This way, issues of interest might be worked around.
+For that, the option scip.linearization = 0 can be tried to apply special handlers from scratch.
 Optionally, the arithmetic type used for reductions, problems, and solutions can be selected by the cmake parameter BUGGER_ARITHMETIC, which is double by default.
 
 To run the bugger with parameters on a settings-problem-solution instance with respect to target settings, it can be invoked by

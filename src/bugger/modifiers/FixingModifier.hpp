@@ -55,7 +55,7 @@ namespace bugger
          const auto& data = problem.getConstraintMatrix( ).getColumnCoefficients(col);
          for( int index = 0; index < data.getLength( ); ++index )
             if( !problem.getConstraintMatrix( ).getRowFlags( )[ data.getIndices( )[ index ] ].test(RowFlag::kRedundant)
-             && problem.getConstraintTypes( )[ data.getIndices( )[ index ] ] != ConstraintType::kLinear
+             && problem.getConstraintTypes( )[ data.getIndices( )[ index ] ] > ConstraintType(BUGGER_NSPECIALLINEARTYPES)
              && !this->num.isZetaZero(data.getValues( )[ index ]) )
                return false;
          return true;
