@@ -376,7 +376,7 @@ parse_number( const String& s )
    {
       ss >> number;
    }
-   catch( boost::wrapexcept<std::runtime_error> const& )
+   catch( const std::runtime_error& )
    {
       success = false;
    }
