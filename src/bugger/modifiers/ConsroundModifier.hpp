@@ -108,7 +108,7 @@ namespace bugger
                   if( !this->num.isZetaIntegral(data.getValues( )[ index ]) )
                      batches_coeff.emplace_back(row, data.getIndices( )[ index ], round(data.getValues( )[ index ]));
                }
-               if( solution.status == SolutionStatus::kFeasible )
+               if( solution.primal.size() == copy.getNCols() )
                {
                   REAL activity { copy.getPrimalActivity(solution, row, true) };
                   lhs = min(lhs, this->num.epsFloor(activity));

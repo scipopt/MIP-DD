@@ -98,7 +98,7 @@ namespace bugger
                ++this->last_admissible;
                const auto& col_data = copy.getConstraintMatrix( ).getColumnCoefficients(col);
                REAL fixedval { };
-               if( solution.status == SolutionStatus::kFeasible )
+               if( solution.primal.size() == copy.getNCols() )
                {
                   fixedval = solution.primal[ col ];
                   if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )

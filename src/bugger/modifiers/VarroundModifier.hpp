@@ -98,7 +98,7 @@ namespace bugger
                ++this->last_admissible;
                REAL lb { round(copy.getLowerBounds( )[ col ]) };
                REAL ub { round(copy.getUpperBounds( )[ col ]) };
-               if( solution.status == SolutionStatus::kFeasible )
+               if( solution.primal.size() == copy.getNCols() )
                {
                   REAL value { solution.primal[ col ] };
                   lb = min(lb, this->num.epsFloor(value));

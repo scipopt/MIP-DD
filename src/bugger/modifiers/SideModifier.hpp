@@ -107,7 +107,7 @@ namespace bugger
                      break;
                   }
                }
-               if( solution.status == SolutionStatus::kFeasible )
+               if( solution.primal.size() == copy.getNCols() )
                {
                   fixedval = copy.getPrimalActivity(solution, row);
                   if( integral )
