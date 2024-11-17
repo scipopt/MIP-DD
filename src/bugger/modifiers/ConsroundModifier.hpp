@@ -67,7 +67,8 @@ namespace bugger
       ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
-         if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded )
+         if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded
+            || ( solution.status == SolutionStatus::kFeasible && solution.primal.size() != problem.getNCols() ) )
             return ModifierStatus::kNotAdmissible;
 
          long long batchsize = 1;
