@@ -63,7 +63,11 @@ namespace bugger
             return false;
          }
 
-         if( existsFile(solution_file) )
+         if( !boost::iequals(solution_file, "unknown")
+          && !boost::iequals(solution_file, "infeasible")
+          && !boost::iequals(solution_file, "feasible")
+          && !boost::iequals(solution_file, "unbounded")
+          && existsFile(solution_file) )
          {
             fmt::print("file {} is not valid\n", solution_file);
             return false;
