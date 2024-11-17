@@ -33,13 +33,13 @@
 #include <utility>
 #include <vector>
 
-namespace bugger {
 
+namespace bugger
+{
    using namespace boost::program_options;
 
-
-
-   struct OptionsInfo {
+   struct OptionsInfo
+   {
       std::string problem_file;
       std::string param_settings_file;
       std::string settings_file;
@@ -49,33 +49,33 @@ namespace bugger {
       bool is_complete;
 
       bool
-      checkFiles( ) {
-         if( existsFile(problem_file))
+      checkFiles( )
+      {
+         if( existsFile(problem_file) )
          {
             fmt::print("file {} is not valid\n", problem_file);
             return false;
          }
 
-
-         if( existsFile(param_settings_file))
+         if( existsFile(param_settings_file) )
          {
             fmt::print("file {} is not valid\n", param_settings_file);
             return false;
          }
 
-         if( existsFile(solution_file))
+         if( existsFile(solution_file) )
          {
             fmt::print("file {} is not valid\n", solution_file);
             return false;
          }
 
-         if( existsFile(settings_file))
+         if( existsFile(settings_file) )
          {
             fmt::print("file {} is not valid\n", settings_file);
             return false;
          }
 
-         if( existsFile(target_settings_file))
+         if( existsFile(target_settings_file) )
          {
             fmt::print("file {} is not valid\n", target_settings_file);
             return false;
@@ -85,15 +85,15 @@ namespace bugger {
       }
 
       bool
-      existsFile(std::string &filename) const {
+      existsFile(std::string &filename) const
+      {
          return !filename.empty( ) && !std::ifstream(filename);
       }
 
       void
-      parse(const std::vector<std::string> &opts = std::vector<std::string>( )) {
+      parse(const std::vector<std::string> &opts = std::vector<std::string>( ))
+      {
          is_complete = false;
-
-
          options_description desc(fmt::format(""));
 
          desc.add_options( )("file,f",
@@ -116,7 +116,6 @@ namespace bugger {
                              value(&solution_file),
                              "filename for reference solution or unknown/infeasible/unbounded");
 
-
          if( opts.empty( ))
          {
             fmt::print("\n{}\n", desc);
@@ -124,7 +123,6 @@ namespace bugger {
          }
 
          variables_map vm;
-
          parsed_options parsed = command_line_parser(opts)
                .options(desc)
                .allow_unregistered( )
@@ -135,15 +133,14 @@ namespace bugger {
          if( !checkFiles( ))
             return;
 
-         unparsed_options =
-               collect_unrecognized(parsed.options, exclude_positional);
-
+         unparsed_options = collect_unrecognized(parsed.options, exclude_positional);
          is_complete = true;
       }
    };
 
    OptionsInfo
-   parseOptions(int argc, char *argv[]) {
+   parseOptions(int argc, char *argv[])
+   {
       OptionsInfo optionsInfo;
       using namespace boost::program_options;
       using boost::optional;
