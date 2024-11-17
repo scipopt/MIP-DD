@@ -743,7 +743,7 @@ namespace bugger
          bool successproblem = SCIPwriteOrigProblem(this->scip, (filename + ".cip").c_str(), NULL, FALSE) == SCIP_OKAY;
          bool successsolution = true;
 
-         if( writesolution && this->reference->status == SolutionStatus::kFeasible )
+         if( writesolution && this->reference->primal.size() == this->model->getNCols() )
          {
             SCIP_SOL* sol = NULL;
             FILE* file = NULL;

@@ -433,7 +433,7 @@ namespace bugger
          bool successsolution = true;
 
          //TODO: SoPlex solution setter
-         if( writesolution && this->reference->status == SolutionStatus::kFeasible )
+         if( writesolution && this->reference->primal.size() == this->model->getNCols() )
             successsolution = false;
 
          return { successsettings, successproblem, successsolution };
