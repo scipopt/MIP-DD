@@ -40,6 +40,7 @@ New parameters
 Fixed bugs
 ----------
 
+- keep restricted solver limit settings in modifier setting when resetting
 
 Build system
 ------------

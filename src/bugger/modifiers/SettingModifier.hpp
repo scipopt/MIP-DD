@@ -135,7 +135,7 @@ namespace bugger
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
                if( this->call_solver(copy, problem, solution) == BuggerStatus::kOkay )
-                  copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
+                  copy = reset(settings, copy, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
                   applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
@@ -162,7 +162,7 @@ namespace bugger
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
                if( this->call_solver(copy, problem, solution) == BuggerStatus::kOkay )
-                  copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
+                  copy = reset(settings, copy, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
                   applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
@@ -190,7 +190,7 @@ namespace bugger
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
                if( this->call_solver(copy, problem, solution) == BuggerStatus::kOkay )
-                  copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
+                  copy = reset(settings, copy, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
                   applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
@@ -219,7 +219,7 @@ namespace bugger
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
                if( this->call_solver(copy, problem, solution) == BuggerStatus::kOkay )
-                  copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
+                  copy = reset(settings, copy, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
                   applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
@@ -249,7 +249,7 @@ namespace bugger
                                                             && target_settings.getStringSettings().empty() ) ) )
             {
                if( this->call_solver(copy, problem, solution) == BuggerStatus::kOkay )
-                  copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
+                  copy = reset(settings, copy, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
                   applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
@@ -280,7 +280,7 @@ namespace bugger
             if( batches >= 1 && ( batches >= batchsize || i + 1 == target_settings.getStringSettings().size() ) )
             {
                if( this->call_solver(copy, problem, solution) == BuggerStatus::kOkay )
-                  copy = reset(settings, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
+                  copy = reset(settings, copy, applied_bool, applied_int, applied_long, applied_double, applied_char, applied_string);
                else
                {
                   applied_bool.insert(applied_bool.end(), batches_bool.begin(), batches_bool.end());
@@ -310,11 +310,12 @@ namespace bugger
       }
 
       SolverSettings
-      reset(const SolverSettings& settings,
+      reset(const SolverSettings& settings, const SolverSettings& currents,
             const Vec<std::pair<int, bool>>& applied_bool, const Vec<std::pair<int, int>>& applied_int,
             const Vec<std::pair<int, long>>& applied_long, const Vec<std::pair<int, double>>& applied_double,
             const Vec<std::pair<int, char>>& applied_char, const Vec<std::pair<int, std::string>>& applied_string) const
       {
+         const auto& limits = currents.getLimitSettings();
          auto reset = SolverSettings(settings);
          for( const auto& item: applied_bool )
             reset.setBoolSettings(item.first, item.second);
@@ -328,6 +329,8 @@ namespace bugger
             reset.setCharSettings(item.first, item.second);
          for( const auto& item: applied_string )
             reset.setStringSettings(item.first, item.second);
+         for( int i = 0; i < limits.size(); ++i )
+            reset.setLimitSettings(i, limits[i].second);
          return reset;
       }
    };
