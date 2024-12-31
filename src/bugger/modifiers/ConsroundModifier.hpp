@@ -81,7 +81,6 @@ namespace bugger
             batchsize /= this->parameters.nbatches;
          }
 
-         bool admissible = false;
          auto copy = Problem<REAL>(problem);
          auto& matrix = copy.getConstraintMatrix( );
          Vec<MatrixEntry<REAL>> applied_entries { };
@@ -98,7 +97,7 @@ namespace bugger
          {
             if( isConsroundAdmissible(copy, row) )
             {
-               admissible = true;
+               ++this->last_admissible;
                const auto& data = matrix.getRowCoefficients(row);
                REAL lhs { round(matrix.getLeftHandSides( )[ row ]) };
                REAL rhs { round(matrix.getRightHandSides( )[ row ]) };
@@ -151,7 +150,7 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
          if( applied_entries.empty() && applied_lefts.empty() && applied_rights.empty() )
             return ModifierStatus::kUnsuccesful;

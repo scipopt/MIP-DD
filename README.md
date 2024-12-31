@@ -30,7 +30,17 @@ Currently, interfaces for the following solvers are already built in:
 
 It is necessary to build the underlying solver in release mode since MIP-DD is not designed to handle assertions directly in order to keep the process performant.
 Nevertheless, it is usually possible to handle assertions indirectly by reformulating the solver code to return a suitable error under the negated assertion condition.
-The MIP-DD will then identify the formerly failing assertion as a solver error.
+The formerly failing assertion will then be identified as a solver error.
+Currently, handling the following constraint types is possible:
+
+- Linear
+- SetPPC
+- And
+- SOS1
+
+By default, the SCIP interface downgrades special linear constraints to aim at conventional MIP formulations.
+This way, issues of interest might be worked around.
+For that, the option scip.linearization = 0 can be tried to apply special handlers from scratch.
 Optionally, the arithmetic type used for reductions, problems, and solutions can be selected by the cmake parameter BUGGER_ARITHMETIC, which is double by default.
 
 To run the bugger with parameters on a settings-problem-solution instance with respect to target settings, it can be invoked by
@@ -41,9 +51,7 @@ bin/bugger -p PARAMETERS -f PROBLEM -o SOLUTION -s SOLVER_SETTINGS -t TARGET_SET
 Before running the MIP-DD we recommend to regard the following hints to obtain a reasonable workflow:
 * Determine a reference solution that is as feasible as possible. To detect a suboptimality issue, the dual bound claimed by the solver must cut off this solution. For other issues, a reference solution is not required but helps to guide the process.
 * Define initial limits for the solver, for example on the total number of nodes in the branching tree, so that the bug of interest is still reproducible. This way, reductions for which the bug would be reproduced beyond these limits, will be discarded. The solver interface may restrict limits automatically with respect to some variability margin in order to accelerate the process and favor easy instances.
-* The initial number of batches is defined by parameter nbatches to bound the solve invocations per modifier. Each modifier determines the number of elementary modifications and then calculates the batch size to invoke the solver at most as many times as specified. Hence, the more batches, the smaller the changes in each test run. By default, it is set to 2, which initially leads to a bisection like approach suitable to quickly trying for lucky punches but might need to be increased for sensitive issues to achieve any reductions. After every bugger round, nbatches is redefined automatically in order to keep the anticipated expenditure based on the solving effort of the last failing run provided by the solver interface constant over all rounds.
-
-For further details please refer to the PAPER (to be published).
+* The initial number of batches is defined by parameter nbatches to bound the solve invocations per modifier. Each modifier determines the number of elementary modifications and then calculates the batch size to invoke the solver at most as many times as specified. Hence, the more batches, the smaller the changes in each test run. By default, nbatches is set to 1, which initially leads to a full reduction, in order to quickly hit lucky punches if possible. After every bugger round, nbatches is redefined automatically in order to keep the anticipated expenditure based on the solving effort of the last failing run provided by the solver interface constant. When all modifiers have not found any further reductions, the process is restarted automatically with doubled expenditure until the finest singleton batches have been generated, in order to achieve reductions also for sensitive issues if possible.
 
 # Parameters
 

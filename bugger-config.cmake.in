@@ -4,10 +4,21 @@ endif()
 set(BUGGER_IMPORTED_TARGETS bugger)
 set(BUGGER_FOUND 1)
 
-if(NOT TBB_FOUND)
-    list(APPEND CMAKE_MODULE_PATH @TBB_MODULE_PATH@)
-    find_package(TBB 2018 COMPONENTS tbb tbbmalloc REQUIRED HINTS ${CMAKE_CURRENT_LIST_DIR}/_deps/local/)
+# For function find_dependency
+include(CMakeFindDependencyMacro)
+
+list(APPEND CMAKE_MODULE_PATH @EXTRA_CMAKE_MODULE_PATH@)
+
+# If BUGGER was built with TBB then we also need it.
+set(BUGGER_TBB @BUGGER_TBB@)
+if(BUGGER_TBB)
+   if(NOT TBB_FOUND)
+      find_dependency(TBB 2018 COMPONENTS tbb tbbmalloc)
+      if(TBB_FOUND)
+         find_dependency(Threads REQUIRED)
+         message(STATUS "Found TBB: ${TBB_DIR}")
+      else()
+         set(BUGGER_FOUND 0)
+      endif()
+   endif()
 endif()
-
-find_package(Threads REQUIRED)
-

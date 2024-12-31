@@ -71,7 +71,6 @@ namespace bugger
             batchsize /= this->parameters.nbatches;
          }
 
-         bool admissible = false;
          auto copy = Problem<REAL>(problem);
          Vec<std::pair<int, REAL>> applied_reductions { };
          Vec<std::pair<int, REAL>> batches { };
@@ -81,8 +80,8 @@ namespace bugger
          {
             if( isVariableAdmissible(copy, col) )
             {
+               ++this->last_admissible;
                REAL fixedval { };
-               admissible = true;
                if( solution.status == SolutionStatus::kFeasible )
                {
                   fixedval = solution.primal[ col ];
@@ -132,7 +131,7 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
          if( applied_reductions.empty() )
             return ModifierStatus::kUnsuccesful;

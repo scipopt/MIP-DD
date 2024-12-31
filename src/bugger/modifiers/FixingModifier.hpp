@@ -47,10 +47,18 @@ namespace bugger
       bool
       isFixingAdmissible(const Problem<REAL>& problem, const int& col) const
       {
-         return !problem.getColFlags( )[ col ].test(ColFlag::kFixed)
-             && !problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
-             && !problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
-             && this->num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
+         if( problem.getColFlags( )[ col ].test(ColFlag::kFixed)
+          || problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
+          || problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
+          || !this->num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) )
+            return false;
+         const auto& data = problem.getConstraintMatrix( ).getColumnCoefficients(col);
+         for( int index = 0; index < data.getLength( ); ++index )
+            if( !problem.getConstraintMatrix( ).getRowFlags( )[ data.getIndices( )[ index ] ].test(RowFlag::kRedundant)
+             && problem.getConstraintTypes( )[ data.getIndices( )[ index ] ] > ConstraintType(BUGGER_NSPECIALLINEARTYPES)
+             && !this->num.isZetaZero(data.getValues( )[ index ]) )
+               return false;
+         return true;
       }
 
       ModifierStatus
@@ -69,7 +77,6 @@ namespace bugger
             batchsize /= this->parameters.nbatches;
          }
 
-         bool admissible = false;
          auto copy = Problem<REAL>(problem);
          Vec<int> applied_reductions { };
          Vec<MatrixEntry<REAL>> applied_entries { };
@@ -85,7 +92,7 @@ namespace bugger
          {
             if( isFixingAdmissible(copy, col) )
             {
-               admissible = true;
+               ++this->last_admissible;
                const auto& col_data = copy.getConstraintMatrix( ).getColumnCoefficients(col);
                REAL fixedval { };
                if( solution.status == SolutionStatus::kFeasible )
@@ -191,7 +198,7 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
          if( applied_reductions.empty() )
             return ModifierStatus::kUnsuccesful;

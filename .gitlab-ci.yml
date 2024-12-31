@@ -25,7 +25,7 @@ stages:
     name: gcc:10
   before_script:
     - apt-get update
-    - apt-get install -y cmake libtbb-dev libmpfr-dev
+    - apt-get install -y cmake libmpfr-dev libtbb-dev
     - export CFLAGS="-Werror"
     - export CXXFLAGS="-Werror"
     - export LD_LIBRARY_PATH=${INSTALL_DIR}/lib:${LD_LIBRARY_PATH}
@@ -51,7 +51,7 @@ boost-soplex-scip:
     - mkdir -p ${BOOST_DIR}
     - tar -xzf ${BOOST_DIR}.tar.gz -C ${BOOST_DIR} --strip-components=1
     - cd ${BOOST_DIR}
-    - ./bootstrap.sh --prefix=${INSTALL_DIR} --with-libraries=program_options,serialization,iostreams,regex
+    - ./bootstrap.sh --prefix=${INSTALL_DIR} --with-libraries=program_options,iostreams,serialization
     - ./b2 --prefix=${INSTALL_DIR} -j4 install
     # soplex
     - git clone https://github.com/scipopt/soplex.git ${SOPLEX_DIR}
@@ -72,12 +72,12 @@ boost-soplex-scip:
     - mkdir ${SCIP_DIR}/build
     - cd ${SCIP_DIR}/build
     - git checkout ${SCIP_REVISION}
-    - cmake .. -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}/default -DCRITERION=off -DREADLINE=off -DZIMPL=off -DPAPILO=off -DIPOPT=off
+    - cmake .. -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}/default -DREADLINE=off -DZIMPL=off -DPAPILO=off -DIPOPT=off
     - make -j4
     - make install
     # scipexact
     - git checkout ${SCIPEXACT_REVISION}
-    - cmake .. -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}/exact -DCRITERION=off -DREADLINE=off -DZIMPL=off -DPAPILO=off -DIPOPT=off
+    - cmake .. -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}/exact -DREADLINE=off -DZIMPL=off -DPAPILO=off -DIPOPT=off
     - make -j4
     - make install
 

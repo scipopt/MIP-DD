@@ -72,7 +72,6 @@ namespace bugger
             batchsize /= this->parameters.nbatches;
          }
 
-         bool admissible = false;
          auto copy = Problem<REAL>(problem);
          Vec<int> applied_reductions { };
          Vec<int> batches { };
@@ -82,7 +81,7 @@ namespace bugger
          {
             if( isObjectiveAdmissible(copy, col) )
             {
-               admissible = true;
+               ++this->last_admissible;
                copy.getObjective( ).coefficients[ col ] = 0;
                batches.push_back(col);
             }
@@ -101,7 +100,7 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
          if( applied_reductions.empty() )
             return ModifierStatus::kUnsuccesful;

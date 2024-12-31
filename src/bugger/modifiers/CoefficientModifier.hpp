@@ -56,7 +56,8 @@ namespace bugger
       bool
       isCoefficientAdmissible(const Problem<REAL>& problem, const int& row) const
       {
-         if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant) )
+         if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant)
+          || problem.getConstraintTypes( )[ row ] > ConstraintType(BUGGER_NSPECIALLINEARTYPES) )
             return false;
          const auto& data = problem.getConstraintMatrix( ).getRowCoefficients(row);
          for( int index = 0; index < data.getLength( ); ++index )
@@ -82,7 +83,6 @@ namespace bugger
             batchsize /= this->parameters.nbatches;
          }
 
-         bool admissible = false;
          auto copy = Problem<REAL>(problem);
          auto& matrix = copy.getConstraintMatrix( );
          Vec<MatrixEntry<REAL>> applied_entries { };
@@ -99,7 +99,7 @@ namespace bugger
          {
             if( isCoefficientAdmissible(copy, row) )
             {
-               admissible = true;
+               ++this->last_admissible;
                const auto& data = matrix.getRowCoefficients(row);
                bool integral = true;
                REAL offset { };
@@ -189,7 +189,7 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
          if( applied_entries.empty() )
             return ModifierStatus::kUnsuccesful;

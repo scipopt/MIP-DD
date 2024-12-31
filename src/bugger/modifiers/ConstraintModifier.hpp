@@ -71,7 +71,6 @@ namespace bugger
             batchsize /= this->parameters.nbatches;
          }
 
-         bool admissible = false;
          auto copy = Problem<REAL>(problem);
          Vec<int> applied_reductions { };
          Vec<int> batches { };
@@ -81,7 +80,7 @@ namespace bugger
          {
             if( isConstraintAdmissible(copy, row) )
             {
-               admissible = true;
+               ++this->last_admissible;
                assert(!copy.getRowFlags( )[ row ].test(RowFlag::kRedundant));
                copy.getRowFlags( )[ row ].set(RowFlag::kRedundant);
                batches.push_back(row);
@@ -104,7 +103,7 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
          if( applied_reductions.empty() )
             return ModifierStatus::kUnsuccesful;
