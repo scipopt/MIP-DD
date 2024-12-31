@@ -12,11 +12,6 @@ Performance improvements
 Interface changes
 ----------
 
-## SolverRetcode:
-
-
-## SolverInterface:
-
 
 New parameters
 ----------
@@ -25,6 +20,7 @@ New parameters
 Fixed bugs
 ----------
 
+- keep restricted solver limit settings in modifier setting when resetting
 
 Build system
 ------------
