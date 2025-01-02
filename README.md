@@ -49,7 +49,7 @@ bin/bugger -p PARAMETERS -f PROBLEM -o SOLUTION -s SOLVER_SETTINGS -t TARGET_SET
 ```
 
 Before running the MIP-DD we recommend to regard the following hints to obtain a reasonable workflow:
-* Determine a reference solution that is as feasible as possible. To detect a suboptimality issue, the dual bound claimed by the solver must cut off this solution. For other issues, a reference solution is not required but helps to guide the process.
+* Determine a reference solution that is as feasible as possible. To detect a suboptimality issue, the dual bound claimed by the solver must cut off this solution. For other issues, a reference solution is not required but can help to guide the process. Alternatively, any of 'infeasible', 'feasible', or 'unbounded' can be declared for which the modifiers only try reductions maintaining this solution status and the bugger interprets a contradicting solver status as bug. Especially, providing 'feasible' aims at a constraint-based IIS (irreducible infeasible subsystem) assuming the underlying solver to behave reliably.
 * Define initial limits for the solver, for example on the total number of nodes in the branching tree, so that the bug of interest is still reproducible. This way, reductions for which the bug would be reproduced beyond these limits, will be discarded. The solver interface may restrict limits automatically with respect to some variability margin in order to accelerate the process and favor easy instances.
 * The initial number of batches is defined by parameter nbatches to bound the solve invocations per modifier. Each modifier determines the number of elementary modifications and then calculates the batch size to invoke the solver at most as many times as specified. Hence, the more batches, the smaller the changes in each test run. By default, nbatches is set to 1, which initially leads to a full reduction, in order to quickly hit lucky punches if possible. After every bugger round, nbatches is redefined automatically in order to keep the anticipated expenditure based on the solving effort of the last failing run provided by the solver interface constant. When all modifiers have not found any further reductions, the process is restarted automatically with doubled expenditure until the finest singleton batches have been generated, in order to achieve reductions also for sensitive issues if possible.
 
@@ -70,7 +70,7 @@ Although there are general fallbacks for input and output of problem and solutio
 Method solve() returns a pair<char, SolverStatus>.
 The signed char encodes the validity of the solving process.
 Negative values are reserved for solver internal errors, 0 means that no bug is detected, while positive values represent externally detected issues identifying 1 as dual fail, 2 as primal fail, and 3 as objective fail.
-The SolverStatus primarily serves to provide additional information about the solution status in the log for example infeasible, unbounded, optimal, or that a specific limit is reached.
+The SolverStatus primarily serves to provide additional information about the resulting solution status in the log, for example infeasible, unbounded, optimal, or that a specific limit is reached.
 To suppress certain fails, the parameter passcodes is the vector of codes that must not be interpreted as bugs.
 The general SolverInterface already provides functions to detect dual, primal, and objective fails based on the resulting solution information to be supplied in method solve().
 Finally, the solver can be integrated in the cmake system.
