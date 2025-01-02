@@ -47,10 +47,23 @@ namespace bugger
       bool
       isSideAdmissible(const Problem<REAL>& problem, const int& row) const
       {
-         return !problem.getRowFlags( )[ row ].test(RowFlag::kRedundant)
-             && ( problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
-               || problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
-               || this->num.isZetaLT(problem.getConstraintMatrix( ).getLeftHandSides( )[ row ], problem.getConstraintMatrix( ).getRightHandSides( )[ row ]) );
+         if( problem.getRowFlags( )[ row ].test(RowFlag::kRedundant)
+          || ( !problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
+            && !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
+            && this->num.isZetaGE(problem.getConstraintMatrix( ).getLeftHandSides( )[ row ], problem.getConstraintMatrix( ).getRightHandSides( )[ row ]) ) )
+            return false;
+         const auto& data = problem.getConstraintMatrix( ).getRowCoefficients(row);
+         for( int index = 0; index < data.getLength( ); ++index )
+         {
+            int col = data.getIndices( )[ index ];
+            if( !this->num.isZetaZero(data.getValues( )[ index ])
+             && !problem.getColFlags( )[ col ].test(ColFlag::kFixed)
+             && ( problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
+               || problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
+               || this->num.isZetaLT(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) ) )
+               return true;
+         }
+         return false;
       }
 
       ModifierStatus
