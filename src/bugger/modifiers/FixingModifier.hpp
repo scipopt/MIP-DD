@@ -45,18 +45,20 @@ namespace bugger
    private:
 
       bool
-      isFixingAdmissible(const Problem<REAL>& problem, const int& col) const
+      isFixingAdmissible(const Problem<REAL>& problem, const Solution<REAL>& solution, const int& col) const
       {
-         if( problem.getColFlags( )[ col ].test(ColFlag::kFixed)
-          || problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
-          || problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
-          || !this->num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) )
+         if( problem.getColFlags( )[ col ].test(ColFlag::kFixed) )
             return false;
+         bool fixed = !problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
+                   && !problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
+                   && this->num.isZetaGE(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ])
+                   && ( solution.status != SolutionStatus::kInfeasible
+                     || this->num.isZetaLE(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) );
          const auto& data = problem.getConstraintMatrix( ).getColumnCoefficients(col);
          for( int index = 0; index < data.getLength( ); ++index )
-            if( !problem.getConstraintMatrix( ).getRowFlags( )[ data.getIndices( )[ index ] ].test(RowFlag::kRedundant)
-             && problem.getConstraintTypes( )[ data.getIndices( )[ index ] ] > ConstraintType(BUGGER_NSPECIALLINEARTYPES)
-             && !this->num.isZetaZero(data.getValues( )[ index ]) )
+            if( !this->num.isZetaZero(data.getValues( )[ index ])
+             && !problem.getConstraintMatrix( ).getRowFlags( )[ data.getIndices( )[ index ] ].test(RowFlag::kRedundant)
+             && ( !fixed || problem.getConstraintTypes( )[ data.getIndices( )[ index ] ] > ConstraintType(BUGGER_NSPECIALLINEARTYPES) ) )
                return false;
          return true;
       }
@@ -70,7 +72,7 @@ namespace bugger
          {
             batchsize = this->parameters.nbatches - 1;
             for( int col = problem.getNCols( ) - 1; col >= 0; --col )
-               if( isFixingAdmissible(problem, col) )
+               if( isFixingAdmissible(problem, solution, col) )
                   ++batchsize;
             if( batchsize == this->parameters.nbatches - 1 )
                return ModifierStatus::kNotAdmissible;
@@ -90,7 +92,7 @@ namespace bugger
 
          for( int col = copy.getNCols( ) - 1; col >= 0; --col )
          {
-            if( isFixingAdmissible(copy, col) )
+            if( isFixingAdmissible(copy, solution, col) )
             {
                ++this->last_admissible;
                const auto& col_data = copy.getConstraintMatrix( ).getColumnCoefficients(col);
