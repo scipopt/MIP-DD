@@ -50,7 +50,7 @@ namespace bugger
          return !problem.getColFlags( )[ col ].test(ColFlag::kFixed)
              && !problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
              && !problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
-             && this->num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
+             && this->num.isZetaGE(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
       }
 
       bool
