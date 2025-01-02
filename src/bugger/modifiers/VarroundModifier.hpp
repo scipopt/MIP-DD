@@ -55,7 +55,9 @@ namespace bugger
          bool ubinf = problem.getColFlags( )[ col ].test(ColFlag::kUbInf);
          REAL lb { problem.getLowerBounds( )[ col ] };
          REAL ub { problem.getUpperBounds( )[ col ] };
-         return ( lbinf || ubinf || !this->num.isZetaEq(lb, ub) ) && ( ( !lbinf && !this->num.isZetaIntegral(lb) ) || ( !ubinf && !this->num.isZetaIntegral(ub) ) );
+         return ( lbinf || ubinf || !this->num.isZetaEq(lb, ub) )
+             && ( ( !lbinf && !this->num.isZetaIntegral(lb) )
+               || ( !ubinf && !this->num.isZetaIntegral(ub) ) );
       }
 
       ModifierStatus

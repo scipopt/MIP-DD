@@ -47,10 +47,11 @@ namespace bugger
       bool
       isObjectiveAdmissible(const Problem<REAL>& problem, const int& col) const
       {
-         return !this->num.isZetaZero(problem.getObjective( ).coefficients[ col ])
-           && ( problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
-             || problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
-             || !this->num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) );
+         return !problem.getColFlags( )[ col ].test(ColFlag::kFixed)
+             && !this->num.isZetaZero(problem.getObjective( ).coefficients[ col ])
+             && ( problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
+               || problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
+               || !this->num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) );
       }
 
       ModifierStatus
