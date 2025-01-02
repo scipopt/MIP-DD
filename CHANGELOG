@@ -7,6 +7,7 @@ Features
 - enable setPPC-constraint handling
 - enable and-constraint handling
 - enable SOS1-constraint handling
+- enable IIS mode by declaring status feasible without specific reference solution
 
 Performance improvements
 ------------------------
