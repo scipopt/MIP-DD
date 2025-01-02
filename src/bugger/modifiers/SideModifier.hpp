@@ -48,9 +48,9 @@ namespace bugger
       isSideAdmissible(const Problem<REAL>& problem, const int& row) const
       {
          return !problem.getRowFlags( )[ row ].test(RowFlag::kRedundant)
-           && ( problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
-             || problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
-             || !this->num.isZetaEq(problem.getConstraintMatrix( ).getLeftHandSides( )[ row ], problem.getConstraintMatrix( ).getRightHandSides( )[ row ]) );
+             && ( problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
+               || problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
+               || this->num.isZetaLT(problem.getConstraintMatrix( ).getLeftHandSides( )[ row ], problem.getConstraintMatrix( ).getRightHandSides( )[ row ]) );
       }
 
       ModifierStatus

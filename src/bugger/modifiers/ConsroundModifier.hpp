@@ -53,7 +53,9 @@ namespace bugger
          bool rhsinf = problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf);
          REAL lhs { problem.getConstraintMatrix( ).getLeftHandSides( )[ row ] };
          REAL rhs { problem.getConstraintMatrix( ).getRightHandSides( )[ row ] };
-         if( ( lhsinf || rhsinf || !this->num.isZetaEq(lhs, rhs) ) && ( ( !lhsinf && !this->num.isZetaIntegral(lhs) ) || ( !rhsinf && !this->num.isZetaIntegral(rhs) ) ) )
+         if( ( lhsinf || rhsinf || !this->num.isZetaEq(lhs, rhs) )
+          && ( ( !lhsinf && !this->num.isZetaIntegral(lhs) )
+            || ( !rhsinf && !this->num.isZetaIntegral(rhs) ) ) )
             return true;
          const auto& data = problem.getConstraintMatrix( ).getRowCoefficients(row);
          for( int index = 0; index < data.getLength( ); ++index )
