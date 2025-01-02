@@ -51,6 +51,10 @@ namespace bugger
             return false;
          if( solution.status != SolutionStatus::kInfeasible )
             return true;
+         if( !problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
+          && !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
+          && this->num.isZetaGT(problem.getConstraintMatrix( ).getLeftHandSides( )[ row ], problem.getConstraintMatrix( ).getRightHandSides( )[ row ]) )
+            return false;
          const auto& data = problem.getConstraintMatrix( ).getRowCoefficients(row);
          for( int index = 0; index < data.getLength( ); ++index )
          {

@@ -51,9 +51,10 @@ namespace bugger
             return false;
          bool fixed = !problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
                    && !problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
-                   && this->num.isZetaGE(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ])
-                   && ( solution.status != SolutionStatus::kInfeasible
-                     || this->num.isZetaLE(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) );
+                   && this->num.isZetaGE(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
+         if( fixed && solution.status == SolutionStatus::kInfeasible
+          && this->num.isZetaGT(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) )
+            return false;
          const auto& data = problem.getConstraintMatrix( ).getColumnCoefficients(col);
          for( int index = 0; index < data.getLength( ); ++index )
             if( !this->num.isZetaZero(data.getValues( )[ index ])
