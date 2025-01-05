@@ -14,6 +14,7 @@ Performance improvements
 
 - restart process with refined batches of double expenditure until singleton batches are reached
 - remove trivial problem elements directly with modifiers fixing and constraint without modifiers variable and side
+- set solution limit to one instead of primal limit to reference for provided status infeasible and feasible
 
 Interface changes
 ----------
