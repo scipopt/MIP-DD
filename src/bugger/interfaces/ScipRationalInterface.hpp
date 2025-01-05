@@ -163,24 +163,27 @@ namespace bugger
             SCIP_CALL_ABORT(SCIPreleaseCons(this->scip, &cons));
          }
 
-         if( solution_exists )
+         if( solution_exists && this->parameters.cutoffrelax >= 0.0 && this->parameters.cutoffrelax < SCIPinfinity(this->scip) )
+            //TODO: Set rational limit
+            SCIP_CALL_ABORT(SCIPsetObjlimit(this->scip, max(min(SCIP_Real(obj.sense ? this->parameters.cutoffrelax : -this->parameters.cutoffrelax) + SCIP_Real(this->value), SCIPinfinity(this->scip)), -SCIPinfinity(this->scip))));
+         if( ( this->reference->status == SolutionStatus::kFeasible || this->reference->status == SolutionStatus::kInfeasible ) && ( this->parameters.set_dual_limit || this->parameters.set_prim_limit ) )
          {
-            if( this->parameters.cutoffrelax >= 0.0 && this->parameters.cutoffrelax < SCIPinfinity(this->scip) )
-               //TODO: Set rational limit
-               SCIP_CALL_ABORT(SCIPsetObjlimit(this->scip, max(min(SCIP_Real(obj.sense ? this->parameters.cutoffrelax : -this->parameters.cutoffrelax) + SCIP_Real(this->value), SCIPinfinity(this->scip)), -SCIPinfinity(this->scip))));
-            if( this->parameters.set_dual_limit || this->parameters.set_prim_limit )
+            for( const auto& pair : this->limits )
             {
-               for( const auto& pair : this->limits )
+               switch( pair.second )
                {
-                  switch( pair.second )
-                  {
-                  case DUAL:
+               case DUAL:
+                  if( solution_exists )
                      SCIP_CALL_ABORT(SCIPsetRealParam(this->scip, pair.first.c_str(), SCIP_Real(this->relax( this->value, obj.sense, 2 * SCIPsumepsilon(this->scip), SCIPinfinity(this->scip) ))));
-                     break;
-                  case PRIM:
+                  break;
+               case PRIM:
+                  if( solution_exists )
                      SCIP_CALL_ABORT(SCIPsetRealParam(this->scip, pair.first.c_str(), SCIP_Real(this->value)));
-                     break;
-                  }
+                  break;
+               case SOLU:
+                  if( !solution_exists && this->parameters.set_prim_limit )
+                     SCIP_CALL_ABORT(SCIPsetIntParam(this->scip, pair.first.c_str(), 1));
+                  break;
                }
             }
          }
