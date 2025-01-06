@@ -46,9 +46,9 @@ namespace bugger
          this->adjustment = &settings;
          this->model = &problem;
          this->reference = &solution;
-         bool solution_exists = this->reference->status == SolutionStatus::kFeasible;
          int ncols = this->model->getNCols( );
          int nrows = this->model->getNRows( );
+         bool solution_exists = solution.status == SolutionStatus::kFeasible && solution.primal.size() == ncols;
          const auto& varNames = this->model->getVariableNames( );
          const auto& consNames = this->model->getConstraintNames( );
          const auto& domains = this->model->getVariableDomains( );
@@ -246,23 +246,26 @@ namespace bugger
             SCIP_CALL_ABORT(SCIPreleaseCons(this->scip, &cons));
          }
 
-         if( solution_exists )
+         if( solution_exists && this->parameters.cutoffrelax >= 0.0 && this->parameters.cutoffrelax < SCIPinfinity(this->scip) )
+            SCIP_CALL_ABORT(SCIPsetObjlimit(this->scip, max(min(SCIP_Real(obj.sense ? this->parameters.cutoffrelax : -this->parameters.cutoffrelax) + SCIP_Real(this->value), SCIPinfinity(this->scip)), -SCIPinfinity(this->scip))));
+         if( ( this->reference->status == SolutionStatus::kFeasible || this->reference->status == SolutionStatus::kInfeasible ) && ( this->parameters.set_dual_limit || this->parameters.set_prim_limit ) )
          {
-            if( this->parameters.cutoffrelax >= 0.0 && this->parameters.cutoffrelax < SCIPinfinity(this->scip) )
-               SCIP_CALL_ABORT(SCIPsetObjlimit(this->scip, max(min(SCIP_Real(obj.sense ? this->parameters.cutoffrelax : -this->parameters.cutoffrelax) + SCIP_Real(this->value), SCIPinfinity(this->scip)), -SCIPinfinity(this->scip))));
-            if( this->parameters.set_dual_limit || this->parameters.set_prim_limit )
+            for( const auto& pair : this->limits )
             {
-               for( const auto& pair : this->limits )
+               switch( pair.second )
                {
-                  switch( pair.second )
-                  {
-                  case DUAL:
+               case DUAL:
+                  if( solution_exists )
                      SCIP_CALL_ABORT(SCIPsetRealParam(this->scip, pair.first.c_str(), SCIP_Real(this->relax( this->value, obj.sense, 2 * SCIPsumepsilon(this->scip), SCIPinfinity(this->scip) ))));
-                     break;
-                  case PRIM:
+                  break;
+               case PRIM:
+                  if( solution_exists )
                      SCIP_CALL_ABORT(SCIPsetRealParam(this->scip, pair.first.c_str(), SCIP_Real(this->value)));
-                     break;
-                  }
+                  break;
+               case SOLU:
+                  if( !solution_exists && this->parameters.set_prim_limit )
+                     SCIP_CALL_ABORT(SCIPsetIntParam(this->scip, pair.first.c_str(), 1));
+                  break;
                }
             }
          }
@@ -743,7 +746,7 @@ namespace bugger
          bool successproblem = SCIPwriteOrigProblem(this->scip, (filename + ".cip").c_str(), NULL, FALSE) == SCIP_OKAY;
          bool successsolution = true;
 
-         if( writesolution && this->reference->status == SolutionStatus::kFeasible )
+         if( writesolution && this->reference->primal.size() == this->model->getNCols() )
          {
             SCIP_SOL* sol = NULL;
             FILE* file = NULL;

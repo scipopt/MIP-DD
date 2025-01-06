@@ -51,9 +51,9 @@ namespace bugger
          this->adjustment = &settings;
          this->model = &problem;
          this->reference = &solution;
-         bool solution_exists = this->reference->status == SolutionStatus::kFeasible;
          int ncols = this->model->getNCols( );
          int nrows = this->model->getNRows( );
+         bool solution_exists = solution.status == SolutionStatus::kFeasible && solution.primal.size() == ncols;
          const auto& varNames = this->model->getVariableNames( );
          const auto& consNames = this->model->getConstraintNames( );
          const auto& domains = this->model->getVariableDomains( );
@@ -433,7 +433,7 @@ namespace bugger
          bool successsolution = true;
 
          //TODO: SoPlex solution setter
-         if( writesolution && this->reference->status == SolutionStatus::kFeasible )
+         if( writesolution && this->reference->primal.size() == this->model->getNCols() )
             successsolution = false;
 
          return { successsettings, successproblem, successsolution };

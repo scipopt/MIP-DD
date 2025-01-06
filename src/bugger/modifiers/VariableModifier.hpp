@@ -63,7 +63,8 @@ namespace bugger
       ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
-         if( solution.status == SolutionStatus::kUnbounded )
+         if( solution.status == SolutionStatus::kUnbounded
+            || ( solution.status == SolutionStatus::kFeasible && solution.primal.size() != problem.getNCols() ) )
             return ModifierStatus::kNotAdmissible;
 
          long long batchsize = 1;
@@ -90,7 +91,7 @@ namespace bugger
             {
                ++this->last_admissible;
                REAL fixedval { };
-               if( solution.status == SolutionStatus::kFeasible )
+               if( solution.primal.size() == copy.getNCols() )
                {
                   fixedval = solution.primal[ col ];
                   if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )

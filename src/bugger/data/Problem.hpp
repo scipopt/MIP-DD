@@ -612,23 +612,32 @@ class Problem
    checkFeasibility(const Solution<REAL>& solution, const Num<REAL>& num, const Message& msg) const
    {
       msg.info("\nCheck:\n");
-      if( solution.status == SolutionStatus::kUnknown )
+      switch( solution.status )
       {
+      case SolutionStatus::kUnknown:
          msg.info("Unknown.\n");
          return true;
-      }
-      else if( solution.status == SolutionStatus::kInfeasible )
-      {
+      case SolutionStatus::kInfeasible:
          msg.info("Infeasible.\n");
          return true;
-      }
-      else if( solution.status == SolutionStatus::kUnbounded )
-      {
+      case SolutionStatus::kFeasible:
+         if( getNCols() == 0 || solution.primal.size() >= 1 )
+            break;
+         msg.info("Feasible.\n");
+         return true;
+      case SolutionStatus::kUnbounded:
+         //TODO: Check unbounded solution
+         //if( getNCols() == 0 || solution.ray.size() >= 1 )
+         //   break;
          msg.info("Unbounded.\n");
          return true;
+      default:
+         msg.info("Error.\n");
+         return false;
       }
       assert( solution.status == SolutionStatus::kFeasible );
       assert( solution.primal.size() == getNCols() );
+      assert( solution.ray.size() == 0 );
       const auto& lb = getLowerBounds();
       const auto& ub = getUpperBounds();
       REAL viol;

@@ -82,7 +82,7 @@ namespace bugger
             status = SolutionStatus::kUnbounded;
          else if( !optionsInfo.solution_file.empty() && !boost::iequals(optionsInfo.solution_file, "unknown") )
             status = SolutionStatus::kFeasible;
-         auto instance = factory->create_solver(msg)->readInstance(optionsInfo.settings_file, optionsInfo.problem_file, status == SolutionStatus::kFeasible ? optionsInfo.solution_file : "");
+         auto instance = factory->create_solver(msg)->readInstance(optionsInfo.settings_file, optionsInfo.problem_file, status == SolutionStatus::kFeasible && !boost::iequals(optionsInfo.solution_file, "feasible") ? optionsInfo.solution_file : "");
          if( !std::get<0>(instance) )
          {
             msg.info("Settings parser of the solver on {} failed!\n", optionsInfo.settings_file);

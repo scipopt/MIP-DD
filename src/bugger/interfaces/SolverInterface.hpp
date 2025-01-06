@@ -195,8 +195,23 @@ namespace bugger
             return DUALFAIL;
          }
 
-         if( reference->status == SolutionStatus::kUnknown )
+         switch( reference->status )
+         {
+         case SolutionStatus::kUnknown:
             return OKAY;
+         case SolutionStatus::kFeasible:
+            if( reference->primal.size() == model->getNCols() )
+               break;
+            if( (model->getObjective().sense ? dual : -dual) == infinity )
+            {
+               msg.detailed( "\tDual against feasibility ({:<3})\n", dual );
+               return DUALFAIL;
+            }
+            return OKAY;
+         case SolutionStatus::kInfeasible:
+         case SolutionStatus::kUnbounded:
+            break;
+         }
 
          if( model->getObjective().sense )
          {
@@ -374,24 +389,23 @@ namespace bugger
             return OBJECTIVEFAIL;
          }
 
-         if( reference->status == SolutionStatus::kUnknown )
-            return OKAY;
-
-         if( reference->status == SolutionStatus::kInfeasible )
+         switch( reference->status )
          {
-            if( count != 0 )
-            {
-               msg.detailed( "\tInfeasibility not respected (dual {:<3}, primal {:<3}, count {:<3}, infinity {:<3})\n", dual, primal, count, infinity );
-               return PRIMALFAIL;
-            }
-         }
-         else if( abs(value) < infinity && (model->getObjective().sense ? dual : -dual) == infinity )
-         {
+         case SolutionStatus::kUnknown:
+            break;
+         case SolutionStatus::kInfeasible:
             if( count == 0 )
-            {
-               msg.detailed( "\tFeasibility not respected (dual {:<3}, primal {:<3}, count {:<3}, infinity {:<3})\n", dual, primal, count, infinity );
-               return DUALFAIL;
-            }
+               break;
+            msg.detailed( "\tInfeasibility not respected (dual {:<3}, primal {:<3}, count {:<3}, infinity {:<3})\n", dual, primal, count, infinity );
+            return PRIMALFAIL;
+         case SolutionStatus::kFeasible:
+            if( reference->primal.size() == model->getNCols() && abs(value) >= infinity )
+               break;
+         case SolutionStatus::kUnbounded:
+            if( count >= 1 || (model->getObjective().sense ? dual : -dual) != infinity )
+               break;
+            msg.detailed( "\tFeasibility not respected (dual {:<3}, primal {:<3}, count {:<3}, infinity {:<3})\n", dual, primal, count, infinity );
+            return DUALFAIL;
          }
 
          return OKAY;
