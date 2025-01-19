@@ -39,6 +39,7 @@ New parameters
 ----------
 
 - default value nbatches = 1 in order to try all initially
+- emphasis = -1 : batch bugger emphasis (-1: default, 0: fast, 1: aggressive)
 
 Fixed bugs
 ----------
