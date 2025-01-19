@@ -33,6 +33,7 @@ namespace bugger {
    struct BuggerParameters
    {
       int mode = -1;
+      int emphasis = -1;
       long long expenditure = -1;
       long long nbatches = 1;
       int initround = 0;
@@ -52,6 +53,7 @@ namespace bugger {
       addParameters( ParameterSet& paramSet )
       {
          paramSet.addParameter( "mode", "selective bugger mode (-1: reproduce and reduce, 0: only reproduce, 1: only reduce)", mode, -1, 1 );
+         paramSet.addParameter( "emphasis", "batch bugger emphasis (-1: default, 0: fast, 1: aggressive)", emphasis, -1, 1 );
          paramSet.addParameter( "expenditure", "calculate the number of batches by ceiled division of the solving effort defined in the solver interface (-1: use original, 0: keep batches)", expenditure, -1 );
          paramSet.addParameter( "nbatches", "maximum number of batches or 0 for singleton batches", nbatches, 0 );
          paramSet.addParameter( "initround", "initial bugger round or -1 for last round", initround, -1 );

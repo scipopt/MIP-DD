@@ -67,17 +67,18 @@ namespace bugger
       ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
+         long long nbatches = this->parameters.emphasis == 0 ? 1 : this->parameters.nbatches;
          long long batchsize = 1;
 
-         if( this->parameters.nbatches > 0 )
+         if( nbatches > 0 )
          {
-            batchsize = this->parameters.nbatches - 1;
+            batchsize = nbatches - 1;
             for( int col = problem.getNCols( ) - 1; col >= 0; --col )
                if( isFixingAdmissible(problem, solution, col) )
                   ++batchsize;
-            if( batchsize == this->parameters.nbatches - 1 )
+            if( batchsize == nbatches - 1 )
                return ModifierStatus::kNotAdmissible;
-            batchsize /= this->parameters.nbatches;
+            batchsize /= nbatches;
          }
 
          auto copy = Problem<REAL>(problem);
@@ -203,6 +204,8 @@ namespace bugger
 
          if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
+         if( this->parameters.emphasis == 0 )
+            this->last_admissible = 1;
          if( applied_reductions.empty() )
             return ModifierStatus::kUnsuccesful;
          problem = copy;
