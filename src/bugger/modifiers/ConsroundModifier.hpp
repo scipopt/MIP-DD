@@ -71,7 +71,7 @@ namespace bugger
             || ( solution.status == SolutionStatus::kFeasible && solution.primal.size() != problem.getNCols() ) )
             return ModifierStatus::kNotAdmissible;
 
-         long long nbatches = this->parameters.emphasis == 0 ? 1 : this->parameters.nbatches;
+         long long nbatches = this->parameters.emphasis == EMPHASIS_FAST ? 1 : this->parameters.nbatches;
          long long batchsize = 1;
 
          if( nbatches > 0 )

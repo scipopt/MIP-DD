@@ -124,7 +124,7 @@ namespace bugger
          int last_modifier = -1;
          auto solver = factory->create_solver(msg);
          solver->doSetUp(settings, problem, solution);
-         if( parameters.mode == 1 )
+         if( parameters.mode == MODE_REDUCE )
          {
             if( parameters.expenditure < 0 )
                parameters.expenditure = 0;
@@ -134,7 +134,7 @@ namespace bugger
             last_result = solver->solve(Vec<int>{ });
             last_effort = solver->getSolvingEffort( );
             msg.info("Original solve returned code {} with status {} and effort {}.\n", (int)last_result.first, last_result.second, last_effort);
-            if( parameters.mode == 0 )
+            if( parameters.mode == MODE_REPRODUCE )
                return;
             if( parameters.expenditure < 0 && ( parameters.nbatches <= 0 || last_effort <= 0 || (parameters.expenditure = parameters.nbatches * last_effort) / last_effort != parameters.nbatches ) )
             {
@@ -288,7 +288,7 @@ namespace bugger
          if( last_round == -1 )
          {
             assert(last_modifier == -1);
-            if( parameters.mode == 1 )
+            if( parameters.mode == MODE_REDUCE )
             {
                assert(last_result.first == SolverRetcode::OKAY);
                assert(last_result.second == SolverStatus::kUnknown);
@@ -302,7 +302,7 @@ namespace bugger
             msg.info("\nFinal solve returned code {} with status {} and effort {} in round {} by modifier {}.", (int)last_result.first, last_result.second, last_effort, last_round + 1, modifiers[ last_modifier ]->getName( ));
          }
          msg.info( "\nbugging took {:.3f} seconds with {} solver invocations", time, nsolves );
-         if( parameters.mode != 1 )
+         if( parameters.mode != MODE_REDUCE )
             msg.info(" (excluding original solve)");
          msg.info("\n");
       }

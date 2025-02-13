@@ -70,7 +70,7 @@ namespace bugger
       ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
-         long long nbatches = this->parameters.emphasis == 0 ? 1 : this->parameters.nbatches;
+         long long nbatches = this->parameters.emphasis == EMPHASIS_FAST ? 1 : this->parameters.nbatches;
          long long batchsize = 1;
 
          if( nbatches > 0 )

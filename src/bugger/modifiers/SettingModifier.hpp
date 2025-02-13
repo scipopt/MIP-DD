@@ -49,7 +49,7 @@ namespace bugger
       ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
-         long long nbatches = this->parameters.emphasis != -1 ? 1 - this->parameters.emphasis : this->parameters.nbatches;
+         long long nbatches = this->parameters.emphasis != EMPHASIS_DEFAULT ? 1 - (int)this->parameters.emphasis : this->parameters.nbatches;
          long long batchsize = 1;
 
          if( nbatches > 0 )
