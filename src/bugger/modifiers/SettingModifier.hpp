@@ -49,11 +49,12 @@ namespace bugger
       ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
+         long long nbatches = this->parameters.emphasis != EMPHASIS_DEFAULT ? 1 - (int)this->parameters.emphasis : this->parameters.nbatches;
          long long batchsize = 1;
 
-         if( this->parameters.nbatches > 0 )
+         if( nbatches > 0 )
          {
-            batchsize = this->parameters.nbatches - 1;
+            batchsize = nbatches - 1;
             for( int i = 0; i < target_settings.getBoolSettings().size(); i++)
             {
                assert(target_settings.getBoolSettings()[i].first == settings.getBoolSettings()[i].first);
@@ -90,9 +91,9 @@ namespace bugger
                if( target_settings.getStringSettings()[i].second != settings.getStringSettings()[i].second)
                   ++batchsize;
             }
-            if( batchsize == this->parameters.nbatches - 1 )
+            if( batchsize == nbatches - 1 )
                return ModifierStatus::kNotAdmissible;
-            batchsize /= this->parameters.nbatches;
+            batchsize /= nbatches;
          }
 
          SolverSettings copy = SolverSettings(settings);
@@ -302,6 +303,10 @@ namespace bugger
 
          if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
+         if( this->parameters.emphasis == 0 )
+            this->last_admissible = 1;
+         else if( this->parameters.emphasis == 1 && this->parameters.nbatches > 0 && this->last_admissible > this->parameters.nbatches )
+            this->last_admissible = this->parameters.nbatches;
          if( applied_bool.empty() && applied_int.empty() && applied_long.empty() && applied_double.empty() && applied_char.empty() && applied_string.empty() )
             return ModifierStatus::kUnsuccesful;
          settings = copy;

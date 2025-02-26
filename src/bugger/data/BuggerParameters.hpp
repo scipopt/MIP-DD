@@ -28,11 +28,31 @@
 #include "bugger/misc/ParameterSet.hpp"
 
 
-namespace bugger {
+namespace bugger
+{
+   // selective mode type
+   enum Mode
+   {
+      MODE_DEFAULT        = -1,              // reproduce and reduce
+      MODE_REPRODUCE      = 0,               // only reproduce
+      MODE_REDUCE         = 1,               // only reduce
+   };
+   typedef enum Mode MODE;
 
+   // batch emphasis type
+   enum Emphasis
+   {
+      EMPHASIS_DEFAULT    = -1,              // all adaptive batches
+      EMPHASIS_FAST       = 0,               // with single batch in soft modifiers
+      EMPHASIS_AGGRESSIVE = 1,               // with singleton batches in hard modifiers
+   };
+   typedef enum Emphasis EMPHASIS;
+
+   // bugger parameters set
    struct BuggerParameters
    {
-      int mode = -1;
+      int mode = MODE_DEFAULT;
+      int emphasis = EMPHASIS_DEFAULT;
       long long expenditure = -1;
       long long nbatches = 1;
       int initround = 0;
@@ -51,7 +71,8 @@ namespace bugger {
       void
       addParameters( ParameterSet& paramSet )
       {
-         paramSet.addParameter( "mode", "selective bugger mode (-1: reproduce and reduce, 0: only reproduce, 1: only reduce)", mode, -1, 1 );
+         paramSet.addParameter( "mode", "selective bugger mode (-1: reproduce and reduce, 0: only reproduce, 1: only reduce)", mode, MODE_DEFAULT, MODE_REDUCE );
+         paramSet.addParameter( "emphasis", "batch bugger emphasis (-1: default - all adaptive batches, 0: fast - with single batch in soft modifiers, 1: aggressive - with singleton batches in hard modifiers)", emphasis, EMPHASIS_DEFAULT, EMPHASIS_AGGRESSIVE );
          paramSet.addParameter( "expenditure", "calculate the number of batches by ceiled division of the solving effort defined in the solver interface (-1: use original, 0: keep batches)", expenditure, -1 );
          paramSet.addParameter( "nbatches", "maximum number of batches or 0 for singleton batches", nbatches, 0 );
          paramSet.addParameter( "initround", "initial bugger round or -1 for last round", initround, -1 );

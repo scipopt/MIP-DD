@@ -8,6 +8,7 @@ Features
 - enable and-constraint handling
 - enable SOS1-constraint handling
 - enable IIS mode by declaring status feasible without specific reference solution
+- enable batch emphasis settings
 
 Performance improvements
 ------------------------
@@ -39,6 +40,7 @@ New parameters
 ----------
 
 - default value nbatches = 1 in order to try all initially
+- emphasis = -1 : batch bugger emphasis (-1: default - all adaptive batches, 0: fast - with single batch in soft modifiers, 1: aggressive - with singleton batches in hard modifiers)
 
 Fixed bugs
 ----------

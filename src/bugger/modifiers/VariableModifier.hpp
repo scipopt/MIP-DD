@@ -67,17 +67,18 @@ namespace bugger
             || ( solution.status == SolutionStatus::kFeasible && solution.primal.size() != problem.getNCols() ) )
             return ModifierStatus::kNotAdmissible;
 
+         long long nbatches = this->parameters.emphasis == EMPHASIS_AGGRESSIVE ? 0 : this->parameters.nbatches;
          long long batchsize = 1;
 
-         if( this->parameters.nbatches > 0 )
+         if( nbatches > 0 )
          {
-            batchsize = this->parameters.nbatches - 1;
+            batchsize = nbatches - 1;
             for( int i = problem.getNCols() - 1; i >= 0; --i )
                if( isVariableAdmissible(problem, i) )
                   ++batchsize;
-            if( batchsize == this->parameters.nbatches - 1 )
+            if( batchsize == nbatches - 1 )
                return ModifierStatus::kNotAdmissible;
-            batchsize /= this->parameters.nbatches;
+            batchsize /= nbatches;
          }
 
          auto copy = Problem<REAL>(problem);
@@ -142,6 +143,8 @@ namespace bugger
 
          if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
+         if( this->parameters.emphasis == 1 && this->parameters.nbatches > 0 && this->last_admissible > this->parameters.nbatches )
+            this->last_admissible = this->parameters.nbatches;
          if( applied_reductions.empty() )
             return ModifierStatus::kUnsuccesful;
          problem = copy;
