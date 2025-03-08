@@ -103,7 +103,7 @@ namespace bugger
                REAL fixedval { };
                for( int index = 0; index < data.getLength( ); ++index )
                {
-                  if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral) || !this->num.isEpsIntegral(data.getValues( )[ index ]) ) )
+                  if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral, ColFlag::kImplInt) || !this->num.isEpsIntegral(data.getValues( )[ index ]) ) )
                   {
                      integral = false;
                      break;
