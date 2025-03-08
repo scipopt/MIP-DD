@@ -214,6 +214,14 @@ class ProblemBuilder
    }
 
    void
+   setColImplIntAll( Vec<uint8_t> isImplInt )
+   {
+      assert( isImplInt.size() == domains.flags.size() );
+      for( int c = 0; c < (int)isImplInt.size(); ++c )
+         setColImplInt( c, isImplInt[c] );
+   }
+
+   void
    setColIntegralAll( Vec<uint8_t> isIntegral )
    {
       assert( isIntegral.size() == domains.flags.size() );
