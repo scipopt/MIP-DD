@@ -1,3 +1,16 @@
-/.idea
-/cmake-build-debug/
-settings/default.set
+
+# common cmake build folder names
+build*/
+debug*/
+
+# directories created by file managers
+.directory
+.DS_Store
+
+# editor cache files
+.cproject
+.project
+.vscode/
+.idea/
+.settings/
+.*.swp
