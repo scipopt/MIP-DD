@@ -23,6 +23,9 @@ stages:
     - if: $CI_MERGE_REQUEST_ID
   image:
     name: gcc:10
+  # required to pick a reasonable runner
+  tags:
+    - compile
   before_script:
     - apt-get update
     - apt-get install -y cmake libtbb-dev libmpfr-dev
