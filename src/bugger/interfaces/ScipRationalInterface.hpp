@@ -101,7 +101,6 @@ namespace bugger
             if( cflags[col].test(ColFlag::kFixed) )
                continue;
             SCIP_VAR* var;
-            SCIP_VARTYPE type;
             SCIP_CALL_ABORT(SCIPratSetReal(&lower, cflags[col].test(ColFlag::kLbInf)
                                                    ? REAL(-SCIPinfinity(this->scip))
                                                    : domains.lower_bounds[col]));
@@ -110,18 +109,33 @@ namespace bugger
                                                    : domains.upper_bounds[col]));
             SCIP_CALL_ABORT(SCIPratSetReal(&objval, obj.coefficients[col]));
             assert(!cflags[col].test(ColFlag::kInactive) || lower.val == upper.val);
+            SCIP_VARTYPE vartype;
             if( cflags[col].test(ColFlag::kIntegral) )
             {
                if( lower.val >= 0 && upper.val <= 1 )
-                  type = SCIP_VARTYPE_BINARY;
+                  vartype = SCIP_VARTYPE_BINARY;
                else
-                  type = SCIP_VARTYPE_INTEGER;
+                  vartype = SCIP_VARTYPE_INTEGER;
             }
-            else if( cflags[col].test(ColFlag::kImplInt) )
-               type = SCIP_VARTYPE_IMPLINT;
+#if SCIP_APIVERSION >= 135
             else
-               type = SCIP_VARTYPE_CONTINUOUS;
-            SCIP_CALL_ABORT(SCIPcreateVarBasic(this->scip, &var, varNames[col].c_str(), 0.0, 0.0, 0.0, type));
+               vartype = SCIP_VARTYPE_CONTINUOUS;
+            SCIP_IMPLINTTYPE impltype;
+            if( cflags[col].test(ColFlag::kImplInt) )
+               impltype = SCIP_IMPLINTTYPE_WEAK;
+            else
+               impltype = SCIP_IMPLINTTYPE_NONE;
+            SCIP_CALL_ABORT(SCIPcreateVarImpl(this->scip, &var, varNames[col].c_str(),
+                  0.0, 0.0, 0.0, vartype, impltype,
+                  TRUE, FALSE, NULL, NULL, NULL, NULL, NULL));
+#else
+            else if( cflags[col].test(ColFlag::kImplInt) )
+               vartype = SCIP_VARTYPE_IMPLINT;
+            else
+               vartype = SCIP_VARTYPE_CONTINUOUS;
+            SCIP_CALL_ABORT(SCIPcreateVarBasic(this->scip, &var, varNames[col].c_str(),
+                  0.0, 0.0, 0.0, vartype));
+#endif
             SCIP_CALL_ABORT(SCIPaddVarExactData(this->scip, var, &lower, &upper, &objval));
             this->vars[col] = var;
             SCIP_CALL_ABORT(SCIPaddVar(this->scip, var));
@@ -554,6 +568,13 @@ namespace bugger
          {
             SCIP_VAR* var = this->vars[col];
             SCIP_VARTYPE vartype = SCIPvarGetType(var);
+#if SCIP_APIVERSION >= 135
+            builder.setColIntegral(col, vartype != SCIP_VARTYPE_CONTINUOUS);
+            builder.setColImplInt(col, SCIPvarIsImpliedIntegral(var));
+#else
+            builder.setColIntegral(col, vartype != SCIP_VARTYPE_CONTINUOUS && vartype != SCIP_VARTYPE_IMPLINT);
+            builder.setColImplInt(col, vartype == SCIP_VARTYPE_IMPLINT);
+#endif
             lower = SCIPvarGetLbGlobalExact(var);
             upper = SCIPvarGetUbGlobalExact(var);
             objval = SCIPvarGetObjExact(var);
@@ -561,8 +582,6 @@ namespace bugger
             builder.setColUb(col, REAL(upper->val));
             builder.setColLbInf(col, SCIPisInfinity(this->scip, SCIP_Real(-lower->val)));
             builder.setColUbInf(col, SCIPisInfinity(this->scip, SCIP_Real(upper->val)));
-            builder.setColIntegral(col, vartype == SCIP_VARTYPE_BINARY || vartype == SCIP_VARTYPE_INTEGER);
-            builder.setColImplInt(col, vartype != SCIP_VARTYPE_CONTINUOUS);
             builder.setObj(col, REAL(objval->val));
             builder.setColName(col, SCIPvarGetName(var));
          }

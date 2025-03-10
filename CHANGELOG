@@ -9,6 +9,7 @@ Features
 - enable SOS1-constraint handling
 - enable IIS mode by declaring status feasible without specific reference solution
 - enable batch emphasis settings
+- enable implied integrality
 
 Performance improvements
 ------------------------

@@ -95,12 +95,12 @@ namespace bugger
                if( solution.primal.size() == copy.getNCols() )
                {
                   fixedval = solution.primal[ col ];
-                  if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
+                  if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral, ColFlag::kImplInt) )
                      fixedval = round(fixedval);
                }
                else
                {
-                  if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
+                  if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral, ColFlag::kImplInt) )
                   {
                      if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
                         fixedval = min(fixedval, this->num.epsFloor(copy.getUpperBounds( )[ col ]));
