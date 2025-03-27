@@ -46,9 +46,9 @@ boost-soplex-scip:
       - ${CI_PROJECT_DIR}/installs
     expire_in: 1 minute
   script:
-    - mkdir -p ${SETUP_DIR}
     - export CFLAGS=""
     - export CXXFLAGS=""
+    - mkdir -p ${SETUP_DIR}
     # boost
     - wget https://archives.boost.io/release/${BOOST_VERSION}/source/boost_$(echo ${BOOST_VERSION} | tr . _).tar.gz -O ${BOOST_DIR}.tar.gz
     - mkdir -p ${BOOST_DIR}
