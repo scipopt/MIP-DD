@@ -31,24 +31,24 @@
 
 namespace bugger
 {
-   /* set a scip rational to the value of another type */
+   /* sets a scip rational to the value of another type */
    template <typename REAL>
    SCIP_RETCODE
    SCIPratSetReal(
-      SCIP_Rational*        res,                /**< the result */
-      REAL                  real                /**< real to set from */
+      SCIP_RATIONAL*        rat,                /**< rat to get */
+      REAL                  real                /**< real to set */
       )
    {
-      assert(res != NULL);
+      assert(rat != NULL);
 
-      res->val = scip_rational::Rational(real);
-      res->isinf = isinf(real);
-      res->isfprepresentable = num_traits<REAL>::is_floating_point ? SCIP_ISFPREPRESENTABLE_TRUE : SCIP_ISFPREPRESENTABLE_UNKNOWN;
+      rat->val = scip::Rational(real);
+      rat->isinf = isinf(real);
+      rat->isfprepresentable = num_traits<REAL>::is_floating_point ? SCIP_ISFPREPRESENTABLE_TRUE : SCIP_ISFPREPRESENTABLE_UNKNOWN;
 
       return SCIP_OKAY;
    }
 
-   /* EXPERIMENTAL: like exact SCIP, this is not ready yet, and must be used carefully */
+   /* EXPERIMENTAL: requires careful testing */
    template <typename REAL>
    class ScipRationalInterface : public ScipInterface<REAL>
    {
@@ -77,9 +77,9 @@ namespace bugger
          const auto& rhs_values = consMatrix.getRightHandSides( );
          const auto& cflags = this->model->getColFlags( );
          const auto& rflags = this->model->getRowFlags( );
-         SCIP_Rational lower;
-         SCIP_Rational upper;
-         SCIP_Rational objval;
+         SCIP_RATIONAL lower;
+         SCIP_RATIONAL upper;
+         SCIP_RATIONAL objval;
 
          this->set_parameters( );
          SCIP_CALL_ABORT(SCIPcreateProbBasic(this->scip, this->model->getName( ).c_str()));
@@ -128,8 +128,8 @@ namespace bugger
          }
 
          Vec<SCIP_VAR*> consvars(ncols);
-         Vec<SCIP_Rational> consvals(ncols);
-         Vec<SCIP_Rational*> consvalsptrs(ncols);
+         Vec<SCIP_RATIONAL> consvals(ncols);
+         Vec<SCIP_RATIONAL*> consvalsptrs(ncols);
          for( int row = 0; row < nrows; ++row )
          {
             if( rflags[row].test(RowFlag::kRedundant) )
@@ -207,9 +207,9 @@ namespace bugger
 
          if( retcode == SCIP_OKAY )
          {
-            SCIP_Rational lower;
-            SCIP_Rational upper;
-            SCIP_Rational objval;
+            SCIP_RATIONAL lower;
+            SCIP_RATIONAL upper;
+            SCIP_RATIONAL objval;
 
             // reset return code
             retcode = SolverRetcode::OKAY;
@@ -513,9 +513,9 @@ namespace bugger
             return { settings, boost::none, boost::none };
          ProblemBuilder<REAL> builder;
          SCIP_Bool success = TRUE;
-         SCIP_Rational* lower;
-         SCIP_Rational* upper;
-         SCIP_Rational* objval;
+         SCIP_RATIONAL* lower;
+         SCIP_RATIONAL* upper;
+         SCIP_RATIONAL* objval;
 
          // set problem name
          builder.setProblemName(SCIPgetProbName(this->scip));
@@ -564,7 +564,7 @@ namespace bugger
          // set up rows
          builder.setNumRows(nrows);
          Vec<SCIP_VAR*> consvars(ncols);
-         Vec<SCIP_Rational*> consvals(ncols);
+         Vec<SCIP_RATIONAL*> consvals(ncols);
          Vec<int> rowinds(ncols);
          Vec<REAL> rowvals(ncols);
          for( int row = 0; row < nrows; ++row )
@@ -641,7 +641,7 @@ namespace bugger
          {
             SCIP_SOL* sol = NULL;
             FILE* file = NULL;
-            SCIP_Rational solval;
+            SCIP_RATIONAL solval;
             if( successsolution && SCIPcreateSolExact(this->scip, &sol, NULL) != SCIP_OKAY )
             {
                sol = NULL;
@@ -670,7 +670,7 @@ namespace bugger
       void
       translateSolution(SCIP_SOL* const sol, SCIP_Bool ray, const Problem<REAL>& problem, Solution<REAL>& solution) const
       {
-         SCIP_Rational solval;
+         SCIP_RATIONAL solval;
          solution.status = ray ? SolutionStatus::kUnbounded : SolutionStatus::kFeasible;
          solution.primal.resize(problem.getNCols());
          for( int col = 0; col < solution.primal.size(); ++col )
