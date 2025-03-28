@@ -73,7 +73,7 @@ namespace bugger
    };
 
    const String ScipParameters::VERB { "display/verblevel" };
-   const String ScipParameters::EXAC { "exact/enabled" };
+   const String ScipParameters::EXAC { "exact/enable" };
    const String ScipParameters::CERT { "certificate/filename" };
 
    template <typename REAL>
