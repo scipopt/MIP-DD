@@ -504,6 +504,8 @@ namespace bugger
                return { settings, boost::none, boost::none };
             int nrowcols = 0;
             SCIPgetConsNVars(this->scip, cons, &nrowcols, &success);
+            if( !success )
+               return { settings, boost::none, boost::none };
             SCIPgetConsVars(this->scip, cons, consvars.data(), ncols, &success);
             if( !success )
                return { settings, boost::none, boost::none };
