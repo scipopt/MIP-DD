@@ -56,7 +56,8 @@ namespace bugger
       bool
       isCoefficientAdmissible(const Problem<REAL>& problem, const int& row) const
       {
-         if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant) )
+         if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant)
+          || problem.getConstraintTypes( )[ row ] > ConstraintType(BUGGER_NSPECIALLINEARTYPES) )
             return false;
          const auto& data = problem.getConstraintMatrix( ).getRowCoefficients(row);
          for( int index = 0; index < data.getLength( ); ++index )
@@ -69,20 +70,20 @@ namespace bugger
       ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
+         long long nbatches = this->parameters.emphasis == EMPHASIS_FAST ? 1 : this->parameters.nbatches;
          long long batchsize = 1;
 
-         if( this->parameters.nbatches > 0 )
+         if( nbatches > 0 )
          {
-            batchsize = this->parameters.nbatches - 1;
+            batchsize = nbatches - 1;
             for( int i = problem.getNRows( ) - 1; i >= 0; --i )
                if( isCoefficientAdmissible(problem, i) )
                   ++batchsize;
-            if( batchsize == this->parameters.nbatches - 1 )
+            if( batchsize == nbatches - 1 )
                return ModifierStatus::kNotAdmissible;
-            batchsize /= this->parameters.nbatches;
+            batchsize /= nbatches;
          }
 
-         bool admissible = false;
          auto copy = Problem<REAL>(problem);
          auto& matrix = copy.getConstraintMatrix( );
          Vec<MatrixEntry<REAL>> applied_entries { };
@@ -99,7 +100,7 @@ namespace bugger
          {
             if( isCoefficientAdmissible(copy, row) )
             {
-               admissible = true;
+               ++this->last_admissible;
                const auto& data = matrix.getRowCoefficients(row);
                bool integral = true;
                REAL offset { };
@@ -110,15 +111,15 @@ namespace bugger
                   if( !this->num.isZetaZero(val) && isFixingAdmissible(copy, col) )
                   {
                      REAL fixedval { };
-                     if( solution.status == SolutionStatus::kFeasible )
+                     if( solution.primal.size() == copy.getNCols() )
                      {
                         fixedval = solution.primal[ col ];
-                        if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
+                        if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral, ColFlag::kImplInt) )
                            fixedval = round(fixedval);
                      }
                      else
                      {
-                        if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
+                        if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral, ColFlag::kImplInt) )
                         {
                            if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
                               fixedval = min(fixedval, this->num.epsFloor(copy.getUpperBounds( )[ col ]));
@@ -136,7 +137,7 @@ namespace bugger
                      offset -= val * fixedval;
                      batches_coeff.emplace_back(row, col, 0);
                   }
-                  else if( !copy.getColFlags( )[ col ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ col ].test(ColFlag::kIntegral) || !this->num.isEpsIntegral(val) ) )
+                  else if( !copy.getColFlags( )[ col ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ col ].test(ColFlag::kIntegral, ColFlag::kImplInt) || !this->num.isEpsIntegral(val) ) )
                      integral = false;
                }
                if( !copy.getRowFlags( )[ row ].test(RowFlag::kLhsInf) )
@@ -189,8 +190,10 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
+         if( this->parameters.emphasis == 0 )
+            this->last_admissible = 1;
          if( applied_entries.empty() )
             return ModifierStatus::kUnsuccesful;
          problem = copy;

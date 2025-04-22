@@ -57,23 +57,24 @@ namespace bugger
       ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
-         if( solution.status == SolutionStatus::kUnbounded )
+         if( solution.status == SolutionStatus::kUnbounded
+            || ( solution.status == SolutionStatus::kFeasible && solution.primal.size() != problem.getNCols() ) )
             return ModifierStatus::kNotAdmissible;
 
+         long long nbatches = this->parameters.emphasis == EMPHASIS_AGGRESSIVE ? 0 : this->parameters.nbatches;
          long long batchsize = 1;
 
-         if( this->parameters.nbatches > 0 )
+         if( nbatches > 0 )
          {
-            batchsize = this->parameters.nbatches - 1;
+            batchsize = nbatches - 1;
             for( int i = problem.getNCols( ) - 1; i >= 0; --i )
                if( isObjectiveAdmissible(problem, i) )
                   ++batchsize;
-            if( batchsize == this->parameters.nbatches - 1 )
+            if( batchsize == nbatches - 1 )
                return ModifierStatus::kNotAdmissible;
-            batchsize /= this->parameters.nbatches;
+            batchsize /= nbatches;
          }
 
-         bool admissible = false;
          auto copy = Problem<REAL>(problem);
          Vec<int> applied_reductions { };
          Vec<int> batches { };
@@ -83,7 +84,7 @@ namespace bugger
          {
             if( isObjectiveAdmissible(copy, col) )
             {
-               admissible = true;
+               ++this->last_admissible;
                copy.getObjective( ).coefficients[ col ] = 0;
                batches.push_back(col);
             }
@@ -102,8 +103,10 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
+         if( this->parameters.emphasis == 1 && this->parameters.nbatches > 0 && this->last_admissible > this->parameters.nbatches )
+            this->last_admissible = this->parameters.nbatches;
          if( applied_reductions.empty() )
             return ModifierStatus::kUnsuccesful;
          problem = copy;

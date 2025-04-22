@@ -47,32 +47,40 @@ namespace bugger
       bool
       isVariableAdmissible(const Problem<REAL>& problem, const int& col) const
       {
-         return !problem.getColFlags( )[ col ].test(ColFlag::kFixed)
-             && ( problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
-               || problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
-               || this->num.isZetaLT(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) );
+         if( problem.getColFlags( )[ col ].test(ColFlag::kFixed)
+          || ( !problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
+            && !problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
+            && this->num.isZetaGE(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) ) )
+            return false;
+         const auto& data = problem.getConstraintMatrix( ).getColumnCoefficients(col);
+         for( int index = 0; index < data.getLength( ); ++index )
+            if( !this->num.isZetaZero(data.getValues( )[ index ])
+             && !problem.getConstraintMatrix( ).getRowFlags( )[ data.getIndices( )[ index ] ].test(RowFlag::kRedundant) )
+               return true;
+         return false;
       }
 
       ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
-         if( solution.status == SolutionStatus::kUnbounded )
+         if( solution.status == SolutionStatus::kUnbounded
+            || ( solution.status == SolutionStatus::kFeasible && solution.primal.size() != problem.getNCols() ) )
             return ModifierStatus::kNotAdmissible;
 
+         long long nbatches = this->parameters.emphasis == EMPHASIS_AGGRESSIVE ? 0 : this->parameters.nbatches;
          long long batchsize = 1;
 
-         if( this->parameters.nbatches > 0 )
+         if( nbatches > 0 )
          {
-            batchsize = this->parameters.nbatches - 1;
+            batchsize = nbatches - 1;
             for( int i = problem.getNCols() - 1; i >= 0; --i )
                if( isVariableAdmissible(problem, i) )
                   ++batchsize;
-            if( batchsize == this->parameters.nbatches - 1 )
+            if( batchsize == nbatches - 1 )
                return ModifierStatus::kNotAdmissible;
-            batchsize /= this->parameters.nbatches;
+            batchsize /= nbatches;
          }
 
-         bool admissible = false;
          auto copy = Problem<REAL>(problem);
          Vec<std::pair<int, REAL>> applied_reductions { };
          Vec<std::pair<int, REAL>> batches { };
@@ -82,17 +90,17 @@ namespace bugger
          {
             if( isVariableAdmissible(copy, col) )
             {
+               ++this->last_admissible;
                REAL fixedval { };
-               admissible = true;
-               if( solution.status == SolutionStatus::kFeasible )
+               if( solution.primal.size() == copy.getNCols() )
                {
                   fixedval = solution.primal[ col ];
-                  if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
+                  if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral, ColFlag::kImplInt) )
                      fixedval = round(fixedval);
                }
                else
                {
-                  if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
+                  if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral, ColFlag::kImplInt) )
                   {
                      if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
                         fixedval = min(fixedval, this->num.epsFloor(copy.getUpperBounds( )[ col ]));
@@ -133,8 +141,10 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
+         if( this->parameters.emphasis == 1 && this->parameters.nbatches > 0 && this->last_admissible > this->parameters.nbatches )
+            this->last_admissible = this->parameters.nbatches;
          if( applied_reductions.empty() )
             return ModifierStatus::kUnsuccesful;
          problem = copy;

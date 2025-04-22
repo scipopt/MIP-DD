@@ -70,12 +70,10 @@ print_header()
 
    fmt::print( "External libraries: \n" );
 
-#ifdef BOOST_FOUND
    fmt::print( "  Boost    {}.{}.{} \t (https://www.boost.org/)\n",
                BOOST_VERSION_NUMBER_MINOR( BOOST_VERSION ),
                BOOST_VERSION_NUMBER_PATCH( BOOST_VERSION ) / 100,
                BOOST_VERSION_NUMBER_MAJOR( BOOST_VERSION ) );
-#endif
 
 #ifdef BUGGER_TBB
    fmt::print( "  TBB            \t Thread building block https://github.com/oneapi-src/oneTBB developed by Intel\n" );

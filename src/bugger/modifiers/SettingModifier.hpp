@@ -49,11 +49,12 @@ namespace bugger
       ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
+         long long nbatches = this->parameters.emphasis != EMPHASIS_DEFAULT ? 1 - (int)this->parameters.emphasis : this->parameters.nbatches;
          long long batchsize = 1;
 
-         if( this->parameters.nbatches > 0 )
+         if( nbatches > 0 )
          {
-            batchsize = this->parameters.nbatches - 1;
+            batchsize = nbatches - 1;
             for( int i = 0; i < target_settings.getBoolSettings().size(); i++)
             {
                assert(target_settings.getBoolSettings()[i].first == settings.getBoolSettings()[i].first);
@@ -90,12 +91,11 @@ namespace bugger
                if( target_settings.getStringSettings()[i].second != settings.getStringSettings()[i].second)
                   ++batchsize;
             }
-            if( batchsize == this->parameters.nbatches - 1 )
+            if( batchsize == nbatches - 1 )
                return ModifierStatus::kNotAdmissible;
-            batchsize /= this->parameters.nbatches;
+            batchsize /= nbatches;
          }
 
-         bool admissible = false;
          SolverSettings copy = SolverSettings(settings);
          Vec<std::pair<int, bool>> applied_bool { };
          Vec<std::pair<int, int>> applied_int { };
@@ -122,7 +122,7 @@ namespace bugger
             assert(target_settings.getBoolSettings()[i].first == settings.getBoolSettings()[i].first);
             if( target_settings.getBoolSettings()[i].second != copy.getBoolSettings()[i].second)
             {
-               admissible = true;
+               ++this->last_admissible;
                copy.setBoolSettings(i, target_settings.getBoolSettings( )[ i ].second);
                batches_bool.emplace_back(i, target_settings.getBoolSettings( )[ i ].second);
                ++batches;
@@ -150,7 +150,7 @@ namespace bugger
             assert(target_settings.getIntSettings()[i].first == settings.getIntSettings()[i].first);
             if( target_settings.getIntSettings()[i].second != settings.getIntSettings()[i].second)
             {
-               admissible = true;
+               ++this->last_admissible;
                copy.setIntSettings(i, target_settings.getIntSettings( )[ i ].second);
                batches_int.emplace_back(i, target_settings.getIntSettings( )[ i ].second);
                ++batches;
@@ -179,7 +179,7 @@ namespace bugger
             assert(target_settings.getLongSettings()[i].first == settings.getLongSettings()[i].first);
             if( target_settings.getLongSettings()[i].second != settings.getLongSettings()[i].second)
             {
-               admissible = true;
+               ++this->last_admissible;
                copy.setLongSettings(i, target_settings.getLongSettings( )[ i ].second);
                batches_long.emplace_back(i, target_settings.getLongSettings( )[ i ].second);
                ++batches;
@@ -209,7 +209,7 @@ namespace bugger
             assert(target_settings.getDoubleSettings()[i].first == settings.getDoubleSettings()[i].first);
             if( target_settings.getDoubleSettings()[i].second != settings.getDoubleSettings()[i].second)
             {
-               admissible = true;
+               ++this->last_admissible;
                copy.setDoubleSettings(i, target_settings.getDoubleSettings( )[ i ].second);
                batches_double.emplace_back(i, target_settings.getDoubleSettings( )[ i ].second);
                ++batches;
@@ -240,7 +240,7 @@ namespace bugger
             assert(target_settings.getCharSettings()[i].first == settings.getCharSettings()[i].first);
             if( target_settings.getCharSettings()[i].second != settings.getCharSettings()[i].second)
             {
-               admissible = true;
+               ++this->last_admissible;
                copy.setCharSettings(i, target_settings.getCharSettings( )[ i ].second);
                batches_char.emplace_back(i, target_settings.getCharSettings( )[ i ].second);
                ++batches;
@@ -272,7 +272,7 @@ namespace bugger
             assert(target_settings.getStringSettings()[i].first == settings.getStringSettings()[i].first);
             if( target_settings.getStringSettings()[i].second != settings.getStringSettings()[i].second)
             {
-               admissible = true;
+               ++this->last_admissible;
                copy.setStringSettings(i, target_settings.getStringSettings( )[ i ].second);
                batches_string.emplace_back(i, target_settings.getStringSettings( )[ i ].second);
                ++batches;
@@ -301,8 +301,12 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
+         if( this->parameters.emphasis == 0 )
+            this->last_admissible = 1;
+         else if( this->parameters.emphasis == 1 && this->parameters.nbatches > 0 && this->last_admissible > this->parameters.nbatches )
+            this->last_admissible = this->parameters.nbatches;
          if( applied_bool.empty() && applied_int.empty() && applied_long.empty() && applied_double.empty() && applied_char.empty() && applied_string.empty() )
             return ModifierStatus::kUnsuccesful;
          settings = copy;

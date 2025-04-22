@@ -63,23 +63,24 @@ namespace bugger
       ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
-         if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded )
+         if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded
+            || ( solution.status == SolutionStatus::kFeasible && solution.primal.size() != problem.getNCols() ) )
             return ModifierStatus::kNotAdmissible;
 
+         long long nbatches = this->parameters.emphasis == EMPHASIS_FAST ? 1 : this->parameters.nbatches;
          long long batchsize = 1;
 
-         if( this->parameters.nbatches > 0 )
+         if( nbatches > 0 )
          {
-            batchsize = this->parameters.nbatches - 1;
+            batchsize = nbatches - 1;
             for( int i = 0; i < problem.getNCols( ); ++i )
                if( isVarroundAdmissible(problem, i) )
                   ++batchsize;
-            if( batchsize == this->parameters.nbatches - 1 )
+            if( batchsize == nbatches - 1 )
                return ModifierStatus::kNotAdmissible;
-            batchsize /= this->parameters.nbatches;
+            batchsize /= nbatches;
          }
 
-         bool admissible = false;
          auto copy = Problem<REAL>(problem);
          Vec<std::pair<int, REAL>> applied_objectives { };
          Vec<std::pair<int, REAL>> applied_lowers { };
@@ -96,10 +97,10 @@ namespace bugger
          {
             if( isVarroundAdmissible(copy, col) )
             {
-               admissible = true;
+               ++this->last_admissible;
                REAL lb { round(copy.getLowerBounds( )[ col ]) };
                REAL ub { round(copy.getUpperBounds( )[ col ]) };
-               if( solution.status == SolutionStatus::kFeasible )
+               if( solution.primal.size() == copy.getNCols() )
                {
                   REAL value { solution.primal[ col ] };
                   lb = min(lb, this->num.epsFloor(value));
@@ -149,8 +150,10 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
+         if( this->parameters.emphasis == 0 )
+            this->last_admissible = 1;
          if( applied_objectives.empty() && applied_lowers.empty() && applied_uppers.empty() )
             return ModifierStatus::kUnsuccesful;
          problem = copy;

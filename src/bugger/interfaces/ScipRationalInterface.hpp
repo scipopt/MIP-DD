@@ -81,9 +81,9 @@ namespace bugger
          this->adjustment = &settings;
          this->model = &problem;
          this->reference = &solution;
-         bool solution_exists = this->reference->status == SolutionStatus::kFeasible;
          int ncols = this->model->getNCols( );
          int nrows = this->model->getNRows( );
+         bool solution_exists = solution.status == SolutionStatus::kFeasible && solution.primal.size() == ncols;
          const auto& varNames = this->model->getVariableNames( );
          const auto& consNames = this->model->getConstraintNames( );
          const auto& domains = this->model->getVariableDomains( );
@@ -93,6 +93,7 @@ namespace bugger
          const auto& rhs_values = consMatrix.getRightHandSides( );
          const auto& cflags = this->model->getColFlags( );
          const auto& rflags = this->model->getRowFlags( );
+         const auto& rtypes = this->model->getConstraintTypes( );
          SCIP_RATIONAL lower;
          SCIP_RATIONAL upper;
          SCIP_RATIONAL objval;
@@ -116,23 +117,37 @@ namespace bugger
             if( cflags[col].test(ColFlag::kFixed) )
                continue;
             SCIP_VAR* var;
-            SCIP_VARTYPE type;
             SCIPratSetReal(&lower, domains.lower_bounds[col], cflags[col].test(ColFlag::kLbInf));
             SCIPratSetReal(&upper, domains.upper_bounds[col], cflags[col].test(ColFlag::kUbInf));
             SCIPratSetReal(&objval, obj.coefficients[col], false);
             assert(!cflags[col].test(ColFlag::kInactive) || SCIPrationalIsEQ(&lower, &upper));
+            SCIP_VARTYPE vartype;
             if( cflags[col].test(ColFlag::kIntegral) )
             {
                if( !SCIPrationalIsNegative(&lower) && SCIPrationalIsLEReal(&upper, 1.0) )
-                  type = SCIP_VARTYPE_BINARY;
+                  vartype = SCIP_VARTYPE_BINARY;
                else
-                  type = SCIP_VARTYPE_INTEGER;
+                  vartype = SCIP_VARTYPE_INTEGER;
             }
-            else if( cflags[col].test(ColFlag::kImplInt) )
-               type = SCIP_VARTYPE_IMPLINT;
+#if SCIP_APIVERSION >= 135
             else
-               type = SCIP_VARTYPE_CONTINUOUS;
-            SCIP_CALL_ABORT(SCIPcreateVarBasic(this->scip, &var, varNames[col].c_str(), 0.0, 0.0, 0.0, type));
+               vartype = SCIP_VARTYPE_CONTINUOUS;
+            SCIP_IMPLINTTYPE impltype;
+            if( cflags[col].test(ColFlag::kImplInt) )
+               impltype = SCIP_IMPLINTTYPE_WEAK;
+            else
+               impltype = SCIP_IMPLINTTYPE_NONE;
+            SCIP_CALL_ABORT(SCIPcreateVarImpl(this->scip, &var, varNames[col].c_str(),
+                  0.0, 0.0, 0.0, vartype, impltype,
+                  TRUE, FALSE, NULL, NULL, NULL, NULL, NULL));
+#else
+            else if( cflags[col].test(ColFlag::kImplInt) )
+               vartype = SCIP_VARTYPE_IMPLINT;
+            else
+               vartype = SCIP_VARTYPE_CONTINUOUS;
+            SCIP_CALL_ABORT(SCIPcreateVarBasic(this->scip, &var, varNames[col].c_str(),
+                  0.0, 0.0, 0.0, vartype));
+#endif
             SCIP_CALL_ABORT(SCIPaddVarExactData(this->scip, var, &lower, &upper, &objval));
             this->vars[col] = var;
             SCIP_CALL_ABORT(SCIPaddVar(this->scip, var));
@@ -149,6 +164,8 @@ namespace bugger
             if( rflags[row].test(RowFlag::kRedundant) )
                continue;
             assert(!rflags[row].test(RowFlag::kLhsInf) || !rflags[row].test(RowFlag::kRhsInf));
+            //TODO: Setup special constraints
+            assert(rtypes[row] == ConstraintType::kLinear);
             const auto& rowvec = consMatrix.getRowCoefficients(row);
             const auto& rowinds = rowvec.getIndices( );
             const auto& rowvals = rowvec.getValues( );
@@ -169,24 +186,27 @@ namespace bugger
             SCIP_CALL_ABORT(SCIPreleaseCons(this->scip, &cons));
          }
 
-         if( solution_exists )
+         if( solution_exists && this->parameters.cutoffrelax >= 0.0 && this->parameters.cutoffrelax < SCIPinfinity(this->scip) )
+            //TODO: Set rational limit
+            SCIP_CALL_ABORT(SCIPsetObjlimit(this->scip, max(min(SCIP_Real(obj.sense ? this->parameters.cutoffrelax : -this->parameters.cutoffrelax) + SCIP_Real(this->value), SCIPinfinity(this->scip)), -SCIPinfinity(this->scip))));
+         if( ( this->reference->status == SolutionStatus::kFeasible || this->reference->status == SolutionStatus::kInfeasible ) && ( this->parameters.set_dual_limit || this->parameters.set_prim_limit ) )
          {
-            if( this->parameters.cutoffrelax >= 0.0 && this->parameters.cutoffrelax < SCIPinfinity(this->scip) )
-               //TODO: Set rational limit
-               SCIP_CALL_ABORT(SCIPsetObjlimit(this->scip, max(min(SCIP_Real(obj.sense ? this->parameters.cutoffrelax : -this->parameters.cutoffrelax) + SCIP_Real(this->value), SCIPinfinity(this->scip)), -SCIPinfinity(this->scip))));
-            if( this->parameters.set_dual_limit || this->parameters.set_prim_limit )
+            for( const auto& pair : this->limits )
             {
-               for( const auto& pair : this->limits )
+               switch( pair.second )
                {
-                  switch( pair.second )
-                  {
-                  case DUAL:
+               case DUAL:
+                  if( solution_exists )
                      SCIP_CALL_ABORT(SCIPsetRealParam(this->scip, pair.first.c_str(), SCIP_Real(this->relax( this->value, obj.sense, 2 * SCIPsumepsilon(this->scip), SCIPinfinity(this->scip) ))));
-                     break;
-                  case PRIM:
+                  break;
+               case PRIM:
+                  if( solution_exists )
                      SCIP_CALL_ABORT(SCIPsetRealParam(this->scip, pair.first.c_str(), SCIP_Real(this->value)));
-                     break;
-                  }
+                  break;
+               case SOLU:
+                  if( !solution_exists && this->parameters.set_prim_limit )
+                     SCIP_CALL_ABORT(SCIPsetIntParam(this->scip, pair.first.c_str(), 1));
+                  break;
                }
             }
          }
@@ -567,6 +587,13 @@ namespace bugger
          {
             SCIP_VAR* var = this->vars[col];
             SCIP_VARTYPE vartype = SCIPvarGetType(var);
+#if SCIP_APIVERSION >= 135
+            builder.setColIntegral(col, vartype != SCIP_VARTYPE_CONTINUOUS);
+            builder.setColImplInt(col, SCIPvarIsImpliedIntegral(var));
+#else
+            builder.setColIntegral(col, vartype != SCIP_VARTYPE_CONTINUOUS && vartype != SCIP_VARTYPE_IMPLINT);
+            builder.setColImplInt(col, vartype == SCIP_VARTYPE_IMPLINT);
+#endif
             lower = SCIPvarGetLbGlobalExact(var);
             upper = SCIPvarGetUbGlobalExact(var);
             objval = SCIPvarGetObjExact(var);
@@ -576,8 +603,6 @@ namespace bugger
             builder.setColUb(col, val);
             builder.setColLbInf(col, SCIPrationalIsNegInfinity(lower));
             builder.setColUbInf(col, SCIPrationalIsInfinity(upper));
-            builder.setColIntegral(col, vartype == SCIP_VARTYPE_BINARY || vartype == SCIP_VARTYPE_INTEGER);
-            builder.setColImplInt(col, vartype != SCIP_VARTYPE_CONTINUOUS);
             SCIPrealSetRat(this->scip, &val, objval);
             builder.setObj(col, val);
             builder.setColName(col, SCIPvarGetName(var));
@@ -594,6 +619,7 @@ namespace bugger
          Vec<REAL> rowvals(ncols);
          for( int row = 0; row < nrows; ++row )
          {
+            //TODO: Store special constraints
             SCIP_CONS* cons = conss[row];
             lower = SCIPconsGetLhsExact(this->scip, cons, &success);
             if( !success )
@@ -668,7 +694,7 @@ namespace bugger
          bool successproblem = SCIPwriteOrigProblem(this->scip, (filename + ".cip").c_str(), NULL, FALSE) == SCIP_OKAY;
          bool successsolution = true;
 
-         if( writesolution && this->reference->status == SolutionStatus::kFeasible )
+         if( writesolution && this->reference->primal.size() == this->model->getNCols() )
          {
             SCIP_SOL* sol = NULL;
             FILE* file = NULL;

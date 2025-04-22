@@ -51,9 +51,9 @@ namespace bugger
          this->adjustment = &settings;
          this->model = &problem;
          this->reference = &solution;
-         bool solution_exists = this->reference->status == SolutionStatus::kFeasible;
          int ncols = this->model->getNCols( );
          int nrows = this->model->getNRows( );
+         bool solution_exists = solution.status == SolutionStatus::kFeasible && solution.primal.size() == ncols;
          const auto& varNames = this->model->getVariableNames( );
          const auto& consNames = this->model->getConstraintNames( );
          const auto& domains = this->model->getVariableDomains( );
@@ -63,6 +63,7 @@ namespace bugger
          const auto& rhs_values = consMatrix.getRightHandSides( );
          const auto& cflags = this->model->getColFlags( );
          const auto& rflags = this->model->getRowFlags( );
+         const auto& rtypes = this->model->getConstraintTypes( );
 
          this->set_parameters( );
          SOPLEX_CALL_ABORT(this->soplex->setRealParam(SoplexParameters::OFFS, soplex::Real(obj.offset)));
@@ -103,6 +104,7 @@ namespace bugger
             if( rflags[row].test(RowFlag::kRedundant) )
                continue;
             assert(!rflags[row].test(RowFlag::kLhsInf) || !rflags[row].test(RowFlag::kRhsInf));
+            assert(rtypes[row] == ConstraintType::kLinear);
             const auto& rowvec = consMatrix.getRowCoefficients(row);
             const auto& rowinds = rowvec.getIndices( );
             const auto& rowvals = rowvec.getValues( );
@@ -431,7 +433,7 @@ namespace bugger
          bool successsolution = true;
 
          //TODO: SoPlex solution setter
-         if( writesolution && this->reference->status == SolutionStatus::kFeasible )
+         if( writesolution && this->reference->primal.size() == this->model->getNCols() )
             successsolution = false;
 
          return { successsettings, successproblem, successsolution };

@@ -1,11 +1,14 @@
 # selective bugger mode (-1: reproduce and reduce, 0: only reproduce, 1: only reduce) [Integer: [-1,1]]
 mode = -1
 
+# batch bugger emphasis (-1: default - all adaptive batches, 0: fast - with single batch in soft modifiers, 1: aggressive - with singleton batches in hard modifiers) [Integer: [-1,1]]
+emphasis = -1
+
 # calculate the number of batches by ceiled division of the solving effort defined in the solver interface (-1: use original, 0: keep batches) [Integer: [-1,9223372036854775807]]
 expenditure = -1
 
 # maximum number of batches or 0 for singleton batches [Integer: [0,9223372036854775807]]
-nbatches = 2
+nbatches = 1
 
 # initial bugger round or -1 for last round [Integer: [-1,2147483647]]
 initround = 0

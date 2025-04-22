@@ -4,18 +4,44 @@
 Features
 --------
 
+- enable setPPC-constraint handling
+- enable and-constraint handling
+- enable SOS1-constraint handling
+- enable IIS mode by declaring status feasible without specific reference solution
+- enable batch emphasis settings
+- enable implied integrality
 
 Performance improvements
 ------------------------
 
+- restart process with refined batches of double expenditure until singleton batches are reached
+- remove trivial problem elements directly with modifiers fixing and constraint without modifiers variable and side
+- set solution limit to one instead of primal limit to reference for provided status infeasible and feasible
 
 Interface changes
 ----------
 
+## BuggerModifier:
+
+- add member last_admissible and method getLastAdmissible() to store and access last number of admissible elements for automatic batch refinement
+
+## ConstraintType:
+
+- create enumeration of supported types for special constraint handling
+
+## Problem:
+
+- add methods setConstraintTypes() and getConstraintTypes() to set and get vector of constraint types for rows
+
+## ProblemBuilder:
+
+- add methods setRowType() and setRowTypeAll() to set individual constraint type and vector of all constraint types
 
 New parameters
 ----------
 
+- default value nbatches = 1 in order to try all initially
+- emphasis = -1 : batch bugger emphasis (-1: default - all adaptive batches, 0: fast - with single batch in soft modifiers, 1: aggressive - with singleton batches in hard modifiers)
 
 Fixed bugs
 ----------
@@ -27,6 +53,8 @@ Fixed bugs
 Build system
 ------------
 
+- for cmake >= 3.30 CMP0167 is enforced and BOOST_ROOT no longer supported, please use Boost_DIR instead with these cmake versions
+- make TBB optional
 
 
 @section Release Notes MIP-DD 2.0.0

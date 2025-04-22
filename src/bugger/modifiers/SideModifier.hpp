@@ -47,32 +47,46 @@ namespace bugger
       bool
       isSideAdmissible(const Problem<REAL>& problem, const int& row) const
       {
-         return !problem.getRowFlags( )[ row ].test(RowFlag::kRedundant)
-             && ( problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
-               || problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
-               || this->num.isZetaLT(problem.getConstraintMatrix( ).getLeftHandSides( )[ row ], problem.getConstraintMatrix( ).getRightHandSides( )[ row ]) );
+         if( problem.getRowFlags( )[ row ].test(RowFlag::kRedundant)
+          || ( !problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
+            && !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
+            && this->num.isZetaGE(problem.getConstraintMatrix( ).getLeftHandSides( )[ row ], problem.getConstraintMatrix( ).getRightHandSides( )[ row ]) ) )
+            return false;
+         const auto& data = problem.getConstraintMatrix( ).getRowCoefficients(row);
+         for( int index = 0; index < data.getLength( ); ++index )
+         {
+            int col = data.getIndices( )[ index ];
+            if( !this->num.isZetaZero(data.getValues( )[ index ])
+             && !problem.getColFlags( )[ col ].test(ColFlag::kFixed)
+             && ( problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
+               || problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
+               || this->num.isZetaLT(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) ) )
+               return true;
+         }
+         return false;
       }
 
       ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
-         if( solution.status == SolutionStatus::kUnbounded )
+         if( solution.status == SolutionStatus::kUnbounded
+            || ( solution.status == SolutionStatus::kFeasible && solution.primal.size() != problem.getNCols() ) )
             return ModifierStatus::kNotAdmissible;
 
+         long long nbatches = this->parameters.emphasis == EMPHASIS_AGGRESSIVE ? 0 : this->parameters.nbatches;
          long long batchsize = 1;
 
-         if( this->parameters.nbatches > 0 )
+         if( nbatches > 0 )
          {
-            batchsize = this->parameters.nbatches - 1;
+            batchsize = nbatches - 1;
             for( int row = problem.getNRows( ) - 1; row >= 0; --row )
                if( isSideAdmissible(problem, row) )
                   ++batchsize;
-            if( batchsize == this->parameters.nbatches - 1 )
+            if( batchsize == nbatches - 1 )
                return ModifierStatus::kNotAdmissible;
-            batchsize /= this->parameters.nbatches;
+            batchsize /= nbatches;
          }
 
-         bool admissible = false;
          auto copy = Problem<REAL>(problem);
          auto& matrix = copy.getConstraintMatrix( );
          Vec<std::pair<int, REAL>> applied_reductions { };
@@ -83,19 +97,19 @@ namespace bugger
          {
             if( isSideAdmissible(copy, row) )
             {
-               admissible = true;
+               ++this->last_admissible;
                const auto& data = matrix.getRowCoefficients(row);
                bool integral = true;
                REAL fixedval { };
                for( int index = 0; index < data.getLength( ); ++index )
                {
-                  if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral) || !this->num.isEpsIntegral(data.getValues( )[ index ]) ) )
+                  if( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ data.getIndices( )[ index ] ].test(ColFlag::kIntegral, ColFlag::kImplInt) || !this->num.isEpsIntegral(data.getValues( )[ index ]) ) )
                   {
                      integral = false;
                      break;
                   }
                }
-               if( solution.status == SolutionStatus::kFeasible )
+               if( solution.primal.size() == copy.getNCols() )
                {
                   fixedval = copy.getPrimalActivity(solution, row);
                   if( integral )
@@ -140,8 +154,10 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
+         if( this->parameters.emphasis == 1 && this->parameters.nbatches > 0 && this->last_admissible > this->parameters.nbatches )
+            this->last_admissible = this->parameters.nbatches;
          if( applied_reductions.empty() )
             return ModifierStatus::kUnsuccesful;
          problem = copy;

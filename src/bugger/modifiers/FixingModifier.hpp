@@ -45,31 +45,42 @@ namespace bugger
    private:
 
       bool
-      isFixingAdmissible(const Problem<REAL>& problem, const int& col) const
+      isFixingAdmissible(const Problem<REAL>& problem, const Solution<REAL>& solution, const int& col) const
       {
-         return !problem.getColFlags( )[ col ].test(ColFlag::kFixed)
-             && !problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
-             && !problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
-             && this->num.isZetaEq(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
+         if( problem.getColFlags( )[ col ].test(ColFlag::kFixed) )
+            return false;
+         bool fixed = !problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
+                   && !problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
+                   && this->num.isZetaGE(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]);
+         if( fixed && solution.status == SolutionStatus::kInfeasible
+          && this->num.isZetaGT(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) )
+            return false;
+         const auto& data = problem.getConstraintMatrix( ).getColumnCoefficients(col);
+         for( int index = 0; index < data.getLength( ); ++index )
+            if( !this->num.isZetaZero(data.getValues( )[ index ])
+             && !problem.getConstraintMatrix( ).getRowFlags( )[ data.getIndices( )[ index ] ].test(RowFlag::kRedundant)
+             && ( !fixed || problem.getConstraintTypes( )[ data.getIndices( )[ index ] ] > ConstraintType(BUGGER_NSPECIALLINEARTYPES) ) )
+               return false;
+         return true;
       }
 
       ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
+         long long nbatches = this->parameters.emphasis == EMPHASIS_FAST ? 1 : this->parameters.nbatches;
          long long batchsize = 1;
 
-         if( this->parameters.nbatches > 0 )
+         if( nbatches > 0 )
          {
-            batchsize = this->parameters.nbatches - 1;
+            batchsize = nbatches - 1;
             for( int col = problem.getNCols( ) - 1; col >= 0; --col )
-               if( isFixingAdmissible(problem, col) )
+               if( isFixingAdmissible(problem, solution, col) )
                   ++batchsize;
-            if( batchsize == this->parameters.nbatches - 1 )
+            if( batchsize == nbatches - 1 )
                return ModifierStatus::kNotAdmissible;
-            batchsize /= this->parameters.nbatches;
+            batchsize /= nbatches;
          }
 
-         bool admissible = false;
          auto copy = Problem<REAL>(problem);
          Vec<int> applied_reductions { };
          Vec<MatrixEntry<REAL>> applied_entries { };
@@ -83,20 +94,20 @@ namespace bugger
 
          for( int col = copy.getNCols( ) - 1; col >= 0; --col )
          {
-            if( isFixingAdmissible(copy, col) )
+            if( isFixingAdmissible(copy, solution, col) )
             {
-               admissible = true;
+               ++this->last_admissible;
                const auto& col_data = copy.getConstraintMatrix( ).getColumnCoefficients(col);
                REAL fixedval { };
-               if( solution.status == SolutionStatus::kFeasible )
+               if( solution.primal.size() == copy.getNCols() )
                {
                   fixedval = solution.primal[ col ];
-                  if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
+                  if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral, ColFlag::kImplInt) )
                      fixedval = round(fixedval);
                }
                else
                {
-                  if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral) )
+                  if( copy.getColFlags( )[ col ].test(ColFlag::kIntegral, ColFlag::kImplInt) )
                   {
                      if( !copy.getColFlags( )[ col ].test(ColFlag::kUbInf) )
                         fixedval = min(fixedval, this->num.epsFloor(copy.getUpperBounds( )[ col ]));
@@ -127,7 +138,7 @@ namespace bugger
                      {
                         int index = row_data.getIndices( )[ col_index ];
                         REAL value = row_data.getValues( )[ col_index ];
-                        if( !copy.getColFlags( )[ index ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ index ].test(ColFlag::kIntegral) || !this->num.isEpsIntegral(value) ) )
+                        if( !copy.getColFlags( )[ index ].test(ColFlag::kFixed) && ( !copy.getColFlags( )[ index ].test(ColFlag::kIntegral, ColFlag::kImplInt) || !this->num.isEpsIntegral(value) ) )
                         {
                            integral = false;
                            break;
@@ -191,8 +202,10 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
+         if( this->parameters.emphasis == 0 )
+            this->last_admissible = 1;
          if( applied_reductions.empty() )
             return ModifierStatus::kUnsuccesful;
          problem = copy;

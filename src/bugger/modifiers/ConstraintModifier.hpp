@@ -45,33 +45,47 @@ namespace bugger
    private:
 
       bool
-      isConstraintAdmissible(const Problem<REAL>& problem, const int& row) const
+      isConstraintAdmissible(const Problem<REAL>& problem, const Solution<REAL>& solution, const int& row) const
       {
          if( problem.getConstraintMatrix( ).getRowFlags( )[ row ].test(RowFlag::kRedundant) )
             return false;
+         if( solution.status != SolutionStatus::kInfeasible )
+            return true;
+         if( !problem.getRowFlags( )[ row ].test(RowFlag::kLhsInf)
+          && !problem.getRowFlags( )[ row ].test(RowFlag::kRhsInf)
+          && this->num.isZetaGT(problem.getConstraintMatrix( ).getLeftHandSides( )[ row ], problem.getConstraintMatrix( ).getRightHandSides( )[ row ]) )
+            return false;
+         const auto& data = problem.getConstraintMatrix( ).getRowCoefficients(row);
+         for( int index = 0; index < data.getLength( ); ++index )
+         {
+            int col = data.getIndices( )[ index ];
+            if( !this->num.isZetaZero(data.getValues( )[ index ])
+             && !problem.getColFlags( )[ col ].test(ColFlag::kFixed)
+             && ( problem.getColFlags( )[ col ].test(ColFlag::kLbInf)
+               || problem.getColFlags( )[ col ].test(ColFlag::kUbInf)
+               || this->num.isZetaLT(problem.getLowerBounds( )[ col ], problem.getUpperBounds( )[ col ]) ) )
+               return false;
+         }
          return true;
       }
 
       ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
-         if( solution.status == SolutionStatus::kInfeasible )
-            return ModifierStatus::kNotAdmissible;
-
+         long long nbatches = this->parameters.emphasis == EMPHASIS_AGGRESSIVE ? 0 : this->parameters.nbatches;
          long long batchsize = 1;
 
-         if( this->parameters.nbatches > 0 )
+         if( nbatches > 0 )
          {
-            batchsize = this->parameters.nbatches - 1;
+            batchsize = nbatches - 1;
             for( int i = problem.getNRows( ) - 1; i >= 0; --i )
-               if( isConstraintAdmissible(problem, i) )
+               if( isConstraintAdmissible(problem, solution, i) )
                   ++batchsize;
-            if( batchsize == this->parameters.nbatches - 1 )
+            if( batchsize == nbatches - 1 )
                return ModifierStatus::kNotAdmissible;
-            batchsize /= this->parameters.nbatches;
+            batchsize /= nbatches;
          }
 
-         bool admissible = false;
          auto copy = Problem<REAL>(problem);
          Vec<int> applied_reductions { };
          Vec<int> batches { };
@@ -79,9 +93,9 @@ namespace bugger
 
          for( int row = copy.getNRows( ) - 1; row >= 0; --row )
          {
-            if( isConstraintAdmissible(copy, row) )
+            if( isConstraintAdmissible(copy, solution, row) )
             {
-               admissible = true;
+               ++this->last_admissible;
                assert(!copy.getRowFlags( )[ row ].test(RowFlag::kRedundant));
                copy.getRowFlags( )[ row ].set(RowFlag::kRedundant);
                batches.push_back(row);
@@ -104,8 +118,10 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
+         if( this->parameters.emphasis == 1 && this->parameters.nbatches > 0 && this->last_admissible > this->parameters.nbatches )
+            this->last_admissible = this->parameters.nbatches;
          if( applied_reductions.empty() )
             return ModifierStatus::kUnsuccesful;
          problem = copy;

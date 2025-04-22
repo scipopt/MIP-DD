@@ -1,24 +1,27 @@
 cmake_minimum_required (VERSION 3.11.0)
 
+# FindBoost is removed in cmake version 3.30
+if(POLICY CMP0167)
+    cmake_policy(SET CMP0167 NEW)
+endif()
+
 set(BUGGER_VERSION_MAJOR 2)
-set(BUGGER_VERSION_MINOR 0)
-set(BUGGER_VERSION_PATCH 1)
+set(BUGGER_VERSION_MINOR 1)
+set(BUGGER_VERSION_PATCH 0)
 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 project(bugger VERSION ${BUGGER_VERSION_MAJOR}.${BUGGER_VERSION_MINOR}.${BUGGER_VERSION_PATCH})
 
 set(CMAKE_CXX_STANDARD 14)
-
 set(BOOST_MIN_VERSION 1.65)
-if(APPLE)
-   set(BOOST_MIN_VERSION 1.81)
-endif()
+
+option(TBB "should TBB be linked if found" OFF)
 
 include(GNUInstallDirs)
 
-# path to e.g. findGMP module
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules/)
+# path to finders
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -31,9 +34,6 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 elseif((CMAKE_CXX_COMPILER_ID MATCHES "GNU") OR (CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
     add_compile_options(-ffp-contract=off)
 endif()
-
-option(GMP "should gmp be linked" ON)
-option(INSTALL_TBB "should the TBB library be installed" OFF)
 
 # make 'Release' the default build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -72,40 +72,23 @@ target_include_directories(bugger INTERFACE
    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
    $<INSTALL_INTERFACE:include>
    ${Boost_INCLUDE_DIRS}
-   ${GMP_INCLUDE_DIRS}
    )
 
-option(TBB "should TBB be linked if found" OFF)
-
-set(BUGGER_TBB off)
-
-# on windows we don't want to build tbb
-if(WIN32)
-   find_package(TBB 2018 COMPONENTS tbb tbbmalloc REQUIRED)
-else()
-   # Utilities to automatically download missing dependencies
-   include(cmake/Dependencies.cmake)
-
-   find_or_download_package(
-      NAME TBB
-      VERSION 2018
-     URL https://github.com/oneapi-src/oneTBB/archive/refs/tags/v2021.4.0.tar.gz
-      COMPONENTS tbb tbbmalloc
-      URL_HASH SHA256=021796c7845e155e616f5ecda16daa606ebb4c6f90b996e5c08aebab7a8d3de3
-      CONFIGURE_ARGS -DTBB_TEST=OFF -DTBB_EXAMPLES=OFF -DTBB4PY_BUILD=OFF)
+if(TBB)
+   find_package(TBB 2018 COMPONENTS tbb tbbmalloc)
 endif()
-
-target_link_libraries(bugger
-        INTERFACE TBB::tbb Threads::Threads $<$<PLATFORM_ID:Linux>:rt>)
-
-find_package(Threads REQUIRED)
-
-
-target_link_libraries(bugger INTERFACE  ${GMP_LIBRARIES})
-
-# on raspberry pi, we need to link libatomic, as libtbbmalloc_proxy depends on it
-if((CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "armv7l") AND (CMAKE_SYSTEM_NAME STREQUAL "Linux"))
-    target_link_libraries(bugger INTERFACE atomic)
+if(TBB_FOUND)
+   find_package(Threads REQUIRED)
+   target_compile_options(bugger INTERFACE ${TBB_CXX_STD_FLAG})
+   # on raspberry pi, we need to link libatomic, as libtbbmalloc_proxy depends on it
+   if((CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "armv7l") AND (CMAKE_SYSTEM_NAME STREQUAL "Linux"))
+      target_link_libraries(bugger INTERFACE atomic)
+   endif()
+   target_link_libraries(bugger INTERFACE TBB::tbb Threads::Threads $<$<PLATFORM_ID:Linux>:rt>)
+   message(STATUS "Found TBB: ${TBB_DIR}")
+   set(BUGGER_TBB on)
+else()
+   set(BUGGER_TBB off)
 endif()
 
 include(CMakePackageConfigHelpers)
@@ -119,9 +102,8 @@ write_basic_package_version_file(
 if(MSVC)
    target_compile_definitions(bugger INTERFACE BOOST_ALL_NO_LIB)
    target_compile_options(bugger INTERFACE /bigobj)
-   target_compile_options(bugger INTERFACE ${TBB_CXX_STD_FLAG})
 else()
-   target_compile_options(bugger INTERFACE ${TBB_CXX_STD_FLAG} -Wno-shadow)
+   target_compile_options(bugger INTERFACE -Wno-shadow)
 endif()
 
 include(CheckCXXSourceCompiles)
@@ -282,12 +264,12 @@ install(FILES
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bugger/external/ska)
 
 # configure the config file for the build tree
-set(TBB_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
+set(EXTRA_CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH})
 configure_file(${PROJECT_SOURCE_DIR}/bugger-config.cmake.in
   "${CMAKE_BINARY_DIR}/bugger-config.cmake" @ONLY)
 
 # configure and install config file for installation
-set(TBB_MODULE_PATH "\${CMAKE_CURRENT_LIST_DIR}")
+set(EXTRA_CMAKE_MODULE_PATH "\${CMAKE_CURRENT_LIST_DIR}")
 configure_file(${PROJECT_SOURCE_DIR}/bugger-config.cmake.in
     "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/bugger-config.cmake" @ONLY)
 
@@ -295,16 +277,9 @@ configure_file(${PROJECT_SOURCE_DIR}/bugger-config.cmake.in
 install(FILES ${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/bugger-config.cmake
    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bugger)
 
-install(FILES ${PROJECT_SOURCE_DIR}/cmake/Modules/FindTBB.cmake
-   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bugger)
-if(INSTALL_TBB AND CMAKE_SYSTEM_NAME STREQUAL "Windows")
-   if(EXISTS "${TBB_tbb_DLL}")
-      install(FILES "${TBB_tbb_DLL}" DESTINATION ${CMAKE_INSTALL_BINDIR})
-      install(FILES "${TBB_tbb_DLL}" DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bugger)
-   endif()
-   if(EXISTS "${TBB_tbbmalloc_DLL}")
-      install(FILES "${TBB_tbbmalloc_DLL}" DESTINATION ${CMAKE_INSTALL_BINDIR})
-   endif()
+if(BUGGER_TBB)
+   install(FILES ${PROJECT_SOURCE_DIR}/cmake/Modules/FindTBB.cmake
+      DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bugger)
 endif()
 
 # export targets for build-tree linking

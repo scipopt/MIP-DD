@@ -46,9 +46,9 @@ namespace bugger
          this->adjustment = &settings;
          this->model = &problem;
          this->reference = &solution;
-         bool solution_exists = this->reference->status == SolutionStatus::kFeasible;
          int ncols = this->model->getNCols( );
          int nrows = this->model->getNRows( );
+         bool solution_exists = solution.status == SolutionStatus::kFeasible && solution.primal.size() == ncols;
          const auto& varNames = this->model->getVariableNames( );
          const auto& consNames = this->model->getConstraintNames( );
          const auto& domains = this->model->getVariableDomains( );
@@ -58,6 +58,7 @@ namespace bugger
          const auto& rhs_values = consMatrix.getRightHandSides( );
          const auto& cflags = this->model->getColFlags( );
          const auto& rflags = this->model->getRowFlags( );
+         const auto& rtypes = this->model->getConstraintTypes( );
 
          this->set_parameters( );
          SCIP_CALL_ABORT(SCIPcreateProbBasic(this->scip, this->model->getName( ).c_str()));
@@ -77,7 +78,6 @@ namespace bugger
             if( cflags[col].test(ColFlag::kFixed) )
                continue;
             SCIP_VAR* var;
-            SCIP_VARTYPE type;
             SCIP_Real lb = cflags[col].test(ColFlag::kLbInf)
                            ? -SCIPinfinity(this->scip)
                            : SCIP_Real(domains.lower_bounds[col]);
@@ -85,19 +85,33 @@ namespace bugger
                            ? SCIPinfinity(this->scip)
                            : SCIP_Real(domains.upper_bounds[col]);
             assert(!cflags[col].test(ColFlag::kInactive) || lb == ub);
+            SCIP_VARTYPE vartype;
             if( cflags[col].test(ColFlag::kIntegral) )
             {
                if( lb >= 0 && ub <= 1 )
-                  type = SCIP_VARTYPE_BINARY;
+                  vartype = SCIP_VARTYPE_BINARY;
                else
-                  type = SCIP_VARTYPE_INTEGER;
+                  vartype = SCIP_VARTYPE_INTEGER;
             }
-            else if( cflags[col].test(ColFlag::kImplInt) )
-               type = SCIP_VARTYPE_IMPLINT;
+#if SCIP_APIVERSION >= 135
             else
-               type = SCIP_VARTYPE_CONTINUOUS;
-            SCIP_CALL_ABORT(SCIPcreateVarBasic(this->scip, &var, varNames[col].c_str(), lb, ub,
-                  SCIP_Real(obj.coefficients[col]), type));
+               vartype = SCIP_VARTYPE_CONTINUOUS;
+            SCIP_IMPLINTTYPE impltype;
+            if( cflags[col].test(ColFlag::kImplInt) )
+               impltype = SCIP_IMPLINTTYPE_WEAK;
+            else
+               impltype = SCIP_IMPLINTTYPE_NONE;
+            SCIP_CALL_ABORT(SCIPcreateVarImpl(this->scip, &var, varNames[col].c_str(),
+                  lb, ub, SCIP_Real(obj.coefficients[col]), vartype, impltype,
+                  TRUE, FALSE, NULL, NULL, NULL, NULL, NULL));
+#else
+            else if( cflags[col].test(ColFlag::kImplInt) )
+               vartype = SCIP_VARTYPE_IMPLINT;
+            else
+               vartype = SCIP_VARTYPE_CONTINUOUS;
+            SCIP_CALL_ABORT(SCIPcreateVarBasic(this->scip, &var, varNames[col].c_str(),
+                  lb, ub, SCIP_Real(obj.coefficients[col]), vartype));
+#endif
             this->vars[col] = var;
             SCIP_CALL_ABORT(SCIPaddVar(this->scip, var));
             SCIP_CALL_ABORT(SCIPreleaseVar(this->scip, &var));
@@ -121,36 +135,150 @@ namespace bugger
             SCIP_Real rhs = rflags[row].test(RowFlag::kRhsInf)
                             ? SCIPinfinity(this->scip)
                             : SCIP_Real(rhs_values[row]);
-            for( int i = 0; i < nrowcols; ++i )
+            switch( rtypes[row] )
             {
-               assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
-               assert(rowvals[i] != 0);
-               consvars[i] = this->vars[rowinds[i]];
-               consvals[i] = SCIP_Real(rowvals[i]);
+            case ConstraintType::kLinear:
+            {
+               for( int i = 0; i < nrowcols; ++i )
+               {
+                  assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
+                  assert(rowvals[i] != 0);
+                  consvars[i] = this->vars[rowinds[i]];
+                  consvals[i] = SCIP_Real(rowvals[i]);
+               }
+               SCIP_CALL_ABORT(SCIPcreateConsBasicLinear(this->scip, &cons, consNames[row].c_str(), nrowcols,
+                     consvars.data( ), consvals.data( ), lhs, rhs));
+               break;
             }
-            SCIP_CALL_ABORT(SCIPcreateConsBasicLinear(this->scip, &cons, consNames[row].c_str(), nrowcols,
-                  consvars.data( ), consvals.data( ), lhs, rhs));
+            case ConstraintType::kSetPPC:
+            {
+               bool general = false;
+               for( int i = 0; i < nrowcols; ++i )
+               {
+                  assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
+                  assert(rowvals[i] != 0);
+                  assert(cflags[rowinds[i]].test(ColFlag::kIntegral, ColFlag::kImplInt));
+                  assert(!cflags[rowinds[i]].test(ColFlag::kLbInf));
+                  assert(domains.lower_bounds[rowinds[i]] >= 0);
+                  assert(!cflags[rowinds[i]].test(ColFlag::kUbInf));
+                  assert(domains.upper_bounds[rowinds[i]] <= 1);
+                  if( rowvals[i] < 0 )
+                  {
+                     SCIPgetNegatedVar(this->scip, this->vars[rowinds[i]], &consvars[i]);
+                     consvals[i] = SCIP_Real(-rowvals[i]);
+                     if( !SCIPisInfinity(this->scip, -lhs) )
+                        lhs += consvals[i];
+                     if( !SCIPisInfinity(this->scip, rhs) )
+                        rhs += consvals[i];
+                  }
+                  else
+                  {
+                     consvars[i] = this->vars[rowinds[i]];
+                     consvals[i] = SCIP_Real(rowvals[i]);
+                  }
+                  if( consvals[i] != 1.0 )
+                     general = true;
+               }
+               if( general || ( !SCIPisInfinity(this->scip, -lhs) && lhs != 1.0 ) || ( !SCIPisInfinity(this->scip, rhs) && rhs != 1.0 ) )
+               {
+                  SCIP_CALL_ABORT(SCIPcreateConsBasicLinear(this->scip, &cons, consNames[row].c_str(), nrowcols,
+                        consvars.data( ), consvals.data( ), lhs, rhs));
+               }
+               else if( lhs == 1.0 && rhs != 1.0 )
+               {
+                  SCIP_CALL_ABORT(SCIPcreateConsBasicSetcover(this->scip, &cons, consNames[row].c_str(), nrowcols,
+                        consvars.data( )));
+               }
+               else if( lhs != 1.0 && rhs == 1.0 )
+               {
+                  SCIP_CALL_ABORT(SCIPcreateConsBasicSetpack(this->scip, &cons, consNames[row].c_str(), nrowcols,
+                        consvars.data( )));
+               }
+               else
+               {
+                  assert(lhs == 1.0);
+                  assert(rhs == 1.0);
+                  SCIP_CALL_ABORT(SCIPcreateConsBasicSetpart(this->scip, &cons, consNames[row].c_str(), nrowcols,
+                        consvars.data( )));
+               }
+               break;
+            }
+            case ConstraintType::kAnd:
+            {
+               SCIP_VAR* resvar = NULL;
+               int resindex = -1;
+               for( int i = 0; i < nrowcols; ++i )
+               {
+                  assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
+                  assert(rowvals[i] == round(rowvals[i]));
+                  assert(rowvals[i] != 0);
+                  assert(abs(rowvals[i]) <= 2);
+                  assert(cflags[rowinds[i]].test(ColFlag::kIntegral, ColFlag::kImplInt));
+                  assert(!cflags[rowinds[i]].test(ColFlag::kLbInf));
+                  assert(domains.lower_bounds[rowinds[i]] >= 0);
+                  assert(!cflags[rowinds[i]].test(ColFlag::kUbInf));
+                  assert(domains.upper_bounds[rowinds[i]] <= 1);
+                  if( rowvals[i] < 0 )
+                     SCIPgetNegatedVar(this->scip, this->vars[rowinds[i]], &consvars[i]);
+                  else
+                     consvars[i] = this->vars[rowinds[i]];
+                  if( resvar == NULL && abs(rowvals[i]) > 1 )
+                  {
+                     resvar = consvars[i];
+                     resindex = i;
+                  }
+               }
+               assert(resvar != NULL);
+               for( int i = 0; i <= resindex; ++i )
+                  std::swap(resvar, consvars[i]);
+               SCIP_CALL_ABORT(SCIPcreateConsBasicAnd(this->scip, &cons, consNames[row].c_str(), consvars[0],
+                     nrowcols - 1, consvars.data() + 1));
+               break;
+            }
+            case ConstraintType::kSOS1:
+            {
+               for( int i = 0; i < nrowcols; ++i )
+               {
+                  assert(!cflags[rowinds[i]].test(ColFlag::kFixed));
+                  assert(abs(rowvals[i]) == 1);
+                  if( rowvals[i] < 0 )
+                     SCIPgetNegatedVar(this->scip, this->vars[rowinds[i]], &consvars[i]);
+                  else
+                     consvars[i] = this->vars[rowinds[i]];
+               }
+               SCIP_CALL_ABORT(SCIPcreateConsBasicSOS1(this->scip, &cons, consNames[row].c_str(), nrowcols,
+                     consvars.data(), NULL));
+               break;
+            }
+            default:
+               SCIPerrorMessage("unknown constraint type\n");
+               assert(false);
+               continue;
+            }
             SCIP_CALL_ABORT(SCIPaddCons(this->scip, cons));
             SCIP_CALL_ABORT(SCIPreleaseCons(this->scip, &cons));
          }
 
-         if( solution_exists )
+         if( solution_exists && this->parameters.cutoffrelax >= 0.0 && this->parameters.cutoffrelax < SCIPinfinity(this->scip) )
+            SCIP_CALL_ABORT(SCIPsetObjlimit(this->scip, max(min(SCIP_Real(obj.sense ? this->parameters.cutoffrelax : -this->parameters.cutoffrelax) + SCIP_Real(this->value), SCIPinfinity(this->scip)), -SCIPinfinity(this->scip))));
+         if( ( this->reference->status == SolutionStatus::kFeasible || this->reference->status == SolutionStatus::kInfeasible ) && ( this->parameters.set_dual_limit || this->parameters.set_prim_limit ) )
          {
-            if( this->parameters.cutoffrelax >= 0.0 && this->parameters.cutoffrelax < SCIPinfinity(this->scip) )
-               SCIP_CALL_ABORT(SCIPsetObjlimit(this->scip, max(min(SCIP_Real(obj.sense ? this->parameters.cutoffrelax : -this->parameters.cutoffrelax) + SCIP_Real(this->value), SCIPinfinity(this->scip)), -SCIPinfinity(this->scip))));
-            if( this->parameters.set_dual_limit || this->parameters.set_prim_limit )
+            for( const auto& pair : this->limits )
             {
-               for( const auto& pair : this->limits )
+               switch( pair.second )
                {
-                  switch( pair.second )
-                  {
-                  case DUAL:
+               case DUAL:
+                  if( solution_exists )
                      SCIP_CALL_ABORT(SCIPsetRealParam(this->scip, pair.first.c_str(), SCIP_Real(this->relax( this->value, obj.sense, 2 * SCIPsumepsilon(this->scip), SCIPinfinity(this->scip) ))));
-                     break;
-                  case PRIM:
+                  break;
+               case PRIM:
+                  if( solution_exists )
                      SCIP_CALL_ABORT(SCIPsetRealParam(this->scip, pair.first.c_str(), SCIP_Real(this->value)));
-                     break;
-                  }
+                  break;
+               case SOLU:
+                  if( !solution_exists && this->parameters.set_prim_limit )
+                     SCIP_CALL_ABORT(SCIPsetIntParam(this->scip, pair.first.c_str(), 1));
+                  break;
                }
             }
          }
@@ -477,12 +605,17 @@ namespace bugger
             SCIP_Real lb = SCIPvarGetLbGlobal(var);
             SCIP_Real ub = SCIPvarGetUbGlobal(var);
             SCIP_VARTYPE vartype = SCIPvarGetType(var);
+#if SCIP_APIVERSION >= 135
+            builder.setColIntegral(col, vartype != SCIP_VARTYPE_CONTINUOUS);
+            builder.setColImplInt(col, SCIPvarIsImpliedIntegral(var));
+#else
+            builder.setColIntegral(col, vartype != SCIP_VARTYPE_CONTINUOUS && vartype != SCIP_VARTYPE_IMPLINT);
+            builder.setColImplInt(col, vartype == SCIP_VARTYPE_IMPLINT);
+#endif
             builder.setColLb(col, REAL(lb));
             builder.setColUb(col, REAL(ub));
             builder.setColLbInf(col, SCIPisInfinity(this->scip, -lb));
             builder.setColUbInf(col, SCIPisInfinity(this->scip, ub));
-            builder.setColIntegral(col, vartype == SCIP_VARTYPE_BINARY || vartype == SCIP_VARTYPE_INTEGER);
-            builder.setColImplInt(col, vartype != SCIP_VARTYPE_CONTINUOUS);
             builder.setObj(col, REAL(SCIPvarGetObj(var)));
             builder.setColName(col, SCIPvarGetName(var));
          }
@@ -496,35 +629,103 @@ namespace bugger
          for( int row = 0; row < nrows; ++row )
          {
             SCIP_CONS* cons = conss[row];
-            SCIP_Real lhs = SCIPconsGetLhs(this->scip, cons, &success);
-            if( !success )
-               return { settings, boost::none, boost::none };
-            SCIP_Real rhs = SCIPconsGetRhs(this->scip, cons, &success);
-            if( !success )
-               return { settings, boost::none, boost::none };
-            int nrowcols = 0;
-            SCIPgetConsNVars(this->scip, cons, &nrowcols, &success);
-            if( !success )
-               return { settings, boost::none, boost::none };
-            SCIPgetConsVars(this->scip, cons, consvars.data(), ncols, &success);
-            if( !success )
-               return { settings, boost::none, boost::none };
-            SCIPgetConsVals(this->scip, cons, consvals.data(), ncols, &success);
-            if( !success )
-               return { settings, boost::none, boost::none };
-            for( int i = 0; i < nrowcols; ++i )
+            String conshdlrname { SCIPconshdlrGetName(SCIPconsGetHdlr(cons)) };
+            SCIP_Real lhs;
+            SCIP_Real rhs;
+            int nrowcols;
+            if( conshdlrname == "SOS1" )
             {
-               if( SCIPvarIsNegated(consvars[i]) )
+               SCIP_VAR** sosvars;
+               lhs = 0.0;
+               rhs = 0.0;
+               nrowcols = SCIPgetNVarsSOS1(this->scip, cons);
+               sosvars = SCIPgetVarsSOS1(this->scip, cons);
+               std::copy(sosvars, sosvars + nrowcols, consvars.data());
+               for( int i = 0; i < nrowcols; ++i )
                {
-                  consvars[i] = SCIPvarGetNegatedVar(consvars[i]);
-                  consvals[i] *= -1.0;
-                  if( !SCIPisInfinity(this->scip, -lhs) )
-                     lhs += consvals[i];
-                  if( !SCIPisInfinity(this->scip, rhs) )
-                     rhs += consvals[i];
+                  if( SCIPvarIsNegated(consvars[i]) )
+                  {
+                     consvars[i] = SCIPvarGetNegatedVar(consvars[i]);
+                     rowvals[i] = -1;
+                  }
+                  else
+                     rowvals[i] = 1;
+                  rowinds[i] = SCIPvarGetProbindex(consvars[i]);
                }
-               rowinds[i] = SCIPvarGetProbindex(consvars[i]);
-               rowvals[i] = REAL(consvals[i]);
+               builder.setRowType(row, ConstraintType::kSOS1);
+            }
+            else if( conshdlrname == "and" )
+            {
+               SCIP_VAR** andvars;
+               lhs = 0.0;
+               rhs = 0.0;
+               nrowcols = SCIPgetNVarsAnd(this->scip, cons) + 1;
+               andvars = SCIPgetVarsAnd(this->scip, cons);
+               consvars[0] = SCIPgetResultantAnd(this->scip, cons);
+               std::copy(andvars, andvars + (nrowcols - 1), consvars.data() + 1);
+               for( int i = 0; i < nrowcols; ++i )
+               {
+                  if( SCIPvarIsNegated(consvars[i]) )
+                  {
+                     consvars[i] = SCIPvarGetNegatedVar(consvars[i]);
+                     rowvals[i] = -1;
+                  }
+                  else
+                     rowvals[i] = 1;
+                  rowinds[i] = SCIPvarGetProbindex(consvars[i]);
+               }
+               rowvals[0] *= 2;
+               builder.setRowType(row, ConstraintType::kAnd);
+            }
+            else
+            {
+               lhs = SCIPconsGetLhs(this->scip, cons, &success);
+               if( !success )
+                  return { settings, boost::none, boost::none };
+               rhs = SCIPconsGetRhs(this->scip, cons, &success);
+               if( !success )
+                  return { settings, boost::none, boost::none };
+               nrowcols = 0;
+               SCIPgetConsNVars(this->scip, cons, &nrowcols, &success);
+               if( !success )
+                  return { settings, boost::none, boost::none };
+               SCIPgetConsVars(this->scip, cons, consvars.data(), ncols, &success);
+               if( !success )
+                  return { settings, boost::none, boost::none };
+               SCIPgetConsVals(this->scip, cons, consvals.data(), ncols, &success);
+               if( !success )
+                  return { settings, boost::none, boost::none };
+               for( int i = 0; i < nrowcols; ++i )
+               {
+                  if( SCIPvarIsNegated(consvars[i]) )
+                  {
+                     consvars[i] = SCIPvarGetNegatedVar(consvars[i]);
+                     consvals[i] *= -1.0;
+                     if( !SCIPisInfinity(this->scip, -lhs) )
+                        lhs += consvals[i];
+                     if( !SCIPisInfinity(this->scip, rhs) )
+                        rhs += consvals[i];
+                  }
+                  rowinds[i] = SCIPvarGetProbindex(consvars[i]);
+                  rowvals[i] = REAL(consvals[i]);
+               }
+               switch( ConstraintType(this->parameters.linearization) )
+               {
+               case ConstraintType::kLinear:
+                  if( conshdlrname == "setppc" )
+                  {
+                     builder.setRowType(row, ConstraintType::kSetPPC);
+                     break;
+                  }
+               case ConstraintType::kSetPPC:
+                  break;
+               case ConstraintType::kAnd:
+               case ConstraintType::kSOS1:
+               default:
+                  SCIPerrorMessage("unknown constraint type\n");
+                  assert(false);
+                  break;
+               }
             }
             builder.setRowLhs(row, REAL(lhs));
             builder.setRowRhs(row, REAL(rhs));
@@ -565,7 +766,7 @@ namespace bugger
          bool successproblem = SCIPwriteOrigProblem(this->scip, (filename + ".cip").c_str(), NULL, FALSE) == SCIP_OKAY;
          bool successsolution = true;
 
-         if( writesolution && this->reference->status == SolutionStatus::kFeasible )
+         if( writesolution && this->reference->primal.size() == this->model->getNCols() )
          {
             SCIP_SOL* sol = NULL;
             FILE* file = NULL;

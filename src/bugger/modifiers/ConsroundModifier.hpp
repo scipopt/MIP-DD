@@ -67,23 +67,24 @@ namespace bugger
       ModifierStatus
       execute(SolverSettings& settings, Problem<REAL>& problem, Solution<REAL>& solution) override
       {
-         if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded )
+         if( solution.status == SolutionStatus::kInfeasible || solution.status == SolutionStatus::kUnbounded
+            || ( solution.status == SolutionStatus::kFeasible && solution.primal.size() != problem.getNCols() ) )
             return ModifierStatus::kNotAdmissible;
 
+         long long nbatches = this->parameters.emphasis == EMPHASIS_FAST ? 1 : this->parameters.nbatches;
          long long batchsize = 1;
 
-         if( this->parameters.nbatches > 0 )
+         if( nbatches > 0 )
          {
-            batchsize = this->parameters.nbatches - 1;
+            batchsize = nbatches - 1;
             for( int i = 0; i < problem.getNRows( ); ++i )
                if( isConsroundAdmissible(problem, i) )
                   ++batchsize;
-            if( batchsize == this->parameters.nbatches - 1 )
+            if( batchsize == nbatches - 1 )
                return ModifierStatus::kNotAdmissible;
-            batchsize /= this->parameters.nbatches;
+            batchsize /= nbatches;
          }
 
-         bool admissible = false;
          auto copy = Problem<REAL>(problem);
          auto& matrix = copy.getConstraintMatrix( );
          Vec<MatrixEntry<REAL>> applied_entries { };
@@ -100,7 +101,7 @@ namespace bugger
          {
             if( isConsroundAdmissible(copy, row) )
             {
-               admissible = true;
+               ++this->last_admissible;
                const auto& data = matrix.getRowCoefficients(row);
                REAL lhs { round(matrix.getLeftHandSides( )[ row ]) };
                REAL rhs { round(matrix.getRightHandSides( )[ row ]) };
@@ -109,7 +110,7 @@ namespace bugger
                   if( !this->num.isZetaIntegral(data.getValues( )[ index ]) )
                      batches_coeff.emplace_back(row, data.getIndices( )[ index ], round(data.getValues( )[ index ]));
                }
-               if( solution.status == SolutionStatus::kFeasible )
+               if( solution.primal.size() == copy.getNCols() )
                {
                   REAL activity { copy.getPrimalActivity(solution, row, true) };
                   lhs = min(lhs, this->num.epsFloor(activity));
@@ -153,8 +154,10 @@ namespace bugger
             }
          }
 
-         if( !admissible )
+         if( this->last_admissible == 0 )
             return ModifierStatus::kNotAdmissible;
+         if( this->parameters.emphasis == 0 )
+            this->last_admissible = 1;
          if( applied_entries.empty() && applied_lefts.empty() && applied_rights.empty() )
             return ModifierStatus::kUnsuccesful;
          problem = copy;
