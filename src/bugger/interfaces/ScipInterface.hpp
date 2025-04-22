@@ -335,7 +335,7 @@ namespace bugger
             assert(false);
          }
 
-         SCIP_CALL_ABORT(SCIPsetStringParam(scip, ScipParameters::CERT.c_str(), parameters.certificate ? "certificate.vipr" : ""));
+         SCIP_CALL_ABORT(SCIPsetStringParam(scip, ScipParameters::CERT.c_str(), parameters.certificate ? "certificate.vipr" : "-"));
 #endif
       }
    };
