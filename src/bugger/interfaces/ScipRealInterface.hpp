@@ -654,6 +654,29 @@ namespace bugger
                }
                builder.setRowType(row, ConstraintType::kSOS1);
             }
+            else if( conshdlrname == "or" )
+            {
+               SCIP_VAR** orvars;
+               lhs = 0.0;
+               rhs = 0.0;
+               nrowcols = SCIPgetNVarsOr(this->scip, cons) + 1;
+               orvars = SCIPgetVarsOr(this->scip, cons);
+               consvars[0] = SCIPgetResultantOr(this->scip, cons);
+               std::copy(orvars, orvars + (nrowcols - 1), consvars.data() + 1);
+               for( int i = 0; i < nrowcols; ++i )
+               {
+                  if( SCIPvarIsNegated(consvars[i]) )
+                  {
+                     consvars[i] = SCIPvarGetNegatedVar(consvars[i]);
+                     rowvals[i] = 1;
+                  }
+                  else
+                     rowvals[i] = -1;
+                  rowinds[i] = SCIPvarGetProbindex(consvars[i]);
+               }
+               rowvals[0] *= 2;
+               builder.setRowType(row, ConstraintType::kAnd);
+            }
             else if( conshdlrname == "and" )
             {
                SCIP_VAR** andvars;
