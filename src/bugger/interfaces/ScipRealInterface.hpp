@@ -633,7 +633,27 @@ namespace bugger
             SCIP_Real lhs;
             SCIP_Real rhs;
             int nrowcols;
-            if( conshdlrname == "SOS1" )
+            if( conshdlrname == "indicator" )
+            {
+               lhs = 0.0;
+               rhs = 0.0;
+               nrowcols = 2;
+               consvars[0] = SCIPgetBinaryVarIndicator(cons);
+               consvars[1] = SCIPgetSlackVarIndicator(cons);
+               for( int i = 0; i < nrowcols; ++i )
+               {
+                  if( SCIPvarIsNegated(consvars[i]) )
+                  {
+                     consvars[i] = SCIPvarGetNegatedVar(consvars[i]);
+                     rowvals[i] = -1;
+                  }
+                  else
+                     rowvals[i] = 1;
+                  rowinds[i] = SCIPvarGetProbindex(consvars[i]);
+               }
+               builder.setRowType(row, ConstraintType::kSOS1);
+            }
+            else if( conshdlrname == "SOS1" )
             {
                SCIP_VAR** sosvars;
                lhs = 0.0;
