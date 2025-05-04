@@ -23,6 +23,8 @@ Fixed bugs
 - keep restricted solver limit settings in modifier setting when resetting
 - avoid fixing trivially infeasible bounds and sides to keep feasibility status
 - adapt exact-SCIP interface to release version
+- enforce non-negative round and stage limits
+- write instance before breaking round
 
 Build system
 ------------

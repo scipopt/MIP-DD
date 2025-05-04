@@ -163,7 +163,7 @@ namespace bugger
          {
             Timer timer(time);
 
-            for( int round = parameters.initround, stage = parameters.initstage, success = parameters.initstage; round < parameters.maxrounds && stage < parameters.maxstages; ++round )
+            for( int round = parameters.initround, stage = parameters.initstage, success = parameters.initstage; stage < parameters.maxstages; ++round )
             {
                //TODO: Clean matrix in each round
                //TODO: Simplify solver handling
@@ -178,7 +178,7 @@ namespace bugger
                if( !std::get<2>(successwrite) )
                   SolWriter<REAL>::writeSol(filename + std::to_string(round) + ".sol", problem, solution);
 
-               if( is_time_exceeded(timer) )
+               if( round >= parameters.maxrounds || is_time_exceeded(timer) )
                   break;
 
                // adapt batch number
@@ -212,6 +212,7 @@ namespace bugger
 
             assert( is_time_exceeded(timer) || evaluateResults( ) != ModifierStatus::kSuccessful );
          }
+
          printStats(time, last_result, last_round, last_modifier, last_effort);
       }
 
