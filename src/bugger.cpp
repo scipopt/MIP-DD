@@ -189,11 +189,11 @@ main(int argc, char *argv[])
    if( parameters.maxrounds < 0 )
       parameters.maxrounds = INT_MAX;
    if( parameters.initround < 0 || parameters.initround >= parameters.maxrounds )
-      parameters.initround = parameters.maxrounds-1;
+      parameters.initround = max(parameters.maxrounds - 1, 0);
    if( parameters.maxstages < 0 || parameters.maxstages > modifiers.size( ) )
       parameters.maxstages = modifiers.size( );
    if( parameters.initstage < 0 || parameters.initstage >= parameters.maxstages )
-      parameters.initstage = parameters.maxstages-1;
+      parameters.initstage = max(parameters.maxstages - 1, 0);
    if( optionsInfo.target_settings_file.empty( ) )
       setting->setEnabled(false);
 

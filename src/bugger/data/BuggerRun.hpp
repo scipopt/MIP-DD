@@ -165,7 +165,7 @@ namespace bugger
             long long minadmissible = -1;
             long long maxadmissible = -1;
 
-            for( int round = parameters.initround, stage = parameters.initstage, success = parameters.initstage; round < parameters.maxrounds && stage < parameters.maxstages; ++round )
+            for( int round = parameters.initround, stage = parameters.initstage, success = parameters.initstage; stage < parameters.maxstages; ++round )
             {
                //TODO: Clean matrix in each round
                //TODO: Simplify solver handling
@@ -180,6 +180,9 @@ namespace bugger
                if( !std::get<2>(successwrite) )
                   SolWriter<REAL>::writeSol(filename + std::to_string(round) + ".sol", problem, solution);
 
+               if( round >= parameters.maxrounds || is_time_exceeded(timer) )
+                  break;
+
                // adapt batch number
                if( parameters.expenditure > 0 && last_effort >= 0 )
                   parameters.nbatches = last_effort >= 1 ? (parameters.expenditure - 1) / last_effort + 1 : 0;
@@ -188,13 +191,6 @@ namespace bugger
 
                for( int modifier = 0; modifier <= stage && stage < parameters.maxstages; ++modifier )
                {
-                  // break time limit
-                  if( is_time_exceeded(timer) )
-                  {
-                     stage = parameters.maxstages;
-                     break;
-                  }
-
                   if( modifiers[ modifier ]->getLastAdmissible( ) > minadmissible )
                      results[ modifier ] = modifiers[ modifier ]->run(settings, problem, solution, timer);
 
