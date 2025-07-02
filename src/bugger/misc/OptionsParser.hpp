@@ -51,13 +51,13 @@ namespace bugger
       bool
       checkFiles( )
       {
-         if( existsFile(problem_file) )
+         if( fileNotFound(problem_file) )
          {
             fmt::print("file {} is not valid\n", problem_file);
             return false;
          }
 
-         if( existsFile(param_settings_file) )
+         if( fileNotFound(param_settings_file) )
          {
             fmt::print("file {} is not valid\n", param_settings_file);
             return false;
@@ -67,19 +67,19 @@ namespace bugger
           && !boost::iequals(solution_file, "infeasible")
           && !boost::iequals(solution_file, "feasible")
           && !boost::iequals(solution_file, "unbounded")
-          && existsFile(solution_file) )
+          && fileNotFound(solution_file) )
          {
             fmt::print("file {} is not valid\n", solution_file);
             return false;
          }
 
-         if( existsFile(settings_file) )
+         if( fileNotFound(settings_file) )
          {
             fmt::print("file {} is not valid\n", settings_file);
             return false;
          }
 
-         if( existsFile(target_settings_file) )
+         if( fileNotFound(target_settings_file) )
          {
             fmt::print("file {} is not valid\n", target_settings_file);
             return false;
@@ -89,7 +89,7 @@ namespace bugger
       }
 
       bool
-      existsFile(std::string &filename) const
+      fileNotFound(std::string &filename) const
       {
          return !filename.empty( ) && !std::ifstream(filename);
       }
