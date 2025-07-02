@@ -393,10 +393,14 @@ namespace bugger
          switch( parameters.arithmetic )
          {
          case 0:
+            if( initial && (SCIP_Real)std::numeric_limits<REAL>::epsilon() > std::numeric_limits<SCIP_Real>::epsilon() )
+               msg.warn("Selected bugger arithmetic less precise than SCIP real arithmetic.\n");
             scip = std::unique_ptr<SolverInterface<REAL>>( new ScipRealInterface<REAL>( msg, parameters, limits ) );
             break;
 #ifdef SCIP_WITH_EXACTSOLVE
          case 1:
+            if( initial && (scip::Rational)std::numeric_limits<REAL>::epsilon() > std::numeric_limits<scip::Rational>::epsilon() )
+               msg.warn("Selected bugger arithmetic less precise than SCIP rational arithmetic.\n");
             scip = std::unique_ptr<SolverInterface<REAL>>( new ScipRationalInterface<REAL>( msg, parameters, limits ) );
             break;
 #endif
