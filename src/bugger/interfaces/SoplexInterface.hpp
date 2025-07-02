@@ -414,9 +414,13 @@ namespace bugger
          switch( parameters.arithmetic )
          {
          case 0:
+            if( initial && (soplex::Real)std::numeric_limits<REAL>::epsilon() > std::numeric_limits<soplex::Real>::epsilon() )
+               msg.warn("Selected bugger arithmetic less precise than SoPlex real arithmetic.\n");
             soplex = std::unique_ptr<SolverInterface<REAL>>( new SoplexRealInterface<REAL>( msg, parameters, limits ) );
             break;
          case 1:
+            if( initial && (soplex::Rational)std::numeric_limits<REAL>::epsilon() > std::numeric_limits<soplex::Rational>::epsilon() )
+               msg.warn("Selected bugger arithmetic less precise than SoPlex rational arithmetic.\n");
             soplex = std::unique_ptr<SolverInterface<REAL>>( new SoplexRationalInterface<REAL>( msg, parameters, limits ) );
             break;
          default:
